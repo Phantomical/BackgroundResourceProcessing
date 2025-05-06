@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <!--
+    Don't modify this file, it is copied in several places. Rather, create a
+    settings.user file in the project root and use that instead.
+    -->
+
+    <PropertyGroup>
+        <ProjectRootDir>$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory), 'UnifiedBackgroundProcessing.sln'))</ProjectRootDir>
+    </PropertyGroup>
+
+    <Import Project="$(ProjectRootDir)\settings.user" />
+</Project>
