@@ -27,5 +27,14 @@ namespace UnifiedBackgroundProcessing.Collections
                 return value;
             return defaultValue;
         }
+
+        public static V GetOrInsert<K, V>(this Dictionary<K, V> dict, K key, V insert)
+        {
+            if (dict.TryGetValue(key, out var value))
+                return value;
+
+            dict.Add(key, insert);
+            return insert;
+        }
     }
 }

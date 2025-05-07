@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
+using Google.OrTools.LinearSolver;
 using Smooth.Collections;
-using UnifiedBackgroundProcessing.Modules;
+using UnifiedBackgroundProcessing.Collections;
 
-namespace UnifiedBackgroundProcessing.Solver
+namespace UnifiedBackgroundProcessing.Modules
 {
     internal static class DictUtil
     {
@@ -317,6 +317,7 @@ namespace UnifiedBackgroundProcessing.Solver
         private Dictionary<InventoryId, ResourceInventory> inventories = [];
 
         private double lastUpdate = 0.0;
+        private double nextChangepoint = 0.0;
 
         /// <summary>
         /// Whether background processing is actively running on this module.
@@ -338,14 +339,76 @@ namespace UnifiedBackgroundProcessing.Solver
             return base.GetOrder();
         }
 
+        protected override void OnStart()
+        {
+            var instance = UnifiedBackgroundProcessing.Instance;
+            if (instance == null)
+            {
+                LogUtil.Error(
+                    "BackgroundProcessorModule created but there is no active instance ",
+                    "of the UnifiedBackgroundProcessing addon"
+                );
+                return;
+            }
+
+            instance.RegisterChangepointCallback(this, nextChangepoint);
+        }
+
+        protected void OnDestroy()
+        {
+            var instance = UnifiedBackgroundProcessing.Instance;
+            if (instance == null)
+            {
+                LogUtil.Error(
+                    "BackgroundProcessorModule destroyed but there is no active instance ",
+                    "of the UnifiedBackgroundProcessing addon"
+                );
+                return;
+            }
+
+            instance.UnregisterChangepointCallbacks(this);
+        }
+
         public override void OnUnloadVessel()
         {
+            var currentTime = Planetarium.GetUniversalTime();
+            var instance = UnifiedBackgroundProcessing.Instance;
+            if (instance == null)
+            {
+                LogUtil.Error(
+                    "BackgroundProcessorModule.OnUnloadVessel called but there is ",
+                    "no active instance of the UnifiedBackgroundProcessing addon"
+                );
+                return;
+            }
+
             RecordVesselState();
+            ForceUpdateBehaviours(currentTime);
+            ComputeRates();
+
+            var changepoint = ComputeNextChangepoint(currentTime);
+            nextChangepoint = changepoint;
+            instance.RegisterChangepointCallback(this, changepoint);
         }
 
         public override void OnLoadVessel()
         {
+            var currentTime = Planetarium.GetUniversalTime();
+
+            UpdateInventories(currentTime);
             ApplyInventories();
+
+            var instance = UnifiedBackgroundProcessing.Instance;
+            if (instance == null)
+            {
+                LogUtil.Error(
+                    "BackgroundProcessorModule.OnLoadVessel called but there is ",
+                    "no active instance of the UnifiedBackgroundProcessing addon"
+                );
+                return;
+            }
+
+            instance.UnregisterChangepointCallbacks(this);
         }
 
         internal void OnChangepoint(double changepoint)
@@ -355,6 +418,23 @@ namespace UnifiedBackgroundProcessing.Solver
                 return;
 
             UpdateInventories(changepoint);
+            UpdateBehaviours(changepoint);
+            ComputeRates();
+
+            var next = ComputeNextChangepoint(changepoint);
+            nextChangepoint = next;
+
+            var instance = UnifiedBackgroundProcessing.Instance;
+            if (instance == null)
+            {
+                LogUtil.Error(
+                    "BackgroundProcessorModule.OnChangepoint called but there is ",
+                    "no active instance of the UnifiedBackgroundProcessing addon"
+                );
+                return;
+            }
+
+            instance.RegisterChangepointCallback(this, next);
         }
 
         /// <summary>
@@ -400,6 +480,7 @@ namespace UnifiedBackgroundProcessing.Solver
                     var behaviour = module.GetBehaviour();
                     if (behaviour == null)
                         continue;
+                    behaviour.sourceModule = module.GetType().FullName;
 
                     var converter = new Converter(behaviour);
                     converter.Refresh(state);
@@ -485,25 +566,274 @@ namespace UnifiedBackgroundProcessing.Solver
                 converter.Refresh(state);
         }
 
-        private void RecalculateRates()
+        private class InventoryVariables()
         {
-            /**
-            What we want to do here is to calculate the rates at which the
-            resources in each inventory are changing. That is really the only
-            information we care about here.
+            // Variables representing resource flow into this inventory from a converter.
+            public List<Variable> inflow = [];
 
-            This can be represented as a linear programming problem.
-            
-            To start lets define some variables:
-            - let I be the number of inventories,
-            - let N be the number of converters/producers/consumers,
-            - let R be the number of resources.
+            // Variables representing resource flow out of this inventory to a converter.
+            public List<Variable> outflow = [];
 
-            We can lump together converters, producers, and consumers by treating
-            producers as converters with no inputs and consumers as
-            
+            // The subset of inflow variables that have DumpExcess set to false.
+            public List<Variable> limited = [];
+        }
 
-            */
+        private void ComputeRates()
+        {
+            // What we want to do here is to calculate the rates at which the
+            // resources in each inventory are changing. That is really the only
+            // information we care about here.
+            //
+            // This can be represented as a linear programming problem.
+            //
+            // To start lets define some variables:
+            // - let I be the number of inventories,
+            // - let N be the number of converters,
+            // - let R be the number of resources.
+            //
+            // We then define
+            // - a_j to be the fraction of the time that converter j is running.
+            //   It should be 1 for 100% of the time and 0 if it is not running at all.
+            // - P_{j,k} to be the production rate of resource k by converter j
+            // - C_{j,k} to be the consumption rate of resource k by converter j
+            // - p_{i,j,k} to be the rate of resource k that converter j is emitting
+            //   into inventory i
+            // - c_{i,j,k} to be the same as above but for resource consumption
+            // - r_{i,k} to be the net rate of change in inventory i for resource k.
+            //   Note that this always be 0 for all but one resource for any given
+            //   inventory.
+            //
+            // Now that we have those variables we can define our constraints:
+            // - forall(i,k, sum(j in 0..N, p_{j,k} - c_{j,k})) == r_{i,k})
+            // - r_{i,k} <= 0 if inventory i is full with resource k
+            // - r_{i,k} >= 0 if inventory i is empty of resource k
+            // - forall(j,k, sum(i in 0..I, p_{i,j,k}) == a_j * P_{j,k})
+            // - forall(j,k, sum(i in 0..I, c_{i,j,k}) == a_j * C_{j,k})
+            // - forall(j, 0 <= a_j <= 1)
+            //
+            // In words, this ends up being:
+            // - r_{i,j,k} is the sum of the rates of resource k flowing into and
+            //   out of inventory i.
+            // - some boundary conditions on the rate (cannot overfill or take
+            //   resources that are not present).
+            // - The outflows of resource k from producer j sum up to its total
+            //   production rate for resource k P_{j,k}.
+            // - The inflows of resource k into producer j sum up to its total
+            //   consumption rate for resource k C_{j,k}.
+            // - A converter cannot be more than 100% active or run in reverse.
+            //
+            // The code below constructs a linear problem instance (with some
+            // optimizations) and feeds that into OR-Tools' LP solver.
+            //
+            // There are still a bunch of improvements that can be made here:
+            // - This completely ignores required resources. They don't really
+            //   seem to be used much by KSP mods but it would be good to
+            //   properly support them. I'm just genuinly not sure how to
+            //   support them in the general case.
+            // - In the case where there are no resource loops we can probably
+            //   come up with a much simpler algorithm to solve this that would
+            //   be much faster than calling out to a LP solver.
+
+            var solver =
+                Solver.CreateSolver("GLOP")
+                ?? throw new Exception("GLOP solver not available within Google.OrTools.Solver");
+
+            // The activation fractions of the converters.
+            var active = solver.MakeNumVarArray(converters.Count, 0.0, 1.0, "active");
+            var rates = solver.MakeNumVarArray(
+                inventories.Count,
+                double.NegativeInfinity,
+                double.PositiveInfinity,
+                "rates"
+            );
+
+            var invVars = new Dictionary<InventoryId, InventoryVariables>();
+            var invRates = new Dictionary<InventoryId, Variable>();
+
+            for (int i = 0; i < converters.Count; ++i)
+            {
+                var converter = converters[i];
+                var rate = active[i];
+
+                foreach (var entry in converter.inputs)
+                {
+                    var ratio = entry.Value;
+                    LinearExpr sum = -ratio.Ratio * rate;
+
+                    if (converter.pull.TryGetValue(ratio.ResourceName, out var pull))
+                    {
+                        foreach (var partId in pull)
+                        {
+                            var id = new InventoryId(partId, ratio.ResourceName);
+                            var vars = invVars.GetOrInsert(id, new());
+                            var pullvar = solver.MakeNumVar(0.0, double.PositiveInfinity, "");
+
+                            vars.outflow.Add(pullvar);
+                            sum += pullvar;
+                        }
+                    }
+
+                    solver.Add(sum == 0.0);
+                }
+
+                foreach (var entry in converter.outputs)
+                {
+                    var ratio = entry.Value;
+                    LinearExpr sum = -ratio.Ratio * rate;
+
+                    if (converter.push.TryGetValue(ratio.ResourceName, out var push))
+                    {
+                        foreach (var partId in push)
+                        {
+                            var id = new InventoryId(partId, ratio.ResourceName);
+                            var vars = invVars.GetOrInsert(id, new());
+                            var pushvar = solver.MakeNumVar(0.0, double.PositiveInfinity, "");
+
+                            if (!ratio.DumpExcess)
+                                vars.limited.Add(pushvar);
+                            vars.inflow.Add(pushvar);
+                            sum += pushvar;
+                        }
+                    }
+
+                    solver.Add(sum == 0.0);
+                }
+            }
+
+            int index = 0;
+            foreach (var entry in invVars)
+            {
+                var id = entry.Key;
+                var vars = entry.Value;
+                var rate = rates[index];
+                var inventory = inventories[id];
+                index += 1;
+
+                invRates.Add(id, rate);
+
+                LinearExpr rateEq = -rate;
+
+                foreach (var inflow in vars.inflow)
+                    rateEq += inflow;
+                foreach (var outflow in vars.outflow)
+                    rateEq -= outflow;
+
+                solver.Add(rateEq == 0.0);
+
+                if (inventory.Full)
+                {
+                    // We need to constrain non-DumpExcess inflows into this
+                    // inventory to be <= outflows
+
+                    LinearExpr constraint = null;
+
+                    foreach (var outflow in vars.outflow)
+                    {
+                        if (constraint == null)
+                            constraint = -outflow;
+                        else
+                            constraint -= outflow;
+                    }
+
+                    foreach (var inflow in vars.limited)
+                    {
+                        if (constraint == null)
+                            constraint = inflow;
+                        else
+                            constraint += inflow;
+                    }
+
+                    if (constraint != null)
+                        solver.Add(constraint <= 0.0);
+                }
+                else if (inventory.Empty)
+                {
+                    // No equivalent to DumpExcess here. We just need to ensure
+                    // that inflows >= outflows
+
+                    LinearExpr constraint = null;
+
+                    foreach (var outflow in vars.outflow)
+                    {
+                        if (constraint == null)
+                            constraint = -outflow;
+                        else
+                            constraint -= outflow;
+                    }
+
+                    foreach (var inflow in vars.outflow)
+                    {
+                        if (constraint == null)
+                            constraint = inflow;
+                        else
+                            constraint += inflow;
+                    }
+
+                    if (constraint != null)
+                        solver.Add(constraint >= 0.0);
+                }
+                else
+                {
+                    // There is no constraint on the rate here. It could be
+                    // positive or negative and both are OK.
+                }
+            }
+
+            LinearExpr f = null;
+            foreach (var a in active)
+            {
+                if (f == null)
+                    f = a;
+                else
+                    f += a;
+            }
+
+            solver.Maximize(f);
+
+            foreach (var entry in invRates)
+            {
+                var id = entry.Key;
+                var variable = entry.Value;
+                var inv = inventories[id];
+                var rate = variable.SolutionValue();
+
+                // Due to DumpExcess converters the rate can be positive even
+                // if the inventory is full. It should never be negative if
+                // the inventory is empty but we clamp it here anyway just to
+                // be safe.
+                if (inv.Empty)
+                    rate = Math.Max(rate, 0.0);
+                else if (inv.Full)
+                    rate = Math.Min(rate, 0.0);
+
+                inv.rate = rate;
+            }
+        }
+
+        private double ComputeNextChangepoint(double currentTime)
+        {
+            double changepoint = double.PositiveInfinity;
+
+            foreach (var entry in inventories)
+            {
+                var inv = entry.Value;
+
+                if (inv.rate == 0.0)
+                    continue;
+
+                double duration;
+                if (inv.rate < 0.0)
+                    duration = inv.amount / -inv.rate;
+                else
+                    duration = (inv.maxAmount - inv.amount) / inv.amount;
+
+                changepoint = Math.Min(changepoint, currentTime + duration);
+            }
+
+            foreach (var converter in converters)
+                changepoint = Math.Min(changepoint, converter.nextChangepoint);
+
+            return changepoint;
         }
 
         /// <summary>
@@ -598,9 +928,18 @@ namespace UnifiedBackgroundProcessing.Solver
             return set;
         }
 
-        static double Clamp(double value, double min, double max)
+        private static LinearExpr SumVariables(IEnumerable<Variable> vars)
         {
-            return Math.Max(Math.Min(value, max), min);
+            IEnumerator<Variable> enumerator = vars.GetEnumerator();
+
+            if (!enumerator.MoveNext())
+                return null;
+            LinearExpr expr = enumerator.Current;
+
+            while (enumerator.MoveNext())
+                expr += enumerator.Current;
+
+            return expr;
         }
     }
 }

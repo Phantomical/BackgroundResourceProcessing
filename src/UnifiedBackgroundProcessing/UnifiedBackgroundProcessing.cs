@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Reflection;
 using UnifiedBackgroundProcessing.Collections;
-using UnifiedBackgroundProcessing.Solver;
+using UnifiedBackgroundProcessing.Modules;
 using UnityEngine;
 
 namespace UnifiedBackgroundProcessing
