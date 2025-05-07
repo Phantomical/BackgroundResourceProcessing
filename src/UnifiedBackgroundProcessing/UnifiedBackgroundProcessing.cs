@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Reflection;
-using UnifiedBackgroundProcessing.Behaviour;
 using UnifiedBackgroundProcessing.Collections;
 using UnifiedBackgroundProcessing.Solver;
 using UnityEngine;
@@ -87,7 +86,7 @@ namespace UnifiedBackgroundProcessing
 
         #region Behaviour Registration
         /// <summary>
-        /// Register all behaviour classes annotated with <c>[<see cref="Behaviour"/>]</c>
+        /// Register all behaviour classes annotated with <c>[<see cref="UnityEngine.Behaviour"/>]</c>
         /// within the current assembly.
         /// </summary>
         public static void RegisterAllBehaviours()
@@ -97,12 +96,12 @@ namespace UnifiedBackgroundProcessing
         }
 
         /// <summary>
-        /// Register all behaviour classes annotated with <c>[<see cref="Behaviour"/>]</c>
+        /// Register all behaviour classes annotated with <c>[<see cref="UnityEngine.Behaviour"/>]</c>
         /// within the provided assembly.
         /// </summary>
         public static void RegisterAllBehaviours(Assembly assembly)
         {
-            BaseBehaviour.RegisterAll(assembly);
+            BehaviourRegistry.RegisterAll(assembly);
         }
         #endregion
     }

@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using Smooth.Collections;
-using UnifiedBackgroundProcessing.Behaviour;
 using UnifiedBackgroundProcessing.Modules;
 
 namespace UnifiedBackgroundProcessing.Solver
@@ -183,91 +183,18 @@ namespace UnifiedBackgroundProcessing.Solver
         }
     }
 
-    public class Producer(ProducerBehaviour behaviour) : Base
+    public class Converter(ConverterBehaviour behaviour)
     {
-        public ProducerBehaviour behaviour = behaviour;
+        public Dictionary<string, HashSet<uint>> push = [];
+        public Dictionary<string, HashSet<uint>> pull = [];
 
-        public Dictionary<string, ResourceRatio> outputs = [];
-
-        public void Refresh(VesselState state)
-        {
-            var outputList = behaviour.GetOutputs(state);
-            nextChangepoint = behaviour.GetNextChangepoint(state);
-
-            outputs.Clear();
-            foreach (var output in outputList)
-                outputs.Add(output.ResourceName, output);
-        }
-
-        public new void Load(ConfigNode node)
-        {
-            base.Load(node);
-
-            behaviour = (ProducerBehaviour)BaseBehaviour.LoadStatic(node.GetNode("BEHAVIOUR"));
-
-            outputs.Clear();
-            outputs.AddAll(
-                ConfigUtil
-                    .LoadOutputResources(node)
-                    .Select(ratio => DictUtil.CreateKeyValuePair(ratio.ResourceName, ratio))
-            );
-        }
-
-        public new void Save(ConfigNode node)
-        {
-            base.Save(node);
-
-            behaviour.Save(node.AddNode("BEHAVIOUR"));
-            ConfigUtil.SaveOutputResources(node, outputs.Select(output => output.Value));
-        }
-    }
-
-    public class Consumer(ConsumerBehaviour behaviour) : Base
-    {
-        public ConsumerBehaviour behaviour = behaviour;
-
-        public Dictionary<string, ResourceRatio> inputs = [];
-
-        public void Refresh(VesselState state)
-        {
-            var inputList = behaviour.GetInputs(state);
-            nextChangepoint = behaviour.GetNextChangepoint(state);
-
-            inputs.Clear();
-            foreach (var input in inputList)
-                inputs.Add(input.ResourceName, input);
-        }
-
-        public new void Load(ConfigNode node)
-        {
-            base.Load(node);
-
-            behaviour = (ConsumerBehaviour)BaseBehaviour.LoadStatic(node.GetNode("BEHAVIOUR"));
-
-            inputs.Clear();
-            inputs.AddAll(
-                ConfigUtil
-                    .LoadInputResources(node)
-                    .Select(ratio => DictUtil.CreateKeyValuePair(ratio.ResourceName, ratio))
-            );
-        }
-
-        public new void Save(ConfigNode node)
-        {
-            base.Save(node);
-
-            behaviour.Save(node.AddNode("BEHAVIOUR"));
-            ConfigUtil.SaveInputResources(node, inputs.Select(input => input.Value));
-        }
-    }
-
-    public class Converter(ConverterBehaviour behaviour) : Base
-    {
         public ConverterBehaviour behaviour = behaviour;
 
         public Dictionary<string, ResourceRatio> inputs = [];
         public Dictionary<string, ResourceRatio> outputs = [];
         public Dictionary<string, ResourceRatio> required = [];
+
+        public double nextChangepoint = double.PositiveInfinity;
 
         public void Refresh(VesselState state)
         {
@@ -286,12 +213,29 @@ namespace UnifiedBackgroundProcessing.Solver
                 required.Add(req.ResourceName, req);
         }
 
-        public new void Load(ConfigNode node)
+        public void Load(ConfigNode node)
         {
-            base.Load(node);
+            node.TryGetValue("nextChangepoint", ref nextChangepoint);
 
-            node.AddValue("nextChangepoint", nextChangepoint);
-            behaviour.Save(node.AddNode("BEHAVIOUR"));
+            foreach (var inner in node.GetNodes("PUSH_INVENTORY"))
+            {
+                InventoryId id = new(0, "");
+                id.Load(inner);
+
+                AddPushInventory(id);
+            }
+
+            foreach (var inner in node.GetNodes("PULL_INVENTORY"))
+            {
+                InventoryId id = new(0, "");
+                id.Load(inner);
+
+                AddPullInventory(id);
+            }
+
+            var bNode = node.GetNode("BEHAVIOUR");
+            if (bNode != null)
+                behaviour = ConverterBehaviour.LoadStatic(bNode);
 
             outputs.Clear();
             inputs.Clear();
@@ -314,22 +258,63 @@ namespace UnifiedBackgroundProcessing.Solver
             );
         }
 
-        public new void Save(ConfigNode node)
+        public void Save(ConfigNode node)
         {
-            base.Save(node);
+            node.AddValue("nextChangepoint", nextChangepoint);
+
+            foreach (var entry in push)
+            {
+                var resourceName = entry.Key;
+                foreach (var partId in entry.Value)
+                {
+                    var inner = node.AddNode("PUSH_INVENTORY");
+                    new InventoryId(partId, resourceName).Save(inner);
+                }
+            }
+
+            foreach (var entry in pull)
+            {
+                var resourceName = entry.Key;
+                foreach (var partId in entry.Value)
+                {
+                    var inner = node.AddNode("PULL_INVENTORY");
+                    new InventoryId(partId, resourceName).Save(inner);
+                }
+            }
+
             behaviour.Save(node.AddNode("BEHAVIOUR"));
             ConfigUtil.SaveOutputResources(node, outputs.Select(output => output.Value));
             ConfigUtil.SaveInputResources(node, inputs.Select(input => input.Value));
             ConfigUtil.SaveRequiredResources(node, required.Select(required => required.Value));
         }
+
+        public void AddPushInventory(InventoryId id)
+        {
+            if (!push.TryGetValue(id.resourceName, out var list))
+            {
+                list = [];
+                push.Add(id.resourceName, list);
+            }
+
+            list.Add(id.partId);
+        }
+
+        public void AddPullInventory(InventoryId id)
+        {
+            if (!pull.TryGetValue(id.resourceName, out var list))
+            {
+                list = [];
+                pull.Add(id.resourceName, list);
+            }
+
+            list.Add(id.partId);
+        }
     }
 
     public class BackgroundProcessorModule : VesselModule
     {
-        private List<Producer> producers = [];
-        private List<Consumer> consumers = [];
         private List<Converter> converters = [];
-        public Dictionary<InventoryId, ResourceInventory> inventories = [];
+        private Dictionary<InventoryId, ResourceInventory> inventories = [];
 
         private double lastUpdate = 0.0;
 
@@ -378,8 +363,6 @@ namespace UnifiedBackgroundProcessing.Solver
         /// </summary>
         private void RecordVesselState()
         {
-            producers.Clear();
-            consumers.Clear();
             converters.Clear();
             inventories.Clear();
 
@@ -405,66 +388,12 @@ namespace UnifiedBackgroundProcessing.Solver
 
             foreach (var part in vessel.Parts)
             {
-                var producers = part.FindModulesImplementing<BackgroundProducer>();
-                var consumers = part.FindModulesImplementing<BackgroundConsumer>();
                 var converters = part.FindModulesImplementing<BackgroundConverter>();
 
                 // No point calculating linked inventories if there are no
                 // background modules on the current part.
-                if (producers.Count == 0 && consumers.Count == 0 && converters.Count == 0)
+                if (converters.Count == 0)
                     continue;
-
-                foreach (var module in producers)
-                {
-                    var behaviour = module.GetBehaviour();
-                    if (behaviour == null)
-                        continue;
-
-                    var producer = new Producer(behaviour);
-                    producer.Refresh(state);
-
-                    foreach (var entry in producer.outputs)
-                    {
-                        var ratio = entry.Value;
-                        var resourceSet = GetConnectedResources(
-                            part,
-                            ratio.ResourceName,
-                            ratio.FlowMode,
-                            false
-                        );
-
-                        foreach (var resource in resourceSet.set)
-                            producer.AddPushInventory(new(resource));
-                    }
-
-                    this.producers.Add(producer);
-                }
-
-                foreach (var module in consumers)
-                {
-                    var behaviour = module.GetBehaviour();
-                    if (behaviour == null)
-                        continue;
-
-                    var consumer = new Consumer(behaviour);
-                    consumer.Refresh(state);
-
-                    foreach (var entry in consumer.inputs)
-                    {
-                        var ratio = entry.Value;
-                        var resourceSet = GetConnectedResources(
-                            part,
-                            ratio.ResourceName,
-                            ratio.FlowMode,
-                            true
-                        );
-
-                        foreach (var resource in resourceSet.set)
-                            consumer.AddPullInventory(new(resource));
-                    }
-
-                    this.consumers.Add(consumer);
-                }
 
                 foreach (var module in converters)
                 {
@@ -539,22 +468,6 @@ namespace UnifiedBackgroundProcessing.Solver
         {
             VesselState state = new() { CurrentTime = currentTime, Vessel = Vessel };
 
-            foreach (var producer in producers)
-            {
-                if (producer.nextChangepoint > currentTime)
-                    continue;
-
-                producer.Refresh(state);
-            }
-
-            foreach (var consumer in consumers)
-            {
-                if (consumer.nextChangepoint > currentTime)
-                    continue;
-
-                consumer.Refresh(state);
-            }
-
             foreach (var converter in converters)
             {
                 if (converter.nextChangepoint > currentTime)
@@ -568,10 +481,6 @@ namespace UnifiedBackgroundProcessing.Solver
         {
             VesselState state = new() { CurrentTime = currentTime, Vessel = Vessel };
 
-            foreach (var producer in producers)
-                producer.Refresh(state);
-            foreach (var consumer in consumers)
-                consumer.Refresh(state);
             foreach (var converter in converters)
                 converter.Refresh(state);
         }
