@@ -2,13 +2,12 @@
 
 <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <!--
-    Don't modify this file, it is copied in several places. Rather, create a
-    settings.user file in the project root and use that instead.
+        Don't modify this file. It is meant purely to allow the
+        UnifiedBackgroundProcessing project to be built directly, without having
+        to build at the solution level (which disallows specifying the runtime).
     -->
-
-    <PropertyGroup>
-        <ProjectRootDir>$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory), 'UnifiedBackgroundProcessing.sln'))</ProjectRootDir>
-    </PropertyGroup>
-
-    <Import Project="$(ProjectRootDir)\settings.user" />
+    <Import
+        Condition=" '$(SolutionDir)' == '' And Exists('$(MSBuildProjectDirectory)\..\..\UnifiedBackgroundProcessing.props.user') "
+        Project="$(MSBuildProjectDirectory)\..\..\UnifiedBackgroundProcessing.props.user"
+    />    
 </Project>
