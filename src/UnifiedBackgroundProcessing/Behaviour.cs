@@ -6,7 +6,7 @@ using UnifiedBackgroundProcessing.Collections;
 
 namespace UnifiedBackgroundProcessing
 {
-    public class VesselState
+    public struct VesselState
     {
         /// <summary>
         /// The vessel that this module belongs to.
@@ -40,7 +40,7 @@ namespace UnifiedBackgroundProcessing
     /// <para>
     ///   This attribute marks a class that can be deserialized as a
     ///   <see cref="BaseBehaviour"/>. It is used by
-    ///   <see cref="UnifiedBackgroundProcessing.RegisterAllBehaviours"/> to
+    ///   <see cref="Registrar.RegisterAllBehaviours"/> to
     ///   discover behaviour classes in an assembly.
     /// </para>
     ///
@@ -95,7 +95,7 @@ namespace UnifiedBackgroundProcessing
             {
                 rwlock.EnterWriteLock();
 
-                if (!primaries.TryAdd(attr.Name, type))
+                if (!DictionaryExtensions.TryAdd(primaries, attr.Name, type))
                 {
                     var other = primaries[attr.Name];
 
@@ -106,7 +106,7 @@ namespace UnifiedBackgroundProcessing
 
                 foreach (var alternate in attr.Alternates)
                 {
-                    if (!alternates.TryAdd(alternate, type))
+                    if (!DictionaryExtensions.TryAdd(alternates, alternate, type))
                     {
                         var other = alternates[alternate];
                         LogUtil.Warn(
@@ -162,22 +162,25 @@ namespace UnifiedBackgroundProcessing
                     continue;
 
                 var baseType = typeof(ConverterBehaviour);
-                if (baseType.IsAssignableFrom(type))
+                if (!type.IsSubclassOf(baseType))
                 {
-                    throw new InvalidBehaviourException(
-                        $"Behaviour type '{type.Name}' does not inherit from '{baseType.FullName}'"
+                    LogUtil.Error(
+                        $"Behaviour type '{type.Name}' does not inherit from '{baseType.FullName}' and will not be registered"
                     );
+                    continue;
                 }
 
                 // We need the type to be default-constructible in order for us to
                 // create an instance to deserialize a ConfigNode into.
                 if (type.GetConstructor(Type.EmptyTypes) == null)
                 {
-                    throw new InvalidBehaviourException(
-                        $"Behaviour type '{type.Name}' does not have a default constructor"
+                    LogUtil.Error(
+                        $"Behaviour type '{type.Name}' does not have a default constructor and will not be registered"
                     );
+                    continue;
                 }
 
+                LogUtil.Log($"Registering behaviour {type.FullName} as {attribute.Name}");
                 Registry.Register(attribute, type);
             }
         }

@@ -37,4 +37,12 @@ namespace UnifiedBackgroundProcessing.Collections
             return insert;
         }
     }
+
+    internal static class DictUtil
+    {
+        internal static KeyValuePair<K, V> CreateKeyValuePair<K, V>(K key, V value)
+        {
+            return new KeyValuePair<K, V>(key, value);
+        }
+    }
 }

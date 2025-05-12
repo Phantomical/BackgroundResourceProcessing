@@ -4,52 +4,21 @@
     <LangVersion>12</LangVersion>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
+
   <ItemGroup>
-    <!-- <PackageReference Include="Google.OrTools" Version="9.12.4544" /> -->
     <PackageReference Include="KSPBuildTools" Version="0.0.3" />
-    <ProjectReference Include="..\Google.OrTools\Google.OrTools.csproj" />
-    <PackageReference
-      Include="Google.OrTools.runtime.win-x64"
-      Version="9.12.4544"
-      GeneratePathProperty="true"
-    />
-    <PackageReference
-      Include="Google.OrTools.runtime.osx-x64"
-      Version="9.12.4544"
-      GeneratePathProperty="true"
-    />
-    <PackageReference
-      Include="Google.OrTools.runtime.osx-arm64"
-      Version="9.12.4544"
-      GeneratePathProperty="true"
-    />
-    <PackageReference
-      Include="Google.OrTools.runtime.linux-x64"
-      Version="9.12.4544"
-      GeneratePathProperty="true"
-    />
   </ItemGroup>
-  <ItemGroup>
-    <!--
-      KSPBuildTools takes care of most things WRT adding dependencies.
-      This just covers some extra dependencies, such as Harmony2.
-    -->
-    <!-- <Reference Include="0Harmony.dll">
-      <HintPath>$(ReferencePath)\GameData\000_Harmony\0Harmony.dll</HintPath>
-      <Private>false</Private>
-      <CKANIdentifier>Harmony2</CKANIdentifier>
-      <KSPAssemblyName>HarmonyKSP</KSPAssemblyName>
-      <KSPAssemblyVersion>1.0.0</KSPAssemblyVersion>
-    </Reference> -->
-  </ItemGroup>
+
   <ItemGroup>
     <CompilerVisibleProperty Include="RootNamespace" />
   </ItemGroup>
   <PropertyGroup>
     <ProjectRootDir>$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory), 'UnifiedBackgroundProcessing.sln'))</ProjectRootDir>
     <GameDataOutDir>$(ProjectRootDir)\GameData\UnifiedBackgroundProcessing</GameDataOutDir>
+    <UnityProjectDir>$(ProjectRootDir)\Unity</UnityProjectDir>
     <BinariesOutputRelativePath>GameData\UnifiedBackgroundProcessing\Plugins</BinariesOutputRelativePath>
   </PropertyGroup>
+
   <!--
     It's really easy for old binaries to stick around in GameData and bin
     directories. This step makes sure that doesn't happen.
@@ -67,31 +36,15 @@
     -->
     <MakeDir Directories="$(GameDataOutDir)" />
   </Target>
-  <!--
-    This manually copies the relevant native binaries to 
-  -->
-  <ItemGroup>
-    <GoogleOrToolsWinX64 Include="$(PkgGoogle_OrTools_runtime_win-x64)\runtimes\win-x64\native\*" />
-    <GoogleOrToolsOsxX64 Include="$(PkgGoogle_OrTools_runtime_osx-x64)\runtimes\osx-x64\native\*" />
-    <GoogleOrToolsOsxArm64 Include="$(PkgGoogle_OrTools_runtime_osx-arm64)\runtimes\osx-arm64\native\*" />
-    <GoogleOrToolsLinuxX64 Include="$(PkgGoogle_OrTools_runtime_linux-x64)\runtimes\linux-x64\native\*" />
-  </ItemGroup>
-  <Target Name="CopyNativeDepsToRepo" AfterTargets="CopyBinariesToRepo">
+
+  <Target Name="CopyUnityAssets" AfterTargets="CopyFilesToOutputDirectory">
+    <ItemGroup>
+      <Patches Include="$(ProjectRootDir)\src\GameData\**\*.*" />
+    </ItemGroup>
     <Copy
-      SourceFiles="@(GoogleOrToolsWinX64)"
-      DestinationFolder="$(RepoRootPath)\$(BinariesOutputRelativePath)\win-x64"
+      SourceFiles="$(UnityProjectDir)\Assets\UnifiedBackgroundProcessingGUI.prefab"
+      DestinationFolder="$(GameDataOutDir)\PluginData"
     />
-    <Copy
-      SourceFiles="@(GoogleOrToolsOsxX64)"
-      DestinationFolder="$(RepoRootPath)\$(BinariesOutputRelativePath)\osx-x64"
-    />
-    <Copy
-      SourceFiles="@(GoogleOrToolsOsxArm64)"
-      DestinationFolder="$(RepoRootPath)\$(BinariesOutputRelativePath)\osx-arm64"
-    />
-    <Copy
-      SourceFiles="@(GoogleOrToolsLinuxX64)"
-      DestinationFolder="$(RepoRootPath)\$(BinariesOutputRelativePath)\linux-x64"
-    />
+    <Copy SourceFiles="@(Patches)" DestinationFolder="$(GameDataOutDir)\%(RecursiveDir)" />
   </Target>
 </Project>

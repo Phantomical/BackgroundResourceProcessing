@@ -2,6 +2,6 @@
 .vs/
 bin/
 obj/
-GameData/
+/GameData/
 
 UnifiedBackgroundProcessing.props.user

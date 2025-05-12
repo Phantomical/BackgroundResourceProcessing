@@ -5,7 +5,7 @@ VisualStudioVersion = 17.13.35931.197
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnifiedBackgroundProcessing", "src\UnifiedBackgroundProcessing\UnifiedBackgroundProcessing.csproj", "{CF0C0D27-96CF-3155-1288-454FFD5318B8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Google.OrTools", "src\Google.OrTools\Google.OrTools.csproj", "{83B99FE8-4CD9-A9B2-49B0-C089CF499A9E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnifiedBackgroundProcessingTest", "test\UnifiedBackgroundProcessingTest\UnifiedBackgroundProcessingTest.csproj", "{C2F9D2FF-ABF9-4FE4-B7A7-FB4FBE4B7C14}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,10 +17,10 @@ Global
 		{CF0C0D27-96CF-3155-1288-454FFD5318B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CF0C0D27-96CF-3155-1288-454FFD5318B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CF0C0D27-96CF-3155-1288-454FFD5318B8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{83B99FE8-4CD9-A9B2-49B0-C089CF499A9E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{83B99FE8-4CD9-A9B2-49B0-C089CF499A9E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{83B99FE8-4CD9-A9B2-49B0-C089CF499A9E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{83B99FE8-4CD9-A9B2-49B0-C089CF499A9E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C2F9D2FF-ABF9-4FE4-B7A7-FB4FBE4B7C14}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C2F9D2FF-ABF9-4FE4-B7A7-FB4FBE4B7C14}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C2F9D2FF-ABF9-4FE4-B7A7-FB4FBE4B7C14}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C2F9D2FF-ABF9-4FE4-B7A7-FB4FBE4B7C14}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
