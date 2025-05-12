@@ -41,10 +41,6 @@
     <ItemGroup>
       <Patches Include="$(ProjectRootDir)\src\GameData\**\*.*" />
     </ItemGroup>
-    <Copy
-      SourceFiles="$(UnityProjectDir)\Assets\UnifiedBackgroundProcessingGUI.prefab"
-      DestinationFolder="$(GameDataOutDir)\PluginData"
-    />
     <Copy SourceFiles="@(Patches)" DestinationFolder="$(GameDataOutDir)\%(RecursiveDir)" />
   </Target>
 </Project>

@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Linq;
+using UnifiedBackgroundProcessing.Utils;
 
 namespace UnifiedBackgroundProcessing.Modules
 {
@@ -13,11 +15,21 @@ namespace UnifiedBackgroundProcessing.Modules
     /// </remarks>
     public class ModuleBackgroundConstantProducer : BackgroundConverter
     {
-        private List<ResourceRatio> outputs = [];
+        public List<ResourceRatio> outputs = [];
+
+        /// <summary>
+        /// A multiplier on the number of resources consumed from the list.
+        /// </summary>
+        [KSPField]
+        public double multiplier = 1.0;
 
         public override ConverterBehaviour GetBehaviour()
         {
-            return new ConstantProducer(outputs);
+            if (multiplier == 1.0)
+                return new ConstantProducer(outputs);
+            if (multiplier == 0.0)
+                return null;
+            return new ConstantProducer([.. outputs.Select(res => res.WithMultiplier(multiplier))]);
         }
 
         public override void OnLoad(ConfigNode node)

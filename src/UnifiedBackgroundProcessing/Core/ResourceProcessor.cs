@@ -4,6 +4,7 @@ using System.Linq;
 using Smooth.Collections;
 using UnifiedBackgroundProcessing.Collections;
 using UnifiedBackgroundProcessing.Modules;
+using UnifiedBackgroundProcessing.Utils;
 
 namespace UnifiedBackgroundProcessing.Core
 {
@@ -28,8 +29,8 @@ namespace UnifiedBackgroundProcessing.Core
 
         public void Load(ConfigNode node)
         {
-            node.TryGetValue("lastUpdate", ref lastUpdate);
-            node.TryGetValue("nextChangepoint", ref nextChangepoint);
+            node.TryGetDouble("lastUpdate", ref lastUpdate);
+            node.TryGetDouble("nextChangepoint", ref nextChangepoint);
 
             foreach (var cNode in node.GetNodes("CONVERTER"))
             {

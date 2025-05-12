@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Smooth.Collections;
 using UnifiedBackgroundProcessing.Collections;
+using UnifiedBackgroundProcessing.Utils;
 
 namespace UnifiedBackgroundProcessing.Core
 {
@@ -37,7 +38,7 @@ namespace UnifiedBackgroundProcessing.Core
 
         public void Load(ConfigNode node)
         {
-            node.TryGetValue("nextChangepoint", ref nextChangepoint);
+            node.TryGetDouble("nextChangepoint", ref nextChangepoint);
 
             foreach (var inner in node.GetNodes("PUSH_INVENTORY"))
             {
