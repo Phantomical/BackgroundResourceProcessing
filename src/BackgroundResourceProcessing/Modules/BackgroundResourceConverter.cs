@@ -42,10 +42,22 @@ namespace BackgroundResourceProcessing.Modules
         {
             base.OnStart(state);
             Converter = GetLinkedBaseConverter();
-            ConverterPrepareRecipe = typeof(BaseConverter).GetMethod(
+            if (!Converter)
+                return;
+
+            var type = Converter.GetType();
+            ConverterPrepareRecipe = type.GetMethod(
                 "PrepareRecipe",
                 BindingFlags.Instance | BindingFlags.NonPublic
             );
+
+            // We are handling the background updates, so override the lastUpdateTime
+            // field on the converter so it doesn't do any catch-up.
+            var lastUpdateField = type.GetField(
+                "lastUpdateTime",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            lastUpdateField.SetValue(Converter, Planetarium.GetUniversalTime());
         }
 
         public override ConverterBehaviour GetBehaviour()
