@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>12</LangVersion>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <NoStdlib>true</NoStdlib>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="KSPBuildTools" Version="0.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <CompilerVisibleProperty Include="RootNamespace" />
+  </ItemGroup>
+  <PropertyGroup>
+    <ProjectRootDir>$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory), 'BackgroundResourceProcessing.sln'))</ProjectRootDir>
+    <GameDataOutDir>$(ProjectRootDir)\GameData\BackgroundResourceProcessing</GameDataOutDir>
+    <UnityProjectDir>$(ProjectRootDir)\Unity</UnityProjectDir>
+    <BinariesOutputRelativePath>GameData\BackgroundResourceProcessing\Plugins</BinariesOutputRelativePath>
+  </PropertyGroup>
+
+  <!--
+    It's really easy for old binaries to stick around in GameData and bin
+    directories. This step makes sure that doesn't happen.
+  -->
+  <Target Name="PostClean" AfterTargets="Clean">
+    <!--
+      Make sure to delete the output mod directory on clean so we don't have
+      outdated artifacts lying around.
+    -->
+    <RemoveDir Directories="$(GameDataOutDir)" />
+    <RemoveDir Directories="$(ProjectDir)\bin" />
+    <!--
+      KSP gets borked if there are invalid junctions in GameData. We fix this
+      by recreating the directory after we delete it.
+    -->
+    <MakeDir Directories="$(GameDataOutDir)" />
+  </Target>
+
+  <Target Name="CopyUnityAssets" AfterTargets="CopyFilesToOutputDirectory">
+    <ItemGroup>
+      <Patches Include="$(ProjectRootDir)\src\GameData\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(Patches)" DestinationFolder="$(GameDataOutDir)\%(RecursiveDir)" />
+  </Target>
+</Project>

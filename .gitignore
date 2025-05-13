@@ -4,4 +4,4 @@ bin/
 obj/
 /GameData/
 
-UnifiedBackgroundProcessing.props.user
+/*.props.user
