@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Smooth.Collections;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Modules;
 using BackgroundResourceProcessing.Solver;
 using BackgroundResourceProcessing.Utils;
+using Smooth.Collections;
 
 namespace BackgroundResourceProcessing.Core
 {

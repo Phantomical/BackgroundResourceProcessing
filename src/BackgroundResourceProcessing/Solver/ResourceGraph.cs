@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using Smooth.Collections;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
+using Smooth.Collections;
 
 namespace BackgroundResourceProcessing.Solver
 {

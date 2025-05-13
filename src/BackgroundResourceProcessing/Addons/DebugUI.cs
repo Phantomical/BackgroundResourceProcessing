@@ -1,7 +1,7 @@
 using System.IO;
 using System.Reflection;
-using KSP.UI.Screens;
 using BackgroundResourceProcessing.VesselModules;
+using KSP.UI.Screens;
 using UnityEngine;
 
 namespace BackgroundResourceProcessing
