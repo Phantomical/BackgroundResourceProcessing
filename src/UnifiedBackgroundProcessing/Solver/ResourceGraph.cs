@@ -257,7 +257,7 @@ namespace UnifiedBackgroundProcessing.Solver
         {
             HashSet<int> removed = [];
 
-            foreach (var (inventoryId, inventory) in inventories)
+            foreach (var (inventoryId, inventory) in inventories.KSPEnumerate())
             {
                 if (removed.Contains(inventoryId))
                     continue;
@@ -265,9 +265,9 @@ namespace UnifiedBackgroundProcessing.Solver
                 var inputEdges = inputs.GetInventoryEntry(inventoryId);
                 var outputEdges = outputs.GetInventoryEntry(inventoryId);
 
-                foreach (var (otherId, otherInv) in inventories)
+                foreach (var (otherId, otherInv) in inventories.KSPEnumerate())
                 {
-                    if (otherId == inventoryId)
+                    if (otherId <= inventoryId)
                         continue;
                     if (inventory.resourceName != otherInv.resourceName)
                         continue;
@@ -280,14 +280,35 @@ namespace UnifiedBackgroundProcessing.Solver
                         continue;
 
                     inventory.Merge(otherInv);
+                    inventoryIds.Union(inventoryId, otherId);
                     inputs.RemoveInventory(otherId);
                     outputs.RemoveInventory(otherId);
+                    removed.Add(otherId);
                 }
             }
 
             foreach (var id in removed)
                 inventories.Remove(id);
         }
+
+        // /// <summary>
+        // /// Merge together all converters that have equivalent edge-sets.
+        // /// </summary>
+        // public void MergeEquivalentConverters()
+        // {
+        //     HashSet<int> removed = [];
+
+        //     foreach (var (converterId, converter) in converters.KSPEnumerate())
+        //     {
+        //         if (removed.Contains(converterId))
+        //             continue;
+
+        //         var consumeEdges = inputs.GetConverterEntry(converterId);
+        //         var produceEdges = outputs.GetConverterEntry(converterId);
+
+        //         foreach(var (otherId, otherInv))
+        //     }
+        // }
 
         private static bool ApproxEqual(double a, double b, double epsilon = 1e-6)
         {

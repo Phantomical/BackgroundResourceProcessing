@@ -17,19 +17,9 @@ namespace UnifiedBackgroundProcessing.Modules
     {
         public List<ResourceRatio> outputs = [];
 
-        /// <summary>
-        /// A multiplier on the number of resources consumed from the list.
-        /// </summary>
-        [KSPField]
-        public double multiplier = 1.0;
-
         public override ConverterBehaviour GetBehaviour()
         {
-            if (multiplier == 1.0)
-                return new ConstantProducer(outputs);
-            if (multiplier == 0.0)
-                return null;
-            return new ConstantProducer([.. outputs.Select(res => res.WithMultiplier(multiplier))]);
+            return new ConstantProducer(outputs);
         }
 
         public override void OnLoad(ConfigNode node)

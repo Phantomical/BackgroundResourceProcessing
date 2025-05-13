@@ -224,18 +224,18 @@ namespace UnifiedBackgroundProcessing.Collections
                 var leftIndex = GetLeftChildIndex(index);
                 var rightIndex = GetRightChildIndex(index);
 
-                if (leftIndex > _nodes.Count)
+                if (leftIndex >= _nodes.Count)
                     break;
 
                 var left = _nodes[leftIndex];
                 var minChildIndex = leftIndex;
                 var minChild = left;
 
-                if (rightIndex > _nodes.Count)
+                if (rightIndex < _nodes.Count)
                 {
                     var right = _nodes[rightIndex];
 
-                    if (_comparer.Compare(node.Priority, left.Priority) <= 0)
+                    if (_comparer.Compare(right.Priority, left.Priority) <= 0)
                     {
                         minChildIndex = rightIndex;
                         minChild = right;
@@ -262,7 +262,7 @@ namespace UnifiedBackgroundProcessing.Collections
 
         private void RemoveAtIndex(int index)
         {
-            Debug.Assert(_nodes.Count > index);
+            Debug.Assert(index < _nodes.Count);
 
             var last = _nodes.Last();
             _nodes.RemoveAt(_nodes.Count - 1);

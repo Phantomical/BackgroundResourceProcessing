@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<RunSettings>
+    <RunConfiguration>
+        <MaxCpuCount>1</MaxCpuCount>
+    </RunConfiguration>
+
+    <!-- Prevent MSTest from running multiple tests in parallel. -->
+    <MSTest>
+        <Parallelize>
+            <Workers>1</Workers>
+        </Parallelize>
+    </MSTest>
+</RunSettings>

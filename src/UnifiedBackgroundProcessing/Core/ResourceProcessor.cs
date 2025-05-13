@@ -4,6 +4,7 @@ using System.Linq;
 using Smooth.Collections;
 using UnifiedBackgroundProcessing.Collections;
 using UnifiedBackgroundProcessing.Modules;
+using UnifiedBackgroundProcessing.Solver;
 using UnifiedBackgroundProcessing.Utils;
 
 namespace UnifiedBackgroundProcessing.Core
@@ -120,6 +121,7 @@ namespace UnifiedBackgroundProcessing.Core
                 }
             }
 
+            int nextConverterId = 0;
             foreach (var part in vessel.Parts)
             {
                 LogUtil.Log($"Inspecting part {part.name} for converters");
@@ -138,11 +140,13 @@ namespace UnifiedBackgroundProcessing.Core
                     var behaviour = module.GetBehaviour();
                     if (behaviour == null)
                         continue;
+
                     behaviour.sourceModule = module.GetType().FullName;
+                    behaviour.sourcePart = part.name;
                     if (behaviour.Priority == 0)
                         behaviour.Priority = module.Priority;
 
-                    var converter = new Converter(behaviour);
+                    var converter = new Converter(behaviour) { id = nextConverterId++ };
                     converter.Refresh(state);
 
                     foreach (var entry in converter.inputs)
@@ -312,9 +316,11 @@ namespace UnifiedBackgroundProcessing.Core
             return output;
         }
 
-        private PartSet.ResourcePrioritySet BuildResourcePrioritySet(List<PartResource> resources)
+        private static PartSet.ResourcePrioritySet BuildResourcePrioritySet(
+            List<PartResource> resources
+        )
         {
-            PartSet.ResourcePrioritySet set = new();
+            PartSet.ResourcePrioritySet set = new() { lists = [], set = [] };
             set.lists.Add(resources);
             set.set.AddAll(resources);
             return set;

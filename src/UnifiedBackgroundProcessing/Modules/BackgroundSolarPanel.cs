@@ -20,6 +20,9 @@ namespace UnifiedBackgroundProcessing.Modules
 
             foreach (var panel in panels)
             {
+                if (panel.flowRate == 0.0)
+                    continue;
+
                 if (!resources.TryGetValue(panel.resourceName, out var ratio))
                 {
                     ratio = new()
@@ -33,6 +36,11 @@ namespace UnifiedBackgroundProcessing.Modules
                 ratio.Ratio += panel.flowRate;
                 resources[panel.resourceName] = ratio;
             }
+
+            // As an optimization, avoid emitting a behaviour if this solar
+            // panel is completely blocked.
+            if (resources.Count == 0)
+                return null;
 
             return new ConstantProducer([.. resources.Values]);
         }

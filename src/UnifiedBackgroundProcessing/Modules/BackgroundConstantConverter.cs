@@ -13,21 +13,9 @@ namespace UnifiedBackgroundProcessing.Modules
         public List<ResourceRatio> outputs = [];
         public List<ResourceRatio> required = [];
 
-        [KSPField]
-        public double multiplier = 1.0;
-
         public override ConverterBehaviour GetBehaviour()
         {
-            if (multiplier == 1.0)
-                return new ConstantConverter(inputs, outputs, required);
-            if (multiplier == 0.0)
-                return null;
-
-            return new ConstantConverter(
-                [.. inputs.Select(res => res.WithMultiplier(multiplier))],
-                [.. outputs.Select(res => res.WithMultiplier(multiplier))],
-                required
-            );
+            return new ConstantConverter(inputs, outputs, required);
         }
 
         public override void OnLoad(ConfigNode node)

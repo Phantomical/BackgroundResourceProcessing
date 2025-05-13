@@ -2,7 +2,7 @@ using UnifiedBackgroundProcessing.Core;
 
 namespace UnifiedBackgroundProcessing.VesselModules
 {
-    public class BackgroundResourceProcessor : VesselModule
+    public sealed class BackgroundResourceProcessor : VesselModule
     {
         private ResourceProcessor processor = new();
 
@@ -23,7 +23,11 @@ namespace UnifiedBackgroundProcessing.VesselModules
 
         public override int GetOrder()
         {
-            return base.GetOrder();
+            // We want this to run before most other modules.
+            //
+            // The default order is 999, so this should be early enough to still
+            // allow other modules to go first if they really want to.
+            return 100;
         }
 
         protected override void OnStart()
@@ -31,28 +35,18 @@ namespace UnifiedBackgroundProcessing.VesselModules
             if (processor.nextChangepoint == double.PositiveInfinity)
                 return;
 
-            Registrar.RegisterChangepointCallback(
-                this,
-                processor.nextChangepoint
-            );
+            Registrar.RegisterChangepointCallback(this, processor.nextChangepoint);
+            GameEvents.onVesselSOIChanged.Add(OnVesselSOIChanged);
         }
 
-        protected void OnDestroy()
+        void OnDestroy()
         {
             Registrar.UnregisterChangepointCallbacks(this);
+            GameEvents.onVesselSOIChanged.Remove(OnVesselSOIChanged);
         }
 
         public override void OnUnloadVessel()
         {
-            if (Registrar.Timer == null)
-            {
-                LogUtil.Error(
-                    "BackgroundProcessorModule.OnUnloadVessel called but there is ",
-                    "no active instance of the UnifiedBackgroundProcessing addon"
-                );
-                return;
-            }
-
             var currentTime = Planetarium.GetUniversalTime();
             var state = new VesselState() { CurrentTime = currentTime, Vessel = Vessel };
 
@@ -61,13 +55,7 @@ namespace UnifiedBackgroundProcessing.VesselModules
             processor.ComputeRates();
             processor.UpdateNextChangepoint(currentTime);
 
-            if (processor.nextChangepoint == double.PositiveInfinity)
-                return;
-
-            Registrar.RegisterChangepointCallback(
-                this,
-                processor.nextChangepoint
-            );
+            Registrar.RegisterChangepointCallback(this, processor.nextChangepoint);
         }
 
         public override void OnLoadVessel()
@@ -76,7 +64,8 @@ namespace UnifiedBackgroundProcessing.VesselModules
             var name = Vessel.GetDisplayName();
 
             processor.UpdateInventories(name, currentTime);
-            // processor.ApplyInventories();
+            processor.ApplyInventories(Vessel);
+            processor.ClearVesselState();
 
             Registrar.UnregisterChangepointCallbacks(this);
         }
@@ -95,10 +84,27 @@ namespace UnifiedBackgroundProcessing.VesselModules
             processor.ComputeRates();
             processor.UpdateNextChangepoint(changepoint);
 
-            Registrar.RegisterChangepointCallback(
-                this,
-                processor.nextChangepoint
-            );
+            Registrar.RegisterChangepointCallback(this, processor.nextChangepoint);
+        }
+
+        private void OnVesselSOIChanged(GameEvents.HostedFromToAction<Vessel, CelestialBody> _)
+        {
+            // We do nothing for active vessels.
+            if (vessel.loaded)
+                return;
+
+            var state = new VesselState
+            {
+                CurrentTime = Planetarium.GetUniversalTime(),
+                Vessel = Vessel,
+            };
+
+            processor.ForceUpdateBehaviours(state);
+            processor.ComputeRates();
+            processor.UpdateNextChangepoint(state.CurrentTime);
+
+            Registrar.UnregisterChangepointCallbacks(this);
+            Registrar.RegisterChangepointCallback(this, processor.nextChangepoint);
         }
 
         /// <summary>

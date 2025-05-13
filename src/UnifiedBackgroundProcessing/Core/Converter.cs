@@ -17,6 +17,10 @@ namespace UnifiedBackgroundProcessing.Core
         public Dictionary<string, ResourceRatio> outputs = [];
         public Dictionary<string, ResourceRatio> required = [];
 
+        /// <summary>
+        /// A unique ID used to uniquely identify a converter in tests.
+        /// </summary>
+        public int id = -1;
         public double nextChangepoint = double.PositiveInfinity;
 
         public void Refresh(VesselState state)
@@ -29,16 +33,17 @@ namespace UnifiedBackgroundProcessing.Core
             required.Clear();
 
             foreach (var input in resources.Inputs)
-                inputs.Add(input.ResourceName, input);
+                inputs.Add(input.ResourceName, input.WithDefaultedFlowMode());
             foreach (var output in resources.Outputs)
-                outputs.Add(output.ResourceName, output);
+                outputs.Add(output.ResourceName, output.WithDefaultedFlowMode());
             foreach (var req in resources.Requirements)
-                required.Add(req.ResourceName, req);
+                required.Add(req.ResourceName, req.WithDefaultedFlowMode());
         }
 
         public void Load(ConfigNode node)
         {
             node.TryGetDouble("nextChangepoint", ref nextChangepoint);
+            node.TryGetValue("id", ref id);
 
             foreach (var inner in node.GetNodes("PUSH_INVENTORY"))
             {
@@ -84,6 +89,7 @@ namespace UnifiedBackgroundProcessing.Core
         public void Save(ConfigNode node)
         {
             node.AddValue("nextChangepoint", nextChangepoint);
+            node.AddValue("id", id);
 
             foreach (var entry in push)
             {
@@ -131,6 +137,19 @@ namespace UnifiedBackgroundProcessing.Core
             }
 
             list.Add(id.partId);
+        }
+    }
+
+    internal static class ResourceRatioExtensions
+    {
+        public static ResourceRatio WithDefaultedFlowMode(this ResourceRatio res)
+        {
+            if (res.FlowMode != ResourceFlowMode.NULL)
+                return res;
+
+            int resourceId = res.ResourceName.GetHashCode();
+            res.FlowMode = PartResourceLibrary.Instance.GetDefinition(resourceId).resourceFlowMode;
+            return res;
         }
     }
 }

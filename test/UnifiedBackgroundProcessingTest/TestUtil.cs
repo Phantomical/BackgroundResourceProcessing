@@ -1,10 +1,11 @@
+using System.CodeDom;
 using System.Runtime.CompilerServices;
 using UnifiedBackgroundProcessing;
 using UnifiedBackgroundProcessing.Core;
 
 namespace UnifiedBackgroundProcessingTest
 {
-    internal class TestUtil
+    internal static class TestUtil
     {
         public class TestLogErrorException(string message) : Exception(message) { }
 
@@ -32,7 +33,7 @@ namespace UnifiedBackgroundProcessingTest
             Registrar.RegisterAllBehaviours(typeof(Registrar).Assembly);
         }
 
-        private static string GetCallerFilePath([CallerFilePath] string? callerFilePath = null)
+        private static string GetCallerFilePath([CallerFilePath] string callerFilePath = null)
         {
             return callerFilePath ?? throw new ArgumentNullException(nameof(callerFilePath));
         }
@@ -49,6 +50,13 @@ namespace UnifiedBackgroundProcessingTest
         public static ResourceProcessor LoadVessel(string name)
         {
             var configPath = Path.Combine(ProjectDirectory, "vessels", name);
+
+            // ConfigNode attempts to use unity's Debug.Log if an error occurs.
+            // The unit tests run outside of unity so this ends up causing an
+            // opaque error. We fix that here by manually checking in advance.
+            if (!File.Exists(configPath))
+                throw new FileNotFoundException($"file not found: {configPath}");
+
             var configNode = ConfigNode.Load(configPath);
             var processor = new ResourceProcessor();
             processor.Load(configNode.GetNode("BRP_SHIP"));

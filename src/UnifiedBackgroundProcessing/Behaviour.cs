@@ -261,6 +261,16 @@ namespace UnifiedBackgroundProcessing
         internal string sourceModule = null;
 
         /// <summary>
+        /// The part that contained the source module for this behaviour.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// This is purely added for debugging purposes.
+        /// </remarks>
+        public string SourcePart => sourcePart;
+        internal string sourcePart = null;
+
+        /// <summary>
         /// The priority with which this consumer will consume produced resources.
         /// </summary>
         ///
@@ -332,6 +342,7 @@ namespace UnifiedBackgroundProcessing
         protected virtual void Load(ConfigNode node)
         {
             node.TryGetValue("sourceModule", ref sourceModule);
+            node.TryGetValue("sourcePart", ref sourcePart);
             node.TryGetValue("priority", ref Priority);
         }
 
@@ -347,6 +358,8 @@ namespace UnifiedBackgroundProcessing
 
             if (sourceModule != null)
                 node.AddValue("sourceModule", sourceModule);
+            if (sourcePart != null)
+                node.AddValue("sourcePart", sourcePart);
         }
 
         public static ConverterBehaviour LoadStatic(ConfigNode node)

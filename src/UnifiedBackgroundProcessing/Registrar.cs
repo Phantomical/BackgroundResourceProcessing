@@ -16,6 +16,9 @@ namespace UnifiedBackgroundProcessing
             double changepoint
         )
         {
+            if (changepoint == double.PositiveInfinity)
+                return;
+
             if (Timer == null)
             {
                 LogUtil.Error(

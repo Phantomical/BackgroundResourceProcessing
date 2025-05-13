@@ -33,13 +33,6 @@ namespace UnifiedBackgroundProcessing.Modules
         [KSPField]
         public double? MaximumThermalEfficiency = null;
 
-        /// <summary>
-        /// Indicates that the resources have units specified by mass, which
-        /// need to be converted to regular units.
-        /// </summary>
-        [KSPField]
-        public bool ConvertByMass = false;
-
         public BaseConverter Converter { get; private set; } = null;
         private MethodInfo ConverterPrepareRecipe = null;
 
@@ -69,13 +62,6 @@ namespace UnifiedBackgroundProcessing.Modules
             var inputs = recipe.Inputs;
             var outputs = recipe.Outputs;
             var required = recipe.Requirements;
-
-            if (ConvertByMass)
-            {
-                inputs = ConvertToUnits(inputs);
-                outputs = ConvertToUnits(outputs);
-                required = ConvertToUnits(required);
-            }
 
             var multiplier = GetOptimalEfficiencyBonus();
             if (multiplier != 1.0)
@@ -109,26 +95,6 @@ namespace UnifiedBackgroundProcessing.Modules
             bonus *= MaximumThermalEfficiency ?? GetMaxThermalEfficiencyBonus();
 
             return bonus;
-        }
-
-        private static List<ResourceRatio> ConvertToUnits(List<ResourceRatio> resources)
-        {
-            return
-            [
-                .. resources.Select(resource =>
-                {
-                    var resourceDef = PartResourceLibrary.Instance.resourceDefinitions[
-                        resource.ResourceName
-                    ];
-
-                    if (resourceDef.density > 1e-9f)
-                    {
-                        resource.Ratio /= resourceDef.density;
-                    }
-
-                    return resource;
-                }),
-            ];
         }
 
         private double GetMaxThermalEfficiencyBonus()

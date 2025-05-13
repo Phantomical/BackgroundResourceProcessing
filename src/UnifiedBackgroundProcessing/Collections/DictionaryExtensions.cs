@@ -1,7 +1,20 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace UnifiedBackgroundProcessing.Collections
 {
+    public struct KVPair<K, V>(K key, V value)
+    {
+        public K Key = key;
+        public V Value = value;
+
+        public readonly void Deconstruct(out K key, out V value)
+        {
+            key = Key;
+            value = Value;
+        }
+    }
+
     public static class DictionaryExtensions
     {
         /// <summary>
@@ -28,13 +41,32 @@ namespace UnifiedBackgroundProcessing.Collections
             return defaultValue;
         }
 
-        public static V GetOrInsert<K, V>(this Dictionary<K, V> dict, K key, V insert)
+        public static V GetOrAdd<K, V>(this Dictionary<K, V> dict, K key, V insert)
         {
             if (dict.TryGetValue(key, out var value))
                 return value;
 
             dict.Add(key, insert);
             return insert;
+        }
+
+        public static void Add<K, V>(this Dictionary<K, V> dict, KeyValuePair<K, V> pair)
+        {
+            dict.Add(pair.Key, pair.Value);
+        }
+
+        /// <summary>
+        /// <see cref="KeyValuePair.Deconstruct"/> is not available in the
+        /// assemblies shipped with KSP, so this returns an iterator with a pair
+        /// type that does support deconstruction.
+        /// </summary>
+        /// <typeparam name="K"></typeparam>
+        /// <typeparam name="V"></typeparam>
+        /// <param name="dict"></param>
+        /// <returns></returns>
+        public static IEnumerable<KVPair<K, V>> KSPEnumerate<K, V>(this Dictionary<K, V> dict)
+        {
+            return dict.Select(pair => new KVPair<K, V>(pair.Key, pair.Value));
         }
     }
 

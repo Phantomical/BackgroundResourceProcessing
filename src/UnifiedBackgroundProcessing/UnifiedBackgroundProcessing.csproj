@@ -3,6 +3,7 @@
     <TargetFramework>net472</TargetFramework>
     <LangVersion>12</LangVersion>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <NoStdlib>true</NoStdlib>
   </PropertyGroup>
 
   <ItemGroup>
