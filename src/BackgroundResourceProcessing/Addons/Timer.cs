@@ -1,5 +1,4 @@
 using BackgroundResourceProcessing.Collections;
-using BackgroundResourceProcessing.VesselModules;
 using UnityEngine;
 
 namespace BackgroundResourceProcessing.Addons

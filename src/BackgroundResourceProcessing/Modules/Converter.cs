@@ -24,7 +24,7 @@ namespace BackgroundResourceProcessing.Modules
 
         BaseConverter converter = null;
 
-        public override ConverterBehaviour GetConverterBehaviour()
+        protected override ConverterBehaviour GetConverterBehaviour()
         {
             if (converter == null)
                 return null;

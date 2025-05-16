@@ -1,8 +1,6 @@
 using System.Diagnostics;
 using System.Reflection;
 using BackgroundResourceProcessing.Addons;
-using BackgroundResourceProcessing.VesselModules;
-using UnityEngine;
 
 namespace BackgroundResourceProcessing
 {

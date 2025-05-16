@@ -1,6 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
-using BackgroundResourceProcessing.Utils;
 
 namespace BackgroundResourceProcessing.Modules
 {
@@ -17,7 +15,7 @@ namespace BackgroundResourceProcessing.Modules
     {
         public List<ResourceRatio> outputs = [];
 
-        public override ConverterBehaviour GetConverterBehaviour()
+        protected override ConverterBehaviour GetConverterBehaviour()
         {
             return new ConstantProducer(outputs);
         }

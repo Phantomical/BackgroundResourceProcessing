@@ -8,7 +8,7 @@ namespace BackgroundResourceProcessing.Modules
     /// </summary>
     public class ModuleBackgroundSolarPanel : BackgroundConverter
     {
-        public override ConverterBehaviour GetConverterBehaviour()
+        protected override ConverterBehaviour GetConverterBehaviour()
         {
             // TODO:
             //  - Support alternating between 0 and flowRate when going into and
