@@ -20,7 +20,7 @@ namespace BackgroundResourceProcessing.Modules
         /// </summary>
         public List<ResourceRatio> inputs = [];
 
-        public override ConverterBehaviour GetBehaviour()
+        public override ConverterBehaviour GetConverterBehaviour()
         {
             return new ConstantConsumer(inputs);
         }

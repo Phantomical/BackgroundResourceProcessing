@@ -1,10 +1,9 @@
 using System.IO;
 using System.Reflection;
-using BackgroundResourceProcessing.VesselModules;
 using KSP.UI.Screens;
 using UnityEngine;
 
-namespace BackgroundResourceProcessing
+namespace BackgroundResourceProcessing.Addons
 {
     [KSPAddon(KSPAddon.Startup.AllGameScenes, false)]
     internal class BackgroundResourceProcessingDebugGUI : MonoBehaviour

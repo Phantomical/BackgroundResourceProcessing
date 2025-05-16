@@ -13,7 +13,7 @@ namespace BackgroundResourceProcessing.Modules
         public List<ResourceRatio> outputs = [];
         public List<ResourceRatio> required = [];
 
-        public override ConverterBehaviour GetBehaviour()
+        public override ConverterBehaviour GetConverterBehaviour()
         {
             return new ConstantConverter(inputs, outputs, required);
         }

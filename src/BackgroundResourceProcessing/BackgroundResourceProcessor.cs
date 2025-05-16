@@ -1,17 +1,31 @@
+using System;
 using BackgroundResourceProcessing.Core;
+using BackgroundResourceProcessing.Modules;
 
-namespace BackgroundResourceProcessing.VesselModules
+namespace BackgroundResourceProcessing
 {
+    /// <summary>
+    /// A data type use for events that have no other event data.
+    /// </summary>
+    public struct EmptyEventData() { }
+
     public sealed class BackgroundResourceProcessor : VesselModule
     {
         private ResourceProcessor processor = new();
+
+        /// <summary>
+        /// A vessel-scoped event that is fired just before the vessel state is
+        /// recorded.
+        /// </summary>
+        public EventData<EmptyEventData> OnBeforeVesselRecord { get; } =
+            new("onBeforeVesselRecord");
 
         /// <summary>
         /// Whether background processing is actively running on this module.
         /// </summary>
         ///
         /// <remarks>
-        /// Generally, this will be true when the vessel is on rails, and false
+        /// Generally, this will be true when the vessel is unloaded, and false
         /// otherwise.
         /// </remarks>
         public bool BackgroundProcessingActive { get; private set; } = false;
@@ -45,6 +59,20 @@ namespace BackgroundResourceProcessing.VesselModules
             GameEvents.onVesselSOIChanged.Remove(OnVesselSOIChanged);
         }
 
+        public override void OnLoadVessel()
+        {
+            var currentTime = Planetarium.GetUniversalTime();
+            var name = Vessel.GetDisplayName();
+
+            processor.UpdateInventories(name, currentTime);
+            processor.ApplyInventories(Vessel);
+            processor.ClearVesselState();
+
+            Registrar.UnregisterChangepointCallbacks(this);
+
+            NotifyOnVesselRestore();
+        }
+
         public override void OnUnloadVessel()
         {
             var currentTime = Planetarium.GetUniversalTime();
@@ -56,18 +84,6 @@ namespace BackgroundResourceProcessing.VesselModules
             processor.UpdateNextChangepoint(currentTime);
 
             Registrar.RegisterChangepointCallback(this, processor.nextChangepoint);
-        }
-
-        public override void OnLoadVessel()
-        {
-            var currentTime = Planetarium.GetUniversalTime();
-            var name = Vessel.GetDisplayName();
-
-            processor.UpdateInventories(name, currentTime);
-            processor.ApplyInventories(Vessel);
-            processor.ClearVesselState();
-
-            Registrar.UnregisterChangepointCallbacks(this);
         }
 
         internal void OnChangepoint(double changepoint)
@@ -118,12 +134,38 @@ namespace BackgroundResourceProcessing.VesselModules
         /// </remarks>
         internal void RecordVesselState()
         {
+            OnBeforeVesselRecord.Fire(new());
             processor.RecordVesselState(Vessel, Planetarium.GetUniversalTime());
         }
 
         internal void ClearVesselState()
         {
             processor.ClearVesselState();
+        }
+
+        private void NotifyOnVesselRestore()
+        {
+            foreach (var part in Vessel.Parts)
+            {
+                foreach (var module in part.Modules)
+                {
+                    if (module is not IBackgroundVesselRestoreHandler handler)
+                        continue;
+
+                    try
+                    {
+                        handler.OnVesselRestore();
+                    }
+                    catch (Exception e)
+                    {
+                        var typeName = handler.GetType().FullName;
+
+                        LogUtil.Error(
+                            $"OnVesselRestore handler for type {typeName} threw an excecption: {e}"
+                        );
+                    }
+                }
+            }
         }
 
         protected override void OnSave(ConfigNode node)

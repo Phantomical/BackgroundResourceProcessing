@@ -54,6 +54,9 @@ namespace BackgroundResourceProcessing.Core
         /// </summary>
         public double rate = 0.0;
 
+        public int? resourceModuleIndex = null;
+        public string resourceModuleName = null;
+
         public bool Full => maxAmount - amount < 1e-6;
         public bool Empty => amount < 1e-6;
 

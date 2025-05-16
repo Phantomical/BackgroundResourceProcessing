@@ -143,8 +143,6 @@ namespace BackgroundResourceProcessing.Core
 
                     behaviour.sourceModule = module.GetType().FullName;
                     behaviour.sourcePart = part.name;
-                    if (behaviour.Priority == 0)
-                        behaviour.Priority = module.Priority;
 
                     var converter = new Converter(behaviour) { id = nextConverterId++ };
                     converter.Refresh(state);
