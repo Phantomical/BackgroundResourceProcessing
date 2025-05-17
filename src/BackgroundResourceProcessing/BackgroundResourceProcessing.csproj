@@ -6,6 +6,7 @@
     <Version>0.0.1</Version>
     <Description>Background resource processing for KSP</Description>
 
+    <GenerateKSPAssemblyAttribute>true</GenerateKSPAssemblyAttribute>
     <GenerateKSPAssemblyDependencyAttributes>true</GenerateKSPAssemblyDependencyAttributes>
   </PropertyGroup>
 
@@ -18,16 +19,6 @@
         https://github.com/Phantomical/BackgroundResourceProcessing/releases/latest/download/BackgroundResourceProcessing.version</URL>
       <Download>https://github.com/Phantomical/BackgroundResourceProcessing/releases/latest</Download>
     </KSPVersionFile>
-
-    <AssemblyAttribute Include="KSPAssembly">
-      <_Parameter1>$(AssemblyName)</_Parameter1>
-      <_Parameter2>$(Version.Split('.')[0])</_Parameter2>
-      <_Parameter2_TypeName>System.Int32</_Parameter2_TypeName>
-      <_Parameter3>$(Version.Split('.')[1])</_Parameter3>
-      <_Parameter3_TypeName>System.Int32</_Parameter3_TypeName>
-      <_Parameter4>$(Version.Split('.')[2])</_Parameter4>
-      <_Parameter4_TypeName>System.Int32</_Parameter4_TypeName>
-    </AssemblyAttribute>
   </ItemGroup>
 
   <PropertyGroup>
