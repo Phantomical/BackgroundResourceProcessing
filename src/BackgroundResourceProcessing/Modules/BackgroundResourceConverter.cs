@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using BackgroundResourceProcessing.Utils;
+using Smooth.Collections;
 
 namespace BackgroundResourceProcessing.Modules
 {
@@ -21,6 +22,13 @@ namespace BackgroundResourceProcessing.Modules
         public List<ResourceRatio> inputs = [];
         public List<ResourceRatio> outputs = [];
         public List<ResourceRatio> required = [];
+
+        /// <summary>
+        /// The name of the module that this converter should getting its
+        /// efficiency from.
+        /// </summary>
+        [KSPField]
+        public string ConverterModule = null;
 
         /// <summary>
         /// The name of the converter to use to find the efficiency of this
@@ -53,7 +61,8 @@ namespace BackgroundResourceProcessing.Modules
 
         public BaseConverter Converter { get; private set; } = null;
 
-        private bool emittedWarning = false;
+        [KSPField]
+        private uint? cachedPersistentModuleId = null;
 
         /// <summary>
         /// Whether this converter is enabled for background processing.
@@ -80,6 +89,36 @@ namespace BackgroundResourceProcessing.Modules
             return Converter.ModuleIsActive();
         }
 
+        /// <summary>
+        /// Get a set of additional inputs, outputs, and required resources
+        /// to add in addition to those listed in the module definition.
+        /// </summary>
+        ///
+        /// <returns>A conversion recipe, or null if there are no changes to be made</returns>
+        protected virtual ConversionRecipe GetAdditionalRecipe()
+        {
+            return null;
+        }
+
+        /// <summary>
+        /// Get an additional efficiency multiplier to apply on top of the
+        /// default optimal efficiency bonus.
+        /// </summary>
+        /// <returns></returns>
+        protected virtual double GetOptimalEfficiencyBonus()
+        {
+            double bonus = 1.0;
+
+            foreach (var (_, modifier) in Converter.EfficiencyModifiers)
+                bonus *= modifier;
+
+            bonus *= Converter.GetCrewEfficiencyBonus();
+            bonus *= EfficiencyBonus ?? Converter.EfficiencyBonus;
+            bonus *= MaximumThermalEfficiency ?? GetMaxThermalEfficiencyBonus();
+
+            return bonus;
+        }
+
         protected override ConverterBehaviour GetConverterBehaviour()
         {
             if (Converter == null)
@@ -90,6 +129,17 @@ namespace BackgroundResourceProcessing.Modules
             IEnumerable<ResourceRatio> inputs = this.inputs;
             IEnumerable<ResourceRatio> outputs = this.outputs;
             IEnumerable<ResourceRatio> required = this.required;
+
+            var additional = GetAdditionalRecipe();
+            if (additional != null)
+            {
+                if (additional.Inputs.Count != 0)
+                    inputs = [.. inputs, .. additional.Inputs];
+                if (additional.Outputs.Count != 0)
+                    outputs = [.. outputs, .. additional.Outputs];
+                if (additional.Requirements.Count != 0)
+                    required = [.. required, .. additional.Requirements];
+            }
 
             if (ConvertByMass)
             {
@@ -135,20 +185,6 @@ namespace BackgroundResourceProcessing.Modules
             LastUpdateTimeField.SetValue(Converter, Planetarium.GetUniversalTime());
         }
 
-        protected double GetOptimalEfficiencyBonus()
-        {
-            double bonus = 1.0;
-
-            foreach (var (_, modifier) in Converter.EfficiencyModifiers)
-                bonus *= modifier;
-
-            bonus *= Converter.GetCrewEfficiencyBonus();
-            bonus *= EfficiencyBonus ?? Converter.EfficiencyBonus;
-            bonus *= MaximumThermalEfficiency ?? GetMaxThermalEfficiencyBonus();
-
-            return bonus;
-        }
-
         private double GetMaxThermalEfficiencyBonus()
         {
             Converter.ThermalEfficiency.FindMinMaxValue(out var _, out var maxThermalEfficiency);
@@ -160,42 +196,78 @@ namespace BackgroundResourceProcessing.Modules
             return GetLinkedBaseConverterGeneric<BaseConverter>();
         }
 
+        private T GetLinkedBaseConverterCached<T>()
+            where T : BaseConverter
+        {
+            if (cachedPersistentModuleId == null)
+                return null;
+            var persistentId = (uint)cachedPersistentModuleId;
+            var module = part.Modules[persistentId];
+            if (module == null)
+                return null;
+
+            var type = module.GetType();
+            if (type.Name != ConverterModule)
+                return null;
+
+            var downcasted = module as T;
+            if (downcasted != null)
+                return null;
+
+            if (downcasted.ConverterName != ConverterName)
+                return null;
+
+            return downcasted;
+        }
+
         protected T GetLinkedBaseConverterGeneric<T>()
             where T : BaseConverter
         {
-            var modules = part.FindModulesImplementing<T>()
-                .Where(module => module.ConverterName == ConverterName)
-                .ToList();
+            var cached = GetLinkedBaseConverterCached<T>();
+            if (cached != null)
+                return cached;
+            cachedPersistentModuleId = null;
 
-            if (modules.Count == 0)
+            T found = null;
+            for (int i = 0; i < part.Modules.Count; ++i)
             {
-                EmitMissingModuleWarning();
+                var module = part.Modules[i] as BaseConverter;
+                if (module == null)
+                    continue;
+
+                var type = module.GetType();
+                if (type.Name != ConverterModule)
+                    continue;
+
+                if (ConverterName != null && module.ConverterName != ConverterName)
+                    continue;
+
+                if (module is not T downcasted)
+                    continue;
+
+                if (found != null)
+                {
+                    LogUtil.Warn(
+                        $"Multiple modules of type {ConverterModule} with ConverterName ",
+                        $"{ConverterName ?? "null"}. Only the first one will be used by this {GetType().Name} module."
+                    );
+                    continue;
+                }
+
+                found = downcasted;
+            }
+
+            if (found == null)
+            {
+                LogUtil.Warn(
+                    $"No converter module of type {ConverterModule} with ConverterName {ConverterName ?? "null"} ",
+                    $"found on part {part.partName}. This {GetType().Name} module will be disabled."
+                );
                 return null;
             }
 
-            if (modules.Count > 1)
-                EmitMultipleMatchingModulesWarning();
-            return modules[0];
-        }
-
-        private void EmitMissingModuleWarning()
-        {
-            if (emittedWarning)
-                return;
-
-            LogUtil.Warn($"Part has no modules with ConverterName matching {ConverterName}");
-            emittedWarning = true;
-        }
-
-        private void EmitMultipleMatchingModulesWarning()
-        {
-            if (emittedWarning)
-                return;
-
-            LogUtil.Warn(
-                $"Part has multiple modules with ConverterName matching {ConverterName}. The first matching one will be used."
-            );
-            emittedWarning = true;
+            cachedPersistentModuleId = found.PersistentId;
+            return found;
         }
 
         public override void OnLoad(ConfigNode node)

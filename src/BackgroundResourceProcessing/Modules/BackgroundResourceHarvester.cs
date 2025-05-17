@@ -20,15 +20,8 @@ namespace BackgroundResourceProcessing.Modules
 
         protected ModuleResourceHarvester Harvester => (ModuleResourceHarvester)Converter;
 
-        protected override ConverterBehaviour GetConverterBehaviour()
+        protected override ConversionRecipe GetAdditionalRecipe()
         {
-            if (Converter == null)
-                return null;
-            if (!IsConverterEnabled())
-                return null;
-
-            List<ResourceRatio> outputs = [.. this.outputs];
-
             var type = (HarvestTypes)HarvesterType;
             var request = new AbundanceRequest()
             {
@@ -41,23 +34,24 @@ namespace BackgroundResourceProcessing.Modules
                 ResourceName = ResourceName,
             };
 
-            double rate = ResourceMap.Instance.GetAbundance(request);
-            rate *= Efficiency;
-            rate *= GetOptimalEfficiencyBonus();
+            double rate = ResourceMap.Instance.GetAbundance(request) * Efficiency;
             if (type == HarvestTypes.Atmospheric)
                 rate *= GetIntakeMultiplier();
 
-            outputs.Add(
-                new ResourceRatio()
-                {
-                    ResourceName = ResourceName,
-                    Ratio = rate,
-                    DumpExcess = type == HarvestTypes.Atmospheric,
-                    FlowMode = ResourceFlowMode.NULL,
-                }
+            var recipe = new ConversionRecipe();
+            recipe.SetInputs(
+                [
+                    new ResourceRatio()
+                    {
+                        ResourceName = ResourceName,
+                        Ratio = rate,
+                        DumpExcess = type == HarvestTypes.Atmospheric,
+                        FlowMode = ResourceFlowMode.NULL,
+                    },
+                ]
             );
 
-            return new ConstantConverter(inputs, outputs, required);
+            return recipe;
         }
 
         private double GetIntakeMultiplier()

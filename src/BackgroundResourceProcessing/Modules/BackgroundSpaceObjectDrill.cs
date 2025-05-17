@@ -1,7 +1,5 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using BackgroundResourceProcessing.Utils;
 using KSP.Localization;
 
 namespace BackgroundResourceProcessing.Modules
@@ -16,60 +14,58 @@ namespace BackgroundResourceProcessing.Modules
         [KSPField]
         public string MassResourceName;
 
-        protected override ConverterBehaviour GetConverterBehaviour()
+        protected override double GetOptimalEfficiencyBonus()
         {
-            var drill = BaseDrill;
-            if (drill == null)
-                return null;
+            return base.GetOptimalEfficiencyBonus() * BaseDrill.Efficiency;
+        }
 
-            if (!IsConverterEnabled())
-                return null;
-
+        protected override ConversionRecipe GetAdditionalRecipe()
+        {
             var potato = GetDrillPotato();
             var info = GetDrillInfo();
             if (potato == null || info == null)
                 return null;
 
             var resources = GetPotatoResources(potato);
-            var multiplier = GetOptimalEfficiencyBonus() * drill.Efficiency;
-
-            var inputs = base.inputs.Select(res => res.WithMultiplier(multiplier)).ToList();
-            var outputs = base.outputs.Select(res => res.WithMultiplier(multiplier)).ToList();
 
             var massRate = 0.0;
+            var recipe = new ConversionRecipe();
+            var outputs = new List<ResourceRatio>();
 
             foreach (var resource in resources)
             {
                 var definition = PartResourceLibrary.Instance.GetDefinition(resource.resourceName);
 
-                var rate = resource.abundance * multiplier;
                 var ratio = new ResourceRatio()
                 {
                     ResourceName = resource.resourceName,
-                    Ratio = rate,
+                    Ratio = resource.abundance,
                     DumpExcess = false,
                     FlowMode = ResourceFlowMode.NULL,
                 };
 
                 outputs.Add(ratio);
-                massRate += rate * definition.density;
+                massRate += resource.abundance * definition.density;
             }
 
-            inputs.Add(
-                new ResourceRatio()
-                {
-                    ResourceName = MassResourceName,
-                    Ratio = massRate,
-                    DumpExcess = false,
-                    FlowMode = ResourceFlowMode.STAGE_STACK_FLOW,
-                }
+            recipe.SetInputs(
+                [
+                    new ResourceRatio()
+                    {
+                        ResourceName = MassResourceName,
+                        Ratio = massRate,
+                        DumpExcess = false,
+                        FlowMode = ResourceFlowMode.STAGE_STACK_FLOW,
+                    },
+                ]
             );
+            recipe.SetOutputs(outputs);
 
             // We want to connect drills to only the asteroid mass resource
             // belonging to the asteroid they are connected to.
             UpdatePartCrossfeedSet(potato);
 
-            return new ConstantConverter(inputs, outputs, required);
+            return recipe;
         }
 
         protected override bool IsConverterEnabled()
@@ -86,7 +82,9 @@ namespace BackgroundResourceProcessing.Modules
         protected abstract Part GetDrillPotato();
         protected abstract ModuleSpaceObjectInfo GetDrillInfo();
 
-        void UpdatePartCrossfeedSet(Part potato)
+        // We want this drill to be connected to only the asteroid that it is
+        // drilling from.
+        private void UpdatePartCrossfeedSet(Part potato)
         {
             var asteroidMassResource = potato.Resources.Get(MassResourceName);
             if (asteroidMassResource == null)

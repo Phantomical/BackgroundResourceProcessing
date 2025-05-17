@@ -4,11 +4,6 @@ using BackgroundResourceProcessing.Modules;
 
 namespace BackgroundResourceProcessing
 {
-    /// <summary>
-    /// A data type use for events that have no other event data.
-    /// </summary>
-    public struct EmptyEventData() { }
-
     public sealed class BackgroundResourceProcessor : VesselModule
     {
         private ResourceProcessor processor = new();
@@ -17,8 +12,7 @@ namespace BackgroundResourceProcessing
         /// A vessel-scoped event that is fired just before the vessel state is
         /// recorded.
         /// </summary>
-        public EventData<EmptyEventData> OnBeforeVesselRecord { get; } =
-            new("onBeforeVesselRecord");
+        public static EventVoid OnBeforeVesselRecord { get; } = new("onBeforeVesselRecord");
 
         /// <summary>
         /// Whether background processing is actively running on this module.
@@ -29,6 +23,14 @@ namespace BackgroundResourceProcessing
         /// otherwise.
         /// </remarks>
         public bool BackgroundProcessingActive { get; private set; } = false;
+
+        public BackgroundResourceProcessor()
+            : base()
+        {
+#if DEBUG
+            OnBeforeVesselRecord.debugEvent = true;
+#endif
+        }
 
         public override Activation GetActivation()
         {
@@ -46,6 +48,10 @@ namespace BackgroundResourceProcessing
 
         protected override void OnStart()
         {
+            LogUtil.Debug(
+                $"OnStart for BackgroundResourceProcessor on vessel {vessel.GetDisplayName()}"
+            );
+
             if (processor.nextChangepoint == double.PositiveInfinity)
                 return;
 
@@ -134,7 +140,7 @@ namespace BackgroundResourceProcessing
         /// </remarks>
         internal void RecordVesselState()
         {
-            OnBeforeVesselRecord.Fire(new());
+            OnBeforeVesselRecord.Fire();
             processor.RecordVesselState(Vessel, Planetarium.GetUniversalTime());
         }
 

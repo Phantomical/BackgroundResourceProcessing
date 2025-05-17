@@ -1,10 +1,11 @@
 using System;
+using System.Diagnostics;
 using System.Text;
 using UnityEngine;
 
 namespace BackgroundResourceProcessing
 {
-    public static class LogUtil
+    internal static class LogUtil
     {
 #if DEBUG
         public static ILogSink Sink { get; set; } = new UnityLogSink();
@@ -23,17 +24,17 @@ namespace BackgroundResourceProcessing
         {
             public void Error(string message)
             {
-                Debug.LogError(message);
+                UnityEngine.Debug.LogError(message);
             }
 
             public void Log(string message)
             {
-                Debug.Log(message);
+                UnityEngine.Debug.Log(message);
             }
 
             public void Warn(string message)
             {
-                Debug.LogWarning(message);
+                UnityEngine.Debug.LogWarning(message);
             }
         }
 
@@ -45,6 +46,12 @@ namespace BackgroundResourceProcessing
                 builder.Append(arg.ToString());
             }
             return builder.ToString();
+        }
+
+        // [Conditional("DEBUG")]
+        internal static void Debug(params object[] args)
+        {
+            Log(args);
         }
 
         public static void Log(params object[] args)
