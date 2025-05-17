@@ -22,8 +22,9 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <ProjectRootDir>$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory),
-      'BackgroundResourceProcessing.sln'))</ProjectRootDir>
+    <ProjectRootDir>
+      $([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory),'BackgroundResourceProcessing.sln'))
+    </ProjectRootDir>
     <GameDataOutDir>$(ProjectRootDir)\GameData\BackgroundResourceProcessing</GameDataOutDir>
     <UnityProjectDir>$(ProjectRootDir)\Unity</UnityProjectDir>
     <BinariesOutputRelativePath>GameData\BackgroundResourceProcessing\Plugins</BinariesOutputRelativePath>
