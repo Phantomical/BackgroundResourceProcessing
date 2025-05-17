@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing;
 using BackgroundResourceProcessing.Core;
 
-namespace BackgroundResourceProcessingTest
+namespace BackgroundResourceProcessing.Test
 {
     internal static class TestUtil
     {

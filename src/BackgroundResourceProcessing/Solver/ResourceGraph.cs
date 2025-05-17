@@ -32,7 +32,7 @@ namespace BackgroundResourceProcessing.Solver
     /// <summary>
     /// A graph
     /// </summary>
-    public class ResourceGraph
+    internal class ResourceGraph
     {
         public class InvalidMergeException(string message) : Exception(message) { }
 

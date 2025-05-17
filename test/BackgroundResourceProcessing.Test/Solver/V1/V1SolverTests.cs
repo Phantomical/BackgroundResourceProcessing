@@ -3,7 +3,7 @@ using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Solver;
 using BackgroundResourceProcessing.Solver.V1;
 
-namespace BackgroundResourceProcessingTest.Solver.V1
+namespace BackgroundResourceProcessing.Test.Solver.V1
 {
     [TestClass]
     public sealed class V1SolverTest

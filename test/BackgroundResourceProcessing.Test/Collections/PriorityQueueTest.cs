@@ -1,6 +1,6 @@
 using BackgroundResourceProcessing.Collections;
 
-namespace BackgroundResourceProcessingTest.Collections
+namespace BackgroundResourceProcessing.Test.Collections
 {
     [TestClass]
     public sealed class PriorityQueueTest

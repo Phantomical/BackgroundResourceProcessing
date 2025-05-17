@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- <PackageReference Include="DynamicExpresso.Core" Version="2.19.1" /> -->
     <PackageReference Include="KSPBuildTools" Version="0.0.3" />
 
     <KSPVersionFile Include=".">
@@ -19,12 +20,12 @@
         https://github.com/Phantomical/BackgroundResourceProcessing/releases/latest/download/BackgroundResourceProcessing.version</URL>
       <Download>https://github.com/Phantomical/BackgroundResourceProcessing/releases/latest</Download>
     </KSPVersionFile>
+
+    <InternalsVisibleTo Include="BackgroundResourceProcessing.Test" />
   </ItemGroup>
 
   <PropertyGroup>
-    <ProjectRootDir>
-      $([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory),'BackgroundResourceProcessing.sln'))
-    </ProjectRootDir>
+    <ProjectRootDir>$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory),'BackgroundResourceProcessing.sln'))</ProjectRootDir>
     <GameDataOutDir>$(ProjectRootDir)\GameData\BackgroundResourceProcessing</GameDataOutDir>
     <UnityProjectDir>$(ProjectRootDir)\Unity</UnityProjectDir>
     <BinariesOutputRelativePath>GameData\BackgroundResourceProcessing\Plugins</BinariesOutputRelativePath>

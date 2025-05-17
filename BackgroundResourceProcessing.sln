@@ -5,7 +5,7 @@ VisualStudioVersion = 17.13.35931.197
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessing", "src\BackgroundResourceProcessing\BackgroundResourceProcessing.csproj", "{CF0C0D27-96CF-3155-1288-454FFD5318B8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessingTest", "test\BackgroundResourceProcessingTest\BackgroundResourceProcessingTest.csproj", "{C2F9D2FF-ABF9-4FE4-B7A7-FB4FBE4B7C14}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessing.Test", "test\BackgroundResourceProcessing.Test\BackgroundResourceProcessing.Test.csproj", "{C2F9D2FF-ABF9-4FE4-B7A7-FB4FBE4B7C14}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
