@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace BackgroundResourceProcessing.Collections
 {
-    public class EdgeMap<C, I>
+    internal class EdgeMap<C, I>
     {
         Dictionary<C, HashSet<I>> forward = [];
         Dictionary<I, HashSet<C>> reverse = [];

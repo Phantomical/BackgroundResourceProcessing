@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace BackgroundResourceProcessing.Collections
 {
-    public class UnionFind
+    internal class UnionFind
     {
         private readonly List<int> values;
 

@@ -20,7 +20,7 @@ namespace BackgroundResourceProcessing.Collections
     ///  <c>System.Collections.Generic</c> in later .NET versions.
     /// </para>
     /// </remarks>
-    public class PriorityQueue<TElement, TPriority>
+    internal class PriorityQueue<TElement, TPriority>
     {
         private List<(TElement Element, TPriority Priority)> _nodes;
         private readonly IComparer<TPriority> _comparer;

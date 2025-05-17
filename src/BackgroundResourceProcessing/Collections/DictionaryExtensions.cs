@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace BackgroundResourceProcessing.Collections
 {
-    public struct KVPair<K, V>(K key, V value)
+    internal struct KVPair<K, V>(K key, V value)
     {
         public K Key = key;
         public V Value = value;
@@ -15,7 +15,7 @@ namespace BackgroundResourceProcessing.Collections
         }
     }
 
-    public static class DictionaryExtensions
+    internal static class DictionaryExtensions
     {
         /// <summary>
         /// This was added in .NET standard 2.1 but KSP does not have that available.
