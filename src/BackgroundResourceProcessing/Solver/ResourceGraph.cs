@@ -6,6 +6,7 @@ using Smooth.Collections;
 
 namespace BackgroundResourceProcessing.Solver
 {
+    [Serializable]
     public enum InventoryState
     {
         /// <summary>
@@ -32,10 +33,12 @@ namespace BackgroundResourceProcessing.Solver
     /// <summary>
     /// A graph
     /// </summary>
+    [Serializable]
     internal class ResourceGraph
     {
         public class InvalidMergeException(string message) : Exception(message) { }
 
+        [Serializable]
         public class Inventory
         {
             public InventoryState state;
@@ -64,8 +67,10 @@ namespace BackgroundResourceProcessing.Solver
             }
         }
 
+        [Serializable]
         public class Converter
         {
+            [Serializable]
             public struct Input
             {
                 public double rate;
@@ -76,9 +81,11 @@ namespace BackgroundResourceProcessing.Solver
                 }
             }
 
+            [Serializable]
             public struct Output
             {
                 public double rate;
+
                 public bool dumpExcess;
 
                 public Output Merge(Output other)
@@ -200,11 +207,11 @@ namespace BackgroundResourceProcessing.Solver
             Dictionary<InventoryId, int> idMap = [];
 
             index = 0;
-            foreach (var (_, inventory) in processor.inventories)
+            foreach (var (_, inventory) in processor.inventories.KSPEnumerate())
             {
                 int id = index++;
 
-                if (!totals.TryAdd(inventory.resourceName, inventory.amount))
+                if (!totals.TryAddExt(inventory.resourceName, inventory.amount))
                     totals[inventory.resourceName] += inventory.amount;
 
                 inventories.Add(id, new Inventory(inventory));
@@ -221,7 +228,7 @@ namespace BackgroundResourceProcessing.Solver
 
                 converters.Add(id, built);
 
-                foreach (var (resourceName, inventories) in converter.pull)
+                foreach (var (resourceName, inventories) in converter.pull.KSPEnumerate())
                 {
                     if (!converter.inputs.ContainsKey(resourceName))
                         continue;
@@ -230,7 +237,7 @@ namespace BackgroundResourceProcessing.Solver
                         inputs.Add(id, idMap[new InventoryId(partId, resourceName)]);
                 }
 
-                foreach (var (resourceName, inventories) in converter.push)
+                foreach (var (resourceName, inventories) in converter.push.KSPEnumerate())
                 {
                     if (!converter.inputs.ContainsKey(resourceName))
                         continue;
@@ -309,6 +316,11 @@ namespace BackgroundResourceProcessing.Solver
         //         foreach(var (otherId, otherInv))
         //     }
         // }
+
+        internal string DumpJson()
+        {
+            return UnityEngine.JsonUtility.ToJson(this);
+        }
 
         private static bool ApproxEqual(double a, double b, double epsilon = 1e-6)
         {

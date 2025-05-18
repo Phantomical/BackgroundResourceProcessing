@@ -8,6 +8,9 @@ namespace BackgroundResourceProcessing.Collections
         private readonly List<int> values;
 
         public int Count => values.Count;
+#if DEBUG
+        public List<int> Values => values;
+#endif
 
         public UnionFind(int capacity)
         {
@@ -15,7 +18,7 @@ namespace BackgroundResourceProcessing.Collections
 
             for (int i = 0; i < capacity; ++i)
             {
-                values[i] = i;
+                values.Add(i);
             }
         }
 

@@ -1,5 +1,4 @@
-﻿using System.Security.Principal;
-using BackgroundResourceProcessing.Collections;
+﻿using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Solver;
 using BackgroundResourceProcessing.Solver.V1;
 

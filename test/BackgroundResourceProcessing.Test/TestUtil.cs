@@ -1,38 +1,13 @@
-using System.CodeDom;
 using System.Runtime.CompilerServices;
-using BackgroundResourceProcessing;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using BackgroundResourceProcessing.Core;
+using KSPAchievements;
 
 namespace BackgroundResourceProcessing.Test
 {
     internal static class TestUtil
     {
-        public class TestLogErrorException(string message) : Exception(message) { }
-
-        private class TestLogSink : LogUtil.ILogSink
-        {
-            public void Error(string message)
-            {
-                throw new TestLogErrorException(message);
-            }
-
-            public void Log(string message)
-            {
-                Console.WriteLine($"[INFO]  {message}");
-            }
-
-            public void Warn(string message)
-            {
-                Console.WriteLine($"[WARN]  {message}");
-            }
-        }
-
-        static TestUtil()
-        {
-            LogUtil.Sink = new TestLogSink();
-            Registrar.RegisterAllBehaviours(typeof(Registrar).Assembly);
-        }
-
         private static string GetCallerFilePath([CallerFilePath] string callerFilePath = null)
         {
             return callerFilePath ?? throw new ArgumentNullException(nameof(callerFilePath));
@@ -61,6 +36,66 @@ namespace BackgroundResourceProcessing.Test
             var processor = new ResourceProcessor();
             processor.Load(configNode.GetNode("BRP_SHIP"));
             return processor;
+        }
+
+        static readonly JsonSerializerOptions options = new()
+        {
+            WriteIndented = true,
+            IncludeFields = true,
+        };
+
+        static TestUtil()
+        {
+            options.Converters.Add(new JsonStringEnumConverter());
+        }
+
+        public static string DumpJson<T>(T obj)
+        {
+            return JsonSerializer.Serialize(obj, options);
+        }
+    }
+
+    [TestClass]
+    public static class Setup
+    {
+        public class TestLogErrorException(string message) : Exception(message) { }
+
+        internal class TestLogSink(string path) : LogUtil.ILogSink
+        {
+            internal TextWriter output = new StreamWriter(File.Open(path, FileMode.OpenOrCreate));
+
+            public void Error(string message)
+            {
+                throw new TestLogErrorException(message);
+            }
+
+            public void Log(string message)
+            {
+                output.WriteLine($"[INFO]  {message}");
+            }
+
+            public void Warn(string message)
+            {
+                output.WriteLine($"[WARN]  {message}");
+            }
+        }
+
+        static TestLogSink sink;
+
+        static Setup()
+        {
+            sink = new TestLogSink(Path.Combine(TestUtil.ProjectDirectory, "bin/test-output.log"));
+            LogUtil.Sink = sink;
+            Registrar.RegisterAllBehaviours(typeof(Registrar).Assembly);
+        }
+
+        [AssemblyInitialize()]
+        public static void AssemblyInitialize(TestContext _) { }
+
+        [AssemblyCleanup()]
+        public static void AssemblyCleanup()
+        {
+            sink.output.Close();
         }
     }
 }

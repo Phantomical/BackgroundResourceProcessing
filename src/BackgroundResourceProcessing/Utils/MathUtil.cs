@@ -14,5 +14,10 @@ namespace BackgroundResourceProcessing.Utils
             long bits = BitConverter.DoubleToInt64Bits(v);
             return (bits & 0x7FFFFFFFFFFFFFFF) < 0x7FF0000000000000;
         }
+
+        public static bool ApproxEqual(double a, double b, double epsilon = 1e-6)
+        {
+            return Math.Abs(a - b) < epsilon;
+        }
     }
 }

@@ -26,7 +26,7 @@ namespace BackgroundResourceProcessing.Collections
         /// <param name="key"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public static bool TryAdd<K, V>(this Dictionary<K, V> dict, K key, V value)
+        public static bool TryAddExt<K, V>(this Dictionary<K, V> dict, K key, V value)
         {
             if (dict.ContainsKey(key))
                 return false;

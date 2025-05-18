@@ -95,7 +95,7 @@ namespace BackgroundResourceProcessing
             {
                 rwlock.EnterWriteLock();
 
-                if (!DictionaryExtensions.TryAdd(primaries, attr.Name, type))
+                if (!DictionaryExtensions.TryAddExt(primaries, attr.Name, type))
                 {
                     var other = primaries[attr.Name];
 
@@ -106,7 +106,7 @@ namespace BackgroundResourceProcessing
 
                 foreach (var alternate in attr.Alternates)
                 {
-                    if (!DictionaryExtensions.TryAdd(alternates, alternate, type))
+                    if (!DictionaryExtensions.TryAddExt(alternates, alternate, type))
                     {
                         var other = alternates[alternate];
                         LogUtil.Warn(

@@ -24,6 +24,7 @@
     <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="17.12.6" />
     <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" Version="1.4.3" />
     <PackageReference Include="MSTest" Version="3.6.4" />
+    <PackageReference Include="System.Text.Json" Version="9.0.5" />
 
     <ProjectReference Include="$(ProjectRootDir)\src\BackgroundResourceProcessing\BackgroundResourceProcessing.csproj" />
     <PackageReference Include="KSPBuildTools" Version="0.0.3" />
