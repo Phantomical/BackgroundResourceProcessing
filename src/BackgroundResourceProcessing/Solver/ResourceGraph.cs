@@ -34,7 +34,7 @@ namespace BackgroundResourceProcessing.Solver
     /// A graph
     /// </summary>
     [Serializable]
-    internal class ResourceGraph
+    internal class ResourceGraph2
     {
         public class InvalidMergeException(string message) : Exception(message) { }
 
@@ -196,7 +196,7 @@ namespace BackgroundResourceProcessing.Solver
         public UnionFind inventoryIds;
         public UnionFind converterIds;
 
-        public ResourceGraph(ResourceProcessor processor)
+        public ResourceGraph2(ResourceProcessor processor)
         {
             int index;
 

@@ -131,9 +131,14 @@ namespace BackgroundResourceProcessing.Solver.Graph
             ids.AddRange(other.ids);
         }
 
-        public bool CanMerge(Converter other)
+        public bool CanMergeWith(Converter other)
         {
-            return constraints == other.constraints;
+            if (!inputs.KeysEqual(other.inputs))
+                return false;
+            if (!outputs.KeysEqual(other.outputs))
+                return false;
+
+            return constraints.SetEquals(other.constraints);
         }
     }
 
@@ -239,6 +244,8 @@ namespace BackgroundResourceProcessing.Solver.Graph
                     if (!outputEdges.SetEquals(otherOutputs))
                         continue;
 
+                    LogUtil.Debug(() => $"Merged inventories {inventoryId} and {otherId}");
+
                     inventory.Merge(otherInv);
                     inventoryIds.Union(inventoryId, otherId);
                     inputs.RemoveInventory(otherId);
@@ -249,6 +256,67 @@ namespace BackgroundResourceProcessing.Solver.Graph
 
             foreach (var id in removed)
                 inventories.Remove(id);
+        }
+
+        /// <summary>
+        /// Merge together all converters that have identical edge-sets.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// <para>
+        ///   If two converters take/emit the same sets of resources to the same
+        ///   sets of inventories then they can be merged together into a single
+        ///   "logical" converter provided that they share the same set of required
+        ///   resource constraints.
+        /// </para>
+        ///
+        /// <para>
+        ///   This helps decouple the graph because merging together a constrained
+        ///   (empty or full) inventory with an unconstrained inventory results in
+        ///   an unconstrained inventory.
+        /// </para>
+        /// </remarks>
+        public void MergeEquivalentConverters()
+        {
+            HashSet<int> removed = [];
+
+            foreach (var (converterId, converter) in converters.KSPEnumerate())
+            {
+                if (removed.Contains(converterId))
+                    continue;
+
+                var inputEdges = inputs.GetConverterEntry(converterId);
+                var outputEdges = outputs.GetConverterEntry(converterId);
+
+                foreach (var (otherId, otherConverter) in converters.KSPEnumerate())
+                {
+                    if (otherId <= converterId)
+                        continue;
+                    if (removed.Contains(otherId))
+                        continue;
+                    if (!converter.CanMergeWith(otherConverter))
+                        continue;
+
+                    var otherInputs = inputs.GetConverterEntry(otherId);
+                    var otherOutputs = outputs.GetConverterEntry(otherId);
+
+                    if (!inputEdges.SetEquals(otherInputs))
+                        continue;
+                    if (!outputEdges.SetEquals(otherOutputs))
+                        continue;
+
+                    LogUtil.Debug(() => $"Merged converters {converterId} and {otherId}");
+
+                    converter.Merge(otherConverter);
+                    converterIds.Union(converterId, otherId);
+                    inputs.RemoveConverter(otherId);
+                    outputs.RemoveConverter(otherId);
+                    removed.Add(otherId);
+                }
+            }
+
+            foreach (var id in removed)
+                converters.Remove(id);
         }
     }
 }

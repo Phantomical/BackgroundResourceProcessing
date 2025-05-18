@@ -62,7 +62,7 @@ namespace BackgroundResourceProcessing.Test
 
         internal class TestLogSink(string path) : LogUtil.ILogSink
         {
-            internal TextWriter output = new StreamWriter(File.Open(path, FileMode.OpenOrCreate));
+            internal TextWriter output = new StreamWriter(File.Open(path, FileMode.Create));
 
             public void Error(string message)
             {

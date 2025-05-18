@@ -55,6 +55,21 @@ namespace BackgroundResourceProcessing.Collections
             dict.Add(pair.Key, pair.Value);
         }
 
+        public static bool KeysEqual<K, V1, V2>(
+            this Dictionary<K, V1> dict,
+            Dictionary<K, V2> other
+        )
+        {
+            if (dict.Count != other.Count)
+                return false;
+
+            foreach (var key in dict.Keys)
+                if (!other.ContainsKey(key))
+                    return false;
+
+            return true;
+        }
+
         /// <summary>
         /// <see cref="KeyValuePair.Deconstruct"/> is not available in the
         /// assemblies shipped with KSP, so this returns an iterator with a pair

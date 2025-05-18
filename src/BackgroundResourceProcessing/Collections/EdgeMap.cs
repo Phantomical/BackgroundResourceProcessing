@@ -9,11 +9,8 @@ namespace BackgroundResourceProcessing.Collections
 
         public EdgeMap() { }
 
-#if DEBUG
-
-        public Dictionary<C, HashSet<I>> Forward => forward;
-        public Dictionary<I, HashSet<C>> Reverse => reverse;
-#endif
+        internal Dictionary<C, HashSet<I>> Forward => forward;
+        internal Dictionary<I, HashSet<C>> Reverse => reverse;
 
         public void Add(C converterId, I inventoryId)
         {
