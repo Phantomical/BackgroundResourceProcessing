@@ -114,11 +114,11 @@ namespace BackgroundResourceProcessing.Core
             {
                 var partId = part.persistentId;
 
-                LogUtil.Log($"Inspecting part {part.name} for inventories");
+                LogUtil.Debug(() => $"Inspecting part {part.name} for inventories");
 
                 foreach (var resource in part.Resources)
                 {
-                    LogUtil.Log(
+                    LogUtil.Debug(() =>
                         $"Found inventory with resource {resource.amount}/{resource.maxAmount} {resource.resourceName}"
                     );
                     inventories.Add(
@@ -131,7 +131,7 @@ namespace BackgroundResourceProcessing.Core
             int nextConverterId = 0;
             foreach (var part in vessel.Parts)
             {
-                LogUtil.Log($"Inspecting part {part.name} for converters");
+                LogUtil.Debug(() => $"Inspecting part {part.name} for converters");
 
                 var converters = part.FindModulesImplementing<IBackgroundConverter>();
 
@@ -142,13 +142,13 @@ namespace BackgroundResourceProcessing.Core
 
                 foreach (var module in converters)
                 {
-                    LogUtil.Log($"Found converter module: {module.GetType().Name}");
+                    LogUtil.Debug(() => $"Found converter module: {module.GetType().Name}");
 
                     var behaviour = module.GetBehaviour();
                     if (behaviour == null)
                         continue;
 
-                    behaviour.sourceModule = module.GetType().FullName;
+                    behaviour.sourceModule = module.GetType().Name;
                     behaviour.sourcePart = part.name;
 
                     var converter = new Converter(behaviour) { id = nextConverterId++ };

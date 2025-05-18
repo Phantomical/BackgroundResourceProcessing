@@ -48,10 +48,14 @@ namespace BackgroundResourceProcessing
             return builder.ToString();
         }
 
+        public delegate string DebugExpression();
+
         // [Conditional("DEBUG")]
-        internal static void Debug(params object[] args)
+        internal static void Debug(DebugExpression dbgexpr)
         {
-            Log(args);
+#if DEBUG
+            Log(dbgexpr());
+#endif
         }
 
         public static void Log(params object[] args)

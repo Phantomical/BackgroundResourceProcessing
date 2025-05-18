@@ -24,14 +24,6 @@ namespace BackgroundResourceProcessing
         /// </remarks>
         public bool BackgroundProcessingActive { get; private set; } = false;
 
-        public BackgroundResourceProcessor()
-            : base()
-        {
-#if DEBUG
-            OnBeforeVesselRecord.debugEvent = true;
-#endif
-        }
-
         public override Activation GetActivation()
         {
             return Activation.LoadedOrUnloaded;
@@ -48,7 +40,7 @@ namespace BackgroundResourceProcessing
 
         protected override void OnStart()
         {
-            LogUtil.Debug(
+            LogUtil.Debug(() =>
                 $"OnStart for BackgroundResourceProcessor on vessel {vessel.GetDisplayName()}"
             );
 

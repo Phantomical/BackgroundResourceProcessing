@@ -24,7 +24,9 @@ namespace BackgroundResourceProcessing.Modules
             if (module == null)
                 return;
 
-            LogUtil.Debug($"Registering for OnBeforeVesselRecord for vessel {vessel.GetName()}");
+            LogUtil.Debug(() =>
+                $"Registering for OnBeforeVesselRecord for vessel {vessel.GetName()}"
+            );
             BackgroundResourceProcessor.OnBeforeVesselRecord.Add(OnBeforeVesselRecord);
         }
 
@@ -34,7 +36,9 @@ namespace BackgroundResourceProcessing.Modules
             if (module == null)
                 return;
 
-            LogUtil.Debug($"Unregistering for OnBeforeVesselRecord for vessel {vessel.GetName()}");
+            LogUtil.Debug(() =>
+                $"Unregistering for OnBeforeVesselRecord for vessel {vessel.GetName()}"
+            );
             BackgroundResourceProcessor.OnBeforeVesselRecord.Remove(OnBeforeVesselRecord);
         }
 
