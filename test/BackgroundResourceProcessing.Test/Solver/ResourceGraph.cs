@@ -16,7 +16,6 @@ namespace BackgroundResourceProcessing.Test.Solver
             graph.MergeEquivalentInventories();
 
             LogUtil.Log($"Inventories merged: {TestUtil.DumpJson(graph)}");
-
         }
     }
 }

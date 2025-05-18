@@ -16,7 +16,11 @@ namespace BackgroundResourceProcessing
                 {
                     var present = node.HasValue("ResourceName");
                     if (!present)
-                        Debug.Log("Resource must have value 'ResourceName'");
+                    {
+                        LogUtil.Error(
+                            $"{name} node must have ResourceName field. Resource will be skipped."
+                        );
+                    }
                     return present;
                 })
                 .Select(node =>

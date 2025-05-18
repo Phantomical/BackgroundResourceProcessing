@@ -148,7 +148,19 @@ namespace BackgroundResourceProcessing.Core
                 return res;
 
             int resourceId = res.ResourceName.GetHashCode();
-            res.FlowMode = PartResourceLibrary.Instance.GetDefinition(resourceId).resourceFlowMode;
+            var definition = PartResourceLibrary.Instance.GetDefinition(resourceId);
+            if (definition == null)
+            {
+                LogUtil.Error(
+                    $"Resource {res.ResourceName} had no resource definition in PartResourceLibrary."
+                );
+                res.FlowMode = ResourceFlowMode.ALL_VESSEL_BALANCE;
+            }
+            else
+            {
+                res.FlowMode = definition.resourceFlowMode;
+            }
+
             return res;
         }
     }

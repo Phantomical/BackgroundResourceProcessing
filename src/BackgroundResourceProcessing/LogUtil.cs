@@ -50,7 +50,9 @@ namespace BackgroundResourceProcessing
 
         public delegate string DebugExpression();
 
-        // [Conditional("DEBUG")]
+#if !DEBUG
+        [Conditional("FALSE")]
+#endif
         internal static void Debug(DebugExpression dbgexpr)
         {
 #if DEBUG

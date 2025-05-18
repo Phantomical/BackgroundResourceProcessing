@@ -23,7 +23,7 @@ namespace BackgroundResourceProcessing.Modules
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            outputs = [.. ConfigUtil.LoadOutputResources(node)];
+            outputs.AddRange(ConfigUtil.LoadOutputResources(node));
         }
     }
 }

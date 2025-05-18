@@ -61,7 +61,7 @@ namespace BackgroundResourceProcessing.Modules
 
         public BaseConverter Converter { get; private set; } = null;
 
-        [KSPField]
+        [KSPField(isPersistant = true)]
         private uint? cachedPersistentModuleId = null;
 
         /// <summary>
@@ -273,19 +273,16 @@ namespace BackgroundResourceProcessing.Modules
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
+            LogUtil.Debug(() => $"Loading {GetType().Name} on part {part.name}");
+            LogUtil.Debug(() => $"  - Preloaded {inputs.Count} inputs");
+            LogUtil.Debug(() => $"  - Preloaded {outputs.Count} outputs");
 
-            inputs = [.. ConfigUtil.LoadInputResources(node)];
-            outputs = [.. ConfigUtil.LoadOutputResources(node)];
-            required = [.. ConfigUtil.LoadRequiredResources(node)];
-        }
+            inputs.AddRange(ConfigUtil.LoadInputResources(node));
+            outputs.AddRange(ConfigUtil.LoadOutputResources(node));
+            required.AddRange(ConfigUtil.LoadRequiredResources(node));
 
-        public override void OnSave(ConfigNode node)
-        {
-            base.OnSave(node);
-
-            ConfigUtil.SaveInputResources(node, inputs);
-            ConfigUtil.SaveOutputResources(node, outputs);
-            ConfigUtil.SaveRequiredResources(node, required);
+            LogUtil.Debug(() => $"  - Loaded {inputs.Count} inputs");
+            LogUtil.Debug(() => $"  - Loaded {outputs.Count} outputs");
         }
 
         protected static IEnumerable<ResourceRatio> ConvertRecipeToUnits(

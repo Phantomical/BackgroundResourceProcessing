@@ -19,9 +19,9 @@ namespace BackgroundResourceProcessing.Modules
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            inputs = new(ConfigUtil.LoadInputResources(node));
-            outputs = new(ConfigUtil.LoadOutputResources(node));
-            required = new(ConfigUtil.LoadRequiredResources(node));
+            inputs.AddRange(ConfigUtil.LoadInputResources(node));
+            outputs.AddRange(ConfigUtil.LoadOutputResources(node));
+            required.AddRange(ConfigUtil.LoadRequiredResources(node));
         }
     }
 }

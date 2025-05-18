@@ -231,9 +231,12 @@ namespace BackgroundResourceProcessing.Solver.Graph
                     if (removed.Contains(otherId))
                         continue;
 
-                    if (inputEdges != inputs.GetInventoryEntry(otherId))
+                    var otherInputs = inputs.GetInventoryEntry(otherId);
+                    var otherOutputs = outputs.GetInventoryEntry(otherId);
+
+                    if (!inputEdges.SetEquals(otherInputs))
                         continue;
-                    if (outputEdges != outputs.GetInventoryEntry(otherId))
+                    if (!outputEdges.SetEquals(otherOutputs))
                         continue;
 
                     inventory.Merge(otherInv);

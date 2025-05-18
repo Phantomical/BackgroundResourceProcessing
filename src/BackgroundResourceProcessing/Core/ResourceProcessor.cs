@@ -107,8 +107,9 @@ namespace BackgroundResourceProcessing.Core
         {
             ClearVesselState();
             var state = new VesselState { Vessel = vessel, CurrentTime = currentTime };
-
             lastUpdate = currentTime;
+
+            LogUtil.Debug(() => $"Recording vessel state for vessel {vessel.GetDisplayName()}");
 
             foreach (var part in vessel.Parts)
             {
@@ -146,7 +147,10 @@ namespace BackgroundResourceProcessing.Core
 
                     var behaviour = module.GetBehaviour();
                     if (behaviour == null)
+                    {
+                        LogUtil.Debug(() => $"Converter behaviour was null");
                         continue;
+                    }
 
                     behaviour.sourceModule = module.GetType().Name;
                     behaviour.sourcePart = part.name;
@@ -154,9 +158,12 @@ namespace BackgroundResourceProcessing.Core
                     var converter = new Converter(behaviour) { id = nextConverterId++ };
                     converter.Refresh(state);
 
-                    foreach (var entry in converter.inputs)
+                    LogUtil.Debug(() =>
+                        $"Converter has {converter.inputs.Count} inputs and {converter.outputs.Count} outputs"
+                    );
+
+                    foreach (var (_, ratio) in converter.inputs.KSPEnumerate())
                     {
-                        var ratio = entry.Value;
                         var pull = GetConnectedResources(
                             vessel,
                             part,
@@ -164,16 +171,28 @@ namespace BackgroundResourceProcessing.Core
                             ratio.FlowMode,
                             true
                         );
+
+                        LogUtil.Debug(() =>
+                            $"Found {pull.set.Count} inventories attached to input resource {ratio.ResourceName}"
+                        );
+
+                        foreach (var resource in pull.set)
+                            converter.AddPullInventory(new(resource));
+                    }
+
+                    foreach (var (_, ratio) in converter.outputs.KSPEnumerate())
+                    {
                         var push = GetConnectedResources(
                             vessel,
                             part,
                             ratio.ResourceName,
                             ratio.FlowMode,
-                            true
+                            false
                         );
 
-                        foreach (var resource in pull.set)
-                            converter.AddPullInventory(new(resource));
+                        LogUtil.Debug(() =>
+                            $"Found {push.set.Count} inventories attached to output resource {ratio.ResourceName}"
+                        );
 
                         foreach (var resource in push.set)
                             converter.AddPushInventory(new(resource));

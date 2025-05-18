@@ -6,7 +6,7 @@ namespace BackgroundResourceProcessing.Modules
 {
     public abstract class ModuleBackgroundPotatoDrill : ModuleBackgroundResourceConverter
     {
-        protected static readonly string NoStorageSpace = Localizer.Format("#autoLOC_258405");
+        protected static readonly string NoStorageSpace = Localizer.Format("#autoLOC_258501");
         protected static readonly string InsufficientPower = Localizer.Format("#autoLOC_258451");
 
         protected BaseDrill BaseDrill => (BaseDrill)Converter;
@@ -72,11 +72,12 @@ namespace BackgroundResourceProcessing.Modules
         {
             var drill = BaseDrill;
 
+            if (drill.IsActivated)
+                return true;
+
             // We want the drill to be active it is shut down due to resource issues
             // but otherwise we follow along with IsActivated
-            return !drill.IsActivated
-                && drill.status != NoStorageSpace
-                && drill.status != InsufficientPower;
+            return drill.status == NoStorageSpace || drill.status == InsufficientPower;
         }
 
         protected abstract Part GetDrillPotato();
@@ -141,7 +142,7 @@ namespace BackgroundResourceProcessing.Modules
         }
     }
 
-    public class ModuleBackgroundCometDrill2 : ModuleBackgroundPotatoDrill
+    public class ModuleBackgroundCometDrill : ModuleBackgroundPotatoDrill
     {
         static readonly FieldInfo PotatoField = typeof(ModuleCometDrill).GetField(
             "_potato",

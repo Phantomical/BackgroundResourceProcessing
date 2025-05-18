@@ -26,7 +26,7 @@ namespace BackgroundResourceProcessing.Modules
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            inputs = [.. ConfigUtil.LoadInputResources(node)];
+            inputs.AddRange(ConfigUtil.LoadInputResources(node));
         }
     }
 }
