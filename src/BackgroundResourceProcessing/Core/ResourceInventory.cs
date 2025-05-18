@@ -54,9 +54,6 @@ namespace BackgroundResourceProcessing.Core
         /// </summary>
         public double rate = 0.0;
 
-        public int? resourceModuleIndex = null;
-        public string resourceModuleName = null;
-
         public bool Full => maxAmount - amount < 1e-6;
         public bool Empty => amount < 1e-6;
 
@@ -80,6 +77,7 @@ namespace BackgroundResourceProcessing.Core
             node.AddValue("resourceName", resourceName);
             node.AddValue("amount", amount);
             node.AddValue("maxAmount", maxAmount);
+            node.AddValue("rate", rate);
         }
 
         public void Load(ConfigNode node)
@@ -88,6 +86,7 @@ namespace BackgroundResourceProcessing.Core
             node.TryGetValue("resourceName", ref resourceName);
             node.TryGetValue("amount", ref amount);
             node.TryGetValue("maxAmount", ref maxAmount);
+            node.TryGetValue("rate", ref rate);
         }
     }
 }

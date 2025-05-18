@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Modules;
-using BackgroundResourceProcessing.Solver;
+using BackgroundResourceProcessing.Solver.V1;
 using BackgroundResourceProcessing.Utils;
 using Smooth.Collections;
 
@@ -62,7 +62,14 @@ namespace BackgroundResourceProcessing.Core
 
         public void ComputeRates()
         {
-            return;
+            var solver = new V1Solver();
+            var rates = solver.ComputeInventoryRates(this);
+
+            foreach (var (id, rate) in rates.KSPEnumerate())
+            {
+                if (inventories.TryGetValue(id, out var inventory))
+                    inventory.rate = rate;
+            }
         }
 
         public void UpdateNextChangepoint(double currentTime)

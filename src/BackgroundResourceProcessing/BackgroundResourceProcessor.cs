@@ -149,6 +149,16 @@ namespace BackgroundResourceProcessing
             processor.ClearVesselState();
         }
 
+        internal void ComputeResourceRates()
+        {
+            processor.ComputeRates();
+        }
+
+        internal void UpdateNextChangepoint()
+        {
+            processor.UpdateNextChangepoint(Planetarium.GetUniversalTime());
+        }
+
         private void NotifyOnVesselRestore()
         {
             foreach (var part in Vessel.Parts)

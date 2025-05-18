@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace BackgroundResourceProcessing.Modules
 {
@@ -48,7 +49,7 @@ namespace BackgroundResourceProcessing.Modules
             var threshold = info.massThresholdVal;
             var expected = Math.Max(current - threshold, 0.0);
 
-            if (Math.Abs(expected - resource.maxAmount) > 1e-3)
+            if (Math.Abs(expected - resource.maxAmount) > 1.0)
             {
                 if (resource.maxAmount != 0.0)
                 {

@@ -124,6 +124,8 @@ namespace BackgroundResourceProcessing.Addons
             }
 
             module.RecordVesselState();
+            module.ComputeResourceRates();
+            module.UpdateNextChangepoint();
 
             ConfigNode root = new();
             ConfigNode node = root.AddNode("BRP_SHIP");
