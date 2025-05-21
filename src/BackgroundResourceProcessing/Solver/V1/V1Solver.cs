@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
-using BackgroundResourceProcessing.Solver;
 using BackgroundResourceProcessing.Utils;
 
 namespace BackgroundResourceProcessing.Solver.V1

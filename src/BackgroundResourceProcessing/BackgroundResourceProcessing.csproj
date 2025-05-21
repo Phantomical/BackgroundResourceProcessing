@@ -11,7 +11,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- <PackageReference Include="DynamicExpresso.Core" Version="2.19.1" /> -->
     <PackageReference Include="KSPBuildTools" Version="0.0.3" />
 
     <KSPVersionFile Include=".">

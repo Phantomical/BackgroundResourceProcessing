@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Modules;
-using BackgroundResourceProcessing.Solver.V1;
+using BackgroundResourceProcessing.Solver.V2;
 using BackgroundResourceProcessing.Utils;
 using Smooth.Collections;
 
@@ -62,13 +62,18 @@ namespace BackgroundResourceProcessing.Core
 
         public void ComputeRates()
         {
-            var solver = new V1Solver();
-            var rates = solver.ComputeInventoryRates(this);
-
-            foreach (var (id, rate) in rates.KSPEnumerate())
+            try
             {
-                if (inventories.TryGetValue(id, out var inventory))
-                    inventory.rate = rate;
+                var solver = new V2Solver();
+                var rates = solver.ComputeInventoryRates(this);
+
+                foreach (var (id, rate) in rates.KSPEnumerate())
+                    if (inventories.TryGetValue(id, out var inventory))
+                        inventory.rate = rate;
+            }
+            catch (Exception e)
+            {
+                LogUtil.Error("Solver threw an exception: ", e);
             }
         }
 

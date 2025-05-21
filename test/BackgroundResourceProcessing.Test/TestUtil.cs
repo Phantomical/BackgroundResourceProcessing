@@ -42,6 +42,7 @@ namespace BackgroundResourceProcessing.Test
         {
             WriteIndented = true,
             IncludeFields = true,
+            NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals,
         };
 
         static TestUtil()

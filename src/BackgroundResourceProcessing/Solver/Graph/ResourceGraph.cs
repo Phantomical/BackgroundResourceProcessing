@@ -1,21 +1,24 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Utils;
+using Smooth.Collections;
+using Steamworks;
 
 namespace BackgroundResourceProcessing.Solver.Graph
 {
     public class InvalidMergeException(string message) : Exception(message) { }
 
-    internal class Inventory
+    internal class GraphInventory
     {
         public InventoryState state;
         public string resourceName;
 
         public List<InventoryId> ids;
 
-        public Inventory(ResourceInventory inventory)
+        public GraphInventory(ResourceInventory inventory)
         {
             resourceName = inventory.resourceName;
             ids = [inventory.Id];
@@ -27,7 +30,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
                 state |= InventoryState.Empty;
         }
 
-        public void Merge(Inventory other)
+        public void Merge(GraphInventory other)
         {
             if (resourceName != other.resourceName)
                 throw new InvalidMergeException(
@@ -39,7 +42,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
         }
     }
 
-    internal class Converter
+    internal class GraphConverter
     {
         public struct Input(double rate)
         {
@@ -71,6 +74,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
         }
 
         public List<int> ids;
+        public List<Converter> converters;
 
         /// <summary>
         /// The input resources for this converter and their rates.
@@ -87,18 +91,19 @@ namespace BackgroundResourceProcessing.Solver.Graph
         /// </summary>
         public HashSet<string> constraints = [];
 
-        private Converter(int id)
+        private GraphConverter(int id, Converter converter)
         {
             ids = [id];
+            converters = [converter];
         }
 
-        public static Converter Build(
+        public static GraphConverter Build(
             int id,
-            Core.Converter converter,
+            Converter converter,
             Dictionary<string, double> totals
         )
         {
-            var conv = new Converter(id);
+            var conv = new GraphConverter(id, converter);
 
             foreach (var (resource, required) in converter.required.KSPEnumerate())
             {
@@ -118,7 +123,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
             return conv;
         }
 
-        public void Merge(Converter other)
+        public void Merge(GraphConverter other)
         {
             foreach (var (resource, input) in other.inputs.KSPEnumerate())
                 if (!inputs.TryAddExt(resource, input))
@@ -129,9 +134,11 @@ namespace BackgroundResourceProcessing.Solver.Graph
                     outputs[resource] = outputs[resource].Merge(output);
 
             ids.AddRange(other.ids);
+            converters.AddRange(other.converters);
+            constraints.AddAll(other.constraints);
         }
 
-        public bool CanMergeWith(Converter other)
+        public bool CanMergeWith(GraphConverter other)
         {
             if (!inputs.KeysEqual(other.inputs))
                 return false;
@@ -140,12 +147,47 @@ namespace BackgroundResourceProcessing.Solver.Graph
 
             return constraints.SetEquals(other.constraints);
         }
+
+        /// <summary>
+        /// Combine resources that are present in both inputs and outputs into
+        /// a net input or net output.
+        /// </summary>
+        public void CombineDuplicates()
+        {
+            List<string> removed = [];
+
+            foreach (var (name, _input) in inputs.KSPEnumerate())
+            {
+                var input = _input;
+                if (!outputs.TryGetValue(name, out var output))
+                    continue;
+
+                if (output.rate < input.rate)
+                {
+                    input.rate -= output.rate;
+                    outputs.Remove(name);
+                }
+                else if (output.rate > input.rate)
+                {
+                    output.rate -= input.rate;
+                    removed.Add(name);
+                }
+                else
+                {
+                    outputs.Remove(name);
+                    inputs.Remove(name);
+                }
+            }
+
+            foreach (var name in removed)
+                inputs.Remove(name);
+        }
     }
 
     internal class ResourceGraph
     {
-        public Dictionary<int, Inventory> inventories = [];
-        public Dictionary<int, Converter> converters = [];
+        public IntMap<GraphInventory> inventories;
+        public IntMap<GraphConverter> converters;
 
         public EdgeMap<int, int> inputs = new();
         public EdgeMap<int, int> outputs = new();
@@ -158,6 +200,9 @@ namespace BackgroundResourceProcessing.Solver.Graph
             inventoryIds = new UnionFind(processor.inventories.Count);
             converterIds = new UnionFind(processor.converters.Count);
 
+            inventories = new(inventoryIds.Count);
+            converters = new(converterIds.Count);
+
             Dictionary<string, double> totals = [];
             Dictionary<InventoryId, int> idMap = [];
 
@@ -169,7 +214,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
                 if (!totals.TryAddExt(inventory.resourceName, inventory.amount))
                     totals[inventory.resourceName] += inventory.amount;
 
-                inventories.Add(id, new Inventory(inventory));
+                inventories.Add(id, new GraphInventory(inventory));
                 idMap.Add(inventory.Id, id);
             }
 
@@ -177,7 +222,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
             foreach (var converter in processor.converters)
             {
                 var id = index++;
-                var conv = Converter.Build(id, converter, totals);
+                var conv = GraphConverter.Build(id, converter, totals);
                 converters.Add(id, conv);
 
                 if (conv == null)
@@ -219,7 +264,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
         {
             HashSet<int> removed = [];
 
-            foreach (var (inventoryId, inventory) in inventories.KSPEnumerate())
+            foreach (var (inventoryId, inventory) in inventories)
             {
                 if (removed.Contains(inventoryId))
                     continue;
@@ -227,7 +272,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
                 var inputEdges = inputs.GetInventoryEntry(inventoryId);
                 var outputEdges = outputs.GetInventoryEntry(inventoryId);
 
-                foreach (var (otherId, otherInv) in inventories.KSPEnumerate())
+                foreach (var (otherId, otherInv) in inventories)
                 {
                     if (otherId <= inventoryId)
                         continue;
@@ -280,7 +325,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
         {
             HashSet<int> removed = [];
 
-            foreach (var (converterId, converter) in converters.KSPEnumerate())
+            foreach (var (converterId, converter) in converters)
             {
                 if (removed.Contains(converterId))
                     continue;
@@ -288,7 +333,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
                 var inputEdges = inputs.GetConverterEntry(converterId);
                 var outputEdges = outputs.GetConverterEntry(converterId);
 
-                foreach (var (otherId, otherConverter) in converters.KSPEnumerate())
+                foreach (var (otherId, otherConverter) in converters)
                 {
                     if (otherId <= converterId)
                         continue;
@@ -317,6 +362,151 @@ namespace BackgroundResourceProcessing.Solver.Graph
 
             foreach (var id in removed)
                 converters.Remove(id);
+        }
+
+        /// <summary>
+        /// Returns whether any of the converters in this resource graph have a
+        /// resource input our output that is being split among multiple inventories.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// Generally, this is the case for most ships in KSP. However, usually
+        /// the flow rules are uniform enough this will no longer be true after
+        /// <see cref="MergeEquivalentInventories"/> is called.
+        /// </remarks>
+        public bool HasSplitResourceEdges()
+        {
+            HashSet<string> present = [];
+            foreach (var (converterId, converter) in converters)
+            {
+                present.Clear();
+                foreach (var inventoryId in inputs.GetConverterEntry(converterId))
+                {
+                    var inventory = inventories[inventoryIds.Find(inventoryId)];
+                    if (!present.Add(inventory.resourceName))
+                        return true;
+                }
+
+                present.Clear();
+                foreach (var inventoryId in outputs.GetConverterEntry(converterId))
+                {
+                    var inventory = inventories[inventoryIds.Find(inventoryId)];
+                    if (!present.Add(inventory.resourceName))
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Compute the rates of change in individual inventories given the
+        /// provided activation rates for individual converters.
+        /// </summary>
+        /// <param name="rates"></param>
+        /// <returns></returns>
+        /// <exception cref="NotImplementedException"></exception>
+        public IntMap<double> ComputeLogicalInventoryRates(IEnumerable<KVPair<int, double>> rates)
+        {
+            // Rates for the logical inventories
+            IntMap<double> inventoryRates = new(inventoryIds.Count);
+
+            foreach (var (id1, rate) in rates)
+            {
+                var converterId = converterIds.Find(id1);
+                var converter = converters[converterId];
+
+                foreach (var id2 in inputs.GetConverterEntry(converterId))
+                {
+                    var inventoryId = inventoryIds.Find(id2);
+                    var inventory = inventories[inventoryId];
+
+                    var input = converter.inputs[inventory.resourceName];
+
+                    inventoryRates.TryAdd(inventoryId, 0.0);
+                    inventoryRates[inventoryId] -= input.rate;
+                }
+
+                foreach (var id2 in outputs.GetConverterEntry(converterId))
+                {
+                    var inventoryId = inventoryIds.Find(id2);
+                    var inventory = inventories[inventoryId];
+
+                    var output = converter.outputs[inventory.resourceName];
+
+                    inventoryRates.TryAdd(inventoryId, 0.0);
+                    inventoryRates[inventoryId] += output.rate;
+                }
+            }
+
+            return inventoryRates;
+        }
+
+        public Dictionary<InventoryId, double> ComputeInventoryRates(
+            IEnumerable<KVPair<int, double>> rates,
+            ResourceProcessor processor
+        )
+        {
+            var logicalRates = ComputeLogicalInventoryRates(rates);
+
+            Dictionary<InventoryId, double> result = [];
+            List<InventoryId> available = [];
+            foreach (var (id, rate) in logicalRates)
+            {
+                available.Clear();
+                var inventory = inventories[id];
+                var total = 0.0;
+
+                if (rate < 0.0)
+                {
+                    foreach (var subid in inventory.ids)
+                    {
+                        var real = processor.inventories[subid];
+                        if (real.Empty)
+                        {
+                            result.Add(subid, 0.0);
+                            continue;
+                        }
+
+                        available.Add(subid);
+                        total += real.amount;
+                    }
+
+                    foreach (var subid in available)
+                    {
+                        var real = processor.inventories[subid];
+                        result.Add(subid, rate * (real.amount / total));
+                    }
+                }
+                else if (rate > 0.0)
+                {
+                    foreach (var subid in inventory.ids)
+                    {
+                        var real = processor.inventories[subid];
+                        if (real.Empty)
+                        {
+                            result.Add(subid, 0.0);
+                            continue;
+                        }
+
+                        available.Add(subid);
+                        total += real.maxAmount - real.amount;
+                    }
+
+                    foreach (var subid in available)
+                    {
+                        var real = processor.inventories[subid];
+                        result.Add(subid, rate * ((real.maxAmount - real.amount) / total));
+                    }
+                }
+                else
+                {
+                    foreach (var subid in inventory.ids)
+                        result.Add(subid, 0.0);
+                }
+            }
+
+            return result;
         }
     }
 }

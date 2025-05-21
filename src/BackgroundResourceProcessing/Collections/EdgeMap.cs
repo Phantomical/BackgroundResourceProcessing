@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace BackgroundResourceProcessing.Collections
 {
@@ -9,8 +10,10 @@ namespace BackgroundResourceProcessing.Collections
 
         public EdgeMap() { }
 
-        internal Dictionary<C, HashSet<I>> Forward => forward;
-        internal Dictionary<I, HashSet<C>> Reverse => reverse;
+#if DEBUG
+        public Dictionary<C, HashSet<I>> Forward => forward;
+        public Dictionary<I, HashSet<C>> Reverse => reverse;
+#endif
 
         public void Add(C converterId, I inventoryId)
         {
@@ -74,6 +77,13 @@ namespace BackgroundResourceProcessing.Collections
             if (!reverse.TryGetValue(inventoryId, out var set))
                 return [];
             return set;
+        }
+
+        public IEnumerable<KVPair<C, I>> ConverterToInventoryEdges()
+        {
+            return forward.SelectMany(
+                (entry) => entry.Value.Select((inventory) => new KVPair<C, I>(entry.Key, inventory))
+            );
         }
 
         private HashSet<I> GetOrCreateConverterEntry(C converterId)

@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Utils;
-using Smooth.Collections;
 
 namespace BackgroundResourceProcessing.Modules
 {
@@ -109,7 +109,7 @@ namespace BackgroundResourceProcessing.Modules
         {
             double bonus = 1.0;
 
-            foreach (var (_, modifier) in Converter.EfficiencyModifiers)
+            foreach (var (_, modifier) in Converter.EfficiencyModifiers.KSPEnumerate())
                 bonus *= modifier;
 
             bonus *= Converter.GetCrewEfficiencyBonus();
