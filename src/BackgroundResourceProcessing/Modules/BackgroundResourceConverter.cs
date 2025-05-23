@@ -14,7 +14,7 @@ namespace BackgroundResourceProcessing.Modules
         : BackgroundConverter,
             IBackgroundVesselRestoreHandler
     {
-        private static FieldInfo LastUpdateTimeField = typeof(BaseConverter).GetField(
+        private static readonly FieldInfo LastUpdateTimeField = typeof(BaseConverter).GetField(
             "lastUpdateTime",
             BindingFlags.Instance | BindingFlags.NonPublic
         );
@@ -162,18 +162,6 @@ namespace BackgroundResourceProcessing.Modules
         {
             base.OnStart(state);
             Converter = GetLinkedBaseConverter();
-            if (!Converter)
-                return;
-
-            var type = Converter.GetType();
-
-            // We are handling the background updates, so override the lastUpdateTime
-            // field on the converter so it doesn't do any catch-up.
-            var lastUpdateField = type.GetField(
-                "lastUpdateTime",
-                BindingFlags.Instance | BindingFlags.NonPublic
-            );
-            lastUpdateField.SetValue(Converter, Planetarium.GetUniversalTime());
         }
 
         public virtual void OnVesselRestore()
@@ -199,6 +187,10 @@ namespace BackgroundResourceProcessing.Modules
         private T GetLinkedBaseConverterCached<T>()
             where T : BaseConverter
         {
+            var existing = Converter as T;
+            if (existing != null)
+                return existing;
+
             if (cachedPersistentModuleId == null)
                 return null;
             var persistentId = (uint)cachedPersistentModuleId;
