@@ -60,9 +60,8 @@ namespace BackgroundResourceProcessing
         public override void OnLoadVessel()
         {
             var currentTime = Planetarium.GetUniversalTime();
-            var name = Vessel.GetDisplayName();
 
-            processor.UpdateInventories(name, currentTime);
+            processor.UpdateInventories(currentTime);
             processor.ApplyInventories(Vessel);
             processor.ClearVesselState();
 
@@ -90,10 +89,9 @@ namespace BackgroundResourceProcessing
             if (vessel.loaded)
                 return;
 
-            var name = Vessel.GetDisplayName();
             var state = new VesselState { CurrentTime = changepoint, Vessel = Vessel };
 
-            processor.UpdateInventories(name, changepoint);
+            processor.UpdateInventories(changepoint);
             processor.UpdateBehaviours(state);
             processor.ComputeRates();
             processor.UpdateNextChangepoint(changepoint);

@@ -54,6 +54,17 @@ namespace BackgroundResourceProcessing.Test
         {
             return JsonSerializer.Serialize(obj, options);
         }
+
+        public static void DumpProcessor(ResourceProcessor processor, string filename)
+        {
+            ConfigNode root = new();
+            ConfigNode node = root.AddNode("BRP_SHIP");
+            processor.Save(node);
+
+            Directory.CreateDirectory(Path.Combine(ProjectDirectory, "bin/ship"));
+            var path = Path.Combine(ProjectDirectory, "bin/ship", filename);
+            root.Save(path);
+        }
     }
 
     [TestClass]
@@ -72,12 +83,18 @@ namespace BackgroundResourceProcessing.Test
 
             public void Log(string message)
             {
-                output.WriteLine($"[INFO]  {message}");
+                lock (output)
+                {
+                    output.WriteLine($"[INFO]  {message}");
+                }
             }
 
             public void Warn(string message)
             {
-                output.WriteLine($"[WARN]  {message}");
+                lock (output)
+                {
+                    output.WriteLine($"[WARN]  {message}");
+                }
             }
         }
 

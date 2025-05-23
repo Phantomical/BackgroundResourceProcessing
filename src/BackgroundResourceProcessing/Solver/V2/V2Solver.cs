@@ -52,7 +52,7 @@ namespace BackgroundResourceProcessing.Solver.V2
             if (graph.HasSplitResourceEdges())
                 return new V1Solver().ComputeInventoryRates(processor);
 
-            Dictionary<int, int> converterMap = [];
+            IntMap<int> converterMap = new(processor.converters.Count);
             double[] func = new double[graph.converters.Count];
             int index = 0;
             foreach (var (converterId, converter) in graph.converters)
@@ -65,6 +65,17 @@ namespace BackgroundResourceProcessing.Solver.V2
             }
 
             LinearProblem problem = new(func);
+
+            // Constrain converter rates to be <= 1.
+            //
+            // We don't need to add >= 0 since they are implicit in the
+            // in the representation for the problem.
+            for (int i = 0; i < func.Length; ++i)
+            {
+                double[] coefs = new double[func.Length];
+                coefs[i] = 1.0;
+                problem.AddLEqualConstraint(coefs, 1.0);
+            }
 
             foreach (var (inventoryId, inventory) in graph.inventories)
             {
@@ -126,23 +137,24 @@ namespace BackgroundResourceProcessing.Solver.V2
                 }
             }
 
+            LogUtil.Log('\n', problem);
             var rates = problem.Solve();
-            return graph.ComputeInventoryRates(
-                converterMap.Select(entry => new KVPair<int, double>(
-                    entry.Key,
-                    rates[entry.Value]
-                )),
-                processor
-            );
+            LogUtil.Log($"rates: {string.Join(", ", rates)}");
+
+            IntMap<double> ratesById = new(converterMap.Capacity);
+            foreach (var (converterId, varId) in converterMap)
+                ratesById.Add(converterId, rates[varId]);
+
+            return graph.ComputeInventoryRates(ratesById, processor);
         }
 
         static double GetPriorityWeight(int priority)
         {
-            // This is chosen so that B^100 ~= 1e6, which should be sufficiently
+            // This is chosen so that B^10 ~= 1e6, which should be sufficiently
             // small that the simplex solver remains well-conditioned.
-            const double B = 1.14815;
+            const double B = 3.98107;
 
-            priority = Math.Max(Math.Min(priority, 100), -100);
+            priority = Math.Max(Math.Min(priority, 10), -10);
 
             return Math.Pow(B, priority);
         }

@@ -20,7 +20,7 @@ namespace BackgroundResourceProcessing.Core
     /// </remarks>
     public class ResourceProcessor
     {
-        public List<Converter> converters = [];
+        public List<ResourceConverter> converters = [];
         public Dictionary<InventoryId, ResourceInventory> inventories = [];
 
         public double lastUpdate = 0.0;
@@ -35,7 +35,7 @@ namespace BackgroundResourceProcessing.Core
 
             foreach (var cNode in node.GetNodes("CONVERTER"))
             {
-                Converter converter = new(null);
+                ResourceConverter converter = new(null);
                 converter.Load(cNode);
                 converters.Add(converter);
             }
@@ -67,6 +67,9 @@ namespace BackgroundResourceProcessing.Core
                 var solver = new V2Solver();
                 var rates = solver.ComputeInventoryRates(this);
 
+                foreach (var inventory in inventories.Values)
+                    inventory.rate = 0.0;
+
                 foreach (var (id, rate) in rates.KSPEnumerate())
                     if (inventories.TryGetValue(id, out var inventory))
                         inventory.rate = rate;
@@ -77,9 +80,11 @@ namespace BackgroundResourceProcessing.Core
             }
         }
 
-        public void UpdateNextChangepoint(double currentTime)
+        public double UpdateNextChangepoint(double currentTime)
         {
-            nextChangepoint = ComputeNextChangepoint(currentTime);
+            double changepoint = ComputeNextChangepoint(currentTime);
+            nextChangepoint = changepoint;
+            return changepoint;
         }
 
         public double ComputeNextChangepoint(double currentTime)
@@ -97,7 +102,7 @@ namespace BackgroundResourceProcessing.Core
                 if (inv.rate < 0.0)
                     duration = inv.amount / -inv.rate;
                 else
-                    duration = (inv.maxAmount - inv.amount) / inv.amount;
+                    duration = (inv.maxAmount - inv.amount) / inv.rate;
 
                 changepoint = Math.Min(changepoint, currentTime + duration);
             }
@@ -160,7 +165,7 @@ namespace BackgroundResourceProcessing.Core
                     behaviour.sourceModule = module.GetType().Name;
                     behaviour.sourcePart = part.name;
 
-                    var converter = new Converter(behaviour) { id = nextConverterId++ };
+                    var converter = new ResourceConverter(behaviour) { id = nextConverterId++ };
                     converter.Refresh(state);
 
                     LogUtil.Debug(() =>
@@ -238,16 +243,9 @@ namespace BackgroundResourceProcessing.Core
         /// Update the amount of resource stored in each resource.
         /// </summary>
         /// <param name="currentTime"></param>
-        public void UpdateInventories(string name, double currentTime)
+        public void UpdateInventories(double currentTime)
         {
             var deltaT = currentTime - lastUpdate;
-
-            if (deltaT < 1.0 / 30)
-            {
-                LogUtil.Warn($"Background update period for vessel {name} was less than 32ms");
-                return;
-            }
-
             foreach (var entry in inventories)
             {
                 var inventory = entry.Value;

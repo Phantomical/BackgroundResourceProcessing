@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace BackgroundResourceProcessing.Collections
 {
@@ -13,6 +14,8 @@ namespace BackgroundResourceProcessing.Collections
     /// This is meant to be similar to <c>Dictionary&lt;int, V&gt;</c> except
     /// that it performs fewer allocations since it gets allocated up-front.
     /// </remarks>
+    [DebuggerTypeProxy(typeof(IntMap<>.DebugView))]
+    [DebuggerDisplay("Count = {Count}")]
     internal class IntMap<V>(int capacity) : IEnumerable<KVPair<int, V>>
     {
         int count = 0;
@@ -25,8 +28,6 @@ namespace BackgroundResourceProcessing.Collections
 
         public int Count => count;
         public int Capacity => present.Length;
-
-        public bool IsReadOnly => false;
 
         public V this[int key]
         {
@@ -102,7 +103,7 @@ namespace BackgroundResourceProcessing.Collections
             return true;
         }
 
-        IEnumerator<KVPair<int, V>> GetEnumerator()
+        public IEnumerator<KVPair<int, V>> GetEnumerator()
         {
             return new Enumerator(this);
         }
@@ -297,6 +298,24 @@ namespace BackgroundResourceProcessing.Collections
             IEnumerator IEnumerable.GetEnumerator()
             {
                 return GetEnumerator();
+            }
+        }
+
+        private sealed class DebugView(IntMap<V> map)
+        {
+            private readonly IntMap<V> map = map;
+
+            [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
+            public KeyValuePair<int, V>[] Items
+            {
+                get
+                {
+                    KeyValuePair<int, V>[] array = new KeyValuePair<int, V>[map.Count];
+                    int index = 0;
+                    foreach (var (key, value) in map)
+                        array[index++] = new(key, value);
+                    return array;
+                }
             }
         }
     }

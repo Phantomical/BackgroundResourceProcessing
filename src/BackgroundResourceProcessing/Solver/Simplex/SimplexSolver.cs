@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Text;
 using BackgroundResourceProcessing.Collections;
 
 namespace BackgroundResourceProcessing.Solver.Simplex
@@ -99,6 +100,23 @@ namespace BackgroundResourceProcessing.Solver.Simplex
 
             for (int i = 0; i < width; ++i)
                 this[i, dst] += this[i, src] * scale;
+        }
+
+        public override string ToString()
+        {
+            StringBuilder builder = new();
+
+            for (int y = 0; y < Height; ++y)
+            {
+                for (int x = 0; x < Width; ++x)
+                {
+                    builder.Append($"{this[x, y], 5:G3}, ");
+                }
+
+                builder.Append("\n");
+            }
+
+            return builder.ToString();
         }
     }
 
@@ -271,9 +289,13 @@ namespace BackgroundResourceProcessing.Solver.Simplex
                 if (pivot < 0)
                     break;
 
+                // LogUtil.Log($"Pivoting on column {pivot}:\n{tableau}");
+
                 if (!Pivot(tableau, pivot))
                     break;
             }
+
+            // LogUtil.Log($"Final:\n{tableau}");
         }
 
         private static int SelectPivot(Matrix tableau)
@@ -304,10 +326,17 @@ namespace BackgroundResourceProcessing.Solver.Simplex
 
             for (int i = 1; i < tableau.Height; ++i)
             {
-                var quotient = tableau[tableau.Width - 1, i] / tableau[pivot, i];
-                // Note: this if statement is specifically this way so that we
-                //       skip the element if quotient is NaN.
-                if (!(quotient < value))
+                var denom = tableau[pivot, i];
+                var numer = tableau[tableau.Width - 1, i];
+                var quotient = numer / denom;
+
+                // LogUtil.Log($"Checking row {i}: {numer:G3}/{denom:G3} = {quotient:G3}");
+
+                if (denom <= 0.0)
+                    continue;
+                if (quotient < 0.0)
+                    continue;
+                if (quotient >= value)
                     continue;
 
                 index = i;
@@ -318,6 +347,8 @@ namespace BackgroundResourceProcessing.Solver.Simplex
                 return false;
             Debug.Assert(value != double.PositiveInfinity);
 
+            // LogUtil.Log($"Selecting row {index}");
+
             tableau.ScaleRow(index, 1.0 / tableau[pivot, index]);
             for (int i = 0; i < tableau.Height; ++i)
             {
@@ -325,6 +356,107 @@ namespace BackgroundResourceProcessing.Solver.Simplex
                     continue;
 
                 tableau.Reduce(i, index, -tableau[pivot, i]);
+            }
+
+            return true;
+        }
+
+        public override string ToString()
+        {
+            StringBuilder builder = new();
+
+            builder.Append("maximize Z = ");
+
+            {
+                bool first = true;
+                for (int i = 0; i < func.Length; ++i)
+                {
+                    if (!RenderCoef(builder, func[i], $"x{i}", ref first))
+                        continue;
+                }
+
+                if (first)
+                    builder.Append("0.0");
+            }
+
+            builder.Append("\nsubject to\n");
+            foreach (var constraint in constraints)
+            {
+                bool first = true;
+                for (int i = 0; i < constraint.coefs.Length; ++i)
+                    if (!RenderCoef(builder, constraint.coefs[i], $"x{i}", ref first))
+                        continue;
+
+                if (constraint.slack != -1)
+                    RenderCoef(builder, constraint.scoef, $"S{constraint.slack}", ref first);
+
+                if (first)
+                    builder.Append("0.0");
+
+                builder.Append($" == {constraint.value:G}\n");
+            }
+
+            {
+                bool first = true;
+                for (int i = 0; i < nvars; ++i)
+                {
+                    if (first)
+                        first = false;
+                    else
+                        builder.Append(",");
+                    builder.Append($"x{i}");
+                }
+
+                for (int i = 0; i < slackCount; ++i)
+                {
+                    if (first)
+                        first = false;
+                    else
+                        builder.Append(",");
+                    builder.Append($"S{i}");
+                }
+
+                if (!first)
+                    builder.Append(" >= 0");
+            }
+
+            return builder.ToString();
+        }
+
+        private bool RenderCoef(StringBuilder builder, double coef, string var, ref bool first)
+        {
+            if (coef == 0.0)
+                return false;
+
+            if (Math.Abs(coef) != 1.0)
+            {
+                if (first)
+                {
+                    builder.Append($"{coef:G3}");
+                    first = false;
+                }
+                else if (coef < 0)
+                    builder.Append($" - {-coef:G3}");
+                else
+                    builder.Append($" + {coef:G3}");
+
+                builder.Append("*");
+                builder.Append(var);
+            }
+            else
+            {
+                if (first)
+                {
+                    if (coef < 0.0)
+                        builder.Append('-');
+                    first = false;
+                }
+                else if (coef < 0.0)
+                    builder.Append(" - ");
+                else
+                    builder.Append(" + ");
+
+                builder.Append(var);
             }
 
             return true;

@@ -72,5 +72,29 @@ namespace BackgroundResourceProcessing.Test.Solver
             Assert.AreEqual(0.0, soln[0]);
             Assert.AreEqual(5.0, soln[2], 1e-6);
         }
+
+        // This is derived from an actual test case that ended up returning NaNs
+        // when optimizing.
+        [TestMethod]
+        public void RegressionNan1()
+        {
+            LinearProblem problem = new([1.0, 7.96, 3, 1]);
+
+            problem.AddLEqualConstraint([1, 0, 0, 0], 1);
+            problem.AddLEqualConstraint([0, 1, 0, 0], 1);
+            problem.AddLEqualConstraint([0, 0, 1, 0], 1);
+            problem.AddLEqualConstraint([0, 0, 0, 1], 1);
+
+            problem.AddLEqualConstraint([-37.46, 0, 54, -9.375], 0.0);
+
+            LogUtil.Log(problem);
+
+            var soln = problem.Solve();
+
+            Assert.AreEqual(1, soln[0], 1e-6);
+            Assert.AreEqual(1, soln[1], 1e-6);
+            Assert.AreEqual(9367.0 / 10800.0, soln[2], 1e-6);
+            Assert.AreEqual(1, soln[3], 1e-6);
+        }
     }
 }

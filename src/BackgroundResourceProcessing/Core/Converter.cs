@@ -6,7 +6,7 @@ using Smooth.Collections;
 
 namespace BackgroundResourceProcessing.Core
 {
-    public class Converter(ConverterBehaviour behaviour)
+    public class ResourceConverter(ConverterBehaviour behaviour)
     {
         public Dictionary<string, HashSet<uint>> push = [];
         public Dictionary<string, HashSet<uint>> pull = [];

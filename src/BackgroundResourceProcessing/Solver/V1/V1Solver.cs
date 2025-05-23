@@ -47,7 +47,7 @@ namespace BackgroundResourceProcessing.Solver.V1
         Dictionary<string, InventoryState> constraints;
         Dictionary<string, double> resourceRates;
         List<double> converterRates;
-        List<Core.Converter> converters;
+        List<Core.ResourceConverter> converters;
 
         public Dictionary<string, InventoryState> Constraints => constraints;
         public Dictionary<string, double> ResourceRates => resourceRates;
@@ -204,7 +204,7 @@ namespace BackgroundResourceProcessing.Solver.V1
             return madeChange;
         }
 
-        private double GetPermittedRate(Core.Converter converter)
+        private double GetPermittedRate(Core.ResourceConverter converter)
         {
             double rate = 1.0;
 
@@ -242,7 +242,7 @@ namespace BackgroundResourceProcessing.Solver.V1
             return rate;
         }
 
-        private List<Core.Converter> ComputeConverterTopologicalSort()
+        private List<Core.ResourceConverter> ComputeConverterTopologicalSort()
         {
             Dictionary<string, HashSet<int>> inputs = [];
 
@@ -285,7 +285,7 @@ namespace BackgroundResourceProcessing.Solver.V1
             // by priority (within the bounds of a topological sort) so we use
             // a priority queue.
             PriorityQueue<int, int> queue = new();
-            List<Core.Converter> converters = new(processor.converters.Count);
+            List<Core.ResourceConverter> converters = new(processor.converters.Count);
             foreach (var (dest, sources) in reverse.KSPEnumerate())
             {
                 if (sources.Count != 0)

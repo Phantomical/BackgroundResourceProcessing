@@ -74,7 +74,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
         }
 
         public List<int> ids;
-        public List<Converter> converters;
+        public List<Core.ResourceConverter> converters;
 
         /// <summary>
         /// The input resources for this converter and their rates.
@@ -91,7 +91,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
         /// </summary>
         public HashSet<string> constraints = [];
 
-        private GraphConverter(int id, Converter converter)
+        private GraphConverter(int id, Core.ResourceConverter converter)
         {
             ids = [id];
             converters = [converter];
@@ -99,7 +99,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
 
         public static GraphConverter Build(
             int id,
-            Converter converter,
+            Core.ResourceConverter converter,
             Dictionary<string, double> totals
         )
         {
@@ -405,7 +405,6 @@ namespace BackgroundResourceProcessing.Solver.Graph
         /// </summary>
         /// <param name="rates"></param>
         /// <returns></returns>
-        /// <exception cref="NotImplementedException"></exception>
         public IntMap<double> ComputeLogicalInventoryRates(IEnumerable<KVPair<int, double>> rates)
         {
             // Rates for the logical inventories
@@ -424,7 +423,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
                     var input = converter.inputs[inventory.resourceName];
 
                     inventoryRates.TryAdd(inventoryId, 0.0);
-                    inventoryRates[inventoryId] -= input.rate;
+                    inventoryRates[inventoryId] -= input.rate * rate;
                 }
 
                 foreach (var id2 in outputs.GetConverterEntry(converterId))
@@ -435,7 +434,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
                     var output = converter.outputs[inventory.resourceName];
 
                     inventoryRates.TryAdd(inventoryId, 0.0);
-                    inventoryRates[inventoryId] += output.rate;
+                    inventoryRates[inventoryId] += output.rate * rate;
                 }
             }
 
@@ -483,7 +482,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
                     foreach (var subid in inventory.ids)
                     {
                         var real = processor.inventories[subid];
-                        if (real.Empty)
+                        if (real.Full)
                         {
                             result.Add(subid, 0.0);
                             continue;
