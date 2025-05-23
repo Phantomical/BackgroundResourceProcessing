@@ -1,4 +1,3 @@
-using System.Security.Cryptography.X509Certificates;
 using BackgroundResourceProcessing.Solver.Simplex;
 
 namespace BackgroundResourceProcessing.Test.Solver
@@ -86,8 +85,6 @@ namespace BackgroundResourceProcessing.Test.Solver
             problem.AddLEqualConstraint([0, 0, 0, 1], 1);
 
             problem.AddLEqualConstraint([-37.46, 0, 54, -9.375], 0.0);
-
-            LogUtil.Log(problem);
 
             var soln = problem.Solve();
 

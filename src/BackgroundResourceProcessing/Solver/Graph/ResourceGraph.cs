@@ -289,8 +289,6 @@ namespace BackgroundResourceProcessing.Solver.Graph
                     if (!outputEdges.SetEquals(otherOutputs))
                         continue;
 
-                    LogUtil.Debug(() => $"Merged inventories {inventoryId} and {otherId}");
-
                     inventory.Merge(otherInv);
                     inventoryIds.Union(inventoryId, otherId);
                     inputs.RemoveInventory(otherId);
@@ -349,8 +347,6 @@ namespace BackgroundResourceProcessing.Solver.Graph
                         continue;
                     if (!outputEdges.SetEquals(otherOutputs))
                         continue;
-
-                    LogUtil.Debug(() => $"Merged converters {converterId} and {otherId}");
 
                     converter.Merge(otherConverter);
                     converterIds.Union(converterId, otherId);

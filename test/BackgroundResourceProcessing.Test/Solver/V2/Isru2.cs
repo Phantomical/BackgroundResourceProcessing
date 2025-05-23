@@ -14,7 +14,7 @@ namespace BackgroundResourceProcessing.Test.Solver.V2
             {
                 processor.ComputeRates();
                 currentTime = processor.UpdateNextChangepoint(currentTime);
-                TestUtil.DumpProcessor(processor, $"ship-{i}.cfg");
+                // TestUtil.DumpProcessor(processor, $"ship-{i}.cfg");
 
                 if (double.IsNaN(currentTime) || double.IsInfinity(currentTime))
                     break;

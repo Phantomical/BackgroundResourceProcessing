@@ -137,9 +137,7 @@ namespace BackgroundResourceProcessing.Solver.V2
                 }
             }
 
-            LogUtil.Log('\n', problem);
             var rates = problem.Solve();
-            LogUtil.Log($"rates: {string.Join(", ", rates)}");
 
             IntMap<double> ratesById = new(converterMap.Capacity);
             foreach (var (converterId, varId) in converterMap)
