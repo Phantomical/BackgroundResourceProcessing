@@ -14,7 +14,7 @@ namespace BackgroundResourceProcessing.Modules
         : BackgroundConverter,
             IBackgroundVesselRestoreHandler
     {
-        private static readonly FieldInfo LastUpdateTimeField = typeof(BaseConverter).GetField(
+        private static FieldInfo LastUpdateTimeField = typeof(BaseConverter).GetField(
             "lastUpdateTime",
             BindingFlags.Instance | BindingFlags.NonPublic
         );
