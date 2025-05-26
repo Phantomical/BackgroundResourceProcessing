@@ -61,11 +61,23 @@ namespace BackgroundResourceProcessing.Modules
             );
             recipe.SetOutputs(outputs);
 
-            // We want to connect drills to only the asteroid mass resource
-            // belonging to the asteroid they are connected to.
-            UpdatePartCrossfeedSet(potato);
-
             return recipe;
+        }
+
+        public override BackgroundResourceSet GetLinkedBackgroundResources()
+        {
+            var potato = GetDrillPotato();
+            if (potato == null)
+                return null;
+
+            var synchronizer =
+                potato.FindModuleImplementing<ModuleBackgroundSpaceObjectResourceSynchronizer>();
+            if (synchronizer == null)
+                return null;
+
+            var resourceSet = new BackgroundResourceSet();
+            resourceSet.AddPullResource(synchronizer);
+            return resourceSet;
         }
 
         protected override bool IsConverterEnabled()
@@ -82,30 +94,6 @@ namespace BackgroundResourceProcessing.Modules
 
         protected abstract Part GetDrillPotato();
         protected abstract ModuleSpaceObjectInfo GetDrillInfo();
-
-        // We want this drill to be connected to only the asteroid that it is
-        // drilling from.
-        private void UpdatePartCrossfeedSet(Part potato)
-        {
-            var asteroidMassResource = potato.Resources.Get(MassResourceName);
-            if (asteroidMassResource == null)
-                return;
-
-            var resourceId = asteroidMassResource.resourceName.GetHashCode();
-            var prioritySet = part.crossfeedPartSet.GetResourceList(
-                resourceId,
-                pulling: true,
-                simulate: false
-            );
-
-            if (prioritySet.set.Contains(asteroidMassResource))
-                return;
-
-            prioritySet.set.Add(asteroidMassResource);
-            if (prioritySet.lists.Count == 0)
-                prioritySet.lists.Add([]);
-            prioritySet.lists[0].Add(asteroidMassResource);
-        }
 
         protected abstract IEnumerable<ModuleSpaceObjectResource> GetPotatoResources(Part potato);
     }

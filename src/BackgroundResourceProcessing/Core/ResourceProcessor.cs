@@ -113,6 +113,13 @@ namespace BackgroundResourceProcessing.Core
             return changepoint;
         }
 
+        private struct BackgroundInventoryEntry()
+        {
+            public int converterId;
+            public bool push;
+            public IBackgroundPartResource resource;
+        }
+
         public void RecordVesselState(Vessel vessel, double currentTime)
         {
             ClearVesselState();
@@ -120,6 +127,15 @@ namespace BackgroundResourceProcessing.Core
             lastUpdate = currentTime;
 
             LogUtil.Debug(() => $"Recording vessel state for vessel {vessel.GetDisplayName()}");
+
+            RecordPartResources(state);
+            var entries = RecordConverters(state);
+            RecordBackgroundPartResources(entries);
+        }
+
+        private void RecordPartResources(VesselState state)
+        {
+            var vessel = state.Vessel;
 
             foreach (var part in vessel.Parts)
             {
@@ -138,13 +154,19 @@ namespace BackgroundResourceProcessing.Core
                     );
                 }
             }
+        }
+
+        private List<BackgroundInventoryEntry> RecordConverters(VesselState state)
+        {
+            var vessel = state.Vessel;
 
             int nextConverterId = 0;
+            List<BackgroundInventoryEntry> entries = [];
             foreach (var part in vessel.Parts)
             {
                 LogUtil.Debug(() => $"Inspecting part {part.name} for converters");
 
-                var converters = part.FindModulesImplementing<IBackgroundConverter>();
+                var converters = part.FindModulesImplementing<BackgroundConverter>();
 
                 // No point calculating linked inventories if there are no
                 // background modules on the current part.
@@ -155,7 +177,19 @@ namespace BackgroundResourceProcessing.Core
                 {
                     LogUtil.Debug(() => $"Found converter module: {module.GetType().Name}");
 
-                    var behaviour = module.GetBehaviour();
+                    ConverterBehaviour behaviour;
+                    try
+                    {
+                        behaviour = module.GetBehaviour();
+                    }
+                    catch (Exception e)
+                    {
+                        LogUtil.Error(
+                            $"{module.GetType().Name}.GetBehaviour threw an exception: {e}"
+                        );
+                        continue;
+                    }
+
                     if (behaviour == null)
                     {
                         LogUtil.Debug(() => $"Converter behaviour was null");
@@ -209,7 +243,112 @@ namespace BackgroundResourceProcessing.Core
                     }
 
                     this.converters.Add(converter);
+
+                    BackgroundResourceSet linked;
+                    try
+                    {
+                        linked = module.GetLinkedBackgroundResources();
+                    }
+                    catch (Exception e)
+                    {
+                        LogUtil.Error(
+                            $"{module.GetType().Name}.GetLinkedBackgroundResources threw an exception: {e}"
+                        );
+                        continue;
+                    }
+
+                    if (linked == null)
+                        continue;
+
+                    if (linked.pull != null)
+                    {
+                        foreach (var resource in linked.pull)
+                        {
+                            entries.Add(
+                                new()
+                                {
+                                    converterId = this.converters.Count - 1,
+                                    push = false,
+                                    resource = resource,
+                                }
+                            );
+                        }
+                    }
+
+                    if (linked.push != null)
+                    {
+                        foreach (var resource in linked.push)
+                        {
+                            entries.Add(
+                                new()
+                                {
+                                    converterId = this.converters.Count - 1,
+                                    push = true,
+                                    resource = resource,
+                                }
+                            );
+                        }
+                    }
                 }
+            }
+
+            return entries;
+        }
+
+        private void RecordBackgroundPartResources(List<BackgroundInventoryEntry> entries)
+        {
+            foreach (var entry in entries)
+            {
+                FakePartResource resource;
+                try
+                {
+                    resource = entry.resource.GetResource();
+                }
+                catch (Exception e)
+                {
+                    LogUtil.Error(
+                        $"{entry.resource.GetType().Name}.GetResource call threw an exception: {e}"
+                    );
+                    continue;
+                }
+
+                if (resource == null)
+                    continue;
+
+                if (entry.resource is not PartModule module)
+                {
+                    LogUtil.Error(
+                        $"IBackgroundPartResource implementer {entry.resource.GetType().Name} is not a PartModule"
+                    );
+                    continue;
+                }
+
+                if (module.part == null)
+                {
+                    LogUtil.Error(
+                        $"IBackgroundPartResource implementer {entry.resource.GetType().Name} is not attached to a part"
+                    );
+                    continue;
+                }
+
+                var part = module.part;
+                if (resource.amount < 0.0 || !double.IsFinite(resource.amount))
+                {
+                    LogUtil.Error(
+                        $"Module {module.GetType().Name} on part {part.partName} returned ",
+                        $"a FakePartResource with invalid resource amount {resource.amount}"
+                    );
+                    continue;
+                }
+
+                var inventory = new ResourceInventory(resource, module);
+                inventories.Add(inventory.Id, inventory);
+
+                var converter = converters[entry.converterId];
+                if (entry.push)
+                    converter.AddPushInventory(inventory.Id);
+                else
+                    converter.AddPullInventory(inventory.Id);
             }
         }
 
@@ -275,11 +414,34 @@ namespace BackgroundResourceProcessing.Core
                 if (!parts.TryGetValue(inventory.partId, out var part))
                     continue;
 
-                var resource = part.Resources.Get(inventory.resourceName);
-                if (resource == null)
-                    continue;
+                if (inventory.moduleId == null)
+                {
+                    var resource = part.Resources.Get(inventory.resourceName);
+                    if (resource == null)
+                        continue;
 
-                resource.amount = Math.Min(inventory.amount, resource.maxAmount);
+                    resource.amount = Math.Min(inventory.amount, resource.maxAmount);
+                }
+                else
+                {
+                    var module = part.Modules[(uint)inventory.moduleId];
+                    if (module == null)
+                        continue;
+
+                    if (module is not IBackgroundPartResource resource)
+                        continue;
+
+                    try
+                    {
+                        resource.UpdateStoredAmount(inventory.amount);
+                    }
+                    catch (Exception e)
+                    {
+                        LogUtil.Error(
+                            $"{module.GetType().Name}.UpdateStoredAmount threw an exception: {e}"
+                        );
+                    }
+                }
             }
         }
 

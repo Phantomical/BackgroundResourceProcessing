@@ -1,14 +1,17 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-
 namespace BackgroundResourceProcessing.Modules
 {
     public class ModuleBackgroundResourceHarvester : ModuleBackgroundResourceConverter
     {
+        /// <summary>
+        /// The resource that is being harvested.
+        /// </summary>
         [KSPField]
         public string ResourceName;
 
+        /// <summary>
+        /// The type of this harvester. This corresponds to the values of the
+        /// <see cref="HarvestTypes"/> enum.
+        /// </summary>
         [KSPField]
         public int HarvesterType = 0;
 
@@ -17,6 +20,9 @@ namespace BackgroundResourceProcessing.Modules
 
         [KSPField]
         public double Efficiency = 1.0;
+
+        [KSPField]
+        public ResourceFlowMode FlowMode = ResourceFlowMode.NULL;
 
         protected ModuleResourceHarvester Harvester => (ModuleResourceHarvester)Converter;
 
@@ -46,7 +52,7 @@ namespace BackgroundResourceProcessing.Modules
                         ResourceName = ResourceName,
                         Ratio = rate,
                         DumpExcess = type == HarvestTypes.Atmospheric,
-                        FlowMode = ResourceFlowMode.NULL,
+                        FlowMode = FlowMode,
                     },
                 ]
             );

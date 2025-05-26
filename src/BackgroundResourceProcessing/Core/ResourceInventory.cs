@@ -1,23 +1,33 @@
+using BackgroundResourceProcessing.Utils;
+
 namespace BackgroundResourceProcessing.Core
 {
-    public struct InventoryId(uint partId, string resourceName)
+    public struct InventoryId(uint partId, string resourceName, uint? moduleId = null)
     {
         public uint partId = partId;
+        public uint? moduleId = moduleId;
         public string resourceName = resourceName;
 
-        public InventoryId(PartResource resource)
-            : this(resource.part.persistentId, resource.resourceName) { }
+        public InventoryId(PartResource resource, uint? moduleId = null)
+            : this(resource.part.persistentId, resource.resourceName, moduleId) { }
 
         public void Load(ConfigNode node)
         {
             node.TryGetValue("partId", ref partId);
             node.TryGetValue("resourceName", ref resourceName);
+
+            uint moduleId = 0;
+            if (node.TryGetValue("moduleId", ref moduleId))
+                this.moduleId = moduleId;
         }
 
         public void Save(ConfigNode node)
         {
             node.AddValue("partId", partId);
             node.AddValue("resourceName", resourceName);
+
+            if (moduleId != null)
+                node.AddValue("moduleId", (uint)moduleId);
         }
     }
 
@@ -31,6 +41,11 @@ namespace BackgroundResourceProcessing.Core
         /// vessel goes off the rails.
         /// </summary>
         public uint partId;
+
+        /// <summary>
+        /// The persistent ID of the module implementing <see cref="IBackgroundPartResource"/>.
+        /// </summary>
+        public uint? moduleId;
 
         /// <summary>
         /// The name of the resource stored in this inventory.
@@ -57,7 +72,7 @@ namespace BackgroundResourceProcessing.Core
         public bool Full => maxAmount - amount < 1e-6;
         public bool Empty => amount < 1e-6;
 
-        public InventoryId Id => new(partId, resourceName);
+        public InventoryId Id => new(partId, resourceName, moduleId);
 
         public ResourceInventory() { }
 
@@ -66,6 +81,17 @@ namespace BackgroundResourceProcessing.Core
             var part = resource.part;
 
             partId = part.persistentId;
+            resourceName = resource.resourceName;
+            amount = resource.amount;
+            maxAmount = resource.maxAmount;
+        }
+
+        public ResourceInventory(FakePartResource resource, PartModule module)
+        {
+            var part = module.part;
+
+            partId = part.persistentId;
+            moduleId = module.PersistentId;
             resourceName = resource.resourceName;
             amount = resource.amount;
             maxAmount = resource.maxAmount;
@@ -85,7 +111,7 @@ namespace BackgroundResourceProcessing.Core
             node.TryGetValue("partId", ref partId);
             node.TryGetValue("resourceName", ref resourceName);
             node.TryGetValue("amount", ref amount);
-            node.TryGetValue("maxAmount", ref maxAmount);
+            node.TryGetDouble("maxAmount", ref maxAmount);
             node.TryGetValue("rate", ref rate);
         }
     }

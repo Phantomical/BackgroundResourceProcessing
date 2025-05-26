@@ -1,17 +1,7 @@
+using System.Collections.Generic;
+
 namespace BackgroundResourceProcessing.Modules
 {
-    /// <summary>
-    /// A resource converter that works in the background.
-    /// </summary>
-    public interface IBackgroundConverter
-    {
-        /// <summary>
-        /// Get the <see cref="ConverterBehaviour"/> that describes the
-        /// resources consumed, produced, and required by this part.
-        /// </summary>
-        public ConverterBehaviour GetBehaviour();
-    }
-
     /// <summary>
     /// Interface mixin for part modules that want to run behaviours right
     /// after inventories are restored.
@@ -46,7 +36,7 @@ namespace BackgroundResourceProcessing.Modules
     /// into a <see cref="ConverterBehaviour"/> that can persist beyond when
     /// the current vessel is unloaded.
     /// </remarks>
-    public abstract class BackgroundConverter : PartModule, IBackgroundConverter
+    public abstract class BackgroundConverter : PartModule
     {
         /// <summary>
         /// The priority with which this converter will consume produced resources.
@@ -66,6 +56,20 @@ namespace BackgroundResourceProcessing.Modules
         /// resources consumed, produced, and required by this part.
         /// </summary>
         protected abstract ConverterBehaviour GetConverterBehaviour();
+
+        /// <summary>
+        /// Get the set of <see cref="IBackgroundPartResource"/> instances that
+        /// this converter can access.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// This can return <c>null</c> and it will be treated the same as
+        /// returning an empty resource set.
+        /// </remarks>
+        public virtual BackgroundResourceSet GetLinkedBackgroundResources()
+        {
+            return null;
+        }
 
         public override void OnLoad(ConfigNode node)
         {

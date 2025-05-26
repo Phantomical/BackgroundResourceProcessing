@@ -8,7 +8,7 @@ namespace BackgroundResourceProcessing.Modules
     /// </summary>
     public sealed class ModuleBackgroundSpaceObjectResourceSynchronizer
         : PartModule,
-            IBackgroundVesselRestoreHandler
+            IBackgroundPartResource
     {
         [KSPField]
         public string ResourceName;
@@ -16,84 +16,31 @@ namespace BackgroundResourceProcessing.Modules
         private ModuleSpaceObjectInfo info;
         private BackgroundResourceProcessor processor;
 
-        public override void OnStart(StartState state)
+        public FakePartResource GetResource()
         {
-            base.OnStart(state);
-
-            var module = GetLinkedProcessor();
-            if (module == null)
-                return;
-
-            LogUtil.Debug(() =>
-                $"Registering for OnBeforeVesselRecord for vessel {vessel.GetName()}"
-            );
-            BackgroundResourceProcessor.OnBeforeVesselRecord.Add(OnBeforeVesselRecord);
-        }
-
-        void OnDestroy()
-        {
-            var module = GetLinkedProcessor();
-            if (module == null)
-                return;
-
-            LogUtil.Debug(() =>
-                $"Unregistering for OnBeforeVesselRecord for vessel {vessel.GetName()}"
-            );
-            BackgroundResourceProcessor.OnBeforeVesselRecord.Remove(OnBeforeVesselRecord);
-        }
-
-        public void OnVesselRestore()
-        {
-            var resource = part.Resources.Get(ResourceName);
             var info = GetLinkedInfo();
-            if (info == null || resource == null)
-                return;
-
-            var current = info.currentMassVal;
-            var threshold = info.massThresholdVal;
-            var expected = Math.Max(current - threshold, 0.0);
-
-            if (Math.Abs(expected - resource.maxAmount) > 1.0)
+            if (info == null)
             {
-                if (resource.maxAmount != 0.0)
-                {
-                    LogUtil.Warn(
-                        $"SpaceObject {vessel.GetDisplayName()} mass was not updated because ",
-                        $"resource mass was significantly different from expected mass: ",
-                        $"(asteroid mass = {expected}, resource maxAmount = {resource.maxAmount})"
-                    );
-                }
-
-                return;
+                LogUtil.Warn($"{GetType().Name}: SpaceObject has no linked ModuleSpaceObjectInfo");
+                return null;
             }
 
-            info.currentMassVal = threshold + resource.amount;
-
-            resource.amount = 0.0;
-            resource.maxAmount = 0.0;
-        }
-
-        private void OnBeforeVesselRecord()
-        {
-            LogUtil.Log($"{GetType().Name}: OnBeforeVesselRecord");
-            var resource = part.Resources.Get(ResourceName);
-            var info = GetLinkedInfo();
-            if (info == null || resource == null)
+            FakePartResource resource = new()
             {
-                if (resource == null)
-                    LogUtil.Warn($"{GetType().Name}: SpaceObject has no resource {ResourceName}");
-                if (info == null)
-                    LogUtil.Warn(
-                        $"{GetType().Name}: SpaceObject has no linked ModuleSpaceObjectInfo"
-                    );
-                return;
-            }
-
-            LogUtil.Log($"currentMass:   {info.currentMass}");
-            LogUtil.Log($"massThreshold: {info.massThreshold}");
-
-            resource.amount = Math.Max(info.currentMassVal - info.massThresholdVal, 0.0);
+                resourceName = ResourceName,
+                amount = Math.Max(info.currentMassVal - info.massThresholdVal, 0.0),
+            };
             resource.maxAmount = resource.amount;
+            return resource;
+        }
+
+        public void UpdateStoredAmount(double amount)
+        {
+            var info = GetLinkedInfo();
+            if (info == null)
+                return;
+
+            info.currentMassVal = info.massThresholdVal + amount;
         }
 
         private ModuleSpaceObjectInfo GetLinkedInfo()

@@ -53,6 +53,13 @@ namespace BackgroundResourceProcessing.Modules
         public double? MaximumThermalEfficiency = null;
 
         /// <summary>
+        /// An additional efficiency multiplier to be used on top of the
+        /// existing efficiency multipliers.
+        /// </summary>
+        [KSPField]
+        public double EfficiencyMultiplier = 1.0;
+
+        /// <summary>
         /// The input, output, and required units are provided in terms of mass
         /// and will be converted to KSP units on start.
         /// </summary>
@@ -107,7 +114,7 @@ namespace BackgroundResourceProcessing.Modules
         /// <returns></returns>
         protected virtual double GetOptimalEfficiencyBonus()
         {
-            double bonus = 1.0;
+            double bonus = EfficiencyMultiplier;
 
             foreach (var (_, modifier) in Converter.EfficiencyModifiers.KSPEnumerate())
                 bonus *= modifier;

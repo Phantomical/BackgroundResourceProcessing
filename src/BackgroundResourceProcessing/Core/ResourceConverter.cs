@@ -8,8 +8,8 @@ namespace BackgroundResourceProcessing.Core
 {
     public class ResourceConverter(ConverterBehaviour behaviour)
     {
-        public Dictionary<string, HashSet<uint>> push = [];
-        public Dictionary<string, HashSet<uint>> pull = [];
+        public Dictionary<string, HashSet<InventoryId>> push = [];
+        public Dictionary<string, HashSet<InventoryId>> pull = [];
 
         public ConverterBehaviour behaviour = behaviour;
 
@@ -93,22 +93,14 @@ namespace BackgroundResourceProcessing.Core
 
             foreach (var entry in push)
             {
-                var resourceName = entry.Key;
-                foreach (var partId in entry.Value)
-                {
-                    var inner = node.AddNode("PUSH_INVENTORY");
-                    new InventoryId(partId, resourceName).Save(inner);
-                }
+                foreach (var id in entry.Value)
+                    id.Save(node.AddNode("PUSH_INVENTORY"));
             }
 
             foreach (var entry in pull)
             {
-                var resourceName = entry.Key;
-                foreach (var partId in entry.Value)
-                {
-                    var inner = node.AddNode("PULL_INVENTORY");
-                    new InventoryId(partId, resourceName).Save(inner);
-                }
+                foreach (var id in entry.Value)
+                    id.Save(node.AddNode("PULL_INVENTORY"));
             }
 
             behaviour.Save(node.AddNode("BEHAVIOUR"));
@@ -125,7 +117,7 @@ namespace BackgroundResourceProcessing.Core
                 push.Add(id.resourceName, list);
             }
 
-            list.Add(id.partId);
+            list.Add(id);
         }
 
         public void AddPullInventory(InventoryId id)
@@ -136,7 +128,7 @@ namespace BackgroundResourceProcessing.Core
                 pull.Add(id.resourceName, list);
             }
 
-            list.Add(id.partId);
+            list.Add(id);
         }
     }
 

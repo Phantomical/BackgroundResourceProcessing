@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessin
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessing.Test", "test\BackgroundResourceProcessing.Test\BackgroundResourceProcessing.Test.csproj", "{C2F9D2FF-ABF9-4FE4-B7A7-FB4FBE4B7C14}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessing.Integration.EL", "src\BackgroundResourceProcessing.Integration.EL\BackgroundResourceProcessing.Integration.EL.csproj", "{C1E83CB8-3EE0-4165-0A96-A230133CC1D1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{C2F9D2FF-ABF9-4FE4-B7A7-FB4FBE4B7C14}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C2F9D2FF-ABF9-4FE4-B7A7-FB4FBE4B7C14}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C2F9D2FF-ABF9-4FE4-B7A7-FB4FBE4B7C14}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C1E83CB8-3EE0-4165-0A96-A230133CC1D1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C1E83CB8-3EE0-4165-0A96-A230133CC1D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C1E83CB8-3EE0-4165-0A96-A230133CC1D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C1E83CB8-3EE0-4165-0A96-A230133CC1D1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
