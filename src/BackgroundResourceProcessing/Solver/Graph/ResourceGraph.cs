@@ -233,8 +233,8 @@ namespace BackgroundResourceProcessing.Solver.Graph
                     if (!converter.inputs.ContainsKey(resourceName))
                         continue;
 
-                    foreach (var partId in inventories)
-                        inputs.Add(id, idMap[new InventoryId(partId, resourceName)]);
+                    foreach (var invId in inventories)
+                        inputs.Add(id, idMap[invId]);
                 }
 
                 foreach (var (resourceName, inventories) in converter.push.KSPEnumerate())
@@ -242,8 +242,8 @@ namespace BackgroundResourceProcessing.Solver.Graph
                     if (!converter.outputs.ContainsKey(resourceName))
                         continue;
 
-                    foreach (var partId in inventories)
-                        outputs.Add(id, idMap[new InventoryId(partId, resourceName)]);
+                    foreach (var invId in inventories)
+                        outputs.Add(id, idMap[invId]);
                 }
             }
         }

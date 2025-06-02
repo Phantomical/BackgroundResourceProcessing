@@ -299,22 +299,6 @@ namespace BackgroundResourceProcessing.Core
         {
             foreach (var entry in entries)
             {
-                FakePartResource resource;
-                try
-                {
-                    resource = entry.resource.GetResource();
-                }
-                catch (Exception e)
-                {
-                    LogUtil.Error(
-                        $"{entry.resource.GetType().Name}.GetResource call threw an exception: {e}"
-                    );
-                    continue;
-                }
-
-                if (resource == null)
-                    continue;
-
                 if (entry.resource is not PartModule module)
                 {
                     LogUtil.Error(
@@ -331,24 +315,43 @@ namespace BackgroundResourceProcessing.Core
                     continue;
                 }
 
-                var part = module.part;
-                if (resource.amount < 0.0 || !double.IsFinite(resource.amount))
+                IEnumerable<FakePartResource> resources;
+                try
+                {
+                    resources = entry.resource.GetResources();
+                }
+                catch (Exception e)
                 {
                     LogUtil.Error(
-                        $"Module {module.GetType().Name} on part {part.partName} returned ",
-                        $"a FakePartResource with invalid resource amount {resource.amount}"
+                        $"{entry.resource.GetType().Name}.GetResources call threw an exception: {e}"
                     );
                     continue;
                 }
 
-                var inventory = new ResourceInventory(resource, module);
-                inventories.Add(inventory.Id, inventory);
+                if (resources == null)
+                    continue;
 
-                var converter = converters[entry.converterId];
-                if (entry.push)
-                    converter.AddPushInventory(inventory.Id);
-                else
-                    converter.AddPullInventory(inventory.Id);
+                var part = module.part;
+                foreach (var resource in resources)
+                {
+                    if (resource.amount < 0.0 || !double.IsFinite(resource.amount))
+                    {
+                        LogUtil.Error(
+                            $"Module {module.GetType().Name} on part {part.partName} returned ",
+                            $"a FakePartResource with invalid resource amount {resource.amount}"
+                        );
+                        continue;
+                    }
+
+                    var inventory = new ResourceInventory(resource, module);
+                    inventories.Add(inventory.Id, inventory);
+
+                    var converter = converters[entry.converterId];
+                    if (entry.push)
+                        converter.AddPushInventory(inventory.Id);
+                    else
+                        converter.AddPullInventory(inventory.Id);
+                }
             }
         }
 
@@ -433,7 +436,7 @@ namespace BackgroundResourceProcessing.Core
 
                     try
                     {
-                        resource.UpdateStoredAmount(inventory.amount);
+                        resource.UpdateStoredAmount(inventory.resourceName, inventory.amount);
                     }
                     catch (Exception e)
                     {

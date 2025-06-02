@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace BackgroundResourceProcessing.Modules
@@ -16,7 +17,7 @@ namespace BackgroundResourceProcessing.Modules
         private ModuleSpaceObjectInfo info;
         private BackgroundResourceProcessor processor;
 
-        public FakePartResource GetResource()
+        public IEnumerable<FakePartResource> GetResources()
         {
             var info = GetLinkedInfo();
             if (info == null)
@@ -31,11 +32,14 @@ namespace BackgroundResourceProcessing.Modules
                 amount = Math.Max(info.currentMassVal - info.massThresholdVal, 0.0),
             };
             resource.maxAmount = resource.amount;
-            return resource;
+            return [resource];
         }
 
-        public void UpdateStoredAmount(double amount)
+        public void UpdateStoredAmount(string resourceName, double amount)
         {
+            if (resourceName != ResourceName)
+                return;
+
             var info = GetLinkedInfo();
             if (info == null)
                 return;

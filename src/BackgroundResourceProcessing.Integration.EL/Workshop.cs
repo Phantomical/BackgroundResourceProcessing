@@ -1,11 +1,14 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using BackgroundResourceProcessing.Modules;
 using ExtraplanetaryLaunchpads;
 using HarmonyLib;
 
 namespace BackgroundResourceProcessing.Integration.EL
 {
+    public interface IBackgroundELWorkSink : IBackgroundPartResource { }
+
     public class ModuleBackgroundELWorkshop : ModuleBackgroundConstantConverter
     {
         private ELWorkshop module;
@@ -42,42 +45,12 @@ namespace BackgroundResourceProcessing.Integration.EL
             if (module != null)
                 return module;
 
-            var workshop = GetCachedLinkedWorkshop() ?? part.FindModuleImplementing<ELWorkshop>();
+            var workshop = LinkedModuleUtil.GetLinkedModule<ELWorkshop>(
+                this,
+                ref cachedPersistentModuleId
+            );
             module = workshop;
-            cachedPersistentModuleId = module.PersistentId;
             return workshop;
-        }
-
-        private ELWorkshop GetCachedLinkedWorkshop()
-        {
-            if (cachedPersistentModuleId == null)
-                return null;
-
-            var moduleId = (uint)cachedPersistentModuleId;
-            var module = part.Modules[moduleId];
-            if (module is not ELWorkshop workshop)
-                return null;
-
-            return workshop;
-        }
-    }
-
-    public class ModuleBackgroundELLaunchpad : ModuleBackgroundConstantConverter
-    {
-        // This is the amount of work hours that
-        [KSPField(isPersistant = true)]
-        private double bankedWorkHours = 0.0;
-    }
-
-    [HarmonyPatch(typeof(ELWorkshop))]
-    static class ELWorkshop_Patch { }
-
-    internal static class ResourceRatioExtension
-    {
-        public static ResourceRatio WithMultiplier(this ResourceRatio res, double multiplier)
-        {
-            res.Ratio *= multiplier;
-            return res;
         }
     }
 }

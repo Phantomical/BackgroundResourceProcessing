@@ -67,13 +67,13 @@ namespace BackgroundResourceProcessing
         /// Get a <see cref="FakePartResource"/> that describes the contents
         /// and connected parts for this fake inventory.
         /// </summary>
-        public FakePartResource GetResource();
+        public IEnumerable<FakePartResource> GetResources();
 
         /// <summary>
         /// Update the inventory with the new resource amount.
         /// </summary>
         /// <param name="amount"></param>
-        public void UpdateStoredAmount(double amount);
+        public void UpdateStoredAmount(string resourceName, double amount);
     }
 
     public class BackgroundResourceSet()
