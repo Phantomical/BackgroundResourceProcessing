@@ -29,6 +29,13 @@ namespace BackgroundResourceProcessing.Core
             if (moduleId != null)
                 node.AddValue("moduleId", (uint)moduleId);
         }
+
+        public override readonly string ToString()
+        {
+            if (moduleId == null)
+                return $"{{resourceName={resourceName},partId={partId}}}";
+            return $"{{resourceName={resourceName},partId={partId},moduleId={moduleId}}}";
+        }
     }
 
     /// <summary>
@@ -91,7 +98,7 @@ namespace BackgroundResourceProcessing.Core
             var part = module.part;
 
             partId = part.persistentId;
-            moduleId = module.PersistentId;
+            moduleId = module.GetPersistentId();
             resourceName = resource.resourceName;
             amount = resource.amount;
             maxAmount = resource.maxAmount;
@@ -100,6 +107,8 @@ namespace BackgroundResourceProcessing.Core
         public void Save(ConfigNode node)
         {
             node.AddValue("partId", partId);
+            if (moduleId != null)
+                node.AddValue("moduleId", (uint)moduleId);
             node.AddValue("resourceName", resourceName);
             node.AddValue("amount", amount);
             node.AddValue("maxAmount", maxAmount);
@@ -113,6 +122,10 @@ namespace BackgroundResourceProcessing.Core
             node.TryGetValue("amount", ref amount);
             node.TryGetDouble("maxAmount", ref maxAmount);
             node.TryGetValue("rate", ref rate);
+
+            uint moduleId = 0;
+            if (node.TryGetValue("moduleId", ref moduleId))
+                this.moduleId = moduleId;
         }
     }
 }

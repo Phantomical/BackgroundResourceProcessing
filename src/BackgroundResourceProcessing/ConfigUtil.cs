@@ -76,5 +76,22 @@ namespace BackgroundResourceProcessing
         {
             SaveResourceRatios(node, "REQUIRED_RESOURCE", required);
         }
+
+        public static void AddModuleId(ConfigNode node, string name, uint? moduleId)
+        {
+            if (moduleId == null)
+                return;
+
+            node.AddValue(name, (uint)moduleId);
+        }
+
+        public static void TryGetModuleId(ConfigNode node, string name, out uint? moduleId)
+        {
+            uint id = 0;
+            if (node.TryGetValue(name, ref id))
+                moduleId = id;
+            else
+                moduleId = null;
+        }
     }
 }

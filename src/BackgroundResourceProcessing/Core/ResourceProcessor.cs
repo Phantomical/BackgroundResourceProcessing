@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Modules;
@@ -53,17 +54,18 @@ namespace BackgroundResourceProcessing.Core
             node.AddValue("lastUpdate", lastUpdate);
             node.AddValue("nextChangepoint", nextChangepoint);
 
-            foreach (var converter in converters)
-                converter.Save(node.AddNode("CONVERTER"));
-
             foreach (var inventory in inventories.Values)
                 inventory.Save(node.AddNode("INVENTORY"));
+
+            foreach (var converter in converters)
+                converter.Save(node.AddNode("CONVERTER"));
         }
 
         public void ComputeRates()
         {
             try
             {
+                var watch = Stopwatch.StartNew();
                 var solver = new V2Solver();
                 var rates = solver.ComputeInventoryRates(this);
 
@@ -73,6 +75,10 @@ namespace BackgroundResourceProcessing.Core
                 foreach (var (id, rate) in rates.KSPEnumerate())
                     if (inventories.TryGetValue(id, out var inventory))
                         inventory.rate = rate;
+
+                watch.Stop();
+
+                LogUtil.Log($"Computed new rates in {FormatDuration(watch.Elapsed)}");
             }
             catch (Exception e)
             {
@@ -128,9 +134,17 @@ namespace BackgroundResourceProcessing.Core
 
             LogUtil.Debug(() => $"Recording vessel state for vessel {vessel.GetDisplayName()}");
 
+            var watch = Stopwatch.StartNew();
+
             RecordPartResources(state);
             var entries = RecordConverters(state);
             RecordBackgroundPartResources(entries);
+
+            watch.Stop();
+
+            LogUtil.Log(
+                $"Recorded state of vessel {vessel.GetDisplayName()} in {FormatDuration(watch.Elapsed)}"
+            );
         }
 
         private void RecordPartResources(VesselState state)
@@ -448,6 +462,36 @@ namespace BackgroundResourceProcessing.Core
             }
         }
 
+        /// <summary>
+        /// Validate that all push and pull inventories used by converters
+        /// actually exist.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// This is primarily meant for uses in tests or as a debug check.
+        /// </remarks>
+        internal void ValidateReferencedInventories()
+        {
+            foreach (var converter in converters)
+            {
+                foreach (var pull in converter.pull.Values.SelectMany(vals => vals))
+                {
+                    if (!inventories.ContainsKey(pull))
+                        throw new Exception(
+                            $"Converter with id {converter.id} has pull reference to nonexistant inventory {pull}"
+                        );
+                }
+
+                foreach (var push in converter.pull.Values.SelectMany(vals => vals))
+                {
+                    if (!inventories.ContainsKey(push))
+                        throw new Exception(
+                            $"Converter with id {converter.id} has push reference to nonexistant inventory {push}"
+                        );
+                }
+            }
+        }
+
         private PartSet.ResourcePrioritySet GetConnectedResources(
             Vessel vessel,
             Part part,
@@ -516,6 +560,22 @@ namespace BackgroundResourceProcessing.Core
             set.lists.Add(resources);
             set.set.AddAll(resources);
             return set;
+        }
+
+        private static string FormatDuration(TimeSpan span)
+        {
+            const long TicksPerMicrosecond = TimeSpan.TicksPerMillisecond / 1000;
+
+            if (span.TotalSeconds >= 1)
+                return $"{span:g}";
+
+            if (span.TotalMilliseconds >= 100)
+                return $"{span:fff} ms";
+
+            var micros = (span.Ticks / TicksPerMicrosecond) % 1000;
+            var millis = span.Milliseconds;
+
+            return $"{millis:D}.{micros:D3} ms";
         }
     }
 }

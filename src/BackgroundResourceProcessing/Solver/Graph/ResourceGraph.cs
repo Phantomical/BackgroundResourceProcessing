@@ -1,16 +1,16 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Diagnostics;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Utils;
 using Smooth.Collections;
-using Steamworks;
 
 namespace BackgroundResourceProcessing.Solver.Graph
 {
     public class InvalidMergeException(string message) : Exception(message) { }
 
+    [DebuggerDisplay("[{state}, {resourceName}, Count = {ids.Count}]")]
     internal class GraphInventory
     {
         public InventoryState state;
@@ -40,6 +40,11 @@ namespace BackgroundResourceProcessing.Solver.Graph
             state &= other.state;
             ids.AddRange(other.ids);
         }
+
+        public override string ToString()
+        {
+            return $"[{state}, {resourceName}, Count={ids.Count}]";
+        }
     }
 
     internal class GraphConverter
@@ -51,6 +56,11 @@ namespace BackgroundResourceProcessing.Solver.Graph
             public Input Merge(Input other)
             {
                 return new() { rate = rate + other.rate };
+            }
+
+            public override readonly string ToString()
+            {
+                return $"{{rate={rate}}}";
             }
         }
 
@@ -70,6 +80,11 @@ namespace BackgroundResourceProcessing.Solver.Graph
                 }
 
                 return new() { rate = rate + other.rate, dumpExcess = dumpExcess };
+            }
+
+            public override readonly string ToString()
+            {
+                return $"{{rate={rate},dumpExcess={dumpExcess}}}";
             }
         }
 

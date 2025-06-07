@@ -14,7 +14,7 @@ namespace BackgroundResourceProcessing.Modules
         : BackgroundConverter,
             IBackgroundVesselRestoreHandler
     {
-        private static FieldInfo LastUpdateTimeField = typeof(BaseConverter).GetField(
+        protected static readonly FieldInfo LastUpdateTimeField = typeof(BaseConverter).GetField(
             "lastUpdateTime",
             BindingFlags.Instance | BindingFlags.NonPublic
         );
@@ -66,9 +66,8 @@ namespace BackgroundResourceProcessing.Modules
         [KSPField]
         public bool ConvertByMass = false;
 
-        public BaseConverter Converter { get; private set; } = null;
+        public BaseConverter Converter { get; protected set; } = null;
 
-        [KSPField(isPersistant = true)]
         private uint? cachedPersistentModuleId = null;
 
         /// <summary>
@@ -272,16 +271,23 @@ namespace BackgroundResourceProcessing.Modules
         public override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
-            LogUtil.Debug(() => $"Loading {GetType().Name} on part {part.name}");
-            LogUtil.Debug(() => $"  - Preloaded {inputs.Count} inputs");
-            LogUtil.Debug(() => $"  - Preloaded {outputs.Count} outputs");
 
             inputs.AddRange(ConfigUtil.LoadInputResources(node));
             outputs.AddRange(ConfigUtil.LoadOutputResources(node));
             required.AddRange(ConfigUtil.LoadRequiredResources(node));
 
-            LogUtil.Debug(() => $"  - Loaded {inputs.Count} inputs");
-            LogUtil.Debug(() => $"  - Loaded {outputs.Count} outputs");
+            ConfigUtil.TryGetModuleId(
+                node,
+                "cachedPersistentModuleId",
+                out cachedPersistentModuleId
+            );
+        }
+
+        public override void OnSave(ConfigNode node)
+        {
+            base.OnSave(node);
+
+            ConfigUtil.AddModuleId(node, "cachedPersistentModuleId", cachedPersistentModuleId);
         }
 
         protected static IEnumerable<ResourceRatio> ConvertRecipeToUnits(

@@ -103,7 +103,9 @@ namespace BackgroundResourceProcessing.Test
         static Setup()
         {
             sink = new TestLogSink(Path.Combine(TestUtil.ProjectDirectory, "bin/test-output.log"));
+#if DEBUG
             LogUtil.Sink = sink;
+#endif
             Registrar.RegisterAllBehaviours(typeof(Registrar).Assembly);
         }
 

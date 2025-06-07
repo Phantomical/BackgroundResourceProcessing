@@ -21,7 +21,7 @@ namespace BackgroundResourceProcessing.Integration.EL
         private ELLaunchpad module;
 
         [KSPField(isPersistant = true)]
-        private uint? cachedPersistentModuleId;
+        private uint cachedPersistentModuleId;
 
         [KSPField(isPersistant = true)]
         private double totalWork = 0.0;
@@ -44,11 +44,21 @@ namespace BackgroundResourceProcessing.Integration.EL
             var work = control.CalculateWork();
             List<ResourceRatio> inputs =
             [
-                new ResourceRatio() { ResourceName = WorkHoursResource, Ratio = work },
+                new ResourceRatio()
+                {
+                    ResourceName = WorkHoursResource,
+                    Ratio = work,
+                    FlowMode = ResourceFlowMode.ALL_VESSEL,
+                },
             ];
             List<ResourceRatio> outputs =
             [
-                new ResourceRatio() { ResourceName = WorkHoursResource, Ratio = work },
+                new ResourceRatio()
+                {
+                    ResourceName = WorkHoursResource,
+                    Ratio = work,
+                    FlowMode = ResourceFlowMode.NO_FLOW,
+                },
             ];
 
             if (control.state == ELBuildControl.State.Building)
@@ -95,7 +105,7 @@ namespace BackgroundResourceProcessing.Integration.EL
                 }
             }
 
-            throw new NotImplementedException();
+            return new ConstantConverter(inputs, outputs);
         }
 
         public override BackgroundResourceSet GetLinkedBackgroundResources()

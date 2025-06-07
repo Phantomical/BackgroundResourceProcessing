@@ -1,9 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using BackgroundResourceProcessing.Modules;
 using ExtraplanetaryLaunchpads;
-using HarmonyLib;
 
 namespace BackgroundResourceProcessing.Integration.EL
 {
@@ -14,7 +12,7 @@ namespace BackgroundResourceProcessing.Integration.EL
         private ELWorkshop module;
 
         [KSPField(isPersistant = true)]
-        private uint? cachedPersistentModuleId;
+        private uint cachedPersistentModuleId;
 
         protected override ConverterBehaviour GetConverterBehaviour()
         {

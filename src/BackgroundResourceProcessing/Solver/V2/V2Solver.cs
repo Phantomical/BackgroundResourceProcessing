@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Solver.Graph;
@@ -15,20 +14,28 @@ namespace BackgroundResourceProcessing.Solver.V2
     ///
     /// <remarks>
     /// <para>
-    ///   This is a somewhat more sophisticated resource rate solver. It works
-    ///   by first merging compatible inventories and converters. It then
-    ///   topologically sorts the converters and repeatedly iterates over them
-    ///   in both forward and reverse order, bumping up the converter rates if
-    ///   there is headroom.
+    ///   This solver converts the resource graph into a linear programming
+    ///   problem and then solves that problem by maximizing the number of
+    ///   converters that are active. Converter priorities are handled here
+    ///   by increasing their weight in the objective function.
     /// </para>
     ///
     /// <para>
-    ///   Like the V1 solver, this one also has a number of issues:
-    ///   <list type="bullet">
-    ///     <item>
-    ///       It completely ignores resource flow rules, so, for example, drills
-    ///       can consume mass from asteroids other than the one they are drilling.
-    ///     </item>
+    /// This solver has a few caveats:
+    /// <list type="bullet">
+    ///   <item>
+    ///     It doesn't work when there are "split edges". That is when a
+    ///     converter outputs a single resource to multiple inventories and
+    ///     those inventories have different sets of converters pulling from
+    ///     them. In this case it falls back to the V1 solver.
+    ///   </item>
+    ///   <item>
+    ///     The solver behaves somewhat unintuitively in when converter
+    ///     outputs have <c>dumpExcess = true</c>. It will maximize the number
+    ///     of active converters even when that doesn't necessarily match what
+    ///     would happen in KSP.
+    ///   </item>
+    /// </list>
     /// </para>
     /// </remarks>
     public class V2Solver : ISolver
@@ -79,62 +86,7 @@ namespace BackgroundResourceProcessing.Solver.V2
 
             foreach (var (inventoryId, inventory) in graph.inventories)
             {
-                // Inventories that are neither full nor empty result in no constraints
-                if (inventory.state == InventoryState.Unconstrained)
-                    continue;
-
-                if ((inventory.state & InventoryState.Full) == InventoryState.Full)
-                {
-                    double[] coefs = new double[graph.converters.Count];
-
-                    foreach (var converterId in graph.inputs.GetInventoryEntry(inventoryId))
-                    {
-                        var converter = graph.converters[converterId];
-                        var input = converter.inputs[inventory.resourceName];
-                        var varId = converterMap[converterId];
-
-                        coefs[varId] -= input.rate;
-                    }
-
-                    foreach (var converterId in graph.outputs.GetInventoryEntry(inventoryId))
-                    {
-                        var converter = graph.converters[converterId];
-                        var output = converter.outputs[inventory.resourceName];
-                        var varId = converterMap[converterId];
-
-                        if (output.dumpExcess)
-                            continue;
-
-                        coefs[varId] += output.rate;
-                    }
-
-                    problem.AddLEqualConstraint(coefs, 0.0);
-                }
-
-                if ((inventory.state & InventoryState.Empty) == InventoryState.Empty)
-                {
-                    double[] coefs = new double[graph.converters.Count];
-
-                    foreach (var converterId in graph.inputs.GetInventoryEntry(inventoryId))
-                    {
-                        var converter = graph.converters[converterId];
-                        var input = converter.inputs[inventory.resourceName];
-                        var varId = converterMap[converterId];
-
-                        coefs[varId] += input.rate;
-                    }
-
-                    foreach (var converterId in graph.outputs.GetInventoryEntry(inventoryId))
-                    {
-                        var converter = graph.converters[converterId];
-                        var output = converter.outputs[inventory.resourceName];
-                        var varId = converterMap[converterId];
-
-                        coefs[varId] -= output.rate;
-                    }
-
-                    problem.AddLEqualConstraint(coefs, 0.0);
-                }
+                AddInventoryConstraint(problem, inventoryId, inventory, graph, converterMap);
             }
 
             var rates = problem.Solve();
@@ -144,6 +96,93 @@ namespace BackgroundResourceProcessing.Solver.V2
                 ratesById.Add(converterId, rates[varId]);
 
             return graph.ComputeInventoryRates(ratesById, processor);
+        }
+
+        static void AddInventoryConstraint(
+            LinearProblem problem,
+            int inventoryId,
+            GraphInventory inventory,
+            ResourceGraph graph,
+            IntMap<int> converterMap
+        )
+        {
+            // Unconstrained inventories have, well, no constraints
+            if (inventory.state == InventoryState.Unconstrained)
+                return;
+
+            // Empty inventories are constrained to have their rate >= 0
+            if ((inventory.state & InventoryState.Empty) == InventoryState.Empty)
+            {
+                double[] coefs = new double[graph.converters.Count];
+                bool dumpExcess = false;
+
+                foreach (var converterId in graph.inputs.GetInventoryEntry(inventoryId))
+                {
+                    var converter = graph.converters[converterId];
+                    var input = converter.inputs[inventory.resourceName];
+                    var varId = converterMap[converterId];
+
+                    coefs[varId] -= input.rate;
+                }
+
+                foreach (var converterId in graph.outputs.GetInventoryEntry(inventoryId))
+                {
+                    var converter = graph.converters[converterId];
+                    var output = converter.outputs[inventory.resourceName];
+                    var varId = converterMap[converterId];
+
+                    if (output.dumpExcess)
+                        dumpExcess = true;
+
+                    coefs[varId] += output.rate;
+                }
+
+                // We can special-case zero-sized inventories to make them easier
+                // to solve via the simplex algorithm.
+                //
+                // This only applies if none of the converter outputs involved
+                // have dumpExcess set to true, as in that case the rate can actually
+                // vary.
+                if (!dumpExcess && inventory.state == InventoryState.Zero)
+                {
+                    problem.AddEqualityConstraint(coefs, 0.0);
+
+                    // Since we've added an equality constraint we can skip
+                    // adding other constraints.
+                    return;
+                }
+
+                problem.AddGEqualConstraint(coefs, 0.0);
+            }
+
+            // Full inventories are constrained to have their rate <= 0
+            if ((inventory.state & InventoryState.Full) == InventoryState.Full)
+            {
+                double[] coefs = new double[graph.converters.Count];
+
+                foreach (var converterId in graph.inputs.GetInventoryEntry(inventoryId))
+                {
+                    var converter = graph.converters[converterId];
+                    var input = converter.inputs[inventory.resourceName];
+                    var varId = converterMap[converterId];
+
+                    coefs[varId] -= input.rate;
+                }
+
+                foreach (var converterId in graph.outputs.GetInventoryEntry(inventoryId))
+                {
+                    var converter = graph.converters[converterId];
+                    var output = converter.outputs[inventory.resourceName];
+                    var varId = converterMap[converterId];
+
+                    if (output.dumpExcess)
+                        continue;
+
+                    coefs[varId] += output.rate;
+                }
+
+                problem.AddLEqualConstraint(coefs, 0.0);
+            }
         }
 
         static double GetPriorityWeight(int priority)

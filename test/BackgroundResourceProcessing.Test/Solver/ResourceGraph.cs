@@ -13,21 +13,21 @@ namespace BackgroundResourceProcessing.Test.Solver
         [TestMethod]
         public void RunAllSteps()
         {
-            // var module = TestUtil.LoadVessel("isru-2/asteroid-interceptor.cfg");
-            // var graph = new ResourceGraph(module);
+            var module = TestUtil.LoadVessel("el/constructor-1.cfg");
+            var graph = new ResourceGraph(module);
 
-            // LogUtil.Log($"Initial graph: {TestUtil.DumpJson(graph)}");
-            // EmitDot(graph, "initial.dot");
+            LogUtil.Log($"Initial graph: {TestUtil.DumpJson(graph)}");
+            EmitDot(graph, "initial.dot");
 
-            // graph.MergeEquivalentInventories();
+            graph.MergeEquivalentInventories();
 
-            // LogUtil.Log($"Inventories merged: {TestUtil.DumpJson(graph)}");
-            // EmitDot(graph, "inv-merged.dot");
+            LogUtil.Log($"Inventories merged: {TestUtil.DumpJson(graph)}");
+            EmitDot(graph, "inv-merged.dot");
 
-            // graph.MergeEquivalentConverters();
+            graph.MergeEquivalentConverters();
 
-            // LogUtil.Log($"Converters merged: {TestUtil.DumpJson(graph)}");
-            // EmitDot(graph, "conv-merged.dot");
+            LogUtil.Log($"Converters merged: {TestUtil.DumpJson(graph)}");
+            EmitDot(graph, "conv-merged.dot");
         }
 
         [TestMethod]

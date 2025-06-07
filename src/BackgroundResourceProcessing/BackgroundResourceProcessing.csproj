@@ -6,6 +6,8 @@
     <Version>0.0.1</Version>
     <Description>Background resource processing for KSP</Description>
 
+    <DebugType>full</DebugType>
+
     <GenerateKSPAssemblyAttribute>true</GenerateKSPAssemblyAttribute>
     <GenerateKSPAssemblyDependencyAttributes>true</GenerateKSPAssemblyDependencyAttributes>
   </PropertyGroup>

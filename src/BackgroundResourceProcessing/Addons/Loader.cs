@@ -1,7 +1,3 @@
-using System.Collections;
-using System.IO;
-using System.Reflection;
-using System.Threading.Tasks;
 using UnityEngine;
 
 namespace BackgroundResourceProcessing.Addons
@@ -14,7 +10,18 @@ namespace BackgroundResourceProcessing.Addons
     {
         void Awake()
         {
+            // GameEventsBase.debugEvents = true;
+        }
+
+        void Start()
+        {
+            GameEvents.OnPartLoaderLoaded.Add(OnPartLoaderLoaded);
+        }
+
+        void OnPartLoaderLoaded()
+        {
             Registrar.RegisterAllBehaviours();
+            GameEvents.OnPartLoaderLoaded.Remove(OnPartLoaderLoaded);
         }
     }
 }

@@ -123,15 +123,13 @@ namespace BackgroundResourceProcessing.Addons
                 return;
             }
 
-            module.RecordVesselState();
-            module.ComputeResourceRates();
-            module.UpdateNextChangepoint();
+            module.DebugRecordVesselState();
 
             ConfigNode root = new();
             ConfigNode node = root.AddNode("BRP_SHIP");
             module.Save(node);
 
-            module.ClearVesselState();
+            module.DebugClearVesselState();
 
             var name = vessel.GetDisplayName();
             var outputPath = Path.GetFullPath(Path.Combine(exportDir, $"{name}.cfg.export"));

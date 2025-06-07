@@ -32,7 +32,7 @@ namespace BackgroundResourceProcessing.Modules
             var request = new AbundanceRequest()
             {
                 Altitude = vessel.altitude,
-                BodyId = FlightGlobals.currentMainBody.flightGlobalsIndex,
+                BodyId = vessel.mainBody.flightGlobalsIndex,
                 CheckForLock = false,
                 Latitude = vessel.latitude,
                 Longitude = vessel.longitude,
@@ -40,12 +40,15 @@ namespace BackgroundResourceProcessing.Modules
                 ResourceName = ResourceName,
             };
 
+            if (ResourceMap.Instance == null)
+                LogUtil.Error("ResourceMap.Instance is null");
+
             double rate = ResourceMap.Instance.GetAbundance(request) * Efficiency;
             if (type == HarvestTypes.Atmospheric)
                 rate *= GetIntakeMultiplier();
 
             var recipe = new ConversionRecipe();
-            recipe.SetInputs(
+            recipe.SetOutputs(
                 [
                     new ResourceRatio()
                     {

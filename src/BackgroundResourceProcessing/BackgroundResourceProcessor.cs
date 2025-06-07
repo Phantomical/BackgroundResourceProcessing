@@ -1,4 +1,5 @@
 using System;
+using BackgroundResourceProcessing.Addons;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Modules;
 
@@ -29,6 +30,22 @@ namespace BackgroundResourceProcessing
             return Activation.LoadedOrUnloaded;
         }
 
+        public override bool ShouldBeActive()
+        {
+            switch (HighLogic.LoadedScene)
+            {
+                case GameScenes.SPACECENTER:
+                case GameScenes.TRACKSTATION:
+                case GameScenes.PSYSTEM:
+                case GameScenes.FLIGHT:
+                    break;
+                default:
+                    return false;
+            }
+
+            return true;
+        }
+
         public override int GetOrder()
         {
             // We want this to run before most other modules.
@@ -44,50 +61,106 @@ namespace BackgroundResourceProcessing
                 $"OnStart for BackgroundResourceProcessor on vessel {vessel.GetDisplayName()}"
             );
 
-            if (processor.nextChangepoint == double.PositiveInfinity)
+            RegisterCallbacks();
+
+            if (!BackgroundProcessingActive)
                 return;
 
-            Registrar.RegisterChangepointCallback(this, processor.nextChangepoint);
-            GameEvents.onVesselSOIChanged.Add(OnVesselSOIChanged);
+            if (vessel.loaded)
+            {
+                LoadVessel();
+            }
+            else
+            {
+                EventDispatcher.RegisterChangepointCallback(this, processor.nextChangepoint);
+            }
         }
 
         void OnDestroy()
         {
-            Registrar.UnregisterChangepointCallbacks(this);
-            GameEvents.onVesselSOIChanged.Remove(OnVesselSOIChanged);
+            LogUtil.Debug(() =>
+                $"OnDestroy for BackgroundResourceProcessor on vessel {vessel.GetDisplayName()}"
+            );
+
+            if (BackgroundProcessingActive)
+            {
+                EventDispatcher.UnregisterChangepointCallbacks(this);
+            }
+            else if (vessel.loaded)
+            {
+                SaveVessel();
+            }
+
+            UnregisterCallbacks();
         }
 
         public override void OnLoadVessel()
         {
+            LogUtil.Debug(() =>
+                $"OnLoadVessel for BackgroundResourceProcessor on vessel {vessel.GetDisplayName()}"
+            );
+
+            if (!BackgroundProcessingActive)
+                return;
+
+            LoadVessel();
+
+            GameEvents.onGameSceneLoadRequested.Add(OnGameSceneChange);
+        }
+
+        public override void OnUnloadVessel()
+        {
+            LogUtil.Debug(() =>
+                $"OnUnloadVessel for BackgroundResourceProcessor on vessel {vessel.GetDisplayName()}"
+            );
+
+            if (BackgroundProcessingActive)
+                return;
+            SaveVessel();
+
+            GameEvents.onGameSceneLoadRequested.Remove(OnGameSceneChange);
+        }
+
+        private void LoadVessel()
+        {
+            LogUtil.Debug(() => $"Updating state of vessel {vessel.GetDisplayName()}");
+
             var currentTime = Planetarium.GetUniversalTime();
 
             processor.UpdateInventories(currentTime);
             processor.ApplyInventories(Vessel);
             processor.ClearVesselState();
 
-            Registrar.UnregisterChangepointCallbacks(this);
-
             NotifyOnVesselRestore();
+
+            BackgroundProcessingActive = false;
         }
 
-        public override void OnUnloadVessel()
+        private void SaveVessel()
         {
             var currentTime = Planetarium.GetUniversalTime();
             var state = new VesselState() { CurrentTime = currentTime, Vessel = Vessel };
 
+            OnBeforeVesselRecord.Fire();
             processor.RecordVesselState(vessel, currentTime);
             processor.ForceUpdateBehaviours(state);
             processor.ComputeRates();
             processor.UpdateNextChangepoint(currentTime);
 
-            Registrar.RegisterChangepointCallback(this, processor.nextChangepoint);
+            BackgroundProcessingActive = true;
+
+            EventDispatcher.RegisterChangepointCallback(this, processor.nextChangepoint);
         }
 
         internal void OnChangepoint(double changepoint)
         {
             // We do nothing for active vessels.
-            if (vessel.loaded)
+            if (!BackgroundProcessingActive)
                 return;
+
+            LogUtil.Debug(() =>
+                $"Updating vessel {vessel.GetDisplayName()} at changepoint {changepoint}"
+            );
 
             var state = new VesselState { CurrentTime = changepoint, Vessel = Vessel };
 
@@ -96,14 +169,22 @@ namespace BackgroundResourceProcessing
             processor.ComputeRates();
             processor.UpdateNextChangepoint(changepoint);
 
-            Registrar.RegisterChangepointCallback(this, processor.nextChangepoint);
+            EventDispatcher.RegisterChangepointCallback(this, processor.nextChangepoint);
         }
 
-        private void OnVesselSOIChanged(GameEvents.HostedFromToAction<Vessel, CelestialBody> _)
+        // The EventDispatcher module takes care of calling this for only the
+        // vessel that is actually switching.
+        internal void OnVesselSOIChanged(GameEvents.HostedFromToAction<Vessel, CelestialBody> evt)
         {
             // We do nothing for active vessels.
-            if (vessel.loaded)
+            if (!BackgroundProcessingActive)
                 return;
+            if (!ReferenceEquals(vessel, evt.host))
+                return;
+
+            LogUtil.Debug(() =>
+                $"OnVesselSOIChanged for BackgroundResourceProcessor on vessel {vessel.GetDisplayName()}"
+            );
 
             var state = new VesselState
             {
@@ -115,8 +196,38 @@ namespace BackgroundResourceProcessing
             processor.ComputeRates();
             processor.UpdateNextChangepoint(state.CurrentTime);
 
-            Registrar.UnregisterChangepointCallbacks(this);
-            Registrar.RegisterChangepointCallback(this, processor.nextChangepoint);
+            EventDispatcher.UnregisterChangepointCallbacks(this);
+            EventDispatcher.RegisterChangepointCallback(this, processor.nextChangepoint);
+        }
+
+        // We use this event to run _before_ parts start getting destroyed on
+        // scene switch.
+        private void OnGameSceneChange(GameScenes _)
+        {
+            // There is nothing we need to do for inactive vessels
+            if (BackgroundProcessingActive)
+                return;
+
+            if (!vessel.loaded)
+                return;
+
+            LogUtil.Debug(() =>
+                $"OnGameSceneChange for BackgroundResourceProcessor on vessel {vessel.GetDisplayName()}"
+            );
+
+            SaveVessel();
+        }
+
+        private void RegisterCallbacks()
+        {
+            if (vessel.loaded)
+                GameEvents.onGameSceneLoadRequested.Add(OnGameSceneChange);
+        }
+
+        private void UnregisterCallbacks()
+        {
+            if (vessel.loaded)
+                GameEvents.onGameSceneLoadRequested.Remove(OnGameSceneChange);
         }
 
         /// <summary>
@@ -128,25 +239,17 @@ namespace BackgroundResourceProcessing
         /// The only reason this isn't private is so that the debug UI can use
         /// it to prepare the module for dumping.
         /// </remarks>
-        internal void RecordVesselState()
+        internal void DebugRecordVesselState()
         {
             OnBeforeVesselRecord.Fire();
             processor.RecordVesselState(Vessel, Planetarium.GetUniversalTime());
+            processor.ComputeRates();
+            processor.UpdateNextChangepoint(Planetarium.GetUniversalTime());
         }
 
-        internal void ClearVesselState()
+        internal void DebugClearVesselState()
         {
             processor.ClearVesselState();
-        }
-
-        internal void ComputeResourceRates()
-        {
-            processor.ComputeRates();
-        }
-
-        internal void UpdateNextChangepoint()
-        {
-            processor.UpdateNextChangepoint(Planetarium.GetUniversalTime());
         }
 
         private void NotifyOnVesselRestore()

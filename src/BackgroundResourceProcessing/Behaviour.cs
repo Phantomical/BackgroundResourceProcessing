@@ -153,9 +153,9 @@ namespace BackgroundResourceProcessing
         /// Register all types annotated with <c>[Behaviour]</c> within the
         /// provided assembly.
         /// </summary>
-        internal static void RegisterAll(Assembly assembly)
+        internal static void RegisterAll(IEnumerable<Type> types)
         {
-            foreach (var type in assembly.GetTypes())
+            foreach (var type in types)
             {
                 var attribute = type.GetCustomAttribute<Behaviour>();
                 if (attribute == null)
