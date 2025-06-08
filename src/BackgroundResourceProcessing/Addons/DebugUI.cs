@@ -1,18 +1,36 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
+using BackgroundResourceProcessing.Core;
 using KSP.UI.Screens;
 using UnityEngine;
 
 namespace BackgroundResourceProcessing.Addons
 {
-    [KSPAddon(KSPAddon.Startup.AllGameScenes, false)]
-    internal class BackgroundResourceProcessingDebugGUI : MonoBehaviour
+    [KSPAddon(KSPAddon.Startup.Flight, false)]
+    internal class DebugUI : MonoBehaviour
     {
+        enum Submenu
+        {
+            Resources,
+            Export,
+        }
+
+        static GUIStyle HeaderStyle;
+        static GUIStyle CellStyle;
+
         static ApplicationLauncherButton button;
 
         bool initialized = false;
         bool showGUI = false;
         bool exportButtonState = false;
+        bool refreshButtonState = false;
+
+        Submenu submenu = Submenu.Resources;
+
+        ResourceProcessor processor;
 
         Rect window = new(100, 100, 450, 600);
 
@@ -26,6 +44,9 @@ namespace BackgroundResourceProcessing.Addons
         {
             if (initialized)
                 return;
+
+            HeaderStyle = new(HighLogic.Skin.label) { fontStyle = FontStyle.Bold };
+            CellStyle = new(HighLogic.Skin.label) { alignment = TextAnchor.MiddleRight };
 
             initialized = true;
             window = new Rect(Screen.width / 2 - 450 / 2, Screen.height / 2 - 50, 450, 100);
@@ -52,14 +73,16 @@ namespace BackgroundResourceProcessing.Addons
                 ApplicationLauncher.Instance.RemoveModApplication(button);
         }
 
-        public void ShowToolbarGUI()
+        void ShowToolbarGUI()
         {
             showGUI = true;
+            processor = GetMainVesselProcessor();
         }
 
-        public void HideToolbarGUI()
+        void HideToolbarGUI()
         {
             showGUI = false;
+            processor = null;
         }
 
         void Nothing() { }
@@ -73,31 +96,115 @@ namespace BackgroundResourceProcessing.Addons
                 GetInstanceID(),
                 window,
                 DrawWindow,
-                "Background Resource Procecssing GUI",
+                "Background Resource Processing",
                 HighLogic.Skin.window
             );
         }
 
         void DrawWindow(int windowId)
         {
+            using var skin = new PushGUISkin(HighLogic.Skin);
             GUILayout.BeginVertical();
 
-            var prevButtonState = exportButtonState;
-            exportButtonState = GUILayout.Button(
-                "Export Ship Resource Graph",
-                HighLogic.Skin.button
-            );
-            if (exportButtonState && !prevButtonState)
-                DumpCurrentVessel();
+            DrawSubmenuSelector();
 
-            GUILayout.Label(
-                "The resource graph will be exported to GameData/BackgroundResourceProcessing/Exports",
-                HighLogic.Skin.label
-            );
+            switch (submenu)
+            {
+                case Submenu.Resources:
+                    DrawResourceState();
+                    break;
+                case Submenu.Export:
+                    DrawExportButton();
+                    break;
+            }
+
             GUILayout.EndVertical();
 
             /// Must be last or buttons won't work.
             GUI.DragWindow();
+        }
+
+        void DrawSubmenuSelector()
+        {
+            GUILayout.BeginHorizontal();
+
+            var resources = GUILayout.Button("Resources");
+            var export = GUILayout.Button("Ship Export");
+
+            if (resources)
+                submenu = Submenu.Resources;
+            else if (export)
+                submenu = Submenu.Export;
+
+            GUILayout.EndHorizontal();
+        }
+
+        void DrawResourceState()
+        {
+            Dictionary<string, InventoryState> totals = [];
+            if (processor != null)
+                totals = processor.GetResourceTotals();
+
+            var defs = PartResourceLibrary.Instance.resourceDefinitions;
+
+            GUILayout.BeginHorizontal();
+            GUILayout.BeginVertical();
+            GUILayout.Label("Resource", HeaderStyle, GUILayout.ExpandWidth(true));
+            foreach (var resource in totals.Keys)
+            {
+                var def = defs[resource];
+                var name = def != null ? def.displayName : resource;
+                GUILayout.Label(name, GUILayout.ExpandWidth(true));
+            }
+            GUILayout.EndVertical();
+
+            DrawColumn("Amount", totals.Values.Select(state => state.amount));
+            DrawColumn("Capacity", totals.Values.Select(state => state.maxAmount));
+            DrawColumn("Rate", totals.Values.Select(state => state.rate));
+
+            GUILayout.EndHorizontal();
+
+            var prevState = refreshButtonState;
+            refreshButtonState = GUILayout.Button("Refresh");
+            if (refreshButtonState && !prevState)
+                processor = GetMainVesselProcessor();
+        }
+
+        void DrawExportButton()
+        {
+            var prevButtonState = exportButtonState;
+            exportButtonState = GUILayout.Button("Export Ship Resource Graph");
+            if (exportButtonState && !prevButtonState)
+                DumpCurrentVessel();
+
+            GUILayout.Label(
+                "The resource graph will be exported to GameData/BackgroundResourceProcessing/Exports"
+            );
+        }
+
+        void DrawColumn(string label, IEnumerable<double> values)
+        {
+            using var group = new PushVerticalGroup();
+            var style = new GUIStyle(HeaderStyle) { alignment = TextAnchor.MiddleRight };
+
+            GUILayout.Label(label, style, GUILayout.ExpandWidth(true));
+            foreach (var value in values)
+                GUILayout.Label(FormatCellNumber(value), CellStyle, GUILayout.ExpandWidth(true));
+        }
+
+        ResourceProcessor GetMainVesselProcessor()
+        {
+            var vessel = FlightGlobals.ActiveVessel;
+            if (vessel == null)
+                return null;
+
+            var now = Planetarium.GetUniversalTime();
+
+            ResourceProcessor processor = new();
+            processor.RecordVesselState(vessel, now);
+            processor.ComputeNextChangepoint(now);
+            processor.ComputeRates();
+            return processor;
         }
 
         static void DumpCurrentVessel()
@@ -136,6 +243,53 @@ namespace BackgroundResourceProcessing.Addons
             root.Save(outputPath);
 
             ScreenMessages.PostScreenMessage($"Ship resource graph exported to {outputPath}");
+        }
+
+        static string FormatCellNumber(double n)
+        {
+            return $"{n:N}";
+        }
+
+        struct PushGUISkin : IDisposable
+        {
+            GUISkin prev;
+
+            public PushGUISkin(GUISkin skin)
+            {
+                prev = GUI.skin;
+                GUI.skin = skin;
+            }
+
+            public void Dispose()
+            {
+                GUI.skin = prev;
+            }
+        }
+
+        struct PushVerticalGroup : IDisposable
+        {
+            public PushVerticalGroup()
+            {
+                GUILayout.BeginVertical();
+            }
+
+            public void Dispose()
+            {
+                GUILayout.EndVertical();
+            }
+        }
+
+        struct PushHorizontalGroup : IDisposable
+        {
+            public PushHorizontalGroup()
+            {
+                GUILayout.BeginHorizontal();
+            }
+
+            public void Dispose()
+            {
+                GUILayout.EndHorizontal();
+            }
         }
     }
 }

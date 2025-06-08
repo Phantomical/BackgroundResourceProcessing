@@ -181,10 +181,6 @@ namespace BackgroundResourceProcessing
         // We use this event to save the vessel state _before_ we actually get saved.
         private void OnGameStateSave(ConfigNode _)
         {
-            // There is nothing we need to do for inactive vessels
-            if (BackgroundProcessingActive)
-                return;
-
             if (!vessel.loaded)
                 return;
 

@@ -497,6 +497,24 @@ namespace BackgroundResourceProcessing.Core
         }
 
         /// <summary>
+        /// Get <see cref="InventoryState"/>s representing total resources
+        /// managed by this resource processor.
+        /// </summary>
+        /// <returns></returns>
+        public Dictionary<string, InventoryState> GetResourceTotals()
+        {
+            Dictionary<string, InventoryState> totals = [];
+
+            foreach (var inventory in inventories.Values)
+            {
+                var state = totals.GetValueOrDefault(inventory.resourceName);
+                totals[inventory.resourceName] = state.Merge(inventory.State);
+            }
+
+            return totals;
+        }
+
+        /// <summary>
         /// Validate that all push and pull inventories used by converters
         /// actually exist.
         /// </summary>

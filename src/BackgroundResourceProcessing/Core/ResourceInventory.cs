@@ -38,6 +38,35 @@ namespace BackgroundResourceProcessing.Core
         }
     }
 
+    public struct InventoryState(double amount = 0.0, double maxAmount = 0.0, double rate = 0.0)
+    {
+        /// <summary>
+        /// The amount of resource stored in this inventory.
+        /// </summary>
+        public double amount = amount;
+
+        /// <summary>
+        /// The maximum amount of resource that can be stored in this inventory.
+        /// </summary>
+        public double maxAmount = maxAmount;
+
+        /// <summary>
+        /// The rate at which the stored resources within this inventory are
+        /// changing.
+        /// </summary>
+        public double rate = rate;
+
+        public InventoryState Merge(InventoryState other)
+        {
+            return new()
+            {
+                amount = amount + other.amount,
+                maxAmount = maxAmount + other.maxAmount,
+                rate = rate + other.rate,
+            };
+        }
+    }
+
     /// <summary>
     /// A modelled resource inventory within a part.
     /// </summary>
@@ -91,6 +120,7 @@ namespace BackgroundResourceProcessing.Core
         public bool Empty => amount < 1e-6;
 
         public InventoryId Id => new(partId, resourceName, moduleId);
+        public InventoryState State => new(amount, maxAmount, rate);
 
         public ResourceInventory() { }
 
