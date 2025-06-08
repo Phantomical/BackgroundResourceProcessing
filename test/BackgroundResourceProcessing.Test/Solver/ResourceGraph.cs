@@ -13,7 +13,7 @@ namespace BackgroundResourceProcessing.Test.Solver
         [TestMethod]
         public void RunAllSteps()
         {
-            var module = TestUtil.LoadVessel("el/constructor-1.cfg");
+            var module = TestUtil.LoadVessel("comet-retriever.cfg");
             var graph = new ResourceGraph(module);
 
             LogUtil.Log($"Initial graph: {TestUtil.DumpJson(graph)}");

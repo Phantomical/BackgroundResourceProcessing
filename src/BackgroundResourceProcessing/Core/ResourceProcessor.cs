@@ -73,8 +73,16 @@ namespace BackgroundResourceProcessing.Core
                     inventory.rate = 0.0;
 
                 foreach (var (id, rate) in rates.KSPEnumerate())
+                {
                     if (inventories.TryGetValue(id, out var inventory))
-                        inventory.rate = rate;
+                    {
+                        // Floating point errors can result in a non-zero (but extremely small)
+                        // rate even when it should mathematically be 0. To avoid that being an
+                        // issue we just truncate any sufficiently small rate to 0.
+                        if (Math.Abs(rate) >= 1e-9)
+                            inventory.rate = rate;
+                    }
+                }
 
                 watch.Stop();
 
@@ -311,6 +319,8 @@ namespace BackgroundResourceProcessing.Core
 
         private void RecordBackgroundPartResources(List<BackgroundInventoryEntry> entries)
         {
+            HashSet<uint> seen = [];
+
             foreach (var entry in entries)
             {
                 if (entry.resource is not PartModule module)
@@ -328,6 +338,14 @@ namespace BackgroundResourceProcessing.Core
                     );
                     continue;
                 }
+
+                LogUtil.Debug(() =>
+                    $"Adding fake inventories from module {module.GetType().Name} on part {module.part.partName}"
+                );
+
+                var moduleId = module.GetPersistentId();
+                if (!seen.Add(moduleId))
+                    continue;
 
                 IEnumerable<FakePartResource> resources;
                 try
@@ -358,7 +376,8 @@ namespace BackgroundResourceProcessing.Core
                     }
 
                     var inventory = new ResourceInventory(resource, module);
-                    inventories.Add(inventory.Id, inventory);
+                    if (!inventories.TryAdd(inventory.Id, inventory))
+                        continue;
 
                     var converter = converters[entry.converterId];
                     if (entry.push)
@@ -437,7 +456,18 @@ namespace BackgroundResourceProcessing.Core
                     if (resource == null)
                         continue;
 
-                    resource.amount = Math.Min(inventory.amount, resource.maxAmount);
+                    var amount = inventory.amount;
+                    if (!MathUtil.ApproxEqual(inventory.originalAmount, resource.amount))
+                    {
+                        var difference = resource.amount - inventory.originalAmount;
+                        amount += difference;
+                    }
+
+                    LogUtil.Debug(() =>
+                        $"Updating inventory on {part.name} to {amount:g4}/{resource.maxAmount:g4} {resource.resourceName}"
+                    );
+
+                    resource.amount = MathUtil.Clamp(amount, 0.0, resource.maxAmount);
                 }
                 else
                 {
@@ -447,6 +477,10 @@ namespace BackgroundResourceProcessing.Core
 
                     if (module is not IBackgroundPartResource resource)
                         continue;
+
+                    LogUtil.Debug(() =>
+                        $"Updating fake inventory on module {module.GetType().Name} of {part.name} to {inventory.amount:g4}/{inventory.maxAmount:g4} {inventory.resourceName}"
+                    );
 
                     try
                     {

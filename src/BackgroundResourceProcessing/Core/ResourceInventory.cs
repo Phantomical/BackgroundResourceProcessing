@@ -76,6 +76,17 @@ namespace BackgroundResourceProcessing.Core
         /// </summary>
         public double rate = 0.0;
 
+        /// <summary>
+        /// The <see cref="amount"> value when this resource inventory was
+        /// recorded.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// This is used to handle cases where resources are changed in the
+        /// background without BRP knowing about it.
+        /// </remarks>
+        public double originalAmount;
+
         public bool Full => maxAmount - amount < 1e-6;
         public bool Empty => amount < 1e-6;
 
@@ -91,6 +102,7 @@ namespace BackgroundResourceProcessing.Core
             resourceName = resource.resourceName;
             amount = resource.amount;
             maxAmount = resource.maxAmount;
+            originalAmount = resource.amount;
         }
 
         public ResourceInventory(FakePartResource resource, PartModule module)
@@ -102,6 +114,7 @@ namespace BackgroundResourceProcessing.Core
             resourceName = resource.resourceName;
             amount = resource.amount;
             maxAmount = resource.maxAmount;
+            originalAmount = resource.amount;
         }
 
         public void Save(ConfigNode node)
@@ -113,19 +126,22 @@ namespace BackgroundResourceProcessing.Core
             node.AddValue("amount", amount);
             node.AddValue("maxAmount", maxAmount);
             node.AddValue("rate", rate);
+            node.AddValue("originalAmount", originalAmount);
         }
 
         public void Load(ConfigNode node)
         {
             node.TryGetValue("partId", ref partId);
-            node.TryGetValue("resourceName", ref resourceName);
-            node.TryGetValue("amount", ref amount);
-            node.TryGetDouble("maxAmount", ref maxAmount);
-            node.TryGetValue("rate", ref rate);
 
             uint moduleId = 0;
             if (node.TryGetValue("moduleId", ref moduleId))
                 this.moduleId = moduleId;
+
+            node.TryGetValue("resourceName", ref resourceName);
+            node.TryGetValue("amount", ref amount);
+            node.TryGetDouble("maxAmount", ref maxAmount);
+            node.TryGetValue("rate", ref rate);
+            node.TryGetValue("originalAmount", ref originalAmount);
         }
     }
 }

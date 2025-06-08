@@ -6,7 +6,7 @@ namespace BackgroundResourceProcessing.Test.Solver.V2
         [TestMethod]
         public void TestIteratedSolving()
         {
-            var processor = TestUtil.LoadVessel("el/constructor-1.cfg");
+            var processor = TestUtil.LoadVessel("comet-retriever.cfg");
             processor.lastUpdate = 0.0;
             var currentTime = 0.0;
 

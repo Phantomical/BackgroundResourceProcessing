@@ -19,5 +19,10 @@ namespace BackgroundResourceProcessing.Utils
         {
             return Math.Abs(a - b) < epsilon;
         }
+
+        public static double Clamp(double x, double lo, double hi)
+        {
+            return Math.Max(Math.Min(x, hi), lo);
+        }
     }
 }
