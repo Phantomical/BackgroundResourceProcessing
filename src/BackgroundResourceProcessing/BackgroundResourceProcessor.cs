@@ -57,10 +57,6 @@ namespace BackgroundResourceProcessing
 
         protected override void OnStart()
         {
-            LogUtil.Debug(() =>
-                $"OnStart for BackgroundResourceProcessor on vessel {vessel.GetDisplayName()}"
-            );
-
             RegisterCallbacks();
 
             if (!BackgroundProcessingActive)
@@ -78,10 +74,6 @@ namespace BackgroundResourceProcessing
 
         void OnDestroy()
         {
-            LogUtil.Debug(() =>
-                $"OnDestroy for BackgroundResourceProcessor on vessel {vessel.GetDisplayName()}"
-            );
-
             if (BackgroundProcessingActive)
             {
                 EventDispatcher.UnregisterChangepointCallbacks(this);
@@ -96,10 +88,6 @@ namespace BackgroundResourceProcessing
 
         public override void OnLoadVessel()
         {
-            LogUtil.Debug(() =>
-                $"OnLoadVessel for BackgroundResourceProcessor on vessel {vessel.GetDisplayName()}"
-            );
-
             if (!BackgroundProcessingActive)
                 return;
 
@@ -110,22 +98,17 @@ namespace BackgroundResourceProcessing
 
         public override void OnUnloadVessel()
         {
-            LogUtil.Debug(() =>
-                $"OnUnloadVessel for BackgroundResourceProcessor on vessel {vessel.GetDisplayName()}"
-            );
-
             if (BackgroundProcessingActive)
                 return;
 
             SaveVessel();
 
             GameEvents.onGameStateSave.Remove(OnGameStateSave);
+            EventDispatcher.RegisterChangepointCallback(this, processor.nextChangepoint);
         }
 
         private void LoadVessel()
         {
-            LogUtil.Debug(() => $"Updating state of vessel {vessel.GetDisplayName()}");
-
             var currentTime = Planetarium.GetUniversalTime();
 
             processor.UpdateInventories(currentTime);
@@ -149,8 +132,6 @@ namespace BackgroundResourceProcessing
             processor.UpdateNextChangepoint(currentTime);
 
             BackgroundProcessingActive = true;
-
-            EventDispatcher.RegisterChangepointCallback(this, processor.nextChangepoint);
         }
 
         internal void OnChangepoint(double changepoint)
@@ -183,10 +164,6 @@ namespace BackgroundResourceProcessing
             if (!ReferenceEquals(vessel, evt.host))
                 return;
 
-            LogUtil.Debug(() =>
-                $"OnVesselSOIChanged for BackgroundResourceProcessor on vessel {vessel.GetDisplayName()}"
-            );
-
             var state = new VesselState
             {
                 CurrentTime = Planetarium.GetUniversalTime(),
@@ -210,10 +187,6 @@ namespace BackgroundResourceProcessing
 
             if (!vessel.loaded)
                 return;
-
-            LogUtil.Debug(() =>
-                $"OnGameStateSave for BackgroundResourceProcessor on vessel {vessel.GetDisplayName()}"
-            );
 
             SaveVessel();
         }
@@ -279,12 +252,6 @@ namespace BackgroundResourceProcessing
 
         protected override void OnSave(ConfigNode node)
         {
-            LogUtil.Debug(() =>
-            {
-                var name = vessel != null ? vessel.GetDisplayName() : "null";
-                return $"BackgroundResourceProcessor.OnSave for vessel {name}";
-            });
-
             base.OnSave(node);
             processor.Save(node);
 
@@ -299,12 +266,6 @@ namespace BackgroundResourceProcessing
             bool active = false;
             if (node.TryGetValue("BackgroundProcessingActive", ref active))
                 BackgroundProcessingActive = active;
-
-            LogUtil.Debug(() =>
-            {
-                var name = vessel != null ? vessel.GetDisplayName() : "null";
-                return $"BackgroundResourceProcessor.OnLoad for vessel {name}";
-            });
         }
     }
 }
