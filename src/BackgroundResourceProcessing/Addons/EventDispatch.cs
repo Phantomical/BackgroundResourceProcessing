@@ -7,13 +7,7 @@ namespace BackgroundResourceProcessing.Addons
     /// This addon takes care of updating resource processor changepoints and
     /// routing certain scoped events to the right vessel.
     /// </summary>
-    [KSPAddon(
-        KSPAddon.Startup.Flight
-            | KSPAddon.Startup.TrackingStation
-            | KSPAddon.Startup.SpaceCentre
-            | KSPAddon.Startup.PSystemSpawn,
-        false
-    )]
+    [KSPAddon(KSPAddon.Startup.AllGameScenes, false)]
     internal class EventDispatcher : MonoBehaviour
     {
         // In order to keep frame times from getting too laggy
@@ -75,6 +69,12 @@ namespace BackgroundResourceProcessing.Addons
 
         void Start()
         {
+            // There is no way to specify that an addon should be loaded in all
+            // non-editor scenes so we just destroy it on the first frame after
+            // loading the editor.
+            if (HighLogic.LoadedSceneIsEditor)
+                GameObject.Destroy(this);
+
             GameEvents.onVesselSOIChanged.Add(OnVesselSOIChanged);
         }
 

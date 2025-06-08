@@ -88,7 +88,7 @@ namespace BackgroundResourceProcessing
             }
             else if (vessel.loaded)
             {
-                SaveVessel();
+                // SaveVessel();
             }
 
             UnregisterCallbacks();
@@ -105,7 +105,7 @@ namespace BackgroundResourceProcessing
 
             LoadVessel();
 
-            GameEvents.onGameSceneLoadRequested.Add(OnGameSceneChange);
+            GameEvents.onGameStateSave.Add(OnGameStateSave);
         }
 
         public override void OnUnloadVessel()
@@ -116,9 +116,10 @@ namespace BackgroundResourceProcessing
 
             if (BackgroundProcessingActive)
                 return;
+
             SaveVessel();
 
-            GameEvents.onGameSceneLoadRequested.Remove(OnGameSceneChange);
+            GameEvents.onGameStateSave.Remove(OnGameStateSave);
         }
 
         private void LoadVessel()
@@ -200,9 +201,8 @@ namespace BackgroundResourceProcessing
             EventDispatcher.RegisterChangepointCallback(this, processor.nextChangepoint);
         }
 
-        // We use this event to run _before_ parts start getting destroyed on
-        // scene switch.
-        private void OnGameSceneChange(GameScenes _)
+        // We use this event to save the vessel state _before_ we actually get saved.
+        private void OnGameStateSave(ConfigNode _)
         {
             // There is nothing we need to do for inactive vessels
             if (BackgroundProcessingActive)
@@ -212,7 +212,7 @@ namespace BackgroundResourceProcessing
                 return;
 
             LogUtil.Debug(() =>
-                $"OnGameSceneChange for BackgroundResourceProcessor on vessel {vessel.GetDisplayName()}"
+                $"OnGameStateSave for BackgroundResourceProcessor on vessel {vessel.GetDisplayName()}"
             );
 
             SaveVessel();
@@ -221,13 +221,13 @@ namespace BackgroundResourceProcessing
         private void RegisterCallbacks()
         {
             if (vessel.loaded)
-                GameEvents.onGameSceneLoadRequested.Add(OnGameSceneChange);
+                GameEvents.onGameStateSave.Add(OnGameStateSave);
         }
 
         private void UnregisterCallbacks()
         {
             if (vessel.loaded)
-                GameEvents.onGameSceneLoadRequested.Remove(OnGameSceneChange);
+                GameEvents.onGameStateSave.Remove(OnGameStateSave);
         }
 
         /// <summary>
@@ -279,14 +279,32 @@ namespace BackgroundResourceProcessing
 
         protected override void OnSave(ConfigNode node)
         {
+            LogUtil.Debug(() =>
+            {
+                var name = vessel != null ? vessel.GetDisplayName() : "null";
+                return $"BackgroundResourceProcessor.OnSave for vessel {name}";
+            });
+
             base.OnSave(node);
             processor.Save(node);
+
+            node.AddValue("BackgroundProcessingActive", BackgroundProcessingActive);
         }
 
         protected override void OnLoad(ConfigNode node)
         {
             base.OnLoad(node);
             processor.Load(node);
+
+            bool active = false;
+            if (node.TryGetValue("BackgroundProcessingActive", ref active))
+                BackgroundProcessingActive = active;
+
+            LogUtil.Debug(() =>
+            {
+                var name = vessel != null ? vessel.GetDisplayName() : "null";
+                return $"BackgroundResourceProcessor.OnLoad for vessel {name}";
+            });
         }
     }
 }
