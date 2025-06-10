@@ -21,6 +21,21 @@ namespace BackgroundResourceProcessing.Core
     /// </remarks>
     public class ResourceProcessor
     {
+        /// <summary>
+        /// If the remaining time before an inventory fills up/empties out is
+        /// less than this amount of time then we just set the inventory to be
+        /// full or empty, as appropriate.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// The primary use for this is to reduce the number of changepoints
+        /// that need to be solved immediately after a vessel is recorded.
+        /// Often there will be resources that are just slightly off being
+        /// full/empty and being able to batch those together helps speed
+        /// things up a little bit.
+        /// </remarks>
+        private const double ResourceFudgeDuration = 0.01;
+
         public List<ResourceConverter> converters = [];
         public Dictionary<InventoryId, ResourceInventory> inventories = [];
 
@@ -430,6 +445,18 @@ namespace BackgroundResourceProcessing.Core
                     inventory.amount = inventory.maxAmount;
                 else if (inventory.Empty)
                     inventory.amount = 0.0;
+                else if (inventory.RemainingTime < ResourceFudgeDuration)
+                {
+                    // Fudge inventory rates slightly to reduce the number of
+                    // changepoints that need to be computed.
+                    //
+                    // If the inventory is going to fill up/empty in < 0.01s
+                    // then we can just set it to full/empty right here.
+                    if (inventory.rate < 0.0)
+                        inventory.amount = 0.0;
+                    else
+                        inventory.amount = inventory.maxAmount;
+                }
             }
         }
 

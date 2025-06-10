@@ -119,6 +119,23 @@ namespace BackgroundResourceProcessing.Core
         public bool Full => maxAmount - amount < 1e-6;
         public bool Empty => amount < 1e-6;
 
+        /// <summary>
+        /// How much time remains until this inventory either fills up or
+        /// empties at the current rate of change.
+        /// </summary>
+        public double RemainingTime
+        {
+            get
+            {
+                if (rate == 0.0)
+                    return double.PositiveInfinity;
+
+                if (rate < 0.0)
+                    return amount / -rate;
+                return (maxAmount - amount) / rate;
+            }
+        }
+
         public InventoryId Id => new(partId, resourceName, moduleId);
         public InventoryState State => new(amount, maxAmount, rate);
 
