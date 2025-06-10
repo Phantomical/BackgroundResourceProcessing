@@ -9,6 +9,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessin
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessing.Integration.EL", "src\BackgroundResourceProcessing.Integration.EL\BackgroundResourceProcessing.Integration.EL.csproj", "{C1E83CB8-3EE0-4165-0A96-A230133CC1D1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessing.Integration.ClickThroughBlocker", "src\BackgroundResourceProcessing.Integration.ClickThroughBlocker\BackgroundResourceProcessing.Integration.ClickThroughBlocker.csproj", "{877C5B2D-3B1C-E670-8792-5E4374F7A4EA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessing.CLI", "src\BackgroundResourceProcessing.CLI\BackgroundResourceProcessing.CLI.csproj", "{716615EE-8E13-9EDC-DF92-0FD9A682F661}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +31,14 @@ Global
 		{C1E83CB8-3EE0-4165-0A96-A230133CC1D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C1E83CB8-3EE0-4165-0A96-A230133CC1D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C1E83CB8-3EE0-4165-0A96-A230133CC1D1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{877C5B2D-3B1C-E670-8792-5E4374F7A4EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{877C5B2D-3B1C-E670-8792-5E4374F7A4EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{877C5B2D-3B1C-E670-8792-5E4374F7A4EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{877C5B2D-3B1C-E670-8792-5E4374F7A4EA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{716615EE-8E13-9EDC-DF92-0FD9A682F661}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{716615EE-8E13-9EDC-DF92-0FD9A682F661}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{716615EE-8E13-9EDC-DF92-0FD9A682F661}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{716615EE-8E13-9EDC-DF92-0FD9A682F661}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

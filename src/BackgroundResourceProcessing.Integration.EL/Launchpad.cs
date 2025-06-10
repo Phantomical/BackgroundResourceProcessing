@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using BackgroundResourceProcessing.Modules;
 using ExtraplanetaryLaunchpads;
+using UnityEngine;
 
 namespace BackgroundResourceProcessing.Integration.EL
 {
@@ -160,6 +161,12 @@ namespace BackgroundResourceProcessing.Integration.EL
             if (!control.isActive)
                 return;
 
+            // This method is called before OnStart so control hasn't yet had
+            // a chance to actually find the vessel WorkNet module.
+            var workNet = vessel.FindVesselModuleImplementing<ELVesselWorkNet>();
+            if (workNet == null)
+                return;
+
             var workHours = amount;
             var total = totalWork;
             if (totalWork == 0.0)
@@ -168,6 +175,8 @@ namespace BackgroundResourceProcessing.Integration.EL
                 return;
 
             var ratio = MathUtil.Clamp01(workHours / total);
+
+            Debug.Log($"[BRP] Ratio is {ratio:g4} = {workHours:g4}/{total:g4}");
 
             if (control.state == ELBuildControl.State.Building)
             {
@@ -178,7 +187,11 @@ namespace BackgroundResourceProcessing.Integration.EL
                     if (res.amount <= 0.0)
                         continue;
 
-                    res.amount *= ratio;
+                    Debug.Log(
+                        $"[BRP] Resource {res.name}: current={res.amount:g4} delta={res.amount * ratio}"
+                    );
+
+                    res.amount -= res.amount * ratio;
                 }
             }
             else if (control.state == ELBuildControl.State.Canceling)
@@ -200,7 +213,7 @@ namespace BackgroundResourceProcessing.Integration.EL
 
             // Prevent EL from doing its own catch-up, since we have already
             // updated the relevant work sinks.
-            control.workNet.lastUpdate = Planetarium.GetUniversalTime();
+            workNet.lastUpdate = Planetarium.GetUniversalTime();
             totalWork = 0.0;
         }
 

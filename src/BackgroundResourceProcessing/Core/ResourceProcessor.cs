@@ -624,7 +624,7 @@ namespace BackgroundResourceProcessing.Core
             if (span.TotalMilliseconds >= 100)
                 return $"{span:fff} ms";
 
-            var micros = (span.Ticks / TicksPerMicrosecond) % 1000;
+            var micros = span.Ticks / TicksPerMicrosecond % 1000;
             var millis = span.Milliseconds;
 
             return $"{millis:D}.{micros:D3} ms";

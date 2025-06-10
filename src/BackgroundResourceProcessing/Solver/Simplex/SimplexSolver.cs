@@ -102,15 +102,69 @@ namespace BackgroundResourceProcessing.Solver.Simplex
                 this[i, dst] += this[i, src] * scale;
         }
 
+        public void InvScaleRow(int row, double scale)
+        {
+            if (scale == 1.0)
+                return;
+
+            // Note: We use division instead of multiplication by inverse here
+            //       for numerical accuracy reasons.
+            for (int i = 0; i < width; ++i)
+                this[i, row] /= scale;
+        }
+
+        public void ScaleReduce(int dst, int src, int pivot)
+        {
+            if (dst == src)
+                throw new ArgumentException("cannot row-reduce a row against itself");
+            if (pivot >= Width || pivot < 0)
+                throw new ArgumentOutOfRangeException(
+                    "pivot",
+                    "Pivot index was larger than width of matrix"
+                );
+
+            var scale = this[pivot, dst];
+            if (scale == 0.0)
+                return;
+
+            for (int i = 0; i < Width; ++i)
+            {
+                this[i, dst] -= this[i, src] * scale;
+
+                // This is a bit of a hack. Numerical imprecision can result in
+                // certain values failing to cancel out when they really should.
+                // By clamping values to 0 when they are too small, we can avoid
+                // that problem at the expense of potentially truncating some
+                // columns.
+                //
+                // However, problems in KSP tend to be pretty well-behaved
+                // numerically, so this is preferable to numerical errors
+                // causing unexpected non-optimal solutions.
+                if (Math.Abs(this[i, dst]) < 1e-9)
+                    this[i, dst] = 0.0;
+            }
+        }
+
         public override string ToString()
         {
+            const int Stride = 8;
+
             StringBuilder builder = new();
 
             for (int y = 0; y < Height; ++y)
             {
+                int offset = 0;
                 for (int x = 0; x < Width; ++x)
                 {
-                    builder.Append($"{this[x, y], 5:G3}, ");
+                    int expected = (x + 1) * Stride;
+                    int room = Math.Max(expected - offset, 0);
+
+                    string value = $"{this[x, y]:g3}";
+                    string pad = new(' ', Math.Max(room - value.Length - 1, 1));
+                    string whole = $"{pad}{value},";
+
+                    builder.Append(whole);
+                    offset += whole.Length;
                 }
 
                 builder.Append("\n");
@@ -214,6 +268,8 @@ namespace BackgroundResourceProcessing.Solver.Simplex
 
         public double[] Solve()
         {
+            // LogUtil.Log($"Attempting to solve problem:\n{this}");
+
             var tableau = BuildSimplexTableau();
             SolveTableau(tableau);
 
@@ -349,13 +405,14 @@ namespace BackgroundResourceProcessing.Solver.Simplex
 
             // LogUtil.Log($"Selecting row {index}");
 
-            tableau.ScaleRow(index, 1.0 / tableau[pivot, index]);
+            tableau.InvScaleRow(index, tableau[pivot, index]);
             for (int i = 0; i < tableau.Height; ++i)
             {
                 if (i == index)
                     continue;
 
-                tableau.Reduce(i, index, -tableau[pivot, i]);
+                tableau.ScaleReduce(i, index, pivot);
+                // tableau.Reduce(i, index, -tableau[pivot, i]);
             }
 
             return true;
@@ -387,13 +444,20 @@ namespace BackgroundResourceProcessing.Solver.Simplex
                     if (!RenderCoef(builder, constraint.coefs[i], $"x{i}", ref first))
                         continue;
 
-                if (constraint.slack != -1)
-                    RenderCoef(builder, constraint.scoef, $"S{constraint.slack}", ref first);
+                // if (constraint.slack != -1)
+                //     RenderCoef(builder, constraint.scoef, $"S{constraint.slack}", ref first);
 
                 if (first)
                     builder.Append("0.0");
 
-                builder.Append($" == {constraint.value:G}\n");
+                if (constraint.slack == -1)
+                    builder.Append(" == ");
+                else if (constraint.scoef < 0.0)
+                    builder.Append(" >= ");
+                else
+                    builder.Append(" <= ");
+
+                builder.Append($"{constraint.value:G}\n");
             }
 
             {
@@ -407,14 +471,14 @@ namespace BackgroundResourceProcessing.Solver.Simplex
                     builder.Append($"x{i}");
                 }
 
-                for (int i = 0; i < slackCount; ++i)
-                {
-                    if (first)
-                        first = false;
-                    else
-                        builder.Append(",");
-                    builder.Append($"S{i}");
-                }
+                // for (int i = 0; i < slackCount; ++i)
+                // {
+                //     if (first)
+                //         first = false;
+                //     else
+                //         builder.Append(",");
+                //     builder.Append($"S{i}");
+                // }
 
                 if (!first)
                     builder.Append(" >= 0");

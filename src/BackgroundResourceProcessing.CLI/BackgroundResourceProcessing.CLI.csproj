@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>12</LangVersion>
+
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <ProjectRootDir>$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory),
+      'BackgroundResourceProcessing.sln'))</ProjectRootDir>
+    <RepoRootPath>$(MSBuildThisFileDirectory)\bin\GameData</RepoRootPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommandLineParser" Version="2.9.1" />
+    <PackageReference Include="DotNetGraph" Version="3.3.0" />
+    <PackageReference Include="KSPBuildTools" Version="0.0.3" />
+
+    <ProjectReference Include="$(ProjectRootDir)\src\BackgroundResourceProcessing\BackgroundResourceProcessing.csproj" />
+  </ItemGroup>
+
+  <Target Name="CopyKSPDlls" AfterTargets="CopyFilesToOutputDirectory">
+    <ItemGroup>
+      <KspDlls Include="$(ManagedPath)\*.dll" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(KspDlls)" DestinationFolder="$(OutDir)\%(RecursiveDir)" />
+  </Target>
+</Project>

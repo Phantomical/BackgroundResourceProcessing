@@ -6,7 +6,7 @@
     <Version>0.0.1</Version>
     <Description>Background resource processing for KSP</Description>
 
-    <DebugType>full</DebugType>
+    <DebugType>portable</DebugType>
 
     <GenerateKSPAssemblyAttribute>true</GenerateKSPAssemblyAttribute>
     <GenerateKSPAssemblyDependencyAttributes>true</GenerateKSPAssemblyDependencyAttributes>
@@ -23,10 +23,12 @@
     </KSPVersionFile>
 
     <InternalsVisibleTo Include="BackgroundResourceProcessing.Test" />
+    <InternalsVisibleTo Include="BackgroundResourceProcessing.CLI" />
   </ItemGroup>
 
   <PropertyGroup>
-    <ProjectRootDir>$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory),'BackgroundResourceProcessing.sln'))</ProjectRootDir>
+    <ProjectRootDir>
+      $([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory),'BackgroundResourceProcessing.sln'))</ProjectRootDir>
     <GameDataOutDir>$(ProjectRootDir)\GameData\BackgroundResourceProcessing</GameDataOutDir>
     <UnityProjectDir>$(ProjectRootDir)\Unity</UnityProjectDir>
     <BinariesOutputRelativePath>GameData\BackgroundResourceProcessing\Plugins</BinariesOutputRelativePath>

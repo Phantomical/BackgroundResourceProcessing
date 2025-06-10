@@ -7,7 +7,7 @@ using BackgroundResourceProcessing.Core;
 using KSP.UI.Screens;
 using UnityEngine;
 
-namespace BackgroundResourceProcessing.Addons
+namespace BackgroundResourceProcessing.UI
 {
     [KSPAddon(KSPAddon.Startup.Flight, false)]
     internal class DebugUI : MonoBehaviour
@@ -92,13 +92,26 @@ namespace BackgroundResourceProcessing.Addons
             if (!showGUI)
                 return;
 
-            window = GUILayout.Window(
+            window = GUILayoutWindow(
                 GetInstanceID(),
                 window,
                 DrawWindow,
                 "Background Resource Processing",
                 HighLogic.Skin.window
             );
+        }
+
+        // This is a patch point for the ClickThroughBlocker integration to
+        // override GUILayout.Window with the equivalent from CTB.
+        Rect GUILayoutWindow(
+            int id,
+            Rect screenRect,
+            GUI.WindowFunction func,
+            string text,
+            GUIStyle style
+        )
+        {
+            return GUILayout.Window(id, screenRect, func, text, style);
         }
 
         void DrawWindow(int windowId)
@@ -247,6 +260,8 @@ namespace BackgroundResourceProcessing.Addons
 
         static string FormatCellNumber(double n)
         {
+            if (Math.Abs(n) < 0.1)
+                return $"{n:g3}";
             return $"{n:N}";
         }
 
