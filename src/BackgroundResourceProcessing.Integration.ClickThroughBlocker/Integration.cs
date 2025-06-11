@@ -16,8 +16,6 @@ namespace BackgroundResourceProcessing.Integration.ClickThroughBlocker
 
         void Awake()
         {
-            Harmony.DEBUG = true;
-
             var harmony = new Harmony(
                 "BackgroundResourceProcessing.Integration.ClickThroughBlocker"
             );

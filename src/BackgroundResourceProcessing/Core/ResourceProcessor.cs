@@ -203,15 +203,11 @@ namespace BackgroundResourceProcessing.Core
             {
                 LogUtil.Debug(() => $"Inspecting part {part.name} for converters");
 
-                var converters = part.FindModulesImplementing<BackgroundConverter>();
-
-                // No point calculating linked inventories if there are no
-                // background modules on the current part.
-                if (converters.Count == 0)
-                    continue;
-
-                foreach (var module in converters)
+                foreach (var partModule in part.Modules)
                 {
+                    if (partModule is not BackgroundConverter module)
+                        continue;
+
                     LogUtil.Debug(() => $"Found converter module: {module.GetType().Name}");
 
                     ConverterBehaviour behaviour;
@@ -355,7 +351,7 @@ namespace BackgroundResourceProcessing.Core
                 }
 
                 LogUtil.Debug(() =>
-                    $"Adding fake inventories from module {module.GetType().Name} on part {module.part.partName}"
+                    $"Adding fake inventories from module {module.GetType().Name} on part {module.part.name}"
                 );
 
                 var moduleId = module.GetPersistentId();
