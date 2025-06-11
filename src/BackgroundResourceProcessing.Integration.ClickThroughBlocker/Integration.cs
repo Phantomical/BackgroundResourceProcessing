@@ -31,10 +31,10 @@ namespace BackgroundResourceProcessing.Integration.ClickThroughBlocker
                 return;
             }
 
-            var method = AccessTools.Method(type, "GUIWindowLayout");
+            var method = AccessTools.Method(type, "GUILayoutWindow");
             if (method == null)
             {
-                Debug.LogWarning($"DebugUI has no method named GUIWindowLayout");
+                Debug.LogWarning($"DebugUI has no method named GUILayoutWindow");
                 return;
             }
 
@@ -51,8 +51,8 @@ namespace BackgroundResourceProcessing.Integration.ClickThroughBlocker
             GUIStyle style
         )
         {
-            __result = ClickThruBlocker.GUIWindow(id, screenRect, func, text, style);
-            return true;
+            __result = ClickThruBlocker.GUILayoutWindow(id, screenRect, func, text, style);
+            return false;
         }
     }
 }

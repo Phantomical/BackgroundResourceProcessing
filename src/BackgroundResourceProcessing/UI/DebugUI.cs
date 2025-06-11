@@ -20,6 +20,7 @@ namespace BackgroundResourceProcessing.UI
 
         static GUIStyle HeaderStyle;
         static GUIStyle CellStyle;
+        static GUIStyle ButtonActive;
 
         static ApplicationLauncherButton button;
 
@@ -47,6 +48,7 @@ namespace BackgroundResourceProcessing.UI
 
             HeaderStyle = new(HighLogic.Skin.label) { fontStyle = FontStyle.Bold };
             CellStyle = new(HighLogic.Skin.label) { alignment = TextAnchor.MiddleRight };
+            ButtonActive = new(HighLogic.Skin.button) { onNormal = HighLogic.Skin.button.onActive };
 
             initialized = true;
             window = new Rect(Screen.width / 2 - 450 / 2, Screen.height / 2 - 50, 450, 100);
