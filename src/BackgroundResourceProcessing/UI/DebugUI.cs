@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
 using KSP.UI.Screens;
 using UnityEngine;
@@ -156,16 +157,17 @@ namespace BackgroundResourceProcessing.UI
 
         void DrawResourceState()
         {
-            Dictionary<string, InventoryState> totals = [];
+            List<KVPair<string, InventoryState>> totals = [];
             if (processor != null)
-                totals = processor.GetResourceTotals();
+                totals = processor.GetResourceTotals().KSPEnumerate().ToList();
 
+            totals.Sort((a, b) => a.Key.CompareTo(b.Key));
             var defs = PartResourceLibrary.Instance.resourceDefinitions;
 
             GUILayout.BeginHorizontal();
             GUILayout.BeginVertical();
             GUILayout.Label("Resource", HeaderStyle, GUILayout.ExpandWidth(true));
-            foreach (var resource in totals.Keys)
+            foreach (var resource in totals.Select(entry => entry.Key))
             {
                 var def = defs[resource];
                 var name = def != null ? def.displayName : resource;
@@ -173,9 +175,10 @@ namespace BackgroundResourceProcessing.UI
             }
             GUILayout.EndVertical();
 
-            DrawColumn("Amount", totals.Values.Select(state => state.amount));
-            DrawColumn("Capacity", totals.Values.Select(state => state.maxAmount));
-            DrawColumn("Rate", totals.Values.Select(state => state.rate));
+            var values = totals.Select(entry => entry.Value);
+            DrawColumn("Amount", values.Select(state => state.amount));
+            DrawColumn("Capacity", values.Select(state => state.maxAmount));
+            DrawColumn("Rate", values.Select(state => state.rate));
 
             GUILayout.EndHorizontal();
 
