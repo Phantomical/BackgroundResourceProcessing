@@ -1,5 +1,7 @@
 using System;
+using System.ComponentModel.Design.Serialization;
 using System.Reflection;
+using System.Runtime.InteropServices;
 
 namespace BackgroundResourceProcessing.Modules
 {
@@ -14,7 +16,9 @@ namespace BackgroundResourceProcessing.Modules
     /// conditionally active then you can make it compatible without having to
     /// actually write custom modules.
     /// </remarks>
-    public class ModuleBackgroundConditionalConverter : ModuleBackgroundConstantConverter
+    public class ModuleBackgroundConditionalConverter
+        : ModuleBackgroundConstantConverter,
+            IBackgroundVesselRestoreHandler
     {
         /// <summary>
         /// The type name of the module that this module should look for.
@@ -36,11 +40,24 @@ namespace BackgroundResourceProcessing.Modules
         [KSPField]
         public string Condition = "";
 
+        /// <summary>
+        /// A field that would normally track the last update time that should be
+        /// overwritten with the current time on resume.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// This is designed to allow for suppressing existing catch-up logic in
+        /// a module.
+        /// </remarks>
+        [KSPField]
+        public string LastUpdateField = null;
+
         [KSPField(isPersistant = true)]
         private uint cachedPersistentModuleId = 0;
 
         private PartModule module = null;
         private MemberInfo conditionMember = null;
+        private MemberInfo lastUpdateMember = null;
 
         private PartModule GetLinkedModuleCached()
         {
@@ -63,8 +80,17 @@ namespace BackgroundResourceProcessing.Modules
 
         public override void OnStart(StartState state)
         {
-            base.OnStart(state);
             Setup();
+        }
+
+        public void OnVesselRestore()
+        {
+            Setup();
+
+            if (lastUpdateMember == null)
+                return;
+
+            SetMemberValue(lastUpdateMember, module, Planetarium.GetUniversalTime());
         }
 
         protected override ConverterBehaviour GetConverterBehaviour()
@@ -77,10 +103,22 @@ namespace BackgroundResourceProcessing.Modules
 
         private void Setup()
         {
-            module = GetLinkedModule();
-            if (module == null)
+            if (module != null)
                 return;
-            conditionMember = GetConditionMember();
+
+            try
+            {
+                module = GetLinkedModule();
+                if (module == null)
+                    return;
+                conditionMember = GetConditionMember();
+                lastUpdateMember = GetLastUpdateMember();
+            }
+            catch (MemberException e)
+            {
+                LogUtil.Error($"{e.Message}. This {GetType().Name} module will be disabled.");
+                module = null;
+            }
         }
 
         private PartModule GetLinkedModule()
@@ -112,21 +150,17 @@ namespace BackgroundResourceProcessing.Modules
             {
                 if (index == 0)
                 {
-                    LogUtil.Error(
-                        $"No module of type {TargetModule} found on part {part.partName}. ",
-                        $"This {GetType().Name} module will be disabled."
+                    throw new MemberException(
+                        $"No module of type {TargetModule} found on part {part.partName}"
                     );
                 }
                 else
                 {
                     var suffix = GetNumberSuffix(index);
-                    LogUtil.Error(
-                        $"There is no {index}{suffix} module of type {TargetModule} found on part {part.partName}. ",
-                        $"This {GetType().Name} module will be disabled."
+                    throw new MemberException(
+                        $"There is no {index}{suffix} module of type {TargetModule} found on part {part.partName}"
                     );
                 }
-
-                return null;
             }
 
             cachedPersistentModuleId = found.GetPersistentId();
@@ -140,31 +174,69 @@ namespace BackgroundResourceProcessing.Modules
                 fieldName = fieldName.Substring(1);
 
             var type = module.GetType();
-            MemberInfo member = type.GetField(fieldName, BindingFlags.NonPublic);
-            if (member == null)
-            {
-                var info = type.GetProperty(fieldName, BindingFlags.NonPublic);
-                if (info.CanRead)
-                    member = info;
-            }
-
-            if (member == null)
-            {
-                LogUtil.Error(
-                    $"Module of type {type.Name} has no field or readable property named '{fieldName}'. ",
-                    $"This {GetType().Name} module will be disabled."
-                );
-                return null;
-            }
+            var member = GetNamedMember(fieldName, Access.Read);
 
             var memberType = GetMemberType(member);
             if (memberType != typeof(bool))
-            {
-                LogUtil.Error(
-                    $"Field '{fieldName}' on type {type.Name} is not a boolean field. ",
-                    $"This {GetType().Name} module will be disabled."
-                );
+                throw new MemberException($"Field {type.Name}.{fieldName} is not a boolean field");
+
+            return member;
+        }
+
+        private MemberInfo GetLastUpdateMember()
+        {
+            if (LastUpdateField == null)
                 return null;
+
+            var type = module.GetType();
+            var member = GetNamedMember(LastUpdateField, Access.Write);
+            var memberType = GetMemberType(member);
+            if (memberType != typeof(double))
+                throw new MemberException(
+                    $"Field {type.Name}.{LastUpdateField} is not a double field"
+                );
+
+            return member;
+        }
+
+        private enum Access
+        {
+            Read = 0x1,
+            Write = 0x2,
+            ReadWrite = 0x3,
+        }
+
+        private class MemberException(string message) : Exception(message) { }
+
+        private MemberInfo GetNamedMember(string fieldName, Access access)
+        {
+            var type = module.GetType();
+            MemberInfo member =
+                (MemberInfo)type.GetField(fieldName, BindingFlags.NonPublic)
+                ?? type.GetProperty(fieldName, BindingFlags.NonPublic);
+
+            if (member == null)
+            {
+                throw new MemberException(
+                    $"Module of type {type.Name} has no field or property named '{fieldName}'"
+                );
+            }
+
+            if (member is PropertyInfo property)
+            {
+                if ((access & Access.Read) != 0 && !property.CanRead)
+                {
+                    throw new MemberException(
+                        $"Property {type.Name}.{fieldName} is required to be readable, but was not readable"
+                    );
+                }
+
+                if ((access & Access.Write) != 0 && !property.CanWrite)
+                {
+                    throw new MemberException(
+                        $"Property {type.Name}.{fieldName} is required to be writable, but was not writable"
+                    );
+                }
             }
 
             return member;
@@ -203,6 +275,16 @@ namespace BackgroundResourceProcessing.Modules
                 PropertyInfo propertyInfo => propertyInfo.GetValue(obj),
                 _ => throw new NotImplementedException(),
             };
+        }
+
+        private static void SetMemberValue<T>(MemberInfo member, object obj, T value)
+        {
+            if (member is FieldInfo fieldInfo)
+                fieldInfo.SetValue(obj, value);
+            else if (member is PropertyInfo propertyInfo)
+                propertyInfo.SetValue(obj, value);
+            else
+                throw new NotImplementedException();
         }
 
         private static string GetNumberSuffix(int n)
