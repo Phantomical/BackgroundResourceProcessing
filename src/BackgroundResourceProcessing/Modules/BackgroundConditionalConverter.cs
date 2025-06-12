@@ -37,7 +37,7 @@ namespace BackgroundResourceProcessing.Modules
         public string Condition = "";
 
         [KSPField(isPersistant = true)]
-        private uint? cachedPersistentModuleId = null;
+        private uint cachedPersistentModuleId = 0;
 
         private PartModule module = null;
         private MemberInfo conditionMember = null;
@@ -47,9 +47,9 @@ namespace BackgroundResourceProcessing.Modules
             if (module != null)
                 return module;
 
-            if (cachedPersistentModuleId == null)
+            if (cachedPersistentModuleId == 0)
                 return null;
-            var persistentId = (uint)cachedPersistentModuleId;
+            var persistentId = cachedPersistentModuleId;
             var found = part.Modules[persistentId];
             if (found == null)
                 return null;
@@ -129,7 +129,7 @@ namespace BackgroundResourceProcessing.Modules
                 return null;
             }
 
-            cachedPersistentModuleId = found.PersistentId;
+            cachedPersistentModuleId = found.GetPersistentId();
             return found;
         }
 
