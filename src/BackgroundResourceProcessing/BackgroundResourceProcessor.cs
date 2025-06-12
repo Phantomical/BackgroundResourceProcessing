@@ -98,13 +98,14 @@ namespace BackgroundResourceProcessing
 
         public override void OnUnloadVessel()
         {
-            if (BackgroundProcessingActive)
-                return;
-
-            SaveVessel();
-
             GameEvents.onGameStateSave.Remove(OnGameStateSave);
-            EventDispatcher.RegisterChangepointCallback(this, processor.nextChangepoint);
+
+            if (vessel == null)
+                return;
+            if (!BackgroundProcessingActive)
+                LogUtil.Warn(
+                    "BackgroundResourceProcessor being destroyed but background processing has not been activated"
+                );
         }
 
         private void LoadVessel()
