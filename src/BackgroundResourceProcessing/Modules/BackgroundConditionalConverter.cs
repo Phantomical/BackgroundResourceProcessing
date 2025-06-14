@@ -38,7 +38,7 @@ namespace BackgroundResourceProcessing.Modules
         /// target module, optionally preceded by <c>!</c> to negate the condition.
         /// </summary>
         [KSPField]
-        public string Condition = "";
+        public string Condition = null;
 
         /// <summary>
         /// A field that would normally track the last update time that should be
@@ -169,6 +169,9 @@ namespace BackgroundResourceProcessing.Modules
 
         private MemberInfo GetConditionMember()
         {
+            if (Condition == null)
+                throw new MemberException($"Condition was null");
+
             var fieldName = Condition;
             if (fieldName.StartsWith("!"))
                 fieldName = fieldName.Substring(1);
