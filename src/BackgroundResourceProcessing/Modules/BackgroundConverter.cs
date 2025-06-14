@@ -49,6 +49,7 @@ namespace BackgroundResourceProcessing.Modules
         ///   consume resources first. The default is 0, and generally you can
         ///   leave the priority at that.
         /// </remarks>
+        [KSPField]
         public int priority = 0;
 
         /// <summary>
@@ -69,13 +70,6 @@ namespace BackgroundResourceProcessing.Modules
         public virtual BackgroundResourceSet GetLinkedBackgroundResources()
         {
             return null;
-        }
-
-        public override void OnLoad(ConfigNode node)
-        {
-            base.OnLoad(node);
-
-            node.TryGetValue("priority", ref priority);
         }
 
         /// <summary>
