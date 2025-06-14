@@ -1,9 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <TargetFramework>net472</TargetFramework>
-        <LangVersion>12</LangVersion>
-
-        <Version>0.0.1</Version>
         <Description>BackgroundResourceProcessing ClickThroughBlocker Integration</Description>
 
         <GenerateKSPAssemblyAttribute>true</GenerateKSPAssemblyAttribute>
@@ -34,14 +30,6 @@
 
         <InternalsVisibleTo Include="BackgroundResourceProcessing.Test" />
     </ItemGroup>
-
-    <PropertyGroup>
-        <ProjectRootDir>
-            $([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory),'BackgroundResourceProcessing.sln'))</ProjectRootDir>
-        <GameDataOutDir>$(ProjectRootDir)\GameData\BackgroundResourceProcessing</GameDataOutDir>
-        <UnityProjectDir>$(ProjectRootDir)\Unity</UnityProjectDir>
-        <BinariesOutputRelativePath>GameData\BackgroundResourceProcessing\Plugins</BinariesOutputRelativePath>
-    </PropertyGroup>
 
     <!--
     It's really easy for old binaries to stick around in GameData and bin

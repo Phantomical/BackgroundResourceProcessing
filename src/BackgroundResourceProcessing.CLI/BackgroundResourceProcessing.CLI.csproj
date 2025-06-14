@@ -1,14 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net472</TargetFramework>
-    <LangVersion>12</LangVersion>
-
     <OutputType>Exe</OutputType>
   </PropertyGroup>
 
   <PropertyGroup>
-    <ProjectRootDir>$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory),
-      'BackgroundResourceProcessing.sln'))</ProjectRootDir>
     <RepoRootPath>$(MSBuildThisFileDirectory)\bin\GameData</RepoRootPath>
   </PropertyGroup>
 

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <!-- The version used for all libraries in this project. -->
+        <Version>0.0.1</Version>
+
+        <TargetFramework>net472</TargetFramework>
+        <LangVersion>preview</LangVersion>
+
+        <ProjectRootDir>$(MSBuildThisFileDirectory)</ProjectRootDir>
+
+        <!-- Properties used by KSPBuildTools -->
+        <GameDataOutDir>$(ProjectRootDir)\GameData\BackgroundResourceProcessing</GameDataOutDir>
+        <BinariesOutputRelativePath>GameData\BackgroundResourceProcessing\Plugins</BinariesOutputRelativePath>
+    </PropertyGroup>
+
+    <Choose>
+        <When Condition=" '$(SolutionDir)' == '' ">
+            <!--
+                KSPBuildTools relies on these properties. However, they aren't
+                set when not doing a whole solution build. In that case we make
+                things work by defining them ourselves.
+            -->
+            <PropertyGroup>
+                <SolutionDir>$(ProjectRootDir)</SolutionDir>
+                <SolutionName>BackgroundResourceProcessing</SolutionName>
+                <SolutionExt>.sln</SolutionExt>
+                <SolutionFileName>$(SolutionName)$(SolutionExt)</SolutionFileName>
+                <SolutionPath>$(SolutionDir)/$(SolutionFileName)</SolutionPath>
+            </PropertyGroup>
+        </When>
+    </Choose>
+</Project>
