@@ -38,6 +38,13 @@ namespace BackgroundResourceProcessing.Modules
         public string ConverterName = null;
 
         /// <summary>
+        /// The index of the target converter module along the list of all
+        /// converter modules with the same type.
+        /// </summary>
+        [KSPField]
+        public int ConverterIndex = -1;
+
+        /// <summary>
         /// Specify an efficiency bonus to be used instead of the one on the
         /// referenced <see cref="BaseConverter"/> module.
         /// </summary>
@@ -227,6 +234,7 @@ namespace BackgroundResourceProcessing.Modules
             cachedPersistentModuleId = null;
 
             T found = null;
+            int index = 0;
             for (int i = 0; i < part.Modules.Count; ++i)
             {
                 var module = part.Modules[i] as BaseConverter;
@@ -236,12 +244,35 @@ namespace BackgroundResourceProcessing.Modules
                 var type = module.GetType();
                 if (type.Name != ConverterModule)
                     continue;
+                var current = index;
+                index += 1;
 
-                if (ConverterName != null && module.ConverterName != ConverterName)
-                    continue;
+                if (ConverterIndex != -1)
+                {
+                    if (current != ConverterIndex)
+                        continue;
+
+                    if (module.ConverterName != null && module.ConverterName != ConverterName)
+                    {
+                        LogUtil.Error(
+                            $"{ConverterModule} module at index {ConverterIndex} does not have ConverterName '{ConverterName}'"
+                        );
+                        return null;
+                    }
+                }
+                else
+                {
+                    if (ConverterName != null && module.ConverterName != ConverterName)
+                        continue;
+                }
 
                 if (module is not T downcasted)
-                    continue;
+                {
+                    LogUtil.Error(
+                        $"{ConverterModule} module with ConverterName '{ConverterName}' was not of type {typeof(T).Name}"
+                    );
+                    return null;
+                }
 
                 if (found != null)
                 {
@@ -255,6 +286,14 @@ namespace BackgroundResourceProcessing.Modules
                 found = downcasted;
             }
 
+            if (index < ConverterIndex)
+            {
+                LogUtil.Error(
+                    $"Part {part.name} does not have {ConverterIndex} modules of type {ConverterModule}"
+                );
+                return null;
+            }
+
             if (found == null)
             {
                 LogUtil.Warn(
@@ -264,7 +303,7 @@ namespace BackgroundResourceProcessing.Modules
                 return null;
             }
 
-            cachedPersistentModuleId = found.PersistentId;
+            cachedPersistentModuleId = found.GetPersistentId();
             return found;
         }
 
