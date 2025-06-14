@@ -71,7 +71,7 @@ namespace BackgroundResourceProcessing.Solver.V2
                     func[varId] += GetPriorityWeight(src.behaviour.Priority);
             }
 
-            LinearProblem problem = new(func);
+            Simplex.LinearProblem problem = new(func);
 
             // Constrain converter rates to be <= 1.
             //
@@ -99,7 +99,7 @@ namespace BackgroundResourceProcessing.Solver.V2
         }
 
         static void AddInventoryConstraint(
-            LinearProblem problem,
+            Simplex.LinearProblem problem,
             int inventoryId,
             GraphInventory inventory,
             ResourceGraph graph,

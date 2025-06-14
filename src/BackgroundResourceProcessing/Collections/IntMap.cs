@@ -43,6 +43,20 @@ namespace BackgroundResourceProcessing.Collections
             set { TryInsertOverwrite(key, value); }
         }
 
+        public V this[uint key]
+        {
+            get
+            {
+                if (key > (uint)Capacity)
+                    throw new KeyNotFoundException($"Key {key} was out of bounds for this IntMap");
+                if (!present[key])
+                    throw new KeyNotFoundException($"Key {key} was not present in the map");
+
+                return values[key];
+            }
+            set { this[(int)key] = value; }
+        }
+
         public bool ContainsKey(int key)
         {
             if (key < 0 || key > Capacity)
