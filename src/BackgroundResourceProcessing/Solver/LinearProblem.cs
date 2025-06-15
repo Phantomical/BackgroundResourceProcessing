@@ -173,7 +173,7 @@ namespace BackgroundResourceProcessing.Solver
 
             var varMap = BuildVarMap();
             var tableau = BuildSimplexTableau(func, varMap);
-            Simplex3.SolveTableau(tableau);
+            Simplex.SolveTableau(tableau);
 
             var soln = ExtractTableauSolution(tableau, varMap);
             LogUtil.Log($"Solution: {soln:G4}");
