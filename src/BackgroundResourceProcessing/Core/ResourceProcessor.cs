@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Modules;
-using BackgroundResourceProcessing.Solver.V2;
 using BackgroundResourceProcessing.Utils;
 using Smooth.Collections;
 
@@ -81,7 +80,7 @@ namespace BackgroundResourceProcessing.Core
             try
             {
                 var watch = Stopwatch.StartNew();
-                var solver = new Solver.V3.V3Solver();
+                var solver = new Solver.Solver();
                 var rates = solver.ComputeInventoryRates(this);
 
                 foreach (var inventory in inventories.Values)

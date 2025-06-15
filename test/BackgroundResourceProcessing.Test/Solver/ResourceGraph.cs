@@ -1,10 +1,5 @@
-using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Solver;
 using BackgroundResourceProcessing.Solver.Graph;
-using BackgroundResourceProcessing.Solver.V3;
-using DotNetGraph.Compilation;
-using DotNetGraph.Core;
-using DotNetGraph.Extensions;
 
 namespace BackgroundResourceProcessing.Test.Solver
 {
@@ -80,7 +75,7 @@ namespace BackgroundResourceProcessing.Test.Solver
         public void Crash1Solve()
         {
             var processor = TestUtil.LoadVessel("regression/solver-v2-crash-1.cfg");
-            var solver = new V3Solver();
+            var solver = new BackgroundResourceProcessing.Solver.Solver();
 
             solver.ComputeInventoryRates(processor);
         }

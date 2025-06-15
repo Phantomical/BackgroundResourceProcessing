@@ -1,14 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using BackgroundResourceProcessing.Collections;
-using BackgroundResourceProcessing.Solver.Simplex;
 using BackgroundResourceProcessing.Utils;
-using LibNoise.Models;
-using Steamworks;
-using UnityEngine.Video;
 
 namespace BackgroundResourceProcessing.Solver
 {
@@ -544,4 +539,6 @@ namespace BackgroundResourceProcessing.Solver
     internal class UnsolvableProblemException(
         string message = "Linear problem has no valid solutions"
     ) : Exception(message) { }
+
+    internal class OverconstrainedLinearProblemException(string message) : Exception(message) { }
 }

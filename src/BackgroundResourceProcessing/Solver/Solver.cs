@@ -1,13 +1,12 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Solver.Graph;
 
-namespace BackgroundResourceProcessing.Solver.V3
+namespace BackgroundResourceProcessing.Solver
 {
-    internal class V3Solver : ISolver
+    internal class Solver : ISolver
     {
         public Dictionary<InventoryId, double> ComputeInventoryRates(ResourceProcessor processor)
         {
@@ -261,7 +260,7 @@ namespace BackgroundResourceProcessing.Solver.V3
                     problem.AddConstraint(iRate >= 0.0);
             }
 
-            LogUtil.Log($"\nMaximize Z = {func}\nsubject to\n{problem}");
+            // LogUtil.Log($"\nMaximize Z = {func}\nsubject to\n{problem}");
 
             var soln = problem.Maximize(func);
 
