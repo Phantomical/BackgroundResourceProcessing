@@ -48,10 +48,13 @@ namespace BackgroundResourceProcessing.Collections
                 return true;
             }
 
-            if (stack != null && stack.TryPop(out value))
-                return true;
+            if (stack == null || stack.Count == 0)
+            {
+                value = default;
+                return false;
+            }
 
-            value = default;
+            value = stack.Pop();
             return false;
         }
     }

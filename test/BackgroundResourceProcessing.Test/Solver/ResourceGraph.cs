@@ -1,6 +1,7 @@
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Solver;
 using BackgroundResourceProcessing.Solver.Graph;
+using BackgroundResourceProcessing.Solver.V3;
 using DotNetGraph.Compilation;
 using DotNetGraph.Core;
 using DotNetGraph.Extensions;
@@ -10,26 +11,6 @@ namespace BackgroundResourceProcessing.Test.Solver
     [TestClass]
     public sealed class ResourceGraphTest
     {
-        [TestMethod]
-        public void RunAllSteps()
-        {
-            var module = TestUtil.LoadVessel("comet-retriever.cfg");
-            var graph = new ResourceGraph(module);
-
-            LogUtil.Log($"Initial graph: {TestUtil.DumpJson(graph)}");
-            EmitDot(graph, "initial.dot");
-
-            graph.MergeEquivalentInventories();
-
-            LogUtil.Log($"Inventories merged: {TestUtil.DumpJson(graph)}");
-            EmitDot(graph, "inv-merged.dot");
-
-            graph.MergeEquivalentConverters();
-
-            LogUtil.Log($"Converters merged: {TestUtil.DumpJson(graph)}");
-            EmitDot(graph, "conv-merged.dot");
-        }
-
         [TestMethod]
         public void MergeEquivalentInventories()
         {
@@ -83,81 +64,25 @@ namespace BackgroundResourceProcessing.Test.Solver
             Assert.AreEqual(InventoryState.Unconstrained, graph.inventories[4].state);
         }
 
-        private static void EmitDot(ResourceGraph rg, string filename)
+        [TestMethod]
+        public void Crash1()
         {
-            var graph = new DotGraph().WithIdentifier("ResourceGraph");
-            graph.Directed = true;
+            var processor = TestUtil.LoadVessel("regression/solver-v2-crash-1.cfg");
+            var graph = new ResourceGraph(processor);
 
-            foreach (var (id, inventory) in rg.inventories)
-            {
-                var node = new DotNode()
-                    .WithIdentifier($"i{id}")
-                    .WithLabel(
-                        $"i{id}: {inventory.resourceName} [{InventoryStateIdent(inventory.state)}]"
-                    )
-                    .WithStyle(DotNodeStyle.Dashed);
+            graph.MergeEquivalentInventories();
+            graph.MergeEquivalentConverters();
 
-                graph.Add(node);
-            }
-
-            foreach (var id in rg.converters.Keys)
-            {
-                var node = new DotNode()
-                    .WithIdentifier($"c{id}")
-                    .WithLabel($"c{id}")
-                    .WithStyle(DotNodeStyle.Solid);
-
-                graph.Add(node);
-            }
-
-            foreach (var (converter, inventory) in rg.inputs.ConverterToInventoryEdges())
-            {
-                var edge = new DotEdge()
-                    .From($"i{inventory}")
-                    .To($"c{converter}")
-                    .WithArrowTail(DotEdgeArrowType.None)
-                    .WithArrowHead(DotEdgeArrowType.Normal);
-
-                graph.Add(edge);
-            }
-
-            foreach (var (converter, inventory) in rg.outputs.ConverterToInventoryEdges())
-            {
-                var edge = new DotEdge()
-                    .To($"i{inventory}")
-                    .From($"c{converter}")
-                    .WithArrowTail(DotEdgeArrowType.None)
-                    .WithArrowHead(DotEdgeArrowType.Normal);
-
-                graph.Add(edge);
-            }
-
-            var path = Path.Combine(Path.Combine(TestUtil.ProjectDirectory, "bin"), filename);
-            var file = File.Create(path);
-            using var writer = new StreamWriter(file);
-            var context = new CompilationContext(
-                writer,
-                new CompilationOptions() { Indented = true }
-            );
-
-            graph.CompileAsync(context).Wait();
+            graph.HasSplitResourceEdges();
         }
 
-        private static string InventoryStateIdent(InventoryState state)
+        [TestMethod]
+        public void Crash1Solve()
         {
-            switch (state)
-            {
-                case InventoryState.Unconstrained:
-                    return "U";
-                case InventoryState.Empty:
-                    return "E";
-                case InventoryState.Full:
-                    return "F";
-                case InventoryState.Zero:
-                    return "0";
-                default:
-                    return "invalid";
-            }
+            var processor = TestUtil.LoadVessel("regression/solver-v2-crash-1.cfg");
+            var solver = new V3Solver();
+
+            solver.ComputeInventoryRates(processor);
         }
     }
 }

@@ -81,7 +81,7 @@ namespace BackgroundResourceProcessing.Core
             try
             {
                 var watch = Stopwatch.StartNew();
-                var solver = new V2Solver();
+                var solver = new Solver.V3.V3Solver();
                 var rates = solver.ComputeInventoryRates(this);
 
                 foreach (var inventory in inventories.Values)
@@ -106,6 +106,9 @@ namespace BackgroundResourceProcessing.Core
             catch (Exception e)
             {
                 LogUtil.Error("Solver threw an exception: ", e);
+
+                foreach (var inventory in inventories.Values)
+                    inventory.rate = 0.0;
             }
         }
 

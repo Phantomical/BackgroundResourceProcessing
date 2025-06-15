@@ -117,6 +117,26 @@ namespace BackgroundResourceProcessing.Collections
             return true;
         }
 
+        public V GetOrAdd(int key, V value)
+        {
+            return GetOrAdd(key, () => value);
+        }
+
+        public V GetOrAdd(int key, Func<V> func)
+        {
+            if (key < 0 || key > Capacity)
+                throw new ArgumentException("key was outside the bounds of the IntMap");
+
+            if (!present[key])
+            {
+                values[key] = func();
+                present[key] = true;
+                count += 1;
+            }
+
+            return values[key];
+        }
+
         public IEnumerator<KVPair<int, V>> GetEnumerator()
         {
             return new Enumerator(this);
@@ -134,7 +154,7 @@ namespace BackgroundResourceProcessing.Collections
 
         private bool TryInsertOverwrite(int key, V value)
         {
-            if (key < 0 || key > Capacity)
+            if (key < 0 || key >= Capacity)
                 throw new ArgumentException("key was outside the bounds of the IntMap");
 
             var wasPresent = present[key];
@@ -147,7 +167,7 @@ namespace BackgroundResourceProcessing.Collections
 
         private void TryInsertThrow(int key, V value)
         {
-            if (key < 0 || key > Capacity)
+            if (key < 0 || key >= Capacity)
                 throw new ArgumentException("key was outside the bounds of the IntMap");
 
             if (present[key])

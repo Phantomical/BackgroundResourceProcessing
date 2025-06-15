@@ -90,6 +90,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
 
         public List<int> ids;
         public List<Core.ResourceConverter> converters;
+        public double weight = 0.0;
 
         /// <summary>
         /// The input resources for this converter and their rates.
@@ -110,6 +111,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
         {
             ids = [id];
             converters = [converter];
+            weight = GetPriorityWeight(converter.behaviour.Priority);
         }
 
         public static GraphConverter Build(
@@ -151,6 +153,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
             ids.AddRange(other.ids);
             converters.AddRange(other.converters);
             constraints.AddAll(other.constraints);
+            weight += other.weight;
         }
 
         public bool CanMergeWith(GraphConverter other)
@@ -196,6 +199,17 @@ namespace BackgroundResourceProcessing.Solver.Graph
 
             foreach (var name in removed)
                 inputs.Remove(name);
+        }
+
+        private static double GetPriorityWeight(int priority)
+        {
+            // This is chosen so that B^10 ~= 1e6, which should be sufficiently
+            // small that the simplex solver remains well-conditioned.
+            const double B = 3.98107;
+
+            priority = Math.Max(Math.Min(priority, 10), -10);
+
+            return Math.Pow(B, priority);
         }
     }
 
@@ -452,16 +466,14 @@ namespace BackgroundResourceProcessing.Solver.Graph
             return inventoryRates;
         }
 
-        public Dictionary<InventoryId, double> ComputeInventoryRates(
-            IEnumerable<KVPair<int, double>> rates,
+        public Dictionary<InventoryId, double> ExpandInventoryRates(
+            IEnumerable<KVPair<int, double>> inventoryRates,
             ResourceProcessor processor
         )
         {
-            var logicalRates = ComputeLogicalInventoryRates(rates);
-
             Dictionary<InventoryId, double> result = [];
             List<InventoryId> available = [];
-            foreach (var (id, rate) in logicalRates)
+            foreach (var (id, rate) in inventoryRates)
             {
                 available.Clear();
                 var inventory = inventories[id];
@@ -517,6 +529,15 @@ namespace BackgroundResourceProcessing.Solver.Graph
             }
 
             return result;
+        }
+
+        public Dictionary<InventoryId, double> ComputeInventoryRates(
+            IEnumerable<KVPair<int, double>> rates,
+            ResourceProcessor processor
+        )
+        {
+            var logicalRates = ComputeLogicalInventoryRates(rates);
+            return ExpandInventoryRates(logicalRates, processor);
         }
     }
 }

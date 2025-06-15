@@ -9,23 +9,20 @@ namespace BackgroundResourceProcessing.Solver
     /// </summary>
     internal class Matrix
     {
-        private readonly int width;
-        private readonly int height;
+        public readonly int Width;
+        public readonly int Height;
         private readonly double[] values;
-
-        public int Width => width;
-        public int Height => height;
 
         // Internal accessor for debugging purposes
         private double[][] Values
         {
             get
             {
-                double[][] output = new double[height][];
-                for (int y = 0; y < height; ++y)
+                double[][] output = new double[Height][];
+                for (int y = 0; y < Height; ++y)
                 {
-                    output[y] = new double[width];
-                    for (int x = 0; x < width; ++x)
+                    output[y] = new double[Width];
+                    for (int x = 0; x < Width; ++x)
                     {
                         output[y][x] = this[x, y];
                     }
@@ -42,8 +39,8 @@ namespace BackgroundResourceProcessing.Solver
             if (height < 0)
                 throw new ArgumentException("height was less than 0");
 
-            this.width = width;
-            this.height = height;
+            Width = width;
+            Height = height;
             values = new double[width * height];
         }
 
@@ -69,17 +66,17 @@ namespace BackgroundResourceProcessing.Solver
         {
             get
             {
-                if (x >= width || y >= height)
+                if (x >= Width || y >= Height)
                     throw new IndexOutOfRangeException($"index ({x}, {y}) was out of bounds");
 
-                return values[y * width + x];
+                return values[y * Width + x];
             }
             set
             {
-                if (x >= width || y >= height)
+                if (x >= Width || y >= Height)
                     throw new IndexOutOfRangeException($"index ({x}, {y}) was out of bounds");
 
-                values[y * width + x] = value;
+                values[y * Width + x] = value;
             }
         }
 
@@ -88,7 +85,7 @@ namespace BackgroundResourceProcessing.Solver
             if (r1 == r2)
                 return;
 
-            for (int i = 0; i < width; ++i)
+            for (int i = 0; i < Width; ++i)
                 (this[i, r2], this[i, r1]) = (this[i, r1], this[i, r2]);
         }
 
@@ -97,7 +94,7 @@ namespace BackgroundResourceProcessing.Solver
             if (scale == 1.0)
                 return;
 
-            for (int i = 0; i < width; ++i)
+            for (int i = 0; i < Width; ++i)
                 this[i, row] *= scale;
         }
 
@@ -108,7 +105,7 @@ namespace BackgroundResourceProcessing.Solver
             if (scale == 0.0)
                 return;
 
-            for (int i = 0; i < width; ++i)
+            for (int i = 0; i < Width; ++i)
                 this[i, dst] += this[i, src] * scale;
         }
 
@@ -119,7 +116,7 @@ namespace BackgroundResourceProcessing.Solver
 
             // Note: We use division instead of multiplication by inverse here
             //       for numerical accuracy reasons.
-            for (int i = 0; i < width; ++i)
+            for (int i = 0; i < Width; ++i)
                 this[i, row] /= scale;
         }
 
@@ -150,7 +147,7 @@ namespace BackgroundResourceProcessing.Solver
                 // However, problems in KSP tend to be pretty well-behaved
                 // numerically, so this is preferable to numerical errors
                 // causing unexpected non-optimal solutions.
-                if (Math.Abs(this[i, dst]) < 1e-9)
+                if (Math.Abs(this[i, dst]) < 1e-6)
                     this[i, dst] = 0.0;
             }
         }

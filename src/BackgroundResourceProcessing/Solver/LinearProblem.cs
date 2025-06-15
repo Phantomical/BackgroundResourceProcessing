@@ -1,10 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Solver.Simplex;
+using BackgroundResourceProcessing.Utils;
+using LibNoise.Models;
 using Steamworks;
+using UnityEngine.Video;
 
 namespace BackgroundResourceProcessing.Solver
 {
@@ -22,8 +26,8 @@ namespace BackgroundResourceProcessing.Solver
         // The number of slack variables that have been created.
         uint SlackCount = 0;
 
-        // Constants for variables with known values.
-        Dictionary<uint, double> constants = [];
+        // Known substitutions within the problem.
+        Dictionary<uint, LinearEquality> substitutions = [];
 
         // Constraints making up the problem.
         List<LinearConstraint> constraints = [];
@@ -35,6 +39,24 @@ namespace BackgroundResourceProcessing.Solver
             var index = LinearCount;
             LinearCount += 1;
             return new(index);
+        }
+
+        public VariableSet CreateVariables(uint count)
+        {
+            if (count >= BinaryStart - LinearCount)
+                throw new ArgumentException($"Cannot create more than {BinaryCount} variables");
+
+            var set = new VariableSet(LinearCount, count);
+            LinearCount += count;
+            return set;
+        }
+
+        public VariableSet CreateVariables(int count)
+        {
+            if (count < 0)
+                throw new ArgumentException($"Cannot create a negative number of converters");
+
+            return CreateVariables((uint)count);
         }
 
         private Variable CreateBinaryVariable()
@@ -51,22 +73,6 @@ namespace BackgroundResourceProcessing.Solver
             return new(index);
         }
 
-        public LinearSolution Maximize(LinearEquation func)
-        {
-            // Variables that have been solved for would only add a constant to
-            // the objective function so they can just be removed.
-            foreach (var index in constants.Keys)
-                func.variables.Remove(index);
-
-            AssignSlackVariables();
-
-            var varMap = BuildVarMap();
-            var tableau = BuildSimplexTableau(func, varMap);
-            Simplex2.SolveTableau(tableau);
-
-            return ExtractTableauSolution(tableau, varMap);
-        }
-
         /// <summary>
         /// Add a single constraint to this linear problem.
         /// </summary>
@@ -79,12 +85,6 @@ namespace BackgroundResourceProcessing.Solver
         {
             if (constraint == null)
                 throw new ArgumentNullException("constraint");
-
-            foreach (var (index, value) in constants.KSPEnumerate())
-                constraint.Substitute(index, value);
-
-            if (ExtractConstants(constraint))
-                return;
 
             constraints.Add(constraint);
         }
@@ -101,12 +101,6 @@ namespace BackgroundResourceProcessing.Solver
                 throw new ArgumentNullException("a");
             if (b == null)
                 throw new ArgumentNullException("b");
-
-            foreach (var (index, value) in constants.KSPEnumerate())
-            {
-                a.Substitute(index, value);
-                b.Substitute(index, value);
-            }
 
             if (a.KnownInconsistent && b.KnownInconsistent)
                 throw new UnsolvableProblemException();
@@ -145,20 +139,20 @@ namespace BackgroundResourceProcessing.Solver
             switch (constraint.relation)
             {
                 case Relation.LEqual:
-                    constraint.variables.Add(z.Index, -M * z);
+                    constraint.variables.Add(-M * z);
                     constraints.Add(constraint);
                     break;
                 case Relation.GEqual:
-                    constraint.variables.Add(z.Index, M * z);
+                    constraint.variables.Add(M * z);
                     constraints.Add(constraint);
                     break;
                 case Relation.Equal:
                     var copy = constraint.Clone();
 
-                    constraint.variables.Add(z.Index, -M * z);
+                    constraint.variables.Add(-M * z);
                     constraint.relation = Relation.LEqual;
 
-                    copy.variables.Add(z.Index, M * z);
+                    copy.variables.Add(M * z);
                     copy.relation = Relation.GEqual;
 
                     constraints.Add(constraint);
@@ -167,133 +161,147 @@ namespace BackgroundResourceProcessing.Solver
             }
         }
 
-        /// <summary>
-        /// Attempt to convert all the variables in this constraint to constants.
-        /// </summary>
-        /// <returns><c>true</c> if this constraint could be turned into constant values</returns>
-        private bool ExtractConstants(LinearConstraint constraint)
+        public LinearSolution Maximize(LinearEquation func)
         {
-            if (constraint.KnownInconsistent)
-                throw new UnsolvableProblemException();
+            PresolveEqualityConstraints();
 
-            switch (constraint.relation)
+            // Apply all substitutions to the objective function.
+            //
+            // We ignore the constants here because they don't make a difference
+            // to the relative values of the objective function.
+            foreach (var sub in substitutions.Values)
+                func.Substitute(sub.variable.Index, sub.equation);
+
+            LogUtil.Log($"After preprocessing:\nMaximize Z = {func}\nsubject to\n{this}");
+
+            AssignSlackVariables();
+
+            var varMap = BuildVarMap();
+            var tableau = BuildSimplexTableau(func, varMap);
+            Simplex3.SolveTableau(tableau);
+
+            var soln = ExtractTableauSolution(tableau, varMap);
+            LogUtil.Log($"Solution: {soln:G4}");
+
+#if DEBUG
+            CheckSolution(soln);
+#endif
+            return soln;
+        }
+
+        /// <summary>
+        /// Equality constraints cannot go as-is into the simplex solver.
+        /// However, each equality constraint gets us
+        /// </summary>
+        private void PresolveEqualityConstraints()
+        {
+            List<LinearConstraint> known = [];
+
+            // Remove everything that is an equality constraint or gives us
+            // enough information to infer the variable values.
+            constraints.RemoveAll(constraint =>
             {
-                case Relation.Equal:
-                    if (constraint.variables.Count == 1)
-                    {
-                        var variable = constraint.variables.First().Value;
-                        var value = constraint.constant / variable.Coef;
+                if (constraint.KnownInconsistent)
+                    throw new UnsolvableProblemException();
 
-                        if (value < 0.0)
-                            throw new UnsolvableProblemException();
+                if (constraint.variables.Count == 0)
+                    return true;
 
-                        // Special case: a x = c must mean that x = a/c
-                        // (subject to x >= 0, of course).
-                        Substitute(variable.Index, value);
+                switch (constraint.relation)
+                {
+                    case Relation.Equal:
+                        known.Add(constraint);
                         return true;
-                    }
-                    break;
-
-                case Relation.LEqual:
-                    if (constraint.constant > 0.0)
-                        return false;
-                    if (constraint.variables.Values.All(v => v.Coef >= 0.0))
-                    {
+                    case Relation.LEqual:
+                        if (constraint.constant > 0.0)
+                            return false;
+                        if (!constraint.variables.All(v => v.Coef >= 0.0))
+                            return false;
                         if (constraint.constant < 0.0)
                             throw new UnsolvableProblemException();
 
-                        // Special case: a x1 + b x2 + ... <= 0 with a, b, ...
-                        // all positive means that all the variables involved
-                        // must be 0.
-                        SubstituteAll(
-                            constraint.variables.Values.Select(var => new KVPair<uint, double>(
-                                var.Index,
-                                0.0
-                            ))
-                        );
+                        foreach (var var in constraint.variables)
+                            known.Add(var == 0.0);
                         return true;
-                    }
-                    break;
-
-                case Relation.GEqual:
-                    if (constraint.constant < 0.0)
-                        return false;
-
-                    if (constraint.variables.Values.All(v => v.Coef <= 0.0))
-                    {
+                    case Relation.GEqual:
+                        if (constraint.constant < 0.0)
+                            return false;
+                        if (!constraint.variables.All(v => v.Coef <= 0.0))
+                            return false;
                         if (constraint.constant > 0.0)
                             throw new UnsolvableProblemException();
 
-                        // Special case: a x1 + b x2 + ... >= 0 with a, b, ...
-                        // all negative means that all the variables involved
-                        // must be 0.
-                        SubstituteAll(
-                            constraint.variables.Values.Select(var => new KVPair<uint, double>(
-                                var.Index,
-                                0.0
-                            ))
-                        );
+                        foreach (var var in constraint.variables)
+                            known.Add(var == 0.0);
                         return true;
-                    }
-                    break;
-            }
-
-            return false;
-        }
-
-        private void Substitute(uint index, double value)
-        {
-            SubstituteAll<KVPair<uint, double>[]>([new(index, value)]);
-        }
-
-        private void SubstituteAll<T>(T values)
-            where T : IEnumerable<KVPair<uint, double>>
-        {
-            SlotStack<KVPair<uint, double>> stack = new();
-            SlotStack<int> removed = new();
-
-            foreach (var (index, value) in values)
-            {
-                constants.Add(index, value);
-                stack.Push(new(index, value));
-            }
-
-            while (stack.TryPop(out var entry))
-            {
-                var (index, value) = entry;
-
-                for (int i = 0; i < constraints.Count; ++i)
-                {
-                    var constraint = constraints[i];
-                    constraint.Substitute(index, value);
-
-                    if (constraint.KnownInconsistent)
-                        throw new UnsolvableProblemException(
-                            "Linear problem has no valid solutions"
-                        );
-
-                    if (constraint.relation != Relation.Equal)
-                        continue;
-                    if (constraint.variables.Count != 1)
-                        continue;
-
-                    var variable = constraint.variables.First().Value;
-                    var soln = constraint.constant / variable.Coef;
-
-                    if (soln < 0.0)
-                        throw new UnsolvableProblemException(
-                            $"Only valid solution for variable x{variable.Index} is {soln}, which is negative"
-                        );
-
-                    constants.Add(variable.Index, soln);
-                    stack.Push(new(variable.Index, soln));
-
-                    removed.Push(i);
                 }
 
-                while (removed.TryPop(out var i))
-                    constraints.RemoveAt(i);
+                return false;
+            });
+
+            // This just helps make the solution look nicer.
+            known.Sort();
+
+            Matrix matrix = new((int)LinearCount + 1, known.Count);
+            for (int y = 0; y < known.Count; ++y)
+            {
+                var constraint = known[y];
+                foreach (var var in constraint.variables)
+                    matrix[(int)var.Index, y] = var.Coef;
+
+                matrix[matrix.Width - 1, y] = constraint.constant;
             }
+
+            LinAlg.GaussianEliminationOrdered(matrix);
+
+            for (int y = 0; y < matrix.Height; ++y)
+            {
+                int index = LinAlg.FindFirstNonZeroInRow(matrix, y);
+
+                // This entire row ended up being zeros, nothing to do here.
+                if (index == -1)
+                    continue;
+
+                // All variables have zero coefficients but the constant is
+                // non-zero. The LP is has no solutions.
+                if (index == matrix.Width - 1)
+                    throw new UnsolvableProblemException();
+
+                Variable var = new((uint)index);
+                LinearEquation eq = new(matrix.Width - index);
+
+                // Note: we use Sub here because we are semantically moving the
+                //       variables to the other side of the == sign.
+                for (int x = index + 1; x < matrix.Width - 1; ++x)
+                    eq.Sub(new((uint)x, matrix[x, y] / matrix[index, y]));
+
+                substitutions.Add(
+                    var.Index,
+                    new LinearEquality()
+                    {
+                        variable = var,
+                        equation = eq,
+                        constant = matrix[matrix.Width - 1, y] / matrix[index, y],
+                    }
+                );
+            }
+
+            constraints.RemoveAll(constraint =>
+            {
+                foreach (var equality in substitutions.Values)
+                {
+                    constraint.Substitute(
+                        equality.variable.Index,
+                        equality.equation,
+                        equality.constant
+                    );
+                }
+
+                if (constraint.KnownInconsistent)
+                    throw new UnsolvableProblemException();
+
+                return constraint.variables.Count == 0;
+            });
         }
 
         private void AssignSlackVariables()
@@ -325,7 +333,7 @@ namespace BackgroundResourceProcessing.Solver
             uint j = 0;
             for (uint i = 0; i < LinearCount; ++i)
             {
-                if (constants.ContainsKey(i))
+                if (substitutions.ContainsKey(i))
                     continue;
                 map[i] = j++;
             }
@@ -343,7 +351,7 @@ namespace BackgroundResourceProcessing.Solver
 
             var tableau = new Matrix(varCount + 1, constraints.Count + 1);
 
-            foreach (var var in func.variables.Values)
+            foreach (var var in func)
                 tableau[varMap[var.Index], 0] = -var.Coef;
 
             for (int i = 0; i < constraints.Count; ++i)
@@ -385,8 +393,10 @@ namespace BackgroundResourceProcessing.Solver
             foreach (var (x, y) in FindBasicVariables(tableau, varMap.Count))
                 values[inverse[x]] = tableau[tableau.Width - 1, y];
 
-            foreach (var (index, value) in constants.KSPEnumerate())
-                values[index] = value;
+            var soln = new LinearSolution(values);
+
+            foreach (var (index, sub) in substitutions.KSPEnumerate())
+                values[index] = soln.Evaluate(sub.equation) + sub.constant;
 
             return new LinearSolution(values);
         }
@@ -422,11 +432,43 @@ namespace BackgroundResourceProcessing.Solver
             }
         }
 
+        private void CheckSolution(LinearSolution soln, double tol = 1e-3)
+        {
+            foreach (var constraint in constraints)
+            {
+                double value = soln.Evaluate(constraint.variables);
+                double constant = constraint.constant;
+
+                switch (constraint.relation)
+                {
+                    case Relation.Equal:
+                        if (MathUtil.ApproxEqual(value, constant, tol))
+                            continue;
+                        break;
+                    case Relation.LEqual:
+                        if (value <= constant + tol)
+                            continue;
+                        break;
+                    case Relation.GEqual:
+                        if (value >= constant - tol)
+                            continue;
+                        break;
+                }
+
+                throw new Exception(
+                    $"LP solver solution did not satisfy constraint:\n    constraint: {constraint.ToString("R")} (got {value:g})\n    solution: {soln}"
+                );
+            }
+        }
+
         public override string ToString()
         {
             StringBuilder builder = new();
-            foreach (var (index, value) in constants.KSPEnumerate())
-                builder.Append($"{new Variable(index)} == {value:G}\n");
+            foreach (var sub in substitutions.Values)
+            {
+                builder.Append(sub);
+                builder.Append("\n");
+            }
 
             foreach (var constraint in constraints)
             {
@@ -478,17 +520,25 @@ namespace BackgroundResourceProcessing.Solver
                 builder.Append(var);
             }
         }
-    }
 
-    internal readonly struct LinearSolution(double[] values)
-    {
-        readonly double[] values = values;
+        // var == equation + constant
+        private struct LinearEquality
+        {
+            public Variable variable;
+            public LinearEquation equation;
+            public double constant;
 
-        public readonly int Count => values.Length;
-
-        public readonly double this[int index] => values[index];
-        public readonly double this[uint index] => values[index];
-        public readonly double this[Variable var] => this[var.Index];
+            public override readonly string ToString()
+            {
+                if (equation.Count == 0)
+                    return $"{variable} == {constant}";
+                if (constant == 0.0)
+                    return $"{variable} == {equation}";
+                if (constant < 0.0)
+                    return $"{variable} == {equation} - {-constant}";
+                return $"{variable} == {equation} + {constant}";
+            }
+        }
     }
 
     internal class UnsolvableProblemException(

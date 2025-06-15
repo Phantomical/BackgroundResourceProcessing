@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -50,6 +51,16 @@ namespace BackgroundResourceProcessing.Collections
             return insert;
         }
 
+        public static V GetOrAdd<K, V>(this Dictionary<K, V> dict, K key, Func<V> func)
+        {
+            if (dict.TryGetValue(key, out var value))
+                return value;
+
+            value = func();
+            dict.Add(key, value);
+            return value;
+        }
+
         public static void Add<K, V>(this Dictionary<K, V> dict, KeyValuePair<K, V> pair)
         {
             dict.Add(pair.Key, pair.Value);
@@ -79,7 +90,7 @@ namespace BackgroundResourceProcessing.Collections
         /// <typeparam name="V"></typeparam>
         /// <param name="dict"></param>
         /// <returns></returns>
-        public static IEnumerable<KVPair<K, V>> KSPEnumerate<K, V>(this Dictionary<K, V> dict)
+        public static IEnumerable<KVPair<K, V>> KSPEnumerate<K, V>(this IDictionary<K, V> dict)
         {
             return dict.Select(pair => new KVPair<K, V>(pair.Key, pair.Value));
         }

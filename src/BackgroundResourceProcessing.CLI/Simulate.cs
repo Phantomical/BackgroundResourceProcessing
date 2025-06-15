@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using CommandLine;
 
@@ -17,6 +18,12 @@ namespace BackgroundResourceProcessing.CLI
         )]
         public string Output { get; set; }
 
+        [Option(
+            "max-iterations",
+            HelpText = "The maximum number of iterations that will be performed"
+        )]
+        public uint MaxIters { get; set; } = 50;
+
         public static int Run(SimulateOptions options)
         {
             Program.Setup(options);
@@ -34,15 +41,22 @@ namespace BackgroundResourceProcessing.CLI
 
             processor.ValidateReferencedInventories();
 
-            for (int i = 0; ; i++)
+            for (uint i = 0; ; i++)
             {
+                if (i >= options.MaxIters)
+                    throw new Exception("Reached maximum number of allowed iterations");
+
                 processor.ComputeRates();
+                var prev = currentTime;
                 currentTime = processor.UpdateNextChangepoint(currentTime);
 
+                LogUtil.Log($"Dumping ship at {prev}");
                 Program.DumpProcessor(processor, Path.Combine(options.Output, $"ship-{i}.cfg"));
 
                 if (double.IsNaN(currentTime) || double.IsInfinity(currentTime))
                     break;
+                if (currentTime == prev)
+                    throw new Exception("Simulation failed to progress");
 
                 processor.UpdateInventories(currentTime);
                 processor.lastUpdate = currentTime;
