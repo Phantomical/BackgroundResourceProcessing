@@ -431,6 +431,10 @@ namespace BackgroundResourceProcessing.Solver
         {
             foreach (var constraint in constraints)
             {
+                // TODO: Implement validation of binary vars
+                if (constraint.variables.Any(v => v.Index >= BinaryStart))
+                    continue;
+
                 double value = soln.Evaluate(constraint.variables);
                 double constant = constraint.constant;
 

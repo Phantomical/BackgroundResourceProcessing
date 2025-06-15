@@ -95,5 +95,24 @@ namespace BackgroundResourceProcessing.Test.Solver
             Assert.AreEqual(9367.0 / 10800.0, soln[x3], 1e-6);
             Assert.AreEqual(1, soln[x4], 1e-6);
         }
+
+        [TestMethod]
+        public void OrConstraint1()
+        {
+            LinearProblem problem = new();
+            var x0 = problem.CreateVariable();
+            var x1 = problem.CreateVariable();
+            var x2 = problem.CreateVariable();
+
+            problem.AddConstraint(x0 <= 1);
+            problem.AddConstraint(x1 <= 1);
+            problem.AddConstraint(x2 <= 1);
+
+            problem.AddOrConstraint(x2 + x0 <= 0.2, x2 + x1 >= 0.8);
+
+            var soln = problem.Maximize(x0 + x1 - x2);
+
+            LogUtil.Log($"{soln}");
+        }
     }
 }
