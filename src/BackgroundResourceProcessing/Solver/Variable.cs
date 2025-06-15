@@ -81,17 +81,9 @@ namespace BackgroundResourceProcessing.Solver
 
         public string ToString(string fmt)
         {
-            var name = "x";
-            var index = Index;
-            if (index >= LinearProblem.BinaryStart)
-            {
-                index -= LinearProblem.BinaryStart;
-                name = "z";
-            }
-
             if (Coef == 1.0)
-                return $"{name}{index}";
-            return $"{Coef.ToString(fmt)}*{name}{index}";
+                return $"x{Index}";
+            return $"{Coef.ToString(fmt)}*x{Index}";
         }
 
         public int CompareTo(Variable other)

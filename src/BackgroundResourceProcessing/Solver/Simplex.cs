@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 
 namespace BackgroundResourceProcessing.Solver
 {
@@ -19,7 +20,7 @@ namespace BackgroundResourceProcessing.Solver
                 if (row < 0)
                     throw new UnsolvableProblemException("LP problem has unbounded solutions");
 
-                LogUtil.Log($"Pivoting on column {col}, row {row}:\n{tableau}");
+                Trace(() => $"Pivoting on column {col}, row {row}:\n{tableau}");
 
                 tableau.InvScaleRow(row, tableau[col, row]);
                 for (int y = 0; y < tableau.Height; ++y)
@@ -31,7 +32,7 @@ namespace BackgroundResourceProcessing.Solver
                 }
             }
 
-            LogUtil.Log($"Final:\n{tableau}");
+            Trace(() => $"Final:\n{tableau}");
         }
 
         static int SelectPivot(Matrix tableau)
@@ -98,6 +99,14 @@ namespace BackgroundResourceProcessing.Solver
             }
 
             return index;
+        }
+
+        [Conditional("SOLVERTRACE")]
+        private static void Trace(Func<string> func)
+        {
+#if SOLVERTRACE
+            LogUtil.Log(func());
+#endif
         }
     }
 }

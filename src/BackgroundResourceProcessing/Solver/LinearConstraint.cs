@@ -79,7 +79,7 @@ namespace BackgroundResourceProcessing.Solver
             var coef = variable.Coef;
             foreach (var var in eq)
                 variables.Add(var * coef);
-            constant += coef * value;
+            constant -= coef * value;
         }
 
         public LinearConstraint Clone()

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Text;
 
 namespace BackgroundResourceProcessing.Solver
@@ -43,7 +44,7 @@ namespace BackgroundResourceProcessing.Solver
             StringBuilder builder = new();
             bool first = true;
 
-            for (int i = 0; i < Count; ++i)
+            for (uint i = 0; i < values.Length; ++i)
             {
                 if (first)
                     first = false;
@@ -74,8 +75,9 @@ namespace BackgroundResourceProcessing.Solver
                         soln.Count
                     ];
 
-                    for (int i = 0; i < soln.Count; ++i)
-                        array[i] = new(new((uint)i), soln[i]);
+                    for (uint i = 0; i < soln.values.Length; ++i)
+                        array[i] = new(new(i), soln.values[i]);
+
                     return array;
                 }
             }

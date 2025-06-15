@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using BackgroundResourceProcessing.Collections;
@@ -10,13 +11,9 @@ namespace BackgroundResourceProcessing.Solver
     internal class LinearProblem
     {
         const double M = 1e9;
-        internal const uint BinaryStart = 0x10000000;
 
         // The number of linear variables that have been created.
-        uint LinearCount = 0;
-
-        // The number of binary variables that have been created.
-        uint BinaryCount = 0;
+        uint VariableCount = 0;
 
         // The number of slack variables that have been created.
         uint SlackCount = 0;
@@ -31,18 +28,15 @@ namespace BackgroundResourceProcessing.Solver
 
         public Variable CreateVariable()
         {
-            var index = LinearCount;
-            LinearCount += 1;
+            var index = VariableCount;
+            VariableCount += 1;
             return new(index);
         }
 
         public VariableSet CreateVariables(uint count)
         {
-            if (count >= BinaryStart - LinearCount)
-                throw new ArgumentException($"Cannot create more than {BinaryCount} variables");
-
-            var set = new VariableSet(LinearCount, count);
-            LinearCount += count;
+            var set = new VariableSet(VariableCount, count);
+            VariableCount += count;
             return set;
         }
 
@@ -56,9 +50,7 @@ namespace BackgroundResourceProcessing.Solver
 
         private Variable CreateBinaryVariable()
         {
-            var index = BinaryCount + BinaryStart;
-            BinaryCount += 1;
-            return new(index);
+            return CreateVariable();
         }
 
         private Variable CreateSlackVariable()
@@ -126,7 +118,7 @@ namespace BackgroundResourceProcessing.Solver
 
             AddOrTerm(a, za);
             AddOrTerm(b, zb);
-            constraints.Add(za + zb <= 1.0);
+            constraints.Add(za + zb == 1.0);
         }
 
         private void AddOrTerm(LinearConstraint constraint, Variable z)
@@ -158,6 +150,7 @@ namespace BackgroundResourceProcessing.Solver
 
         public LinearSolution Maximize(LinearEquation func)
         {
+            Trace(() => $"\nMaximize Z = {func}\nsubject to\n{this}");
             PresolveEqualityConstraints();
 
             // Apply all substitutions to the objective function.
@@ -167,16 +160,16 @@ namespace BackgroundResourceProcessing.Solver
             foreach (var sub in substitutions.Values)
                 func.Substitute(sub.variable.Index, sub.equation);
 
-            LogUtil.Log($"After preprocessing:\nMaximize Z = {func}\nsubject to\n{this}");
-
+            Trace(() => $"After preprocessing:\nMaximize Z = {func}\nsubject to\n{this}");
             AssignSlackVariables();
 
             var varMap = BuildVarMap();
+
             var tableau = BuildSimplexTableau(func, varMap);
             Simplex.SolveTableau(tableau);
 
             var soln = ExtractTableauSolution(tableau, varMap);
-            LogUtil.Log($"Solution: {soln:G4}");
+            Trace(() => $"Solution: {soln:G4}");
 
 #if DEBUG
             CheckSolution(soln);
@@ -237,7 +230,7 @@ namespace BackgroundResourceProcessing.Solver
             // This just helps make the solution look nicer.
             known.Sort();
 
-            Matrix matrix = new((int)LinearCount + 1, known.Count);
+            Matrix matrix = new((int)VariableCount + 1, known.Count);
             for (int y = 0; y < known.Count; ++y)
             {
                 var constraint = known[y];
@@ -323,10 +316,10 @@ namespace BackgroundResourceProcessing.Solver
 
         private IntMap<uint> BuildVarMap()
         {
-            IntMap<uint> map = new((int)LinearCount);
+            IntMap<uint> map = new((int)VariableCount);
 
             uint j = 0;
-            for (uint i = 0; i < LinearCount; ++i)
+            for (uint i = 0; i < VariableCount; ++i)
             {
                 if (substitutions.ContainsKey(i))
                     continue;
@@ -338,7 +331,7 @@ namespace BackgroundResourceProcessing.Solver
 
         private Matrix BuildSimplexTableau(LinearEquation func, IntMap<uint> varMap)
         {
-            var varCount = varMap.Count + (int)(BinaryCount + SlackCount);
+            var varCount = varMap.Count + (int)SlackCount;
             if (varCount < constraints.Count)
                 throw new OverconstrainedLinearProblemException(
                     "Support for solving over-constrained linear problems is not implemented"
@@ -354,21 +347,13 @@ namespace BackgroundResourceProcessing.Solver
                 var constraint = constraints[i];
 
                 foreach (var var in constraint.variables.Values)
-                {
-                    var index = var.Index;
-                    if (index >= BinaryStart)
-                        index = index - BinaryStart + (uint)varMap.Count;
-                    else
-                        index = varMap[index];
-
-                    tableau[index, (uint)i + 1] = var.Coef;
-                }
+                    tableau[varMap[var.Index], (uint)i + 1] = var.Coef;
 
                 tableau[tableau.Width - 1, i + 1] = constraint.constant;
                 if (constraint.slack != null)
                 {
                     var slack = (Variable)constraint.slack;
-                    var index = (uint)varMap.Count + BinaryCount + slack.Index;
+                    var index = (uint)varMap.Count + slack.Index;
 
                     tableau[index, (uint)i + 1] = slack.Coef;
                 }
@@ -379,11 +364,11 @@ namespace BackgroundResourceProcessing.Solver
 
         private LinearSolution ExtractTableauSolution(Matrix tableau, IntMap<uint> varMap)
         {
-            IntMap<uint> inverse = new((int)LinearCount);
+            Dictionary<int, uint> inverse = new((int)VariableCount);
             foreach (var (src, tgt) in varMap)
                 inverse[(int)tgt] = (uint)src;
 
-            double[] values = new double[LinearCount];
+            double[] values = new double[VariableCount];
 
             foreach (var (x, y) in FindBasicVariables(tableau, varMap.Count))
                 values[inverse[x]] = tableau[tableau.Width - 1, y];
@@ -393,7 +378,7 @@ namespace BackgroundResourceProcessing.Solver
             foreach (var (index, sub) in substitutions.KSPEnumerate())
                 values[index] = soln.Evaluate(sub.equation) + sub.constant;
 
-            return new LinearSolution(values);
+            return soln;
         }
 
         private IEnumerable<KVPair<int, int>> FindBasicVariables(Matrix tableau, int nvars)
@@ -431,10 +416,6 @@ namespace BackgroundResourceProcessing.Solver
         {
             foreach (var constraint in constraints)
             {
-                // TODO: Implement validation of binary vars
-                if (constraint.variables.Any(v => v.Index >= BinaryStart))
-                    continue;
-
                 double value = soln.Evaluate(constraint.variables);
                 double constant = constraint.constant;
 
@@ -537,6 +518,14 @@ namespace BackgroundResourceProcessing.Solver
                     return $"{variable} == {equation} - {-constant}";
                 return $"{variable} == {equation} + {constant}";
             }
+        }
+
+        [Conditional("SOLVERTRACE")]
+        private static void Trace(Func<string> func)
+        {
+#if SOLVERTRACE
+            LogUtil.Log(func());
+#endif
         }
     }
 
