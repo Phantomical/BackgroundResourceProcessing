@@ -9,7 +9,7 @@ namespace BackgroundResourceProcessing.Modules
     {
         public List<ResourceRatio> inputs = [];
         public List<ResourceRatio> outputs = [];
-        public List<ResourceRatio> required = [];
+        public List<ResourceConstraint> required = [];
 
         protected override ConverterBehaviour GetConverterBehaviour()
         {

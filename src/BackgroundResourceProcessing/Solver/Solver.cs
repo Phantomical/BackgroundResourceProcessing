@@ -206,15 +206,23 @@ namespace BackgroundResourceProcessing.Solver
                 // resource production of the constraining resource msut be
                 // positive.
 
-                foreach (var constraint in converter.constraints)
+                foreach (var (resource, constraint) in converter.constraints.KSPEnumerate())
                 {
                     // If the constrained resource does not have a total rate
                     // then its rate is 0 and we can skip emitting the constraint
                     // since it will always be true.
-                    if (!totals.TryGetValue(constraint, out var total))
+                    if (!totals.TryGetValue(resource, out var total))
                         continue;
 
-                    problem.AddOrConstraint(alpha == 0.0, total >= 0.0);
+                    switch (constraint)
+                    {
+                        case Constraint.AT_LEAST:
+                            problem.AddOrConstraint(alpha == 0.0, total >= 0.0);
+                            break;
+                        case Constraint.AT_MOST:
+                            problem.AddOrConstraint(alpha == 0.0, total <= 0.0);
+                            break;
+                    }
                 }
             }
 

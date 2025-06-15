@@ -26,7 +26,7 @@ namespace BackgroundResourceProcessing.Modules
 
         protected ModuleResourceHarvester Harvester => (ModuleResourceHarvester)Converter;
 
-        protected override ConversionRecipe GetAdditionalRecipe()
+        protected override ConverterResources GetAdditionalRecipe()
         {
             var type = (HarvestTypes)HarvesterType;
             var request = new AbundanceRequest()
@@ -47,18 +47,17 @@ namespace BackgroundResourceProcessing.Modules
             if (type == HarvestTypes.Atmospheric)
                 rate *= GetIntakeMultiplier();
 
-            var recipe = new ConversionRecipe();
-            recipe.SetOutputs(
-                [
-                    new ResourceRatio()
-                    {
-                        ResourceName = ResourceName,
-                        Ratio = rate,
-                        DumpExcess = type == HarvestTypes.Atmospheric,
-                        FlowMode = FlowMode,
-                    },
-                ]
-            );
+            ConverterResources recipe = default;
+            recipe.Outputs =
+            [
+                new ResourceRatio()
+                {
+                    ResourceName = ResourceName,
+                    Ratio = rate,
+                    DumpExcess = type == HarvestTypes.Atmospheric,
+                    FlowMode = FlowMode,
+                },
+            ];
 
             return recipe;
         }

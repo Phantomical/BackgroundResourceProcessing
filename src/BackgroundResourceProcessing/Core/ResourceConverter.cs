@@ -15,7 +15,7 @@ namespace BackgroundResourceProcessing.Core
 
         public Dictionary<string, ResourceRatio> inputs = [];
         public Dictionary<string, ResourceRatio> outputs = [];
-        public Dictionary<string, ResourceRatio> required = [];
+        public Dictionary<string, ResourceConstraint> required = [];
 
         /// <summary>
         /// A unique ID used to uniquely identify a converter in tests.
@@ -37,7 +37,7 @@ namespace BackgroundResourceProcessing.Core
             foreach (var output in resources.Outputs)
                 outputs.Add(output.ResourceName, output.WithDefaultedFlowMode());
             foreach (var req in resources.Requirements)
-                required.Add(req.ResourceName, req.WithDefaultedFlowMode());
+                required.Add(req.ResourceName, req);
         }
 
         public void Load(ConfigNode node)

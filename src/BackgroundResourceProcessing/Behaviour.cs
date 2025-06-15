@@ -157,9 +157,7 @@ namespace BackgroundResourceProcessing
         {
             foreach (var type in types)
             {
-                var attribute = type.GetCustomAttribute<Behaviour>();
-                if (attribute == null)
-                    continue;
+                var attribute = type.GetCustomAttribute<Behaviour>() ?? new Behaviour(type.Name);
 
                 var baseType = typeof(ConverterBehaviour);
                 if (!type.IsSubclassOf(baseType))
@@ -203,6 +201,66 @@ namespace BackgroundResourceProcessing
         }
     }
 
+    /// <summary>
+    /// The type of constraint applied on this converter.
+    /// </summary>
+    public enum Constraint
+    {
+        /// <summary>
+        /// The converter must have at least <c>Amount</c> resources to activate.
+        /// </summary>
+        AT_LEAST,
+
+        /// <summary>
+        /// The converter must have at most <c>Amount</c> resources to activate.
+        /// </summary>
+        AT_MOST,
+    }
+
+    /// <summary>
+    /// A constraint applied to a resource.
+    /// </summary>
+    public struct ResourceConstraint()
+    {
+        /// <summary>
+        /// The name of the resource that this constraint applies to.
+        /// </summary>
+        public string ResourceName;
+
+        /// <summary>
+        /// At what resource amount does this constraint apply.
+        /// </summary>
+        public double Amount = 0.0;
+
+        /// <summary>
+        /// What type of constraint is being applied here.
+        /// </summary>
+        public Constraint Constraint = Constraint.AT_LEAST;
+
+        public void Load(ConfigNode node)
+        {
+            node.TryGetValue("ResourceName", ref ResourceName);
+            node.TryGetEnum("Constraint", ref Constraint, Constraint.AT_LEAST);
+
+            if (!node.TryGetValue("Amount", ref Amount))
+            {
+                // This is for backwards compatibility with existing KSP
+                // REQUIRED_RESOURCE blocks.
+                //
+                // We'll use the Amount key if present but this will make MM
+                // node copies just work as expected.
+                node.TryGetValue("Ratio", ref Amount);
+            }
+        }
+
+        public void Save(ConfigNode node)
+        {
+            node.AddValue("ResourceName", ResourceName);
+            node.AddValue("Amount", Amount);
+            node.AddValue("Constraint", Constraint);
+        }
+    }
+
     public struct ConverterResources()
     {
         /// <summary>
@@ -218,23 +276,16 @@ namespace BackgroundResourceProcessing
         public List<ResourceRatio> Outputs = [];
 
         /// <summary>
-        /// A list of resources that are required in order for this converter
-        /// to work.
+        /// A list of constraints on what resources must be present on the
+        /// vessel in order for this converter to be active.
         /// </summary>
         ///
         /// <remarks>
         /// <para>
-        ///   Note that the <c>Ratio</c> field for these is actually the
-        ///   minimum amount of resources that must be available to the
-        ///   converter in order for it to run.
-        /// </para>
-        ///
-        /// <para>
-        ///   This is not currently used by the background solver. However,
-        ///   the intention is that it will be accounted for in the future.
+        ///   It is possible to have constraints that
         /// </para>
         /// </remarks>
-        public List<ResourceRatio> Requirements = [];
+        public List<ResourceConstraint> Requirements = [];
     }
 
     /// <summary>
@@ -470,12 +521,11 @@ namespace BackgroundResourceProcessing
     /// A converter that converts a set of resources into another set of
     /// resources at a constant rate.
     /// </summary>
-    [Behaviour(typeof(ConstantConverter))]
     public class ConstantConverter : ConverterBehaviour
     {
         public List<ResourceRatio> inputs = [];
         public List<ResourceRatio> outputs = [];
-        public List<ResourceRatio> required = [];
+        public List<ResourceConstraint> required = [];
 
         public ConstantConverter() { }
 
@@ -488,7 +538,7 @@ namespace BackgroundResourceProcessing
         public ConstantConverter(
             List<ResourceRatio> inputs,
             List<ResourceRatio> outputs,
-            List<ResourceRatio> required
+            List<ResourceConstraint> required
         )
         {
             this.inputs = inputs;
@@ -525,7 +575,6 @@ namespace BackgroundResourceProcessing
     /// <summary>
     /// A producer that produces resources at a fixed rate.
     /// </summary>
-    [Behaviour(typeof(ConstantProducer))]
     public class ConstantProducer : ProducerBehaviour
     {
         private List<ResourceRatio> outputs = [];
@@ -558,7 +607,6 @@ namespace BackgroundResourceProcessing
     /// <summary>
     /// A consumer that consumes resources at a fixed rate.
     /// </summary>
-    [Behaviour(typeof(ConstantConsumer))]
     public class ConstantConsumer : ConsumerBehaviour
     {
         private List<ResourceRatio> inputs = [];

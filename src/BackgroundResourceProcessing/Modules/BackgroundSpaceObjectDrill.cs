@@ -19,18 +19,17 @@ namespace BackgroundResourceProcessing.Modules
             return base.GetOptimalEfficiencyBonus() * BaseDrill.Efficiency;
         }
 
-        protected override ConversionRecipe GetAdditionalRecipe()
+        protected override ConverterResources GetAdditionalRecipe()
         {
             var potato = GetDrillPotato();
             var info = GetDrillInfo();
             if (potato == null || info == null)
-                return null;
+                return default;
 
             var resources = GetPotatoResources(potato);
 
             var massRate = 0.0;
-            var recipe = new ConversionRecipe();
-            var outputs = new List<ResourceRatio>();
+            var recipe = new ConverterResources();
 
             foreach (var resource in resources)
             {
@@ -44,22 +43,19 @@ namespace BackgroundResourceProcessing.Modules
                     FlowMode = ResourceFlowMode.NULL,
                 };
 
-                outputs.Add(ratio);
+                recipe.Outputs.Add(ratio);
                 massRate += resource.abundance * definition.density;
             }
 
-            recipe.SetInputs(
-                [
-                    new ResourceRatio()
-                    {
-                        ResourceName = MassResourceName,
-                        Ratio = massRate,
-                        DumpExcess = false,
-                        FlowMode = ResourceFlowMode.STAGE_STACK_FLOW,
-                    },
-                ]
+            recipe.Inputs.Add(
+                new ResourceRatio()
+                {
+                    ResourceName = MassResourceName,
+                    Ratio = massRate,
+                    DumpExcess = false,
+                    FlowMode = ResourceFlowMode.STAGE_STACK_FLOW,
+                }
             );
-            recipe.SetOutputs(outputs);
 
             return recipe;
         }

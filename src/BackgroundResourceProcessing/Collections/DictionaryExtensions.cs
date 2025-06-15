@@ -81,6 +81,23 @@ namespace BackgroundResourceProcessing.Collections
             return true;
         }
 
+        public static bool DictEqual<K, V>(Dictionary<K, V> a, Dictionary<K, V> b)
+        {
+            if (a.Count != b.Count)
+                return false;
+
+            foreach (var (key, aVal) in a.KSPEnumerate())
+            {
+                if (!b.TryGetValue(key, out var bVal))
+                    return false;
+
+                if (!aVal.Equals(bVal))
+                    return false;
+            }
+
+            return true;
+        }
+
         /// <summary>
         /// <see cref="KeyValuePair.Deconstruct"/> is not available in the
         /// assemblies shipped with KSP, so this returns an iterator with a pair

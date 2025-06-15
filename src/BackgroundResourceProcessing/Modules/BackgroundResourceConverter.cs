@@ -21,7 +21,7 @@ namespace BackgroundResourceProcessing.Modules
 
         public List<ResourceRatio> inputs = [];
         public List<ResourceRatio> outputs = [];
-        public List<ResourceRatio> required = [];
+        public List<ResourceConstraint> required = [];
 
         /// <summary>
         /// The name of the module that this converter should getting its
@@ -108,9 +108,9 @@ namespace BackgroundResourceProcessing.Modules
         /// </summary>
         ///
         /// <returns>A conversion recipe, or null if there are no changes to be made</returns>
-        protected virtual ConversionRecipe GetAdditionalRecipe()
+        protected virtual ConverterResources GetAdditionalRecipe()
         {
-            return null;
+            return default;
         }
 
         /// <summary>
@@ -141,24 +141,21 @@ namespace BackgroundResourceProcessing.Modules
 
             IEnumerable<ResourceRatio> inputs = this.inputs;
             IEnumerable<ResourceRatio> outputs = this.outputs;
-            IEnumerable<ResourceRatio> required = this.required;
+            IEnumerable<ResourceConstraint> required = this.required;
 
             var additional = GetAdditionalRecipe();
-            if (additional != null)
-            {
-                if (additional.Inputs.Count != 0)
-                    inputs = [.. inputs, .. additional.Inputs];
-                if (additional.Outputs.Count != 0)
-                    outputs = [.. outputs, .. additional.Outputs];
-                if (additional.Requirements.Count != 0)
-                    required = [.. required, .. additional.Requirements];
-            }
+            if (additional.Inputs != null && additional.Inputs.Count != 0)
+                inputs = [.. inputs, .. additional.Inputs];
+            if (additional.Outputs != null && additional.Outputs.Count != 0)
+                outputs = [.. outputs, .. additional.Outputs];
+            if (additional.Requirements != null && additional.Requirements.Count != 0)
+                required = [.. required, .. additional.Requirements];
 
             if (ConvertByMass)
             {
                 inputs = ConvertRecipeToUnits(inputs);
                 outputs = ConvertRecipeToUnits(outputs);
-                required = ConvertRecipeToUnits(required);
+                required = ConvertConstraintToUnits(required);
             }
 
             var multiplier = GetOptimalEfficiencyBonus();
@@ -340,6 +337,22 @@ namespace BackgroundResourceProcessing.Modules
                 ];
                 if (definition.density > 1e-9)
                     resource.Ratio /= definition.density;
+
+                return resource;
+            });
+        }
+
+        protected static IEnumerable<ResourceConstraint> ConvertConstraintToUnits(
+            IEnumerable<ResourceConstraint> resources
+        )
+        {
+            return resources.Select(resource =>
+            {
+                var definition = PartResourceLibrary.Instance.resourceDefinitions[
+                    resource.ResourceName
+                ];
+                if (definition.density > 1e-9)
+                    resource.Amount /= definition.density;
 
                 return resource;
             });

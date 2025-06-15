@@ -5,6 +5,7 @@ using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Utils;
 using Smooth.Collections;
+using UnityEngine.AI;
 
 namespace BackgroundResourceProcessing.Solver.Graph
 {
@@ -105,7 +106,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
         /// <summary>
         /// Resources for which this converter is at capacity.
         /// </summary>
-        public HashSet<string> constraints = [];
+        public Dictionary<string, Constraint> constraints = [];
 
         private GraphConverter(int id, Core.ResourceConverter converter)
         {
@@ -124,11 +125,26 @@ namespace BackgroundResourceProcessing.Solver.Graph
 
             foreach (var (resource, required) in converter.required.KSPEnumerate())
             {
-                if (MathUtil.ApproxEqual(required.Ratio, totals[resource]))
-                    conv.constraints.Add(resource);
+                var total = totals.GetValueOr(resource, 0.0);
+                if (MathUtil.ApproxEqual(required.Amount, total))
+                    conv.constraints.Add(resource, required.Constraint);
 
-                if (required.Ratio > totals[resource])
-                    return null;
+                switch (required.Constraint)
+                {
+                    case Constraint.AT_LEAST:
+                        if (required.Amount < total)
+                            return null;
+                        break;
+                    case Constraint.AT_MOST:
+                        if (required.Amount > total)
+                            return null;
+                        break;
+                    default:
+                        LogUtil.Warn(
+                            $"Got unexpected constraint {required.Constraint} on resource {required.ResourceName}. This converter will be ignored."
+                        );
+                        return null;
+                }
             }
 
             foreach (var (resource, input) in converter.inputs.KSPEnumerate())
@@ -163,7 +179,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
             if (!outputs.KeysEqual(other.outputs))
                 return false;
 
-            return constraints.SetEquals(other.constraints);
+            return DictionaryExtensions.DictEqual(constraints, other.constraints);
         }
 
         /// <summary>

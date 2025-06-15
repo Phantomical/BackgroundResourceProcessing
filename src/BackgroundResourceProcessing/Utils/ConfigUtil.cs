@@ -38,9 +38,43 @@ namespace BackgroundResourceProcessing
         )
         {
             foreach (var ratio in ratios)
-            {
                 ratio.Save(node.AddNode(name));
-            }
+        }
+
+        public static IEnumerable<ResourceConstraint> LoadResourceConstraints(
+            ConfigNode node,
+            string name
+        )
+        {
+            if (!node.HasNode(name))
+                return [];
+
+            return node.GetNodes(name)
+                .Where(node =>
+                {
+                    var present = node.HasValue("ResourceName");
+                    if (!present)
+                        LogUtil.Error(
+                            $"{name} node must have ResourceName field. Resource will be skipped."
+                        );
+                    return present;
+                })
+                .Select(node =>
+                {
+                    ResourceConstraint constraint = new();
+                    constraint.Load(node);
+                    return constraint;
+                });
+        }
+
+        public static void SaveResourceConstraints(
+            ConfigNode node,
+            string name,
+            IEnumerable<ResourceConstraint> constraints
+        )
+        {
+            foreach (var constraint in constraints)
+                constraint.Save(node.AddNode(name));
         }
 
         public static IEnumerable<ResourceRatio> LoadOutputResources(ConfigNode node)
@@ -53,9 +87,9 @@ namespace BackgroundResourceProcessing
             return LoadResourceRatios(node, "INPUT_RESOURCE");
         }
 
-        public static IEnumerable<ResourceRatio> LoadRequiredResources(ConfigNode node)
+        public static IEnumerable<ResourceConstraint> LoadRequiredResources(ConfigNode node)
         {
-            return LoadResourceRatios(node, "REQUIRED_RESOURCE");
+            return LoadResourceConstraints(node, "REQUIRED_RESOURCE");
         }
 
         public static void SaveOutputResources(ConfigNode node, IEnumerable<ResourceRatio> outputs)
@@ -70,10 +104,10 @@ namespace BackgroundResourceProcessing
 
         public static void SaveRequiredResources(
             ConfigNode node,
-            IEnumerable<ResourceRatio> required
+            IEnumerable<ResourceConstraint> required
         )
         {
-            SaveResourceRatios(node, "REQUIRED_RESOURCE", required);
+            SaveResourceConstraints(node, "REQUIRED_RESOURCE", required);
         }
 
         public static void AddModuleId(ConfigNode node, string name, uint? moduleId)
