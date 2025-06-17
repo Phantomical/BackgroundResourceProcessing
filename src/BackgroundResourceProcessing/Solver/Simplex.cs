@@ -43,27 +43,14 @@ namespace BackgroundResourceProcessing.Solver
             int pivot = -1;
             double value = double.PositiveInfinity;
 
-            // Here we use the steepest-edge criterion in order to select the
-            // pivot column.
-
+            // Here we just pick the most-negative value
             for (int x = 0; x < tableau.Width - 1; ++x)
             {
                 var current = tableau[x, 0];
                 if (current >= -Epsilon)
                     continue;
 
-                var norm = 0.0;
-                for (int y = 1; y < tableau.Height; ++y)
-                {
-                    var v = tableau[x, y];
-                    norm += v * v;
-                }
-
-                if (norm < Epsilon)
-                    throw new UnsolvableProblemException();
-
-                var steepness = current / Math.Sqrt(norm);
-                if (steepness < value)
+                if (current < value)
                 {
                     pivot = x;
                     value = current;
