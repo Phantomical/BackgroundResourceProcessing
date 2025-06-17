@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using BackgroundResourceProcessing.Collections;
@@ -207,6 +208,9 @@ namespace BackgroundResourceProcessing.Solver
                 // i.e. either the converter must be disabled or the net
                 // resource production of the constraining resource msut be
                 // positive.
+                //
+                // Note that we support both upper and lower bound constraints,
+                // so the condition can vary.
 
                 foreach (var (resource, constraint) in converter.constraints.KSPEnumerate())
                 {
@@ -274,7 +278,39 @@ namespace BackgroundResourceProcessing.Solver
 
             IntMap<double> inventoryRates = new(inventoryCount);
             foreach (var (invId, iRate) in iRates)
-                inventoryRates.Add(invId, soln.Evaluate(iRate));
+            {
+                double rate = 0.0;
+                double norm = 0.0;
+
+                foreach (var var in iRate)
+                {
+                    var eval = soln.Evaluate(var);
+
+                    rate += eval;
+                    norm += eval * eval;
+                }
+
+                // This is a bit of a hack.
+                //
+                // It is easy to end up very small residual rates when there
+                // are several converters producing/consuming large amounts
+                // of resources. We don't want that because its somewhat messy.
+                // However, we also don't want to truncate all small rates
+                // because there are legitimate reasons to have a converter
+                // that produces small amount of resources.
+                //
+                // What we do here is to truncate small rates to 0 only if the
+                // rate divided by the norm of its rates is sufficiently small.
+                // That way, if you have a few slow converters it does not get
+                // truncated but if you have some large consumer/producers then
+                // we do truncate.
+                //
+                // In practice this seems to work well enough.
+                if (rate < 1e-6 && rate / Math.Sqrt(norm) < 1e-6)
+                    rate = 0.0;
+
+                inventoryRates[invId] = rate;
+            }
 
             return graph.ExpandInventoryRates(inventoryRates, processor);
         }
