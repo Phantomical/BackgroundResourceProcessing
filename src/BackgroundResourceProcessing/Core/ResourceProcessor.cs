@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Modules;
@@ -34,6 +33,12 @@ namespace BackgroundResourceProcessing.Core
         /// things up a little bit.
         /// </remarks>
         private const double ResourceFudgeDuration = 0.01;
+
+        /// <summary>
+        /// The epsilon factor used when determine if resource boundary
+        /// conditions hold.
+        /// </summary>
+        public const double ResourceEpsilon = 1e-6;
 
         public List<ResourceConverter> converters = [];
         public Dictionary<InventoryId, ResourceInventory> inventories = [];
@@ -79,7 +84,10 @@ namespace BackgroundResourceProcessing.Core
         {
             try
             {
-                var watch = Stopwatch.StartNew();
+                using var watch = new SpanWatch(span =>
+                {
+                    LogUtil.Log($"Computed new rates in {SpanWatch.FormatDuration(span)}");
+                });
                 var solver = new Solver.Solver();
                 var rates = solver.ComputeInventoryRates(this);
 
@@ -97,10 +105,6 @@ namespace BackgroundResourceProcessing.Core
                             inventory.rate = rate;
                     }
                 }
-
-                watch.Stop();
-
-                LogUtil.Log($"Computed new rates in {FormatDuration(watch.Elapsed)}");
             }
             catch (Exception e)
             {
@@ -121,10 +125,14 @@ namespace BackgroundResourceProcessing.Core
         public double ComputeNextChangepoint(double currentTime)
         {
             double changepoint = double.PositiveInfinity;
+            Dictionary<string, KVPair<double, double>> totals = [];
 
-            foreach (var entry in inventories)
+            foreach (var inv in inventories.Values)
             {
-                var inv = entry.Value;
+                var (total, tRate) = totals.GetValueOr(inv.resourceName, default);
+                total += inv.amount;
+                tRate += inv.rate;
+                totals[inv.resourceName] = new(total, tRate);
 
                 if (inv.rate == 0.0)
                     continue;
@@ -139,7 +147,25 @@ namespace BackgroundResourceProcessing.Core
             }
 
             foreach (var converter in converters)
+            {
                 changepoint = Math.Min(changepoint, converter.nextChangepoint);
+
+                foreach (var requirement in converter.required.Values)
+                {
+                    var (total, rate) = totals.GetValueOr(requirement.ResourceName, default);
+                    if (rate == 0.0)
+                        continue;
+
+                    if (MathUtil.ApproxEqual(requirement.Amount, total, ResourceEpsilon))
+                        continue;
+
+                    var duration = (requirement.Amount - total) / rate;
+                    if (duration <= 0.0)
+                        continue;
+
+                    changepoint = Math.Min(changepoint, currentTime + duration);
+                }
+            }
 
             return changepoint;
         }
@@ -159,17 +185,16 @@ namespace BackgroundResourceProcessing.Core
 
             LogUtil.Debug(() => $"Recording vessel state for vessel {vessel.GetDisplayName()}");
 
-            var watch = Stopwatch.StartNew();
+            using var watch = new SpanWatch(span =>
+            {
+                LogUtil.Log(
+                    $"Recorded state of vessel {vessel.GetDisplayName()} in {SpanWatch.FormatDuration(span)}"
+                );
+            });
 
             RecordPartResources(state);
             var entries = RecordConverters(state);
             RecordBackgroundPartResources(entries);
-
-            watch.Stop();
-
-            LogUtil.Log(
-                $"Recorded state of vessel {vessel.GetDisplayName()} in {FormatDuration(watch.Elapsed)}"
-            );
         }
 
         private void RecordPartResources(VesselState state)
@@ -379,7 +404,7 @@ namespace BackgroundResourceProcessing.Core
                 var part = module.part;
                 foreach (var resource in resources)
                 {
-                    if (resource.amount < 0.0 || !double.IsFinite(resource.amount))
+                    if (resource.amount < 0.0 || !MathUtil.IsFinite(resource.amount))
                     {
                         LogUtil.Error(
                             $"Module {module.GetType().Name} on part {part.partName} returned ",
@@ -389,7 +414,7 @@ namespace BackgroundResourceProcessing.Core
                     }
 
                     var inventory = new ResourceInventory(resource, module);
-                    if (!inventories.TryAdd(inventory.Id, inventory))
+                    if (!inventories.TryAddExt(inventory.Id, inventory))
                         continue;
 
                     var converter = converters[entry.converterId];
@@ -532,7 +557,7 @@ namespace BackgroundResourceProcessing.Core
 
             foreach (var inventory in inventories.Values)
             {
-                var state = totals.GetValueOrDefault(inventory.resourceName);
+                var state = totals.GetValueOr(inventory.resourceName, default);
                 totals[inventory.resourceName] = state.Merge(inventory.State);
             }
 
@@ -637,22 +662,6 @@ namespace BackgroundResourceProcessing.Core
             set.lists.Add(resources);
             set.set.AddAll(resources);
             return set;
-        }
-
-        private static string FormatDuration(TimeSpan span)
-        {
-            const long TicksPerMicrosecond = TimeSpan.TicksPerMillisecond / 1000;
-
-            if (span.TotalSeconds >= 1)
-                return $"{span:g}";
-
-            if (span.TotalMilliseconds >= 100)
-                return $"{span:fff} ms";
-
-            var micros = span.Ticks / TicksPerMicrosecond % 1000;
-            var millis = span.Milliseconds;
-
-            return $"{millis:D}.{micros:D3} ms";
         }
     }
 }

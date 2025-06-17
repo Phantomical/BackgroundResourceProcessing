@@ -24,7 +24,7 @@ namespace BackgroundResourceProcessing.CLI
         [Value(0, MetaName = "PATH", HelpText = "Path to the ship file")]
         public string ShipPath { get; set; }
 
-        [Option('o', "--output", HelpText = "Output path to emit the dot file to")]
+        [Option('o', "output", HelpText = "Output path to emit the dot file to")]
         public string Output { get; set; }
 
         [Option(

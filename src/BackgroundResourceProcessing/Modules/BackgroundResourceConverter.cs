@@ -45,6 +45,20 @@ namespace BackgroundResourceProcessing.Modules
         public int ConverterIndex = -1;
 
         /// <summary>
+        /// Limits this converter to only be enabled when all its outputs have
+        /// at most this fraction of their total resources filled.
+        /// </summary>
+        [KSPField]
+        public double FillAmount = 1.0;
+
+        /// <summary>
+        /// Limits this converter to only be enabled when all its inputs have
+        /// at least this fraction of their total resources filled.
+        /// </summary>
+        [KSPField]
+        public double TakeAmount = 1.0;
+
+        /// <summary>
         /// Specify an efficiency bonus to be used instead of the one on the
         /// referenced <see cref="BaseConverter"/> module.
         /// </summary>
@@ -145,11 +159,11 @@ namespace BackgroundResourceProcessing.Modules
 
             var additional = GetAdditionalRecipe();
             if (additional.Inputs != null && additional.Inputs.Count != 0)
-                inputs = [.. inputs, .. additional.Inputs];
+                inputs = inputs.Concat(additional.Inputs);
             if (additional.Outputs != null && additional.Outputs.Count != 0)
-                outputs = [.. outputs, .. additional.Outputs];
+                outputs = outputs.Concat(additional.Outputs);
             if (additional.Requirements != null && additional.Requirements.Count != 0)
-                required = [.. required, .. additional.Requirements];
+                required = required.Concat(additional.Requirements);
 
             if (ConvertByMass)
             {
@@ -165,7 +179,60 @@ namespace BackgroundResourceProcessing.Modules
                 outputs = outputs.Select(res => res.WithMultiplier(multiplier));
             }
 
-            return new ConstantConverter(inputs.ToList(), outputs.ToList(), required.ToList());
+            var inputList = inputs.ToList();
+            var outputList = outputs.ToList();
+
+            if (FillAmount < 1.0)
+            {
+                if (FillAmount <= 0.0)
+                    return null;
+
+                required = required.Concat(
+                    outputList.Select(output =>
+                    {
+                        vessel.resourcePartSet.GetConnectedResourceTotals(
+                            output.ResourceName.GetHashCode(),
+                            out double _,
+                            out double maxAmount,
+                            false
+                        );
+
+                        return new ResourceConstraint()
+                        {
+                            ResourceName = output.ResourceName,
+                            Amount = maxAmount * FillAmount,
+                            Constraint = Constraint.AT_MOST,
+                        };
+                    })
+                );
+            }
+
+            if (TakeAmount < 1.0)
+            {
+                if (TakeAmount <= 0.0)
+                    return null;
+
+                required = required.Concat(
+                    inputList.Select(input =>
+                    {
+                        vessel.resourcePartSet.GetConnectedResourceTotals(
+                            input.ResourceName.GetHashCode(),
+                            out double _,
+                            out double maxAmount,
+                            true
+                        );
+
+                        return new ResourceConstraint()
+                        {
+                            ResourceName = input.ResourceName,
+                            Amount = maxAmount * (1.0 - TakeAmount),
+                            Constraint = Constraint.AT_LEAST,
+                        };
+                    })
+                );
+            }
+
+            return new ConstantConverter(inputList, outputList, required.ToList());
         }
 
         public override void OnStart(StartState state)

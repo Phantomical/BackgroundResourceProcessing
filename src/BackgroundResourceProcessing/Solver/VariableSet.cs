@@ -7,21 +7,10 @@ namespace BackgroundResourceProcessing.Solver
     /// <summary>
     /// A helper type returned for a set of variables.
     /// </summary>
-    internal struct VariableSet(uint start, uint count) : IEnumerable<Variable>
+    internal struct VariableSet(int start, int count) : IEnumerable<Variable>
     {
-        public readonly uint Start => start;
-        public readonly int Count => (int)count;
-
-        public readonly Variable this[uint index]
-        {
-            get
-            {
-                if (index >= count)
-                    throw new IndexOutOfRangeException($"index out of range: {index} >= {count}");
-
-                return new(Start + index);
-            }
-        }
+        public readonly int Start => start;
+        public readonly int Count => count;
 
         public readonly Variable this[int index]
         {
@@ -29,14 +18,16 @@ namespace BackgroundResourceProcessing.Solver
             {
                 if (index < 0)
                     throw new IndexOutOfRangeException($"index out of range: {index} < 0");
+                if (index >= count)
+                    throw new IndexOutOfRangeException($"index out of range: {index} >= {count}");
 
-                return this[(uint)index];
+                return new(Start + index);
             }
         }
 
         public readonly IEnumerator<Variable> GetEnumerator()
         {
-            return new Enumerator(Start, (uint)Count);
+            return new Enumerator(Start, Count);
         }
 
         readonly IEnumerator IEnumerable.GetEnumerator()
@@ -44,13 +35,13 @@ namespace BackgroundResourceProcessing.Solver
             return GetEnumerator();
         }
 
-        private class Enumerator(uint start, uint count) : IEnumerator<Variable>
+        private class Enumerator(int start, int count) : IEnumerator<Variable>
         {
-            readonly uint start = start;
-            readonly uint end = start + count;
-            uint? index = null;
+            readonly int start = start;
+            readonly int end = start + count;
+            int? index = null;
 
-            public Variable Current => new((uint)index);
+            public Variable Current => new((int)index);
 
             object IEnumerator.Current => Current;
 

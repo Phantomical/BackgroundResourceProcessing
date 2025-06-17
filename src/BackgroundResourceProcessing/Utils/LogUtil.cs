@@ -4,11 +4,7 @@ namespace BackgroundResourceProcessing
 {
     internal static class LogUtil
     {
-#if DEBUG
-        public static ILogSink Sink { get; set; } = new UnityLogSink();
-#else
-        public static ILogSink Sink => new UnityLogSink();
-#endif
+        public static ILogSink Sink = new UnityLogSink();
 
         public interface ILogSink
         {
@@ -47,9 +43,6 @@ namespace BackgroundResourceProcessing
 
         public delegate string DebugExpression();
 
-#if !DEBUG
-        [Conditional("FALSE")]
-#endif
         internal static void Debug(DebugExpression dbgexpr)
         {
 #if DEBUG

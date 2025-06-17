@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Reflection;
 
 namespace BackgroundResourceProcessing
@@ -25,7 +26,11 @@ namespace BackgroundResourceProcessing
         /// </remarks>
         internal static void RegisterAllBehaviours(Assembly assembly)
         {
-            BehaviourRegistry.RegisterAll(assembly.GetTypes());
+            var types = assembly
+                .GetTypes()
+                .Where(type => type.IsSubclassOf(typeof(ConverterBehaviour)))
+                .Where(type => !type.IsAbstract);
+            BehaviourRegistry.RegisterAll(types);
         }
     }
 }

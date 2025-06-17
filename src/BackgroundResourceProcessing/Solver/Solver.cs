@@ -217,10 +217,10 @@ namespace BackgroundResourceProcessing.Solver
                     switch (constraint)
                     {
                         case Constraint.AT_LEAST:
-                            problem.AddOrConstraint(alpha == 0.0, total >= 0.0);
+                            problem.AddOrConstraint(alpha <= 0.0, total >= 0.0);
                             break;
                         case Constraint.AT_MOST:
-                            problem.AddOrConstraint(alpha == 0.0, total <= 0.0);
+                            problem.AddOrConstraint(alpha <= 0.0, total <= 0.0);
                             break;
                     }
                 }
@@ -267,8 +267,6 @@ namespace BackgroundResourceProcessing.Solver
                 if ((inventory.state & InventoryState.Empty) == InventoryState.Empty)
                     problem.AddConstraint(iRate >= 0.0);
             }
-
-            // LogUtil.Log($"\nMaximize Z = {func}\nsubject to\n{problem}");
 
             var soln = problem.Maximize(func);
 

@@ -10,12 +10,12 @@ namespace BackgroundResourceProcessing.Solver
     /// </summary>
     /// <param name="coef"></param>
     /// <param name="index"></param>
-    internal readonly struct Variable(uint index, double coef) : IComparable<Variable>
+    internal readonly struct Variable(int index, double coef) : IComparable<Variable>
     {
         public readonly double Coef = coef;
-        public readonly uint Index = index;
+        public readonly int Index = index;
 
-        public Variable(uint index)
+        public Variable(int index)
             : this(index, 1.0) { }
 
         public static Variable operator *(double coef, Variable var)

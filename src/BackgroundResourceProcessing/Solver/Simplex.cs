@@ -81,15 +81,20 @@ namespace BackgroundResourceProcessing.Solver
                 var num = tableau[tableau.Width - 1, y];
                 var ratio = num / den;
 
-                // LogUtil.Log($"Inspecting row {y} {num:g4}/{den:g4} = {ratio:g4}");
+                // Trace(() => $"Inspecting row {y} {num:g4}/{den:g4} = {ratio:g4}");
+
+                if (den <= 0)
+                    continue;
 
                 // We ignore all negative ratios
                 if (ratio < 0.0)
                     continue;
 
-                // Ignore zero ratios if the denominator is negative
-                if (ratio == 0.0 && den < 0.0)
-                    continue;
+                // // Ignore zero ratios if the denominator is negative
+                // if (ratio == 0.0 && den < 0.0)
+                //     continue;
+
+                Trace(() => $"Considering row {y} {num:g4}/{den:g4} = {ratio:g4}");
 
                 if (ratio < value)
                 {

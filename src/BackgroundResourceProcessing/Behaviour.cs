@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Reflection;
 using System.Threading;
 using BackgroundResourceProcessing.Collections;
@@ -185,11 +186,7 @@ namespace BackgroundResourceProcessing
 
         internal static string GetBehaviourName(Type type)
         {
-            var attribute =
-                type.GetCustomAttribute<Behaviour>()
-                ?? throw new InvalidBehaviourException(
-                    $"Behaviour type '{type.Name}' does not have a [Behaviour] attribute"
-                );
+            var attribute = type.GetCustomAttribute<Behaviour>() ?? new Behaviour(type);
             if (Registry.GetRegisteredPrimaryType(attribute.Name) == null)
             {
                 throw new InvalidBehaviourException(
@@ -220,6 +217,7 @@ namespace BackgroundResourceProcessing
     /// <summary>
     /// A constraint applied to a resource.
     /// </summary>
+    [DebuggerDisplay("{Constraint} {Amount} {ResourceName}")]
     public struct ResourceConstraint()
     {
         /// <summary>

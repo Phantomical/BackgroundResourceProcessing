@@ -111,6 +111,11 @@ namespace BackgroundResourceProcessing.Collections
         {
             return dict.Select(pair => new KVPair<K, V>(pair.Key, pair.Value));
         }
+
+        public static KVPair<K, V> IntoKSP<K, V>(this KeyValuePair<K, V> pair)
+        {
+            return new(pair.Key, pair.Value);
+        }
     }
 
     internal static class DictUtil

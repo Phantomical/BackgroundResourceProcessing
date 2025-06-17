@@ -10,18 +10,18 @@ using BackgroundResourceProcessing.Collections;
 
 namespace BackgroundResourceProcessing.Solver
 {
-    internal class LinearEquation(SortedList<uint, double> variables)
+    internal class LinearEquation(SortedList<int, double> variables)
         : IEnumerable<Variable>,
             IComparable<LinearEquation>
     {
-        readonly SortedList<uint, double> variables = variables;
+        readonly SortedList<int, double> variables = variables;
 
         public int Count => variables.Count;
 
         public IEnumerable<Variable> Values =>
             variables.Select(entry => new Variable(entry.Key, entry.Value));
 
-        public Variable this[uint index]
+        public Variable this[int index]
         {
             get { return new(index, variables[index]); }
         }
@@ -30,10 +30,10 @@ namespace BackgroundResourceProcessing.Solver
             : this([]) { }
 
         public LinearEquation(int capacity)
-            : this(new SortedList<uint, double>(capacity)) { }
+            : this(new SortedList<int, double>(capacity)) { }
 
         public LinearEquation(Variable var)
-            : this(new SortedList<uint, double>(1))
+            : this(new SortedList<int, double>(1))
         {
             Add(var);
         }
@@ -55,19 +55,19 @@ namespace BackgroundResourceProcessing.Solver
             Add(-var);
         }
 
-        public bool Remove(uint index)
+        public bool Remove(int index)
         {
             return variables.Remove(index);
         }
 
-        public bool TryGetValue(uint index, out Variable var)
+        public bool TryGetValue(int index, out Variable var)
         {
             var result = variables.TryGetValue(index, out var value);
             var = new(index, value);
             return result;
         }
 
-        public bool Contains(uint index)
+        public bool Contains(int index)
         {
             return variables.ContainsKey(index);
         }
@@ -77,7 +77,7 @@ namespace BackgroundResourceProcessing.Solver
             return Contains(var.Index);
         }
 
-        public void Substitute(uint index, LinearEquation eq)
+        public void Substitute(int index, LinearEquation eq)
         {
             if (!TryGetValue(index, out var variable))
                 return;
@@ -98,7 +98,7 @@ namespace BackgroundResourceProcessing.Solver
         /// <returns></returns>
         public LinearEquation Clone()
         {
-            return new(new SortedList<uint, double>(variables));
+            return new(new SortedList<int, double>(variables));
         }
 
         public static LinearEquation operator +(LinearEquation eq, Variable var)
@@ -159,6 +159,14 @@ namespace BackgroundResourceProcessing.Solver
         public static LinearConstraint operator >=(LinearEquation eq, double value)
         {
             return new LinearConstraint(eq, Relation.GEqual, value);
+        }
+
+        public LinearEquation Negated()
+        {
+            var eq = new LinearEquation(variables.Count);
+            foreach (var (index, coef) in variables.KSPEnumerate())
+                eq.Sub(new(index, coef));
+            return eq;
         }
 
         public override string ToString()

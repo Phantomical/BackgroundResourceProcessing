@@ -10,6 +10,8 @@
 
         <ProjectRootDir>$(MSBuildThisFileDirectory)</ProjectRootDir>
 
+        <!-- <DefineConstants>DEBUG;SOLVERTRACE</DefineConstants> -->
+
         <!-- Properties used by KSPBuildTools -->
         <GameDataOutDir>$(ProjectRootDir)\GameData\BackgroundResourceProcessing</GameDataOutDir>
         <BinariesOutputRelativePath>GameData\BackgroundResourceProcessing\Plugins</BinariesOutputRelativePath>

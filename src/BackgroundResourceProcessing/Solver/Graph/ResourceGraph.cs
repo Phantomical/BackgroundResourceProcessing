@@ -126,17 +126,20 @@ namespace BackgroundResourceProcessing.Solver.Graph
             foreach (var (resource, required) in converter.required.KSPEnumerate())
             {
                 var total = totals.GetValueOr(resource, 0.0);
-                if (MathUtil.ApproxEqual(required.Amount, total))
+                if (MathUtil.ApproxEqual(required.Amount, total, ResourceProcessor.ResourceEpsilon))
+                {
                     conv.constraints.Add(resource, required.Constraint);
+                    continue;
+                }
 
                 switch (required.Constraint)
                 {
                     case Constraint.AT_LEAST:
-                        if (required.Amount < total)
+                        if (required.Amount > total)
                             return null;
                         break;
                     case Constraint.AT_MOST:
-                        if (required.Amount > total)
+                        if (required.Amount < total)
                             return null;
                         break;
                     default:
@@ -168,8 +171,20 @@ namespace BackgroundResourceProcessing.Solver.Graph
 
             ids.AddRange(other.ids);
             converters.AddRange(other.converters);
-            constraints.AddAll(other.constraints);
             weight += other.weight;
+
+            foreach (var (resource, constraint) in other.constraints.KSPEnumerate())
+            {
+#if DEBUG
+                if (constraints.TryGetValue(resource, out var existing))
+                    Debug.Assert(
+                        existing == constraint,
+                        $"Merged GraphConverters with different constraints for resource {resource}"
+                    );
+#endif
+
+                constraints[resource] = constraint;
+            }
         }
 
         public bool CanMergeWith(GraphConverter other)
@@ -266,12 +281,14 @@ namespace BackgroundResourceProcessing.Solver.Graph
             index = 0;
             foreach (var converter in processor.converters)
             {
-                var id = index++;
+                var id = index;
                 var conv = GraphConverter.Build(id, converter, totals);
-                converters.Add(id, conv);
 
                 if (conv == null)
                     continue;
+
+                index++;
+                converters.Add(id, conv);
 
                 foreach (var (resourceName, inventories) in converter.pull.KSPEnumerate())
                 {

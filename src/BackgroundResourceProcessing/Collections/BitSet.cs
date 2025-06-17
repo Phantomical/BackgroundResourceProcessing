@@ -7,11 +7,11 @@ using BackgroundResourceProcessing.Utils;
 
 namespace BackgroundResourceProcessing.Collections
 {
-    internal class BitSet(int capacity) : IEnumerable<int>
+    internal class BitSet : IEnumerable<int>
     {
         const int ULongBits = 64;
 
-        readonly ulong[] words = new ulong[(capacity + ULongBits - 1) / ULongBits];
+        readonly ulong[] words;
 
         public bool this[uint key]
         {
@@ -69,6 +69,14 @@ namespace BackgroundResourceProcessing.Collections
 
         public int Count => words.Length * ULongBits;
 
+        public BitSet(int capacity)
+            : this(new ulong[(capacity + ULongBits - 1) / ULongBits]) { }
+
+        private BitSet(ulong[] words)
+        {
+            this.words = words;
+        }
+
         public bool Contains(uint key)
         {
             if (key / ULongBits >= words.Length)
@@ -91,6 +99,11 @@ namespace BackgroundResourceProcessing.Collections
         public void Add(int key)
         {
             this[key] = true;
+        }
+
+        public BitSet Clone()
+        {
+            return new((ulong[])words.Clone());
         }
 
         public IEnumerator<int> GetEnumerator()

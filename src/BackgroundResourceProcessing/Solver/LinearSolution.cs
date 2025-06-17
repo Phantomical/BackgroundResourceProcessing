@@ -44,14 +44,14 @@ namespace BackgroundResourceProcessing.Solver
             StringBuilder builder = new();
             bool first = true;
 
-            for (uint i = 0; i < values.Length; ++i)
+            for (int i = 0; i < values.Length; ++i)
             {
                 if (first)
                     first = false;
                 else
                     builder.Append(", ");
 
-                builder.Append(new Variable((uint)i));
+                builder.Append(new Variable(i));
                 builder.Append(" = ");
                 builder.Append(this[i].ToString(fmt));
             }
@@ -75,7 +75,7 @@ namespace BackgroundResourceProcessing.Solver
                         soln.Count
                     ];
 
-                    for (uint i = 0; i < soln.values.Length; ++i)
+                    for (int i = 0; i < soln.values.Length; ++i)
                         array[i] = new(new(i), soln.values[i]);
 
                     return array;

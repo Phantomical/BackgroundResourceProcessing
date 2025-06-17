@@ -116,8 +116,8 @@ namespace BackgroundResourceProcessing.Core
         /// </remarks>
         public double originalAmount;
 
-        public bool Full => maxAmount - amount < 1e-6;
-        public bool Empty => amount < 1e-6;
+        public bool Full => maxAmount - amount < ResourceProcessor.ResourceEpsilon;
+        public bool Empty => amount < ResourceProcessor.ResourceEpsilon;
 
         /// <summary>
         /// How much time remains until this inventory either fills up or

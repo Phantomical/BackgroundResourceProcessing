@@ -10,11 +10,9 @@ namespace BackgroundResourceProcessing.Solver
         public Relation relation;
         public double constant;
 
-        public Variable? slack = null;
-
         public LinearConstraint(LinearEquation variables, Relation relation, double constant)
         {
-            SortedList<uint, double> copy = new(variables.Count);
+            SortedList<int, double> copy = new(variables.Count);
             foreach (var var in variables.Values)
             {
                 if (var.Coef == 0.0)
@@ -57,7 +55,7 @@ namespace BackgroundResourceProcessing.Solver
             }
         }
 
-        public void Substitute(uint index, double value)
+        public void Substitute(int index, double value)
         {
             if (!variables.TryGetValue(index, out var variable))
                 return;
@@ -66,7 +64,7 @@ namespace BackgroundResourceProcessing.Solver
             constant -= variable.Coef * value;
         }
 
-        public void Substitute(uint index, LinearEquation eq, double value)
+        public void Substitute(int index, LinearEquation eq, double value)
         {
             if (!variables.TryGetValue(index, out var variable))
                 return;
@@ -101,28 +99,17 @@ namespace BackgroundResourceProcessing.Solver
             else
                 builder.Append(variables);
 
-            if (slack == null || fmt == "R")
+            switch (relation)
             {
-                switch (relation)
-                {
-                    case Relation.LEqual:
-                        builder.Append(" <= ");
-                        break;
-                    case Relation.GEqual:
-                        builder.Append(" >= ");
-                        break;
-                    case Relation.Equal:
-                        builder.Append(" == ");
-                        break;
-                }
-            }
-            else
-            {
-                var first = false;
-                var s = (Variable)slack;
-                LinearProblem.RenderCoef(builder, s.Coef, $"S{s.Index}", ref first);
-
-                builder.Append(" == ");
+                case Relation.LEqual:
+                    builder.Append(" <= ");
+                    break;
+                case Relation.GEqual:
+                    builder.Append(" >= ");
+                    break;
+                case Relation.Equal:
+                    builder.Append(" == ");
+                    break;
             }
 
             builder.Append(constant);
