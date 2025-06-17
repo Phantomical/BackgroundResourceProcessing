@@ -28,7 +28,7 @@ namespace BackgroundResourceProcessing.Modules
         /// efficiency from.
         /// </summary>
         [KSPField]
-        public string ConverterModule = null;
+        public string TargetModule = null;
 
         /// <summary>
         /// The name of the converter to use to find the efficiency of this
@@ -42,7 +42,7 @@ namespace BackgroundResourceProcessing.Modules
         /// converter modules with the same type.
         /// </summary>
         [KSPField]
-        public int ConverterIndex = -1;
+        public int TargetIndex = -1;
 
         /// <summary>
         /// Limits this converter to only be enabled when all its outputs have
@@ -276,7 +276,7 @@ namespace BackgroundResourceProcessing.Modules
                 return null;
 
             var type = module.GetType();
-            if (type.Name != ConverterModule)
+            if (type.Name != TargetModule)
                 return null;
 
             var downcasted = module as T;
@@ -306,20 +306,20 @@ namespace BackgroundResourceProcessing.Modules
                     continue;
 
                 var type = module.GetType();
-                if (type.Name != ConverterModule)
+                if (type.Name != TargetModule)
                     continue;
                 var current = index;
                 index += 1;
 
-                if (ConverterIndex != -1)
+                if (TargetIndex != -1)
                 {
-                    if (current != ConverterIndex)
+                    if (current != TargetIndex)
                         continue;
 
                     if (module.ConverterName != null && module.ConverterName != ConverterName)
                     {
                         LogUtil.Error(
-                            $"{ConverterModule} module at index {ConverterIndex} does not have ConverterName '{ConverterName}'"
+                            $"{TargetModule} module at index {TargetIndex} does not have ConverterName '{ConverterName}'"
                         );
                         return null;
                     }
@@ -333,7 +333,7 @@ namespace BackgroundResourceProcessing.Modules
                 if (module is not T downcasted)
                 {
                     LogUtil.Error(
-                        $"{ConverterModule} module with ConverterName '{ConverterName}' was not of type {typeof(T).Name}"
+                        $"{TargetModule} module with ConverterName '{ConverterName}' was not of type {typeof(T).Name}"
                     );
                     return null;
                 }
@@ -341,7 +341,7 @@ namespace BackgroundResourceProcessing.Modules
                 if (found != null)
                 {
                     LogUtil.Warn(
-                        $"Multiple modules of type {ConverterModule} with ConverterName ",
+                        $"Multiple modules of type {TargetModule} with ConverterName ",
                         $"{ConverterName ?? "null"}. Only the first one will be used by this {GetType().Name} module."
                     );
                     continue;
@@ -350,10 +350,10 @@ namespace BackgroundResourceProcessing.Modules
                 found = downcasted;
             }
 
-            if (index < ConverterIndex)
+            if (index < TargetIndex)
             {
                 LogUtil.Error(
-                    $"Part {part.name} does not have {ConverterIndex} modules of type {ConverterModule}"
+                    $"Part {part.name} does not have {TargetIndex} modules of type {TargetModule}"
                 );
                 return null;
             }
@@ -361,7 +361,7 @@ namespace BackgroundResourceProcessing.Modules
             if (found == null)
             {
                 LogUtil.Warn(
-                    $"No converter module of type {ConverterModule} with ConverterName {ConverterName ?? "null"} ",
+                    $"No converter module of type {TargetModule} with ConverterName {ConverterName ?? "null"} ",
                     $"found on part {part.partName}. This {GetType().Name} module will be disabled."
                 );
                 return null;

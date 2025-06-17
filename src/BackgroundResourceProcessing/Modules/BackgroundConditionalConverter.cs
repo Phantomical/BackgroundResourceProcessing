@@ -30,7 +30,7 @@ namespace BackgroundResourceProcessing.Modules
         /// The index of the module (for all modules with the same type).
         /// </summary>
         [KSPField]
-        public int TargetModuleIndex = 0;
+        public int TargetIndex = 0;
 
         /// <summary>
         /// A condition to evaluate to determine when this converter should be
@@ -136,7 +136,7 @@ namespace BackgroundResourceProcessing.Modules
                 if (type.Name != TargetModule)
                     continue;
 
-                if (index != TargetModuleIndex)
+                if (index != TargetIndex)
                 {
                     index += 1;
                     continue;
