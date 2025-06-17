@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
+using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
 
 namespace BackgroundResourceProcessing.Solver
@@ -131,6 +132,7 @@ namespace BackgroundResourceProcessing.Solver
 
         public LinearSolution Maximize(LinearEquation func)
         {
+            using var span = new TraceSpan("LinearProblem.Maximize");
             Trace(() => $"\nMaximize Z = {func}\nsubject to\n{this}");
 
             var soln = SolveBranchAndBound(func);
@@ -141,9 +143,10 @@ namespace BackgroundResourceProcessing.Solver
             return soln;
         }
 
-        #region global presolve
-        private void GlobalPresolve()
+        #region presolve
+        private void Presolve()
         {
+            using var span = new TraceSpan("LinearProblem.Presolve");
             substitutions = new(VariableCount);
 
             InferZeros();
@@ -209,6 +212,8 @@ namespace BackgroundResourceProcessing.Solver
 
         private bool InferZeros()
         {
+            using var span = new TraceSpan("LinearProblem.InferZeros");
+
             int count = constraints.RemoveAll(constraint =>
             {
                 // If the constraint is empty then either it is trivial or the
@@ -241,13 +246,15 @@ namespace BackgroundResourceProcessing.Solver
         #region branch & bound
         private LinearSolution SolveBranchAndBound(LinearEquation func)
         {
+            using var span = new TraceSpan("LinearProblem.SolveBranchAndBound");
+
             IntMap<int> varMap = new(VariableCount);
             IntMap<int> binaryIndices = new(VariableCount);
 
             for (int i = 0; i < disjunctions.Count; ++i)
                 binaryIndices.Add(disjunctions[i].variable.Index, i);
 
-            GlobalPresolve();
+            Presolve();
 
             foreach (var sub in substitutions.Values)
                 func.Substitute(sub.variable, sub.equation);
@@ -272,6 +279,8 @@ namespace BackgroundResourceProcessing.Solver
 
             while (entries.TryDequeue(out var entry, out var _))
             {
+                using var iterSpan = new TraceSpan("LinearProblem.SolveBranchAndBound.Iter");
+
                 // The best possible score for the relaxed version of this entry
                 // is still worse than the best score we've seen so far. There
                 // is no point in examining it any further.
@@ -290,15 +299,6 @@ namespace BackgroundResourceProcessing.Solver
                         continue;
                     }
                 }
-
-                using var span = new SpanWatch(
-                    (span) =>
-                    {
-                        LogUtil.Log(
-                            $"Completed one solver iteration in {SpanWatch.FormatDuration(span)}"
-                        );
-                    }
-                );
 
                 Trace(() =>
                     $"Solving relaxation with choice variables: {RenderChoices(entry.choices)}"
@@ -414,6 +414,8 @@ namespace BackgroundResourceProcessing.Solver
             IntMap<int> varMap
         )
         {
+            using var span = new TraceSpan("LinearProblem.BuildSimplexTableau");
+
             int constraintCount = constraints.Count;
             constraintCount += choices
                 .Select(choice => choice == BinaryChoice.Unknown ? 3 : 1)
@@ -536,6 +538,8 @@ namespace BackgroundResourceProcessing.Solver
             IntMap<int> varMap
         )
         {
+            using var span = new TraceSpan("LinearProblem.ExtractTableauSolution");
+
             IntMap<int> inverse = new(tableau.Width);
             foreach (var (src, tgt) in varMap)
                 inverse[tgt] = src;

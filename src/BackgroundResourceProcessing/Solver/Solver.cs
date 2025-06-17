@@ -3,6 +3,7 @@ using System.Linq;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Solver.Graph;
+using BackgroundResourceProcessing.Tracing;
 
 namespace BackgroundResourceProcessing.Solver
 {
@@ -10,6 +11,7 @@ namespace BackgroundResourceProcessing.Solver
     {
         public Dictionary<InventoryId, double> ComputeInventoryRates(ResourceProcessor processor)
         {
+            using var span = new TraceSpan("ResourceProcessor.ComputeInventoryRates");
             var graph = new ResourceGraph(processor);
 
             // Pre-processing: We can make final problem smaller (and thus

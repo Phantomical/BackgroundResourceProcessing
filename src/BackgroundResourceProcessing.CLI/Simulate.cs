@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using BackgroundResourceProcessing.Tracing;
 using CommandLine;
 
 namespace BackgroundResourceProcessing.CLI
@@ -28,6 +29,8 @@ namespace BackgroundResourceProcessing.CLI
         {
             Program.Setup(options);
 
+            using var trace = options.Trace != null ? Tracing.Trace.Start(options.Trace) : null;
+
             var processor = Program.LoadVessel(options.ShipPath);
             Directory.CreateDirectory(options.Output);
             foreach (var file in Directory.EnumerateFiles(options.Output))
@@ -51,7 +54,10 @@ namespace BackgroundResourceProcessing.CLI
                 currentTime = processor.UpdateNextChangepoint(currentTime);
 
                 LogUtil.Log($"Dumping ship at {prev}");
-                Program.DumpProcessor(processor, Path.Combine(options.Output, $"ship-{i}.cfg"));
+                using (var dumpSpan = new TraceSpan("DumpProcessor"))
+                {
+                    Program.DumpProcessor(processor, Path.Combine(options.Output, $"ship-{i}.cfg"));
+                }
 
                 if (double.IsNaN(currentTime) || double.IsInfinity(currentTime))
                     break;

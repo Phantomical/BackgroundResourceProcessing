@@ -9,6 +9,9 @@ namespace BackgroundResourceProcessing.CLI
     {
         [Option("verbose", HelpText = "Enable verbose logging")]
         public bool Verbose { get; set; }
+
+        [Option("trace", HelpText = "Emit tracing data to a file")]
+        public string Trace { get; set; }
     }
 
     class Program

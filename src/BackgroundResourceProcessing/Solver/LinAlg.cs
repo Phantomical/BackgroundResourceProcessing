@@ -1,9 +1,13 @@
+using BackgroundResourceProcessing.Tracing;
+
 namespace BackgroundResourceProcessing.Solver
 {
     internal static class LinAlg
     {
         public static void GaussianEliminationOrdered(Matrix matrix)
         {
+            using var span = new TraceSpan("LinAlg.GaussianEliminationOrdered");
+
             int scol = 0;
             for (int row = 0; row < matrix.Height; ++row)
             {

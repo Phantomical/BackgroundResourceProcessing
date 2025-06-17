@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
+using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
 using Smooth.Collections;
 using UnityEngine.AI;
@@ -121,6 +122,8 @@ namespace BackgroundResourceProcessing.Solver.Graph
             Dictionary<string, double> totals
         )
         {
+            using var span = new TraceSpan("GraphConverter.Build");
+
             var conv = new GraphConverter(id, converter);
 
             foreach (var (resource, required) in converter.required.KSPEnumerate())
@@ -257,6 +260,8 @@ namespace BackgroundResourceProcessing.Solver.Graph
 
         public ResourceGraph(ResourceProcessor processor)
         {
+            using var span = new TraceSpan("new ResourceGraph");
+
             inventoryIds = new UnionFind(processor.inventories.Count);
             converterIds = new UnionFind(processor.converters.Count);
 
@@ -281,6 +286,10 @@ namespace BackgroundResourceProcessing.Solver.Graph
             index = 0;
             foreach (var converter in processor.converters)
             {
+                using var cspan = new TraceSpan(() =>
+                    $"Converter {converter.behaviour.sourceModule}"
+                );
+
                 var id = index;
                 var conv = GraphConverter.Build(id, converter, totals);
 
@@ -290,6 +299,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
                 index++;
                 converters.Add(id, conv);
 
+                var pullSpan = new TraceSpan("Pull inventories");
                 foreach (var (resourceName, inventories) in converter.pull.KSPEnumerate())
                 {
                     if (!converter.inputs.ContainsKey(resourceName))
@@ -298,7 +308,9 @@ namespace BackgroundResourceProcessing.Solver.Graph
                     foreach (var invId in inventories)
                         inputs.Add(id, idMap[invId]);
                 }
+                pullSpan.Dispose();
 
+                var pushSpan = new TraceSpan("Push inventories");
                 foreach (var (resourceName, inventories) in converter.push.KSPEnumerate())
                 {
                     if (!converter.outputs.ContainsKey(resourceName))
@@ -307,6 +319,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
                     foreach (var invId in inventories)
                         outputs.Add(id, idMap[invId]);
                 }
+                pushSpan.Dispose();
             }
         }
 
@@ -324,6 +337,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
         /// </remarks>
         public void MergeEquivalentInventories()
         {
+            using var span = new TraceSpan("ResourceGraph.MergeEquivalentInventories");
             HashSet<int> removed = [];
 
             foreach (var (inventoryId, inventory) in inventories)
@@ -383,6 +397,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
         /// </remarks>
         public void MergeEquivalentConverters()
         {
+            using var span = new TraceSpan("ResourceGraph.MergeEquivalentConverters");
             HashSet<int> removed = [];
 
             foreach (var (converterId, converter) in converters)

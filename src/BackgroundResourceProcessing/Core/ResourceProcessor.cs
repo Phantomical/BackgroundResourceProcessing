@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Modules;
+using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
 using Smooth.Collections;
 
@@ -82,12 +83,10 @@ namespace BackgroundResourceProcessing.Core
 
         public void ComputeRates()
         {
+            using var span = new TraceSpan("ResourceProcessor.ComputeRates");
+
             try
             {
-                using var watch = new SpanWatch(span =>
-                {
-                    LogUtil.Log($"Computed new rates in {SpanWatch.FormatDuration(span)}");
-                });
                 var solver = new Solver.Solver();
                 var rates = solver.ComputeInventoryRates(this);
 
@@ -124,6 +123,8 @@ namespace BackgroundResourceProcessing.Core
 
         public double ComputeNextChangepoint(double currentTime)
         {
+            using var span = new TraceSpan("ResourceProcessor.ComputeNextChangepoint");
+
             double changepoint = double.PositiveInfinity;
             Dictionary<string, KVPair<double, double>> totals = [];
 
@@ -179,6 +180,8 @@ namespace BackgroundResourceProcessing.Core
 
         public void RecordVesselState(Vessel vessel, double currentTime)
         {
+            using var span = new TraceSpan("ResourceProcessor.RecordVesselState");
+
             ClearVesselState();
             var state = new VesselState { Vessel = vessel, CurrentTime = currentTime };
             lastUpdate = currentTime;
@@ -199,6 +202,7 @@ namespace BackgroundResourceProcessing.Core
 
         private void RecordPartResources(VesselState state)
         {
+            using var span = new TraceSpan("ResourceProcessor.RecordPartResources");
             var vessel = state.Vessel;
 
             foreach (var part in vessel.Parts)
@@ -222,6 +226,7 @@ namespace BackgroundResourceProcessing.Core
 
         private List<BackgroundInventoryEntry> RecordConverters(VesselState state)
         {
+            using var span = new TraceSpan("ResourceProcessor.RecordConverters");
             var vessel = state.Vessel;
 
             int nextConverterId = 0;
@@ -357,6 +362,7 @@ namespace BackgroundResourceProcessing.Core
 
         private void RecordBackgroundPartResources(List<BackgroundInventoryEntry> entries)
         {
+            using var span = new TraceSpan("ResourceProcessor.RecordBackgroundPartResources");
             HashSet<uint> seen = [];
 
             foreach (var entry in entries)
@@ -458,6 +464,8 @@ namespace BackgroundResourceProcessing.Core
         /// <param name="currentTime"></param>
         public void UpdateInventories(double currentTime)
         {
+            using var span = new TraceSpan("ResourceProcessor.UpdateInventories");
+
             var deltaT = currentTime - lastUpdate;
             foreach (var entry in inventories)
             {

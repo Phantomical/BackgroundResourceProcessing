@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using BackgroundResourceProcessing.Tracing;
 
 namespace BackgroundResourceProcessing.Solver
 {
@@ -10,6 +11,8 @@ namespace BackgroundResourceProcessing.Solver
 
         internal static void SolveTableau(Matrix tableau)
         {
+            using var iterSpan = new TraceSpan("Simplex.SolveTableau");
+
             for (uint iter = 0; iter < MaxIterations; ++iter)
             {
                 int col = SelectPivot(tableau);
