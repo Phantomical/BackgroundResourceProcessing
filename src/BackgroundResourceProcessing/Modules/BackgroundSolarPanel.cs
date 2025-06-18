@@ -6,7 +6,7 @@ namespace BackgroundResourceProcessing.Modules
     /// A module that summarizes all <see cref="ModuleDeployableSolarPanel"/>
     /// modules on the current part as background producers.
     /// </summary>
-    public class ModuleBackgroundSolarPanel : BackgroundConverter
+    public class ModuleBackgroundSolarPanel : BackgroundConverterBase
     {
         protected override ConverterBehaviour GetConverterBehaviour()
         {

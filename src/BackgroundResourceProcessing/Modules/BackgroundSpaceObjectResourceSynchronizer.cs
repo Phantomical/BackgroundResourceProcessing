@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using UnityEngine;
 
 namespace BackgroundResourceProcessing.Modules
 {
@@ -12,7 +11,7 @@ namespace BackgroundResourceProcessing.Modules
             IBackgroundPartResource
     {
         [KSPField]
-        public string ResourceName;
+        public string ResourceName = "BRPSpaceObjectMass";
 
         private ModuleSpaceObjectInfo info;
         private BackgroundResourceProcessor processor;

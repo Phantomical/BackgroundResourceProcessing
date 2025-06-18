@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 
 namespace BackgroundResourceProcessing.Modules
 {
@@ -9,7 +8,7 @@ namespace BackgroundResourceProcessing.Modules
             IBackgroundPartResource
     {
         [KSPField]
-        public string TimePassedResourceName;
+        public string TimePassedResourceName = "BRPScienceLabTime";
 
         double? savedLastUpdate = null;
 
@@ -25,7 +24,6 @@ namespace BackgroundResourceProcessing.Modules
             // We explicitly override OnVesselRestore since we have our own way
             // of setting lastUpdate and we don't want BackgroundResourceConverter
             // messing with that.
-            Converter = GetLinkedBaseConverter();
         }
 
         public override BackgroundResourceSet GetLinkedBackgroundResources()
@@ -44,12 +42,11 @@ namespace BackgroundResourceProcessing.Modules
 
             savedLastUpdate = (double)LastUpdateTimeField.GetValue(ScienceConverter);
 
-            var remaining = ScienceConverter.Lab.dataStorage - ScienceConverter.Lab.dataStorage;
             FakePartResource resource = new()
             {
                 resourceName = TimePassedResourceName,
                 amount = 0.0,
-                maxAmount = ScienceConverter.CalculateResearchTime(remaining),
+                maxAmount = double.PositiveInfinity,
             };
 
             return [resource];
@@ -84,9 +81,16 @@ namespace BackgroundResourceProcessing.Modules
             LastUpdateTimeField.SetValue(ScienceConverter, newUpdate);
         }
 
-        protected override BaseConverter GetLinkedBaseConverter()
+        protected override BaseConverter FindLinkedModule()
         {
-            return GetLinkedBaseConverterGeneric<ModuleScienceConverter>();
+            var converter = base.FindLinkedModule();
+            if (converter is not ModuleScienceConverter)
+            {
+                LogUtil.Error($"{GetType().Name}: Linked module is not a ModuleScienceConverter");
+                return null;
+            }
+
+            return converter;
         }
 
         public override void OnSave(ConfigNode node)

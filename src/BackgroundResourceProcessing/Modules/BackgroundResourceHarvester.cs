@@ -1,3 +1,5 @@
+using Expansions.Missions.Editor;
+
 namespace BackgroundResourceProcessing.Modules
 {
     public class ModuleBackgroundResourceHarvester : ModuleBackgroundResourceConverter
@@ -16,7 +18,7 @@ namespace BackgroundResourceProcessing.Modules
         public int HarvesterType = 0;
 
         [KSPField]
-        public double airSpeedStatic;
+        public double airSpeedStatic = 40.0;
 
         [KSPField]
         public double Efficiency = 1.0;
@@ -71,6 +73,18 @@ namespace BackgroundResourceProcessing.Modules
             if (type == HarvestTypes.Exospheric)
                 mult = 1.0;
             return mult * airSpeedStatic;
+        }
+
+        protected override BaseConverter FindLinkedModule()
+        {
+            var converter = base.FindLinkedModule();
+            if (converter is not ModuleResourceHarvester)
+            {
+                LogUtil.Error($"{GetType().Name}: Linked module is not a ModuleResourceHarvester");
+                return null;
+            }
+
+            return converter;
         }
     }
 }

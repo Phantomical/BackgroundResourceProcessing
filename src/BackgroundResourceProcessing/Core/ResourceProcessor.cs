@@ -237,7 +237,7 @@ namespace BackgroundResourceProcessing.Core
 
                 foreach (var partModule in part.Modules)
                 {
-                    if (partModule is not BackgroundConverter module)
+                    if (partModule is not BackgroundConverterBase module)
                         continue;
 
                     LogUtil.Debug(() => $"Found converter module: {module.GetType().Name}");

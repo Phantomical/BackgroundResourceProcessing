@@ -12,7 +12,7 @@ namespace BackgroundResourceProcessing.Modules
         protected BaseDrill BaseDrill => (BaseDrill)Converter;
 
         [KSPField]
-        public string MassResourceName;
+        public string MassResourceName = "BRPSpaceObjectMass";
 
         protected override double GetOptimalEfficiencyBonus()
         {
@@ -105,9 +105,16 @@ namespace BackgroundResourceProcessing.Modules
             BindingFlags.Instance | BindingFlags.NonPublic
         );
 
-        protected override BaseConverter GetLinkedBaseConverter()
+        protected override BaseConverter FindLinkedModule()
         {
-            return GetLinkedBaseConverterGeneric<ModuleAsteroidDrill>();
+            var converter = base.FindLinkedModule();
+            if (converter is not ModuleAsteroidDrill)
+            {
+                LogUtil.Error($"{GetType().Name}: Linked module is not a ModuleAsteroidDrill");
+                return null;
+            }
+
+            return converter;
         }
 
         protected override Part GetDrillPotato()
@@ -137,9 +144,16 @@ namespace BackgroundResourceProcessing.Modules
             BindingFlags.Instance | BindingFlags.NonPublic
         );
 
-        protected override BaseConverter GetLinkedBaseConverter()
+        protected override BaseConverter FindLinkedModule()
         {
-            return GetLinkedBaseConverterGeneric<ModuleCometDrill>();
+            var converter = base.FindLinkedModule();
+            if (converter is not ModuleCometDrill)
+            {
+                LogUtil.Error($"{GetType().Name}: Linked module is not a ModuleCometDrill");
+                return null;
+            }
+
+            return converter;
         }
 
         protected override Part GetDrillPotato()

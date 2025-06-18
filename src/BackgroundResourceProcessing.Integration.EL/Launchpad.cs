@@ -17,7 +17,7 @@ namespace BackgroundResourceProcessing.Integration.EL
     ///   has been done, then when the ship is loaded again, it updates the
     ///   resources used by the linked launchpad module.
     /// </remarks>
-    public class ModuleBackgroundELLaunchpad : BackgroundConverter, IBackgroundELWorkSink
+    public class ModuleBackgroundELLaunchpad : BackgroundConverterBase, IBackgroundELWorkSink
     {
         private ELLaunchpad module;
 

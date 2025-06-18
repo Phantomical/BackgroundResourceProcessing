@@ -11,7 +11,7 @@ namespace BackgroundResourceProcessing.Modules
     /// from a linked <see cref="BaseConverter"/>.
     /// </summary>
     public class ModuleBackgroundResourceConverter
-        : BackgroundConverter,
+        : BackgroundLinkedConverter<BaseConverter>,
             IBackgroundVesselRestoreHandler
     {
         protected static readonly FieldInfo LastUpdateTimeField = typeof(BaseConverter).GetField(
@@ -19,30 +19,12 @@ namespace BackgroundResourceProcessing.Modules
             BindingFlags.Instance | BindingFlags.NonPublic
         );
 
-        public List<ResourceRatio> inputs = [];
-        public List<ResourceRatio> outputs = [];
-        public List<ResourceConstraint> required = [];
-
-        /// <summary>
-        /// The name of the module that this converter should getting its
-        /// efficiency from.
-        /// </summary>
-        [KSPField]
-        public string TargetModule = null;
-
         /// <summary>
         /// The name of the converter to use to find the efficiency of this
         /// converter in the background.
         /// </summary>
         [KSPField]
         public string ConverterName = null;
-
-        /// <summary>
-        /// The index of the target converter module along the list of all
-        /// converter modules with the same type.
-        /// </summary>
-        [KSPField]
-        public int TargetIndex = -1;
 
         /// <summary>
         /// Limits this converter to only be enabled when all its outputs have
@@ -63,7 +45,7 @@ namespace BackgroundResourceProcessing.Modules
         /// referenced <see cref="BaseConverter"/> module.
         /// </summary>
         [KSPField]
-        public double? EfficiencyBonus = null;
+        public double? OverrideEfficiencyBonus = null;
 
         /// <summary>
         /// Specify the maximum thermal efficiency multiplier to be used
@@ -71,7 +53,7 @@ namespace BackgroundResourceProcessing.Modules
         /// module.
         /// </summary>
         [KSPField]
-        public double? MaximumThermalEfficiency = null;
+        public double? OverrideThermalEfficiency = null;
 
         /// <summary>
         /// An additional efficiency multiplier to be used on top of the
@@ -87,9 +69,7 @@ namespace BackgroundResourceProcessing.Modules
         [KSPField]
         public bool ConvertByMass = false;
 
-        public BaseConverter Converter { get; protected set; } = null;
-
-        private uint? cachedPersistentModuleId = null;
+        public BaseConverter Converter => Module;
 
         /// <summary>
         /// Whether this converter is enabled for background processing.
@@ -140,8 +120,8 @@ namespace BackgroundResourceProcessing.Modules
                 bonus *= modifier;
 
             bonus *= Converter.GetCrewEfficiencyBonus();
-            bonus *= EfficiencyBonus ?? Converter.EfficiencyBonus;
-            bonus *= MaximumThermalEfficiency ?? GetMaxThermalEfficiencyBonus();
+            bonus *= OverrideEfficiencyBonus ?? Converter.EfficiencyBonus;
+            bonus *= OverrideThermalEfficiency ?? GetMaxThermalEfficiencyBonus();
 
             return bonus;
         }
@@ -235,15 +215,8 @@ namespace BackgroundResourceProcessing.Modules
             return new ConstantConverter(inputList, outputList, required.ToList());
         }
 
-        public override void OnStart(StartState state)
-        {
-            base.OnStart(state);
-            Converter = GetLinkedBaseConverter();
-        }
-
         public virtual void OnVesselRestore()
         {
-            Converter = GetLinkedBaseConverter();
             if (!Converter)
                 return;
 
@@ -256,141 +229,18 @@ namespace BackgroundResourceProcessing.Modules
             return maxThermalEfficiency;
         }
 
-        protected virtual BaseConverter GetLinkedBaseConverter()
+        protected override BaseConverter FindLinkedModule()
         {
-            return GetLinkedBaseConverterGeneric<BaseConverter>();
-        }
-
-        private T GetLinkedBaseConverterCached<T>()
-            where T : BaseConverter
-        {
-            var existing = Converter as T;
-            if (existing != null)
-                return existing;
-
-            if (cachedPersistentModuleId == null)
-                return null;
-            var persistentId = (uint)cachedPersistentModuleId;
-            var module = part.Modules[persistentId];
-            if (module == null)
-                return null;
-
-            var type = module.GetType();
-            if (type.Name != TargetModule)
-                return null;
-
-            var downcasted = module as T;
-            if (downcasted != null)
-                return null;
-
-            if (downcasted.ConverterName != ConverterName)
-                return null;
-
-            return downcasted;
-        }
-
-        protected T GetLinkedBaseConverterGeneric<T>()
-            where T : BaseConverter
-        {
-            var cached = GetLinkedBaseConverterCached<T>();
-            if (cached != null)
-                return cached;
-            cachedPersistentModuleId = null;
-
-            T found = null;
-            int index = 0;
-            for (int i = 0; i < part.Modules.Count; ++i)
-            {
-                var module = part.Modules[i] as BaseConverter;
-                if (module == null)
-                    continue;
-
-                var type = module.GetType();
-                if (type.Name != TargetModule)
-                    continue;
-                var current = index;
-                index += 1;
-
-                if (TargetIndex != -1)
-                {
-                    if (current != TargetIndex)
-                        continue;
-
-                    if (module.ConverterName != null && module.ConverterName != ConverterName)
-                    {
-                        LogUtil.Error(
-                            $"{TargetModule} module at index {TargetIndex} does not have ConverterName '{ConverterName}'"
-                        );
-                        return null;
-                    }
-                }
-                else
-                {
-                    if (ConverterName != null && module.ConverterName != ConverterName)
-                        continue;
-                }
-
-                if (module is not T downcasted)
-                {
-                    LogUtil.Error(
-                        $"{TargetModule} module with ConverterName '{ConverterName}' was not of type {typeof(T).Name}"
-                    );
-                    return null;
-                }
-
-                if (found != null)
-                {
-                    LogUtil.Warn(
-                        $"Multiple modules of type {TargetModule} with ConverterName ",
-                        $"{ConverterName ?? "null"}. Only the first one will be used by this {GetType().Name} module."
-                    );
-                    continue;
-                }
-
-                found = downcasted;
-            }
-
-            if (index < TargetIndex)
+            var converter = base.FindLinkedModule();
+            if (ConverterName != null && converter.ConverterName != ConverterName)
             {
                 LogUtil.Error(
-                    $"Part {part.name} does not have {TargetIndex} modules of type {TargetModule}"
+                    $"{GetType().Name}: Linked converter does not have a matching ConverterName (expected {ConverterName} but got {converter.ConverterName})"
                 );
                 return null;
             }
 
-            if (found == null)
-            {
-                LogUtil.Warn(
-                    $"No converter module of type {TargetModule} with ConverterName {ConverterName ?? "null"} ",
-                    $"found on part {part.partName}. This {GetType().Name} module will be disabled."
-                );
-                return null;
-            }
-
-            cachedPersistentModuleId = found.GetPersistentId();
-            return found;
-        }
-
-        public override void OnLoad(ConfigNode node)
-        {
-            base.OnLoad(node);
-
-            inputs.AddRange(ConfigUtil.LoadInputResources(node));
-            outputs.AddRange(ConfigUtil.LoadOutputResources(node));
-            required.AddRange(ConfigUtil.LoadRequiredResources(node));
-
-            ConfigUtil.TryGetModuleId(
-                node,
-                "cachedPersistentModuleId",
-                out cachedPersistentModuleId
-            );
-        }
-
-        public override void OnSave(ConfigNode node)
-        {
-            base.OnSave(node);
-
-            ConfigUtil.AddModuleId(node, "cachedPersistentModuleId", cachedPersistentModuleId);
+            return converter;
         }
 
         protected static IEnumerable<ResourceRatio> ConvertRecipeToUnits(

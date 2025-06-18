@@ -7,7 +7,7 @@ namespace BackgroundResourceProcessing.Integration.EL
 {
     public interface IBackgroundELWorkSink : IBackgroundPartResource { }
 
-    public class ModuleBackgroundELWorkshop : ModuleBackgroundConstantConverter
+    public class ModuleBackgroundELWorkshop : ModuleBackgroundConverter
     {
         private ELWorkshop module;
 
