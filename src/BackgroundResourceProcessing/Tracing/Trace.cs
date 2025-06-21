@@ -1,7 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using UnityEngine;
+using System.Runtime.CompilerServices;
 
 namespace BackgroundResourceProcessing.Tracing
 {
@@ -53,6 +53,9 @@ namespace BackgroundResourceProcessing.Tracing
                 tid = tid,
             };
 
+            if (evt.name.Contains("\""))
+                evt.name = evt.name.Replace("\"", "\\\"");
+
             string json =
                 $"{{\"ph\":\"X\",\"name\":\"{evt.name}\",\"ts\":{evt.ts},\"dur\":{evt.dur},\"pid\":0,\"tid\":{evt.tid}}},";
 
@@ -81,13 +84,19 @@ namespace BackgroundResourceProcessing.Tracing
         }
     }
 
-    internal readonly struct TraceSpan : IDisposable
+    internal struct TraceSpan : IDisposable
     {
-        readonly string label;
-        readonly TimeSpan start;
+        string label;
+        TimeSpan start;
 
         public TraceSpan(string label)
-            : this(() => label) { }
+        {
+            var trace = Trace.Active;
+            if (trace == null)
+                return;
+
+            Setup(label, trace);
+        }
 
         public TraceSpan(Func<string> labelfn)
         {
@@ -95,15 +104,31 @@ namespace BackgroundResourceProcessing.Tracing
             if (trace == null)
                 return;
 
-            label = labelfn();
-            start = trace.GetCurrentTime();
+            Setup(labelfn, trace);
         }
 
-        public void Dispose()
+        private void Setup(Func<string> labelfn, Trace trace)
+        {
+            Setup(labelfn(), trace);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void Setup(string label, Trace trace)
+        {
+            this.label = label;
+            this.start = trace.GetCurrentTime();
+        }
+
+        public readonly void Dispose()
         {
             if (label == null)
                 return;
 
+            DoDispose();
+        }
+
+        private readonly void DoDispose()
+        {
             var trace = Trace.Active;
             if (trace == null)
                 return;

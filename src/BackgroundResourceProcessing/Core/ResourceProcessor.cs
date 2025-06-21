@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Modules;
 using BackgroundResourceProcessing.Tracing;
@@ -115,10 +117,10 @@ namespace BackgroundResourceProcessing.Core
             }
             catch (Exception e)
             {
-                LogUtil.Error("Solver threw an exception: ", e);
-
                 foreach (var inventory in inventories)
                     inventory.rate = 0.0;
+
+                DumpCrashReport(e);
             }
         }
 
@@ -680,6 +682,43 @@ namespace BackgroundResourceProcessing.Core
             set.lists.Add(resources);
             set.set.AddAll(resources);
             return set;
+        }
+
+        static bool HasDisplayedSolverCrashError = false;
+
+        private void DumpCrashReport(Exception e)
+        {
+            // Make sure we at least print the error
+            LogUtil.Error($"Solver threw an exception: {e}");
+
+            var pluginDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            var exportDir = Path.Combine(pluginDir, @"..\Crashes");
+            var now = DateTime.Now;
+            var outputName =
+                $"crash-{now.Year}-{now.Month:D2}-{now.Day:D2}-{now.Hour:D2}-{now.Minute:D2}-{now.Second:D2}.cfg";
+            var outputPath = Path.Combine(exportDir, outputName);
+
+            Directory.CreateDirectory(exportDir);
+
+            ConfigNode root = new();
+            ConfigNode node = root.AddNode("BRP_SHIP");
+            Save(node);
+            root.Save(outputPath);
+
+            LogUtil.Error(
+                $"An error occurred within BackgroundResourceProcessing. Please file ",
+                $"a bug with this KSP.log file and the ship state file saved at {outputPath}."
+            );
+
+            if (!HasDisplayedSolverCrashError)
+            {
+                ScreenMessages.PostScreenMessage(
+                    "An internal error has occurred within BackgroundResourceProcessing. This will not corrupt your save, but please submit a bug report with your KSP.log file."
+                );
+
+                // Avoid spamming messages if we end up with a bunch of crashes.
+                HasDisplayedSolverCrashError = true;
+            }
         }
     }
 }
