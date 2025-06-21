@@ -189,13 +189,6 @@ namespace BackgroundResourceProcessing.Core
 
             LogUtil.Debug(() => $"Recording vessel state for vessel {vessel.GetDisplayName()}");
 
-            using var watch = new SpanWatch(span =>
-            {
-                LogUtil.Log(
-                    $"Recorded state of vessel {vessel.GetDisplayName()} in {SpanWatch.FormatDuration(span)}"
-                );
-            });
-
             RecordPartResources(state);
             RecordConverters(state);
         }
