@@ -8,9 +8,9 @@ using BackgroundResourceProcessing.Tracing;
 
 namespace BackgroundResourceProcessing.Solver
 {
-    internal class Solver : ISolver
+    internal class Solver
     {
-        public Dictionary<InventoryId, double> ComputeInventoryRates(ResourceProcessor processor)
+        public IntMap<double> ComputeInventoryRates(ResourceProcessor processor)
         {
             using var span = new TraceSpan("ResourceProcessor.ComputeInventoryRates");
             var graph = new ResourceGraph(processor);
@@ -64,7 +64,7 @@ namespace BackgroundResourceProcessing.Solver
                 var inputInvs = graph.inputs.GetConverterEntry(converterId);
                 var outputInvs = graph.outputs.GetConverterEntry(converterId);
 
-                foreach (var (resource, input) in converter.inputs.KSPEnumerate())
+                foreach (var (resource, input) in converter.inputs)
                 {
                     var rate = input.rate * alpha;
 
@@ -72,11 +72,13 @@ namespace BackgroundResourceProcessing.Solver
                     total.Sub(rate);
 
                     connected.Clear();
-                    connected.AddRange(
-                        inputInvs.Where(
-                            (invId) => graph.inventories[invId].resourceName == resource
-                        )
-                    );
+
+                    foreach (var invId in inputInvs)
+                    {
+                        if (graph.inventories[invId].resourceName != resource)
+                            continue;
+                        connected.Add(invId);
+                    }
 
                     if (connected.Count == 0)
                     {
@@ -124,7 +126,7 @@ namespace BackgroundResourceProcessing.Solver
                     }
                 }
 
-                foreach (var (resource, output) in converter.outputs.KSPEnumerate())
+                foreach (var (resource, output) in converter.outputs)
                 {
                     var rate = output.rate * alpha;
 
@@ -132,11 +134,13 @@ namespace BackgroundResourceProcessing.Solver
                     total.Add(rate);
 
                     connected.Clear();
-                    connected.AddRange(
-                        outputInvs.Where(
-                            (invId) => graph.inventories[invId].resourceName == resource
-                        )
-                    );
+
+                    foreach (var invId in outputInvs)
+                    {
+                        if (graph.inventories[invId].resourceName != resource)
+                            continue;
+                        connected.Add(invId);
+                    }
 
                     if (connected.Count == 0)
                     {
@@ -212,7 +216,7 @@ namespace BackgroundResourceProcessing.Solver
                 // Note that we support both upper and lower bound constraints,
                 // so the condition can vary.
 
-                foreach (var (resource, constraint) in converter.constraints.KSPEnumerate())
+                foreach (var (resource, constraint) in converter.constraints)
                 {
                     // If the constrained resource does not have a total rate
                     // then its rate is 0 and we can skip emitting the constraint

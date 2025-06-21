@@ -11,7 +11,9 @@ namespace BackgroundResourceProcessing
         /// </summary>
         internal static void RegisterAllBehaviours()
         {
-            var types = AssemblyLoader.GetSubclassesOfParentClass(typeof(ConverterBehaviour));
+            var types = AssemblyLoader
+                .GetSubclassesOfParentClass(typeof(ConverterBehaviour))
+                .Where(type => !type.IsAbstract);
             BehaviourRegistry.RegisterAll(types);
         }
 

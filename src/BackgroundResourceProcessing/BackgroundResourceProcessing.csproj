@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <PackageReference Include="KSPBuildTools" Version="0.0.3" />
+    <PackageReference Include="System.Memory" Version="4.6.3" />
 
     <KSPVersionFile Include=".">
       <Destination>$(GameDataOutDir)/BackgroundResourceProcessing.version</Destination>

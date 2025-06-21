@@ -1,3 +1,6 @@
+using System;
+using BackgroundResourceProcessing.Utils;
+
 namespace BackgroundResourceProcessing.Modules
 {
     /// <summary>
@@ -20,7 +23,14 @@ namespace BackgroundResourceProcessing.Modules
         /// converter modules with the same type.
         /// </summary>
         [KSPField]
-        public int TargetIndex = -1;
+        public int? TargetIndex = null;
+
+        /// <summary>
+        /// A filter expression that can be used to filter which module is
+        /// selected.
+        /// </summary>
+        [KSPField]
+        public string TargetFilter = null;
 
         /// <summary>
         /// The module that this one should be interacting with.
@@ -44,9 +54,7 @@ namespace BackgroundResourceProcessing.Modules
 
         private bool cached = false;
         private T module = null;
-
-        [KSPField]
-        private uint cachedPersistentModuleId = 0;
+        private Func<PartModule, bool> filter = null;
 
         public override void OnStart(StartState state)
         {
@@ -67,12 +75,6 @@ namespace BackgroundResourceProcessing.Modules
         /// </remarks>
         protected virtual T FindLinkedModule()
         {
-            var cached = FindLinkedModuleCached();
-            if (cached != null)
-                return cached;
-
-            cachedPersistentModuleId = 0;
-
             T found = null;
             int index = 0;
             for (int i = 0; i < part.Modules.Count; ++i)
@@ -81,28 +83,50 @@ namespace BackgroundResourceProcessing.Modules
                 if (module == null)
                     continue;
 
-                var type = module.GetType();
-                if (type.Name != TargetModule)
-                    continue;
+                if (TargetModule != null)
+                {
+                    var type = module.GetType();
+                    if (type.Name != TargetModule)
+                        continue;
+                }
 
                 var current = index++;
-                if (TargetIndex >= 0 && current != TargetIndex)
-                    continue;
+                if (TargetIndex != null)
+                {
+                    if (current != (int)TargetIndex)
+                        continue;
+                }
+
+                if (filter != null)
+                {
+                    try
+                    {
+                        if (!filter(module))
+                            continue;
+                    }
+                    catch (Exception e)
+                    {
+                        LogUtil.Error($"Target filter evaluation threw an exception:\n{e}");
+                        continue;
+                    }
+                }
 
                 if (found != null)
                 {
                     LogUtil.Warn(
-                        $"{GetType().Name}: Multiple modules of type {TargetModule} found on part {part.name}",
-                        " but TargetIndex was not specified. Consider specifying TargetIndex. Only the first module found ",
-                        "will be used."
+                        $"{GetType().Name}: Multiple modules found on part {part.name} ",
+                        "matching filters. Only the first one will be selected."
                     );
                     continue;
                 }
 
                 found = module;
+
+                if (TargetIndex != null)
+                    break;
             }
 
-            if (index < TargetIndex)
+            if (TargetIndex != null && index < TargetIndex && TargetModule != null)
             {
                 LogUtil.Error(
                     $"{GetType().Name}: Part {part.name} does not have {TargetIndex} modules of type {TargetModule}"
@@ -112,9 +136,18 @@ namespace BackgroundResourceProcessing.Modules
 
             if (found == null)
             {
-                LogUtil.Error(
-                    $"{GetType().Name}: No converter module of type {TargetModule} with index {TargetIndex} found on part {part.name}. This module will be disabled."
-                );
+                if (TargetModule != null)
+                {
+                    LogUtil.Error(
+                        $"{GetType().Name}: No converter module of type {TargetModule} matching filters found on part {part.name}. This module will be disabled."
+                    );
+                }
+                else
+                {
+                    LogUtil.Error(
+                        $"{GetType().Name}: No converter module matching filters found on part {part.name}. This module will be disabled."
+                    );
+                }
                 return null;
             }
 
@@ -124,28 +157,36 @@ namespace BackgroundResourceProcessing.Modules
         private T GetLinkedModule()
         {
             var module = FindLinkedModule();
-
-            if (module != null)
-                cachedPersistentModuleId = module.GetPersistentId();
-
             cached = true;
             return module;
         }
 
-        private T FindLinkedModuleCached()
+        public override void OnLoad(ConfigNode node)
         {
-            if (cachedPersistentModuleId == 0)
-                return null;
+            base.OnLoad(node);
 
-            var module = part.Modules[cachedPersistentModuleId];
-            if (module == null)
-                return null;
+            if (TargetFilter != null)
+            {
+                try
+                {
+                    if (filter != null)
+                        filter = ModuleFilter.Compile(TargetFilter, node);
+                }
+                catch (ModuleFilterException e)
+                {
+                    LogUtil.Error(
+                        $"{GetType().Name}: Error while compiling TargetFilter:\n    {e}"
+                    );
+                    filter = _ => false;
+                }
+            }
 
-            var type = module.GetType();
-            if (type.Name != TargetModule)
-                return null;
-
-            return module as T;
+            if (TargetModule == null && TargetIndex != -1)
+            {
+                LogUtil.Warn(
+                    $"{GetType().Name}: TargetModule not specified but TargetIndex is. Behaviour will be unpredictable."
+                );
+            }
         }
     }
 }

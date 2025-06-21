@@ -1,9 +1,9 @@
 using System;
 using System.IO;
+using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Solver;
 using BackgroundResourceProcessing.Solver.Graph;
 using CommandLine;
-using DotNetGraph;
 using DotNetGraph.Compilation;
 using DotNetGraph.Core;
 using DotNetGraph.Extensions;

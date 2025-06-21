@@ -65,5 +65,10 @@ namespace BackgroundResourceProcessing.Integration.EL
         {
             return Math.Min(Math.Max(v, 0.0), 1.0);
         }
+
+        public static bool IsFinite(double v)
+        {
+            return !double.IsNaN(v) && !double.IsInfinity(v);
+        }
     }
 }

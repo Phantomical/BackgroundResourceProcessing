@@ -1,16 +1,91 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Text;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
-using Smooth.Collections;
-using UnityEngine.AI;
+using UnityEngine.UI;
 
 namespace BackgroundResourceProcessing.Solver.Graph
 {
     public class InvalidMergeException(string message) : Exception(message) { }
+
+    internal static class AdjacencyMatrixExt
+    {
+        public static AdjacencyMatrix Create(int inventoryCount, int converterCount)
+        {
+            return new(converterCount, inventoryCount);
+        }
+
+        public static BitSliceX GetConverterEntry(this AdjacencyMatrix matrix, int converter)
+        {
+            return matrix.GetRow(converter);
+        }
+
+        public static BitSliceY GetInventoryEntry(this AdjacencyMatrix matrix, int inventory)
+        {
+            return matrix.GetColumn(inventory);
+        }
+
+        public static Edges ConverterToInventoryEdges(this AdjacencyMatrix matrix)
+        {
+            return new(matrix);
+        }
+
+        public ref struct Edges(AdjacencyMatrix matrix) : IEnumerator<Edge>
+        {
+            AdjacencyMatrix.RowEnumerator rows = new(matrix);
+            BitSliceX.Enumerator inner = default;
+
+            public readonly Edge Current => new(rows.Index, inner.Current);
+
+            readonly object IEnumerator.Current => Current;
+
+            public readonly Edges GetEnumerator()
+            {
+                return this;
+            }
+
+            public bool MoveNext()
+            {
+                while (true)
+                {
+                    if (inner.MoveNext())
+                        return true;
+
+                    if (!rows.MoveNext())
+                        return false;
+
+                    inner = new(rows.Current);
+                }
+            }
+
+            public void Reset()
+            {
+                rows.Reset();
+                inner = default;
+            }
+
+            public void Dispose() { }
+        }
+
+        [DebuggerDisplay("Converter = {Converter}, Inventory = {Inventory}")]
+        public struct Edge(int converter, int inventory)
+        {
+            public int Converter = converter;
+            public int Inventory = inventory;
+
+            public readonly void Deconstruct(out int converter, out int inventory)
+            {
+                converter = Converter;
+                inventory = Inventory;
+            }
+        }
+    }
 
     [DebuggerDisplay("[{state}, {resourceName}, Count = {ids.Count}]")]
     internal class GraphInventory
@@ -18,12 +93,12 @@ namespace BackgroundResourceProcessing.Solver.Graph
         public InventoryState state;
         public string resourceName;
 
-        public List<InventoryId> ids;
+        public HashSet<int> ids;
 
-        public GraphInventory(ResourceInventory inventory)
+        public GraphInventory(ResourceInventory inventory, int id)
         {
             resourceName = inventory.resourceName;
-            ids = [inventory.Id];
+            ids = [id];
 
             state = InventoryState.Unconstrained;
             if (inventory.Full)
@@ -40,7 +115,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
                 );
 
             state &= other.state;
-            ids.AddRange(other.ids);
+            ids.UnionWith(other.ids);
         }
 
         public override string ToString()
@@ -126,7 +201,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
 
             var conv = new GraphConverter(id, converter);
 
-            foreach (var (resource, required) in converter.required.KSPEnumerate())
+            foreach (var (resource, required) in converter.required)
             {
                 var total = totals.GetValueOr(resource, 0.0);
                 if (MathUtil.ApproxEqual(required.Amount, total, ResourceProcessor.ResourceEpsilon))
@@ -153,10 +228,10 @@ namespace BackgroundResourceProcessing.Solver.Graph
                 }
             }
 
-            foreach (var (resource, input) in converter.inputs.KSPEnumerate())
+            foreach (var (resource, input) in converter.inputs)
                 conv.inputs.Add(resource, new Input(input.Ratio));
 
-            foreach (var (resource, output) in converter.outputs.KSPEnumerate())
+            foreach (var (resource, output) in converter.outputs)
                 conv.outputs.Add(resource, new Output(output.Ratio, output.DumpExcess));
 
             return conv;
@@ -164,11 +239,11 @@ namespace BackgroundResourceProcessing.Solver.Graph
 
         public void Merge(GraphConverter other)
         {
-            foreach (var (resource, input) in other.inputs.KSPEnumerate())
+            foreach (var (resource, input) in other.inputs)
                 if (!inputs.TryAddExt(resource, input))
                     inputs[resource] = inputs[resource].Merge(input);
 
-            foreach (var (resource, output) in other.outputs.KSPEnumerate())
+            foreach (var (resource, output) in other.outputs)
                 if (!outputs.TryAddExt(resource, output))
                     outputs[resource] = outputs[resource].Merge(output);
 
@@ -176,7 +251,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
             converters.AddRange(other.converters);
             weight += other.weight;
 
-            foreach (var (resource, constraint) in other.constraints.KSPEnumerate())
+            foreach (var (resource, constraint) in other.constraints)
             {
 #if DEBUG
                 if (constraints.TryGetValue(resource, out var existing))
@@ -208,7 +283,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
         {
             List<string> removed = [];
 
-            foreach (var (name, _input) in inputs.KSPEnumerate())
+            foreach (var (name, _input) in inputs)
             {
                 var input = _input;
                 if (!outputs.TryGetValue(name, out var output))
@@ -245,6 +320,11 @@ namespace BackgroundResourceProcessing.Solver.Graph
 
             return Math.Pow(B, priority);
         }
+
+        public override string ToString()
+        {
+            return $"{string.Join(",", inputs.Keys)} => {string.Join(",", outputs.Keys)}";
+        }
     }
 
     internal class ResourceGraph
@@ -252,74 +332,70 @@ namespace BackgroundResourceProcessing.Solver.Graph
         public IntMap<GraphInventory> inventories;
         public IntMap<GraphConverter> converters;
 
-        public EdgeMap<int, int> inputs = new();
-        public EdgeMap<int, int> outputs = new();
+        // - X-axis is inventory ID
+        // - Y-axis is converter ID
+        public AdjacencyMatrix inputs;
+        public AdjacencyMatrix outputs;
 
         public UnionFind inventoryIds;
         public UnionFind converterIds;
 
         public ResourceGraph(ResourceProcessor processor)
         {
-            using var span = new TraceSpan("new ResourceGraph");
+            using var _span = new TraceSpan("new ResourceGraph");
 
-            inventoryIds = new UnionFind(processor.inventories.Count);
-            converterIds = new UnionFind(processor.converters.Count);
+            var nInventories = processor.inventories.Count;
+            var nConverters = processor.converters.Count;
 
-            inventories = new(inventoryIds.Count);
-            converters = new(converterIds.Count);
+            inventoryIds = new UnionFind(nInventories);
+            converterIds = new UnionFind(nConverters);
+
+            inventories = new(nInventories);
+            converters = new(nConverters);
 
             Dictionary<string, double> totals = [];
             Dictionary<InventoryId, int> idMap = [];
 
-            var index = 0;
-            foreach (var (_, inventory) in processor.inventories.KSPEnumerate())
+            inputs = AdjacencyMatrixExt.Create(nInventories, nConverters);
+            outputs = AdjacencyMatrixExt.Create(nInventories, nConverters);
+
+            for (int i = 0; i < nInventories; ++i)
             {
-                var id = index++;
+                var inventory = processor.inventories[i];
+                inventories.Add(i, new(inventory, i));
 
                 if (!totals.TryAddExt(inventory.resourceName, inventory.amount))
                     totals[inventory.resourceName] += inventory.amount;
-
-                inventories.Add(id, new GraphInventory(inventory));
-                idMap.Add(inventory.Id, id);
             }
 
-            index = 0;
-            foreach (var converter in processor.converters)
+            for (int i = 0; i < nConverters; ++i)
             {
-                using var cspan = new TraceSpan(() =>
-                    $"Converter {converter.behaviour.sourceModule}"
-                );
-
-                var id = index;
-                var conv = GraphConverter.Build(id, converter, totals);
-
+                var converter = processor.converters[i];
+                var conv = GraphConverter.Build(i, converter, totals);
                 if (conv == null)
                     continue;
 
-                index++;
-                converters.Add(id, conv);
+                converters.Add(i, conv);
 
-                var pullSpan = new TraceSpan("Pull inventories");
-                foreach (var (resourceName, inventories) in converter.pull.KSPEnumerate())
+                foreach (var (resourceName, inventories) in converter.pull)
                 {
                     if (!converter.inputs.ContainsKey(resourceName))
                         continue;
 
-                    foreach (var invId in inventories)
-                        inputs.Add(id, idMap[invId]);
+                    var row = inputs.GetConverterEntry(i);
+                    foreach (var inventoryId in inventories)
+                        row[inventoryId] = true;
                 }
-                pullSpan.Dispose();
 
-                var pushSpan = new TraceSpan("Push inventories");
-                foreach (var (resourceName, inventories) in converter.push.KSPEnumerate())
+                foreach (var (resourceName, inventories) in converter.push)
                 {
                     if (!converter.outputs.ContainsKey(resourceName))
                         continue;
 
-                    foreach (var invId in inventories)
-                        outputs.Add(id, idMap[invId]);
+                    var row = outputs.GetConverterEntry(i);
+                    foreach (var inventoryId in inventories)
+                        row[inventoryId] = true;
                 }
-                pushSpan.Dispose();
             }
         }
 
@@ -338,43 +414,55 @@ namespace BackgroundResourceProcessing.Solver.Graph
         public void MergeEquivalentInventories()
         {
             using var span = new TraceSpan("ResourceGraph.MergeEquivalentInventories");
-            HashSet<int> removed = [];
+            BitSet removed = new(inputs.Columns);
+            BitSet equal = new(inputs.Columns);
+
+            // We need to save this at the start as we'll be removing
+            // inventories as we go.
+            var inventoryCount = inventories.Count;
 
             foreach (var (inventoryId, inventory) in inventories)
             {
-                if (removed.Contains(inventoryId))
-                    continue;
+                // This ensures that the only bits are set are those that:
+                // - Are in the range (inventoryId, inventoryCount), and,
+                // - Have not already been marked for removal
+                equal.CopyInverseFrom(removed);
+                equal.ClearUpTo(inventoryId + 1);
+                equal.ClearUpFrom(inventoryCount);
 
-                var inputEdges = inputs.GetInventoryEntry(inventoryId);
-                var outputEdges = outputs.GetInventoryEntry(inventoryId);
+                // We then unset any indices whose connections (both inputs and
+                // outputs) are not exactly the same as the column we are
+                // currently checking.
+                inputs.RemoveUnequalColumns(equal, inventoryId);
+                outputs.RemoveUnequalColumns(equal, inventoryId);
 
-                foreach (var (otherId, otherInv) in inventories)
+                foreach (var otherId in equal)
                 {
-                    if (otherId <= inventoryId)
+                    if (!inventories.TryGetValue(otherId, out var otherInv))
                         continue;
                     if (inventory.resourceName != otherInv.resourceName)
                         continue;
-                    if (removed.Contains(otherId))
-                        continue;
 
-                    var otherInputs = inputs.GetInventoryEntry(otherId);
-                    var otherOutputs = outputs.GetInventoryEntry(otherId);
-
-                    if (!inputEdges.SetEquals(otherInputs))
-                        continue;
-                    if (!outputEdges.SetEquals(otherOutputs))
-                        continue;
+                    removed[otherId] = true;
 
                     inventory.Merge(otherInv);
                     inventoryIds.Union(inventoryId, otherId);
-                    inputs.RemoveInventory(otherId);
-                    outputs.RemoveInventory(otherId);
-                    removed.Add(otherId);
+                    inventories.Remove(otherId);
                 }
             }
 
-            foreach (var id in removed)
-                inventories.Remove(id);
+            var src = removed.Bits;
+            for (int r = 0; r < inputs.Rows; r++)
+            {
+                var iDst = inputs.GetRow(r).Bits;
+                var oDst = outputs.GetRow(r).Bits;
+
+                for (int w = 0; w < src.Length; ++w)
+                {
+                    iDst[w] &= ~src[w];
+                    oDst[w] &= ~src[w];
+                }
+            }
         }
 
         /// <summary>
@@ -398,43 +486,35 @@ namespace BackgroundResourceProcessing.Solver.Graph
         public void MergeEquivalentConverters()
         {
             using var span = new TraceSpan("ResourceGraph.MergeEquivalentConverters");
-            HashSet<int> removed = [];
 
             foreach (var (converterId, converter) in converters)
             {
-                if (removed.Contains(converterId))
-                    continue;
-
                 var inputEdges = inputs.GetConverterEntry(converterId);
                 var outputEdges = outputs.GetConverterEntry(converterId);
 
-                foreach (var (otherId, otherConverter) in converters)
+                foreach (
+                    var (otherId, otherConverter) in converters.GetEnumeratorAt(converterId + 1)
+                )
                 {
-                    if (otherId <= converterId)
-                        continue;
-                    if (removed.Contains(otherId))
-                        continue;
                     if (!converter.CanMergeWith(otherConverter))
                         continue;
 
                     var otherInputs = inputs.GetConverterEntry(otherId);
                     var otherOutputs = outputs.GetConverterEntry(otherId);
 
-                    if (!inputEdges.SetEquals(otherInputs))
+                    if (inputEdges != otherInputs)
                         continue;
-                    if (!outputEdges.SetEquals(otherOutputs))
+                    if (outputEdges != otherOutputs)
                         continue;
+
+                    otherInputs.Zero();
+                    otherOutputs.Zero();
 
                     converter.Merge(otherConverter);
                     converterIds.Union(converterId, otherId);
-                    inputs.RemoveConverter(otherId);
-                    outputs.RemoveConverter(otherId);
-                    removed.Add(otherId);
+                    converters.Remove(otherId);
                 }
             }
-
-            foreach (var id in removed)
-                converters.Remove(id);
         }
 
         /// <summary>
@@ -449,6 +529,8 @@ namespace BackgroundResourceProcessing.Solver.Graph
         /// </remarks>
         public bool HasSplitResourceEdges()
         {
+            using var _span = new TraceSpan("ResourceGraph.HasSplitResourceEdges");
+
             HashSet<string> present = [];
             foreach (var (converterId, converter) in converters)
             {
@@ -478,7 +560,9 @@ namespace BackgroundResourceProcessing.Solver.Graph
         /// </summary>
         /// <param name="rates"></param>
         /// <returns></returns>
-        public IntMap<double> ComputeLogicalInventoryRates(IEnumerable<KVPair<int, double>> rates)
+        public IntMap<double> ComputeLogicalInventoryRates(
+            IEnumerable<KeyValuePair<int, double>> rates
+        )
         {
             // Rates for the logical inventories
             IntMap<double> inventoryRates = new(inventoryIds.Count);
@@ -514,13 +598,13 @@ namespace BackgroundResourceProcessing.Solver.Graph
             return inventoryRates;
         }
 
-        public Dictionary<InventoryId, double> ExpandInventoryRates(
-            IEnumerable<KVPair<int, double>> inventoryRates,
+        public IntMap<double> ExpandInventoryRates(
+            IEnumerable<KeyValuePair<int, double>> inventoryRates,
             ResourceProcessor processor
         )
         {
-            Dictionary<InventoryId, double> result = [];
-            List<InventoryId> available = [];
+            IntMap<double> result = new(processor.inventories.Count);
+            List<int> available = [];
             foreach (var (id, rate) in inventoryRates)
             {
                 available.Clear();
@@ -579,8 +663,8 @@ namespace BackgroundResourceProcessing.Solver.Graph
             return result;
         }
 
-        public Dictionary<InventoryId, double> ComputeInventoryRates(
-            IEnumerable<KVPair<int, double>> rates,
+        public IntMap<double> ComputeInventoryRates(
+            IEnumerable<KeyValuePair<int, double>> rates,
             ResourceProcessor processor
         )
         {

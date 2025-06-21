@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Reflection;
 using BackgroundResourceProcessing.Core;
 using CommandLine;
 
@@ -18,13 +19,28 @@ namespace BackgroundResourceProcessing.CLI
     {
         static int Main(string[] args)
         {
-            return Parser
-                .Default.ParseArguments<SimulateOptions, DotOptions>(args)
-                .MapResult(
-                    (SimulateOptions options) => SimulateOptions.Run(options),
-                    (DotOptions options) => DotOptions.Run(options),
-                    errors => 1
-                );
+            try
+            {
+                return Parser
+                    .Default.ParseArguments<SimulateOptions, DotOptions, ReexportOptions>(args)
+                    .MapResult(
+                        (SimulateOptions options) => SimulateOptions.Run(options),
+                        (DotOptions options) => DotOptions.Run(options),
+                        (ReexportOptions options) => options.Run(),
+                        errors => 1
+                    );
+            }
+            catch (ReflectionTypeLoadException e)
+            {
+                Console.Error.WriteLine($"Unhandled Exception: {e}");
+
+                foreach (var exception in e.LoaderExceptions)
+                {
+                    Console.Error.WriteLine($"Loader Exception: {exception}");
+                }
+
+                return 2;
+            }
         }
 
         public static void Setup(BaseOptions options)
@@ -48,7 +64,7 @@ namespace BackgroundResourceProcessing.CLI
             return processor;
         }
 
-        public static void DumpProcessor(ResourceProcessor processor, string path)
+        public static void DumpVessel(ResourceProcessor processor, string path)
         {
             ConfigNode root = new();
             ConfigNode node = root.AddNode("BRP_SHIP");

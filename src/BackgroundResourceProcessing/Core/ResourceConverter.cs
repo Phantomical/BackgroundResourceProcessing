@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using BackgroundResourceProcessing.Collections;
@@ -8,8 +9,8 @@ namespace BackgroundResourceProcessing.Core
 {
     public class ResourceConverter(ConverterBehaviour behaviour)
     {
-        public Dictionary<string, HashSet<InventoryId>> push = [];
-        public Dictionary<string, HashSet<InventoryId>> pull = [];
+        public Dictionary<string, DynamicBitSet> push = [];
+        public Dictionary<string, DynamicBitSet> pull = [];
 
         public ConverterBehaviour behaviour = behaviour;
 
@@ -45,20 +46,22 @@ namespace BackgroundResourceProcessing.Core
             node.TryGetDouble("nextChangepoint", ref nextChangepoint);
             node.TryGetValue("id", ref id);
 
-            foreach (var inner in node.GetNodes("PUSH_INVENTORY"))
+            foreach (var inner in node.GetNodes("PUSH_INVENTORIES"))
             {
-                InventoryId id = new(0, "");
-                id.Load(inner);
+                string resourceName = null;
+                if (!inner.TryGetValue("resourceName", ref resourceName))
+                    continue;
 
-                AddPushInventory(id);
+                push.Add(resourceName, LoadBitSet(inner));
             }
 
-            foreach (var inner in node.GetNodes("PULL_INVENTORY"))
+            foreach (var inner in node.GetNodes("PULL_INVENTORIES"))
             {
-                InventoryId id = new(0, "");
-                id.Load(inner);
+                string resourceName = null;
+                if (!inner.TryGetValue("resourceName", ref resourceName))
+                    continue;
 
-                AddPullInventory(id);
+                pull.Add(resourceName, LoadBitSet(inner));
             }
 
             var bNode = node.GetNode("BEHAVIOUR");
@@ -86,21 +89,49 @@ namespace BackgroundResourceProcessing.Core
             );
         }
 
+        internal void LoadLegacyEdges(ConfigNode node, Dictionary<InventoryId, int> inventoryIds)
+        {
+            foreach (var inner in node.GetNodes("PUSH_INVENTORY"))
+            {
+                InventoryId id = default;
+                id.Load(inner);
+
+                if (!inventoryIds.TryGetValue(id, out var index))
+                    continue;
+                var set = push.GetOrAdd(id.resourceName, () => new(inventoryIds.Count));
+                set.Add(index);
+            }
+
+            foreach (var inner in node.GetNodes("PULL_INVENTORY"))
+            {
+                InventoryId id = default;
+                id.Load(inner);
+
+                if (!inventoryIds.TryGetValue(id, out var index))
+                    continue;
+
+                var set = pull.GetOrAdd(id.resourceName, () => new(inventoryIds.Count));
+                set.Add(index);
+            }
+        }
+
         public void Save(ConfigNode node)
         {
             node.AddValue("nextChangepoint", nextChangepoint);
             node.AddValue("id", id);
 
-            foreach (var entry in push)
+            foreach (var (resourceName, set) in push)
             {
-                foreach (var id in entry.Value)
-                    id.Save(node.AddNode("PUSH_INVENTORY"));
+                var inner = node.AddNode("PUSH_INVENTORIES");
+                inner.AddValue("resourceName", resourceName);
+                SaveBitSet(inner, set);
             }
 
-            foreach (var entry in pull)
+            foreach (var (resourceName, set) in pull)
             {
-                foreach (var id in entry.Value)
-                    id.Save(node.AddNode("PULL_INVENTORY"));
+                var inner = node.AddNode("PULL_INVENTORIES");
+                inner.AddValue("resourceName", resourceName);
+                SaveBitSet(inner, set);
             }
 
             behaviour.Save(node.AddNode("BEHAVIOUR"));
@@ -109,26 +140,38 @@ namespace BackgroundResourceProcessing.Core
             ConfigUtil.SaveRequiredResources(node, required.Select(required => required.Value));
         }
 
-        public void AddPushInventory(InventoryId id)
+        private static DynamicBitSet LoadBitSet(ConfigNode node)
         {
-            if (!push.TryGetValue(id.resourceName, out var list))
+            var indices = node.GetValues("index");
+            int max = -1;
+
+            for (int i = 0; i < indices.Length; ++i)
             {
-                list = [];
-                push.Add(id.resourceName, list);
+                if (!uint.TryParse(indices[i], out var result))
+                    continue;
+                max = (int)result;
             }
 
-            list.Add(id);
+            var set = new DynamicBitSet(max + 1);
+            for (int i = 0; i < indices.Length; ++i)
+            {
+                if (!uint.TryParse(indices[i], out var result))
+                    continue;
+                set[(int)result] = true;
+            }
+
+            return set;
         }
 
-        public void AddPullInventory(InventoryId id)
+        private static void SaveBitSet(ConfigNode node, DynamicBitSet set)
         {
-            if (!pull.TryGetValue(id.resourceName, out var list))
-            {
-                list = [];
-                pull.Add(id.resourceName, list);
-            }
+            foreach (var index in set)
+                node.AddValue("index", index);
+        }
 
-            list.Add(id);
+        public override string ToString()
+        {
+            return $"{string.Join(",", inputs.Keys)} => {string.Join(",", outputs.Keys)}";
         }
     }
 

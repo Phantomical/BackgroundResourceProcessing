@@ -56,7 +56,7 @@ namespace BackgroundResourceProcessing.CLI
                 LogUtil.Log($"Dumping ship at {prev}");
                 using (var dumpSpan = new TraceSpan("DumpProcessor"))
                 {
-                    Program.DumpProcessor(processor, Path.Combine(options.Output, $"ship-{i}.cfg"));
+                    Program.DumpVessel(processor, Path.Combine(options.Output, $"ship-{i}.cfg"));
                 }
 
                 if (double.IsNaN(currentTime) || double.IsInfinity(currentTime))

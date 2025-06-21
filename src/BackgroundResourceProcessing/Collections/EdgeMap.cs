@@ -79,10 +79,11 @@ namespace BackgroundResourceProcessing.Collections
             return set;
         }
 
-        public IEnumerable<KVPair<C, I>> ConverterToInventoryEdges()
+        public IEnumerable<KeyValuePair<C, I>> ConverterToInventoryEdges()
         {
             return forward.SelectMany(
-                (entry) => entry.Value.Select((inventory) => new KVPair<C, I>(entry.Key, inventory))
+                (entry) =>
+                    entry.Value.Select((inventory) => new KeyValuePair<C, I>(entry.Key, inventory))
             );
         }
 

@@ -20,13 +20,6 @@ namespace BackgroundResourceProcessing.Modules
         );
 
         /// <summary>
-        /// The name of the converter to use to find the efficiency of this
-        /// converter in the background.
-        /// </summary>
-        [KSPField]
-        public string ConverterName = null;
-
-        /// <summary>
         /// Limits this converter to only be enabled when all its outputs have
         /// at most this fraction of their total resources filled.
         /// </summary>
@@ -116,7 +109,7 @@ namespace BackgroundResourceProcessing.Modules
         {
             double bonus = EfficiencyMultiplier;
 
-            foreach (var (_, modifier) in Converter.EfficiencyModifiers.KSPEnumerate())
+            foreach (var (_, modifier) in Converter.EfficiencyModifiers)
                 bonus *= modifier;
 
             bonus *= Converter.GetCrewEfficiencyBonus();
@@ -227,20 +220,6 @@ namespace BackgroundResourceProcessing.Modules
         {
             Converter.ThermalEfficiency.FindMinMaxValue(out var _, out var maxThermalEfficiency);
             return maxThermalEfficiency;
-        }
-
-        protected override BaseConverter FindLinkedModule()
-        {
-            var converter = base.FindLinkedModule();
-            if (ConverterName != null && converter.ConverterName != ConverterName)
-            {
-                LogUtil.Error(
-                    $"{GetType().Name}: Linked converter does not have a matching ConverterName (expected {ConverterName} but got {converter.ConverterName})"
-                );
-                return null;
-            }
-
-            return converter;
         }
 
         protected static IEnumerable<ResourceRatio> ConvertRecipeToUnits(

@@ -1,3 +1,4 @@
 *.csproj
 *.csproj.user
 *.props
+*.config

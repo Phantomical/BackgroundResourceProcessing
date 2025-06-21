@@ -262,7 +262,9 @@ namespace BackgroundResourceProcessing.Solver
             Trace(() => $"After presolve:\nMaximize Z = {func}\nsubject to\n{this}");
 
             // Do a depth-first search but order by score in order to break depth ties.
-            PriorityQueue<QueueEntry, KVPair<int, double>> entries = new(new InverseComparer());
+            PriorityQueue<QueueEntry, KeyValuePair<int, double>> entries = new(
+                new InverseComparer()
+            );
             entries.Enqueue(
                 new()
                 {
@@ -568,7 +570,7 @@ namespace BackgroundResourceProcessing.Solver
             return soln;
         }
 
-        private IEnumerable<KVPair<int, int>> FindBasicVariables(Matrix tableau, int nvars)
+        private IEnumerable<KeyValuePair<int, int>> FindBasicVariables(Matrix tableau, int nvars)
         {
             for (int x = 0; x < nvars; ++x)
             {
@@ -592,7 +594,7 @@ namespace BackgroundResourceProcessing.Solver
                     }
                 }
 
-                yield return new KVPair<int, int>(x, pivot);
+                yield return new(x, pivot);
 
                 OUTER:
                 ;
@@ -610,7 +612,7 @@ namespace BackgroundResourceProcessing.Solver
                     continue;
 
                 throw new Exception(
-                    $"LP solver solution did not satisfy constraint:\n    constraint: {constraint} (got {value})\n    solution: {soln}"
+                    $"LP solver solution did not satisfy constraint:\n    constraint: {constraint.ToRelationString("<=")} (got {value})\n    solution: {soln}"
                 );
             }
         }
@@ -785,9 +787,9 @@ namespace BackgroundResourceProcessing.Solver
             public BinaryChoice[] choices;
         }
 
-        private class InverseComparer : IComparer<KVPair<int, double>>
+        private class InverseComparer : IComparer<KeyValuePair<int, double>>
         {
-            public int Compare(KVPair<int, double> x, KVPair<int, double> y)
+            public int Compare(KeyValuePair<int, double> x, KeyValuePair<int, double> y)
             {
                 int cmp = y.Key.CompareTo(x.Key);
                 if (cmp != 0)

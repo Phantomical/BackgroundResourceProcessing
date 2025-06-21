@@ -33,7 +33,7 @@ namespace BackgroundResourceProcessing.Core
         /// full/empty and being able to batch those together helps speed
         /// things up a little bit.
         /// </remarks>
-        private const double ResourceFudgeDuration = 0.01;
+        private const double ResourceBoundaryEpsilon = 0.01;
 
         /// <summary>
         /// The epsilon factor used when determine if resource boundary
@@ -42,7 +42,8 @@ namespace BackgroundResourceProcessing.Core
         public const double ResourceEpsilon = 1e-6;
 
         public List<ResourceConverter> converters = [];
-        public Dictionary<InventoryId, ResourceInventory> inventories = [];
+        public List<ResourceInventory> inventories = [];
+        public Dictionary<InventoryId, int> inventoryIds = [];
 
         public double lastUpdate = 0.0;
         public double nextChangepoint = double.PositiveInfinity;
@@ -65,7 +66,15 @@ namespace BackgroundResourceProcessing.Core
             {
                 ResourceInventory inventory = new();
                 inventory.Load(iNode);
-                inventories.Add(inventory.Id, inventory);
+                inventoryIds.Add(inventory.Id, inventories.Count);
+                inventories.Add(inventory);
+            }
+
+            int index = 0;
+            foreach (var cNode in node.GetNodes("CONVERTER"))
+            {
+                var converter = converters[index++];
+                converter.LoadLegacyEdges(cNode, inventoryIds);
             }
         }
 
@@ -74,7 +83,7 @@ namespace BackgroundResourceProcessing.Core
             node.AddValue("lastUpdate", lastUpdate);
             node.AddValue("nextChangepoint", nextChangepoint);
 
-            foreach (var inventory in inventories.Values)
+            foreach (var inventory in inventories)
                 inventory.Save(node.AddNode("INVENTORY"));
 
             foreach (var converter in converters)
@@ -90,26 +99,25 @@ namespace BackgroundResourceProcessing.Core
                 var solver = new Solver.Solver();
                 var rates = solver.ComputeInventoryRates(this);
 
-                foreach (var inventory in inventories.Values)
+                foreach (var inventory in inventories)
                     inventory.rate = 0.0;
 
-                foreach (var (id, rate) in rates.KSPEnumerate())
+                foreach (var (index, rate) in rates)
                 {
-                    if (inventories.TryGetValue(id, out var inventory))
-                    {
-                        // Floating point errors can result in a non-zero (but extremely small)
-                        // rate even when it should mathematically be 0. To avoid that being an
-                        // issue we just truncate any sufficiently small rate to 0.
-                        if (Math.Abs(rate) >= 1e-9)
-                            inventory.rate = rate;
-                    }
+                    var inventory = inventories[index];
+
+                    // Floating point errors can result in a non-zero (but extremely small)
+                    // rate even when it should mathematically be 0. To avoid that being an
+                    // issue we just truncate any sufficiently small rate to 0.
+                    if (Math.Abs(rate) >= 1e-9)
+                        inventory.rate = rate;
                 }
             }
             catch (Exception e)
             {
                 LogUtil.Error("Solver threw an exception: ", e);
 
-                foreach (var inventory in inventories.Values)
+                foreach (var inventory in inventories)
                     inventory.rate = 0.0;
             }
         }
@@ -126,9 +134,9 @@ namespace BackgroundResourceProcessing.Core
             using var span = new TraceSpan("ResourceProcessor.ComputeNextChangepoint");
 
             double changepoint = double.PositiveInfinity;
-            Dictionary<string, KVPair<double, double>> totals = [];
+            Dictionary<string, KeyValuePair<double, double>> totals = [];
 
-            foreach (var inv in inventories.Values)
+            foreach (var inv in inventories)
             {
                 var (total, tRate) = totals.GetValueOr(inv.resourceName, default);
                 total += inv.amount;
@@ -171,13 +179,6 @@ namespace BackgroundResourceProcessing.Core
             return changepoint;
         }
 
-        private struct BackgroundInventoryEntry()
-        {
-            public int converterId;
-            public bool push;
-            public IBackgroundPartResource resource;
-        }
-
         public void RecordVesselState(Vessel vessel, double currentTime)
         {
             using var span = new TraceSpan("ResourceProcessor.RecordVesselState");
@@ -196,13 +197,13 @@ namespace BackgroundResourceProcessing.Core
             });
 
             RecordPartResources(state);
-            var entries = RecordConverters(state);
-            RecordBackgroundPartResources(entries);
+            RecordConverters(state);
         }
 
         private void RecordPartResources(VesselState state)
         {
             using var span = new TraceSpan("ResourceProcessor.RecordPartResources");
+
             var vessel = state.Vessel;
 
             foreach (var part in vessel.Parts)
@@ -216,21 +217,20 @@ namespace BackgroundResourceProcessing.Core
                     LogUtil.Debug(() =>
                         $"Found inventory with resource {resource.amount}/{resource.maxAmount} {resource.resourceName}"
                     );
-                    inventories.Add(
-                        new InventoryId(partId, resource.resourceName),
-                        new ResourceInventory(resource)
-                    );
+
+                    inventories.Add(new ResourceInventory(resource));
                 }
             }
         }
 
-        private List<BackgroundInventoryEntry> RecordConverters(VesselState state)
+        private void RecordConverters(VesselState state)
         {
             using var span = new TraceSpan("ResourceProcessor.RecordConverters");
             var vessel = state.Vessel;
 
-            int nextConverterId = 0;
-            List<BackgroundInventoryEntry> entries = [];
+            List<Part> converterParts = [];
+            Dictionary<uint, List<FakePartResource>> seen = [];
+
             foreach (var part in vessel.Parts)
             {
                 LogUtil.Debug(() => $"Inspecting part {part.name} for converters");
@@ -264,50 +264,16 @@ namespace BackgroundResourceProcessing.Core
                     behaviour.sourceModule = module.GetType().Name;
                     behaviour.sourcePart = part.name;
 
-                    var converter = new ResourceConverter(behaviour) { id = nextConverterId++ };
+                    var index = converters.Count;
+                    var converter = new ResourceConverter(behaviour) { id = index };
                     converter.Refresh(state);
 
                     LogUtil.Debug(() =>
                         $"Converter has {converter.inputs.Count} inputs and {converter.outputs.Count} outputs"
                     );
 
-                    foreach (var (_, ratio) in converter.inputs.KSPEnumerate())
-                    {
-                        var pull = GetConnectedResources(
-                            vessel,
-                            part,
-                            ratio.ResourceName,
-                            ratio.FlowMode,
-                            true
-                        );
-
-                        LogUtil.Debug(() =>
-                            $"Found {pull.set.Count} inventories attached to input resource {ratio.ResourceName}"
-                        );
-
-                        foreach (var resource in pull.set)
-                            converter.AddPullInventory(new(resource));
-                    }
-
-                    foreach (var (_, ratio) in converter.outputs.KSPEnumerate())
-                    {
-                        var push = GetConnectedResources(
-                            vessel,
-                            part,
-                            ratio.ResourceName,
-                            ratio.FlowMode,
-                            false
-                        );
-
-                        LogUtil.Debug(() =>
-                            $"Found {push.set.Count} inventories attached to output resource {ratio.ResourceName}"
-                        );
-
-                        foreach (var resource in push.set)
-                            converter.AddPushInventory(new(resource));
-                    }
-
-                    this.converters.Add(converter);
+                    converters.Add(converter);
+                    converterParts.Add(part);
 
                     BackgroundResourceSet linked;
                     try
@@ -328,107 +294,159 @@ namespace BackgroundResourceProcessing.Core
                     if (linked.pull != null)
                     {
                         foreach (var resource in linked.pull)
-                        {
-                            entries.Add(
-                                new()
-                                {
-                                    converterId = this.converters.Count - 1,
-                                    push = false,
-                                    resource = resource,
-                                }
-                            );
-                        }
+                            AddBackgroundPartResource(resource, seen, converter, true);
                     }
 
                     if (linked.push != null)
                     {
                         foreach (var resource in linked.push)
-                        {
-                            entries.Add(
-                                new()
-                                {
-                                    converterId = this.converters.Count - 1,
-                                    push = true,
-                                    resource = resource,
-                                }
-                            );
-                        }
+                            AddBackgroundPartResource(resource, seen, converter, false);
                     }
                 }
             }
 
-            return entries;
+            ComputeInventoryIds();
+
+            for (int i = 0; i < converters.Count; ++i)
+            {
+                var converter = converters[i];
+                var part = converterParts[i];
+
+                foreach (var (_, ratio) in converter.inputs)
+                {
+                    var pull = GetConnectedResources(
+                        vessel,
+                        part,
+                        ratio.ResourceName,
+                        ratio.FlowMode,
+                        true
+                    );
+
+                    foreach (var resource in pull.set)
+                    {
+                        var set = converter.pull.GetOrAdd(
+                            resource.resourceName,
+                            () => new(inventories.Count)
+                        );
+
+                        var id = new InventoryId(resource);
+                        var index = inventoryIds[id];
+                        set[index] = true;
+                    }
+                }
+
+                foreach (var (_, ratio) in converter.outputs)
+                {
+                    var push = GetConnectedResources(
+                        vessel,
+                        part,
+                        ratio.ResourceName,
+                        ratio.FlowMode,
+                        true
+                    );
+
+                    foreach (var resource in push.set)
+                    {
+                        var set = converter.push.GetOrAdd(
+                            resource.resourceName,
+                            () => new(inventories.Count)
+                        );
+
+                        var id = new InventoryId(resource);
+                        var index = inventoryIds[id];
+                        set[index] = true;
+                    }
+                }
+            }
         }
 
-        private void RecordBackgroundPartResources(List<BackgroundInventoryEntry> entries)
+        private void ComputeInventoryIds()
         {
-            using var span = new TraceSpan("ResourceProcessor.RecordBackgroundPartResources");
-            HashSet<uint> seen = [];
+            inventoryIds.Clear();
+            for (int i = 0; i < inventories.Count; ++i)
+                inventoryIds.Add(inventories[i].Id, i);
+        }
 
-            foreach (var entry in entries)
+        private void AddBackgroundPartResource(
+            IBackgroundPartResource resource,
+            Dictionary<uint, List<FakePartResource>> seen,
+            ResourceConverter converter,
+            bool pulling
+        )
+        {
+            if (resource is not PartModule module)
             {
-                if (entry.resource is not PartModule module)
-                {
-                    LogUtil.Error(
-                        $"IBackgroundPartResource implementer {entry.resource.GetType().Name} is not a PartModule"
-                    );
-                    continue;
-                }
-
-                if (module.part == null)
-                {
-                    LogUtil.Error(
-                        $"IBackgroundPartResource implementer {entry.resource.GetType().Name} is not attached to a part"
-                    );
-                    continue;
-                }
-
-                LogUtil.Debug(() =>
-                    $"Adding fake inventories from module {module.GetType().Name} on part {module.part.name}"
+                LogUtil.Error(
+                    $"IBackgroundPartResource implementer {resource.GetType().Name} is not a PartModule"
                 );
+                return;
+            }
 
-                var moduleId = module.GetPersistentId();
-                if (!seen.Add(moduleId))
-                    continue;
+            if (module.part == null)
+            {
+                LogUtil.Error(
+                    $"IBackgroundPartResource implementer {resource.GetType().Name} is not attached to a part"
+                );
+                return;
+            }
 
-                IEnumerable<FakePartResource> resources;
+            LogUtil.Debug(() =>
+                $"Adding fake inventories from module {module.GetType().Name} on part {module.part.name}"
+            );
+
+            var moduleId = module.GetPersistentId();
+
+            if (!seen.TryGetValue(moduleId, out List<FakePartResource> resources))
+            {
                 try
                 {
-                    resources = entry.resource.GetResources();
+                    resources = [.. resource.GetResources()];
                 }
                 catch (Exception e)
                 {
                     LogUtil.Error(
-                        $"{entry.resource.GetType().Name}.GetResources call threw an exception: {e}"
+                        $"{resource.GetType().Name}.GetResources call threw an exception: {e}"
+                    );
+                    resources = [];
+                }
+
+                seen.Add(moduleId, resources);
+            }
+
+            var part = module.part;
+            foreach (var res in resources)
+            {
+                if (res.amount < 0.0 || !MathUtil.IsFinite(res.amount))
+                {
+                    LogUtil.Error(
+                        $"Module {module.GetType().Name} on part {part.partName} returned ",
+                        $"a FakePartResource with invalid resource amount {res.amount}"
                     );
                     continue;
                 }
 
-                if (resources == null)
-                    continue;
-
-                var part = module.part;
-                foreach (var resource in resources)
+                // Note we specifically allow +Infinity here.
+                if (res.maxAmount < 0.0 || double.IsNaN(res.maxAmount))
                 {
-                    if (resource.amount < 0.0 || !MathUtil.IsFinite(resource.amount))
-                    {
-                        LogUtil.Error(
-                            $"Module {module.GetType().Name} on part {part.partName} returned ",
-                            $"a FakePartResource with invalid resource amount {resource.amount}"
-                        );
-                        continue;
-                    }
-
-                    var inventory = new ResourceInventory(resource, module);
-                    if (!inventories.TryAddExt(inventory.Id, inventory))
-                        continue;
-
-                    var converter = converters[entry.converterId];
-                    if (entry.push)
-                        converter.AddPushInventory(inventory.Id);
-                    else
-                        converter.AddPullInventory(inventory.Id);
+                    LogUtil.Error(
+                        $"Module {module.GetType().Name} on part {part.partName} returned ",
+                        $"a FakePartResource with invalid resource maxAmount {res.maxAmount}"
+                    );
+                    continue;
                 }
+
+                var inventory = new ResourceInventory(res, module);
+                if (!inventoryIds.TryGetValue(inventory.Id, out var index))
+                {
+                    index = inventories.Count;
+                    inventories.Add(inventory);
+                    inventoryIds.Add(inventory.Id, index);
+                }
+
+                var linked = pulling ? converter.pull : converter.push;
+                var set = linked.GetOrAdd(res.resourceName, () => new(inventories.Count));
+
+                set.Add(index);
             }
         }
 
@@ -436,6 +454,7 @@ namespace BackgroundResourceProcessing.Core
         {
             converters.Clear();
             inventories.Clear();
+            inventoryIds.Clear();
             nextChangepoint = double.PositiveInfinity;
         }
 
@@ -467,16 +486,15 @@ namespace BackgroundResourceProcessing.Core
             using var span = new TraceSpan("ResourceProcessor.UpdateInventories");
 
             var deltaT = currentTime - lastUpdate;
-            foreach (var entry in inventories)
+            foreach (var inventory in inventories)
             {
-                var inventory = entry.Value;
                 inventory.amount += inventory.rate * deltaT;
 
                 if (inventory.Full)
                     inventory.amount = inventory.maxAmount;
                 else if (inventory.Empty)
                     inventory.amount = 0.0;
-                else if (inventory.RemainingTime < ResourceFudgeDuration)
+                else if (inventory.RemainingTime < ResourceBoundaryEpsilon)
                 {
                     // Fudge inventory rates slightly to reduce the number of
                     // changepoints that need to be computed.
@@ -502,9 +520,8 @@ namespace BackgroundResourceProcessing.Core
                 vessel.Parts.Select(part => DictUtil.CreateKeyValuePair(part.persistentId, part))
             );
 
-            foreach (var entry in inventories)
+            foreach (var inventory in inventories)
             {
-                var inventory = entry.Value;
                 if (!parts.TryGetValue(inventory.partId, out var part))
                     continue;
 
@@ -563,7 +580,7 @@ namespace BackgroundResourceProcessing.Core
         {
             Dictionary<string, InventoryState> totals = [];
 
-            foreach (var inventory in inventories.Values)
+            foreach (var inventory in inventories)
             {
                 var state = totals.GetValueOr(inventory.resourceName, default);
                 totals[inventory.resourceName] = state.Merge(inventory.State);
@@ -586,7 +603,7 @@ namespace BackgroundResourceProcessing.Core
             {
                 foreach (var pull in converter.pull.Values.SelectMany(vals => vals))
                 {
-                    if (!inventories.ContainsKey(pull))
+                    if (pull >= inventories.Count || pull < 0)
                         throw new Exception(
                             $"Converter with id {converter.id} has pull reference to nonexistant inventory {pull}"
                         );
@@ -594,7 +611,7 @@ namespace BackgroundResourceProcessing.Core
 
                 foreach (var push in converter.pull.Values.SelectMany(vals => vals))
                 {
-                    if (!inventories.ContainsKey(push))
+                    if (push >= inventories.Count || push < 0)
                         throw new Exception(
                             $"Converter with id {converter.id} has push reference to nonexistant inventory {push}"
                         );

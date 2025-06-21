@@ -16,7 +16,7 @@ namespace BackgroundResourceProcessing.Collections
     /// </remarks>
     [DebuggerTypeProxy(typeof(IntMap<>.DebugView))]
     [DebuggerDisplay("Count = {Count}")]
-    internal class IntMap<V>(int capacity) : IEnumerable<KVPair<int, V>>
+    internal class IntMap<V>(int capacity) : IEnumerable<KeyValuePair<int, V>>
     {
         int count = 0;
         readonly bool[] present = new bool[capacity];
@@ -137,14 +137,14 @@ namespace BackgroundResourceProcessing.Collections
             return values[key];
         }
 
-        public IEnumerator<KVPair<int, V>> GetEnumerator()
+        public IEnumerator<KeyValuePair<int, V>> GetEnumerator()
         {
             return new Enumerator(this);
         }
 
-        IEnumerator<KVPair<int, V>> IEnumerable<KVPair<int, V>>.GetEnumerator()
+        public Enumerator GetEnumeratorAt(int index)
         {
-            return GetEnumerator();
+            return new Enumerator(this, index);
         }
 
         IEnumerator IEnumerable.GetEnumerator()
@@ -179,12 +179,12 @@ namespace BackgroundResourceProcessing.Collections
             count += 1;
         }
 
-        private struct Enumerator(IntMap<V> map) : IEnumerator<KVPair<int, V>>
+        public struct Enumerator(IntMap<V> map) : IEnumerator<KeyValuePair<int, V>>
         {
             readonly IntMap<V> map = map;
             int index = -1;
 
-            public readonly KVPair<int, V> Current
+            public readonly KeyValuePair<int, V> Current
             {
                 get
                 {
@@ -193,11 +193,20 @@ namespace BackgroundResourceProcessing.Collections
                             "Enumeration has either not started yet or has already completed"
                         );
 
-                    return new KVPair<int, V>(index, map.values[index]);
+                    return new(index, map.values[index]);
                 }
             }
 
             readonly object IEnumerator.Current => Current;
+
+            public Enumerator(IntMap<V> map, int offset)
+                : this(map)
+            {
+                if (offset < 0)
+                    throw new ArgumentOutOfRangeException("offset", "offset may not be negative");
+
+                index = offset - 1;
+            }
 
             public bool MoveNext()
             {
@@ -216,6 +225,11 @@ namespace BackgroundResourceProcessing.Collections
             public void Reset()
             {
                 index = -1;
+            }
+
+            public readonly Enumerator GetEnumerator()
+            {
+                return this;
             }
 
             public readonly void Dispose() { }

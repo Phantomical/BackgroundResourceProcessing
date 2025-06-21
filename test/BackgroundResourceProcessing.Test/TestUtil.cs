@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using BackgroundResourceProcessing.Core;
@@ -64,6 +65,26 @@ namespace BackgroundResourceProcessing.Test
             Directory.CreateDirectory(Path.Combine(ProjectDirectory, "bin/ship"));
             var path = Path.Combine(ProjectDirectory, "bin/ship", filename);
             root.Save(path);
+        }
+
+        public static string SequenceToString<T>(IEnumerable<T> seq)
+        {
+            StringBuilder builder = new();
+            builder.Append("[");
+
+            bool first = true;
+            foreach (var item in seq)
+            {
+                if (!first)
+                    builder.Append(", ");
+                else
+                    first = false;
+
+                builder.Append(item);
+            }
+
+            builder.Append("]");
+            return builder.ToString();
         }
     }
 

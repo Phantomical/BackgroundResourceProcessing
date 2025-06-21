@@ -171,7 +171,7 @@ namespace BackgroundResourceProcessing.Integration.EL
             var total = totalWork;
             if (totalWork == 0.0)
                 total = control.CalculateWork();
-            if (totalWork <= 0.0 || !double.IsFinite(totalWork))
+            if (totalWork <= 0.0 || !MathUtil.IsFinite(totalWork))
                 return;
 
             var ratio = MathUtil.Clamp01(workHours / total);

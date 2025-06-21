@@ -157,9 +157,9 @@ namespace BackgroundResourceProcessing.UI
 
         void DrawResourceState()
         {
-            List<KVPair<string, InventoryState>> totals = [];
+            List<KeyValuePair<string, InventoryState>> totals = [];
             if (processor != null)
-                totals = processor.GetResourceTotals().KSPEnumerate().ToList();
+                totals = processor.GetResourceTotals().ToList();
 
             totals.Sort((a, b) => a.Key.CompareTo(b.Key));
             var defs = PartResourceLibrary.Instance.resourceDefinitions;

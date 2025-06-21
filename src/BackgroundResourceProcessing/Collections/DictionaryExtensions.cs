@@ -1,18 +1,14 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace BackgroundResourceProcessing.Collections
 {
-    internal struct KVPair<K, V>(K key, V value)
+    internal static class KeyValuePairExt
     {
-        public K Key = key;
-        public V Value = value;
-
-        public readonly void Deconstruct(out K key, out V value)
+        public static void Deconstruct<K, V>(this KeyValuePair<K, V> pair, out K key, out V value)
         {
-            key = Key;
-            value = Value;
+            key = pair.Key;
+            value = pair.Value;
         }
     }
 
@@ -86,7 +82,7 @@ namespace BackgroundResourceProcessing.Collections
             if (a.Count != b.Count)
                 return false;
 
-            foreach (var (key, aVal) in a.KSPEnumerate())
+            foreach (var (key, aVal) in a)
             {
                 if (!b.TryGetValue(key, out var bVal))
                     return false;
@@ -96,25 +92,6 @@ namespace BackgroundResourceProcessing.Collections
             }
 
             return true;
-        }
-
-        /// <summary>
-        /// <see cref="KeyValuePair.Deconstruct"/> is not available in the
-        /// assemblies shipped with KSP, so this returns an iterator with a pair
-        /// type that does support deconstruction.
-        /// </summary>
-        /// <typeparam name="K"></typeparam>
-        /// <typeparam name="V"></typeparam>
-        /// <param name="dict"></param>
-        /// <returns></returns>
-        public static IEnumerable<KVPair<K, V>> KSPEnumerate<K, V>(this IDictionary<K, V> dict)
-        {
-            return dict.Select(pair => new KVPair<K, V>(pair.Key, pair.Value));
-        }
-
-        public static KVPair<K, V> IntoKSP<K, V>(this KeyValuePair<K, V> pair)
-        {
-            return new(pair.Key, pair.Value);
         }
     }
 

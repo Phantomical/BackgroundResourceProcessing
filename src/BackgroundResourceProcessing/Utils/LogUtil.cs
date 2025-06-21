@@ -46,7 +46,7 @@ namespace BackgroundResourceProcessing
         internal static void Debug(DebugExpression dbgexpr)
         {
 #if DEBUG
-            // Log(dbgexpr());
+            Log(dbgexpr());
 #endif
         }
 

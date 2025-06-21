@@ -85,6 +85,9 @@ namespace BackgroundResourceProcessing.Modules
             if (Condition == null)
                 throw new MemberException($"Condition was null");
 
+            if (Condition == "true" || Condition == "false")
+                return null;
+
             var fieldName = Condition;
             if (fieldName.StartsWith("!"))
                 fieldName = fieldName.Substring(1);
@@ -163,7 +166,13 @@ namespace BackgroundResourceProcessing.Modules
             if (Module == null)
                 return false;
             if (conditionMember == null)
+            {
+                if (Condition == "true")
+                    return true;
+                if (Condition == "false")
+                    return false;
                 return false;
+            }
 
             bool invert = Condition.StartsWith("!");
             bool value = (bool)GetMemberValue(conditionMember, Module);

@@ -115,14 +115,14 @@ namespace BackgroundResourceProcessing.Solver
 
         public static LinearEquation operator +(LinearEquation a, LinearEquation b)
         {
-            foreach (var (index, coef) in b.variables.KSPEnumerate())
+            foreach (var (index, coef) in b.variables)
                 a.Add(new(index, coef));
             return a;
         }
 
         public static LinearEquation operator -(LinearEquation a, LinearEquation b)
         {
-            foreach (var (index, coef) in b.variables.KSPEnumerate())
+            foreach (var (index, coef) in b.variables)
                 a.Sub(new(index, coef));
             return a;
         }
@@ -164,7 +164,7 @@ namespace BackgroundResourceProcessing.Solver
         public LinearEquation Negated()
         {
             var eq = new LinearEquation(variables.Count);
-            foreach (var (index, coef) in variables.KSPEnumerate())
+            foreach (var (index, coef) in variables)
                 eq.Sub(new(index, coef));
             return eq;
         }
@@ -174,7 +174,7 @@ namespace BackgroundResourceProcessing.Solver
             StringBuilder builder = new();
 
             bool first = true;
-            foreach (var (index, coef) in variables.KSPEnumerate())
+            foreach (var (index, coef) in variables)
                 LinearProblem.RenderCoef(builder, coef, new Variable(index).ToString(), ref first);
 
             return builder.ToString();
