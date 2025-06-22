@@ -153,6 +153,8 @@ namespace BackgroundResourceProcessing.Solver
 
             do
             {
+                equalities.Sort();
+
                 Matrix matrix = new(VariableCount + 1, equalities.Count);
                 for (int y = 0; y < equalities.Count; ++y)
                 {
@@ -642,6 +644,16 @@ namespace BackgroundResourceProcessing.Solver
                 builder.Append(")");
             }
 
+            if (substitutions != null)
+            {
+                foreach (var sub in substitutions.Values)
+                {
+                    builder.Append("sub ");
+                    builder.Append(sub);
+                    builder.AppendLine();
+                }
+            }
+
             return builder.ToString();
         }
 
@@ -720,7 +732,7 @@ namespace BackgroundResourceProcessing.Solver
             public SolverConstraint rhs;
         }
 
-        private class SolverConstraint()
+        private class SolverConstraint() : IComparable<SolverConstraint>
         {
             public LinearEquation variables;
             public double constant;
@@ -746,6 +758,14 @@ namespace BackgroundResourceProcessing.Solver
                 foreach (var var in eq)
                     variables.Add(var * coef);
                 constant -= coef * value;
+            }
+
+            public int CompareTo(SolverConstraint other)
+            {
+                int cmp = variables.CompareTo(other.variables);
+                if (cmp != 0)
+                    return cmp;
+                return constant.CompareTo(other.constant);
             }
 
             public string ToRelationString(string relation)

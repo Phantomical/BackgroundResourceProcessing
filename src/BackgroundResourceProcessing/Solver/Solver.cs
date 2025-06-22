@@ -310,7 +310,7 @@ namespace BackgroundResourceProcessing.Solver
                 // we do truncate.
                 //
                 // In practice this seems to work well enough.
-                if (rate < 1e-6 && rate / Math.Sqrt(norm) < 1e-6)
+                if (Math.Abs(rate) < 1e-6 && Math.Abs(rate) / Math.Sqrt(norm) < 1e-6)
                     rate = 0.0;
 
                 inventoryRates[invId] = rate;
