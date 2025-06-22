@@ -5,7 +5,7 @@
         <!-- The version used for all libraries in this project. -->
         <Version>0.0.1</Version>
 
-        <TargetFramework>net472</TargetFramework>
+        <TargetFramework>net481</TargetFramework>
         <LangVersion>preview</LangVersion>
 
         <ProjectRootDir>$(MSBuildThisFileDirectory)</ProjectRootDir>

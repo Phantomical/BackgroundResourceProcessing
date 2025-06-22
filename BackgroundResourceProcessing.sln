@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessin
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessing.CLI", "src\BackgroundResourceProcessing.CLI\BackgroundResourceProcessing.CLI.csproj", "{716615EE-8E13-9EDC-DF92-0FD9A682F661}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessing.Integration.Kopernicus", "src\BackgroundResourceProcessing.Integration.Kopernicus\BackgroundResourceProcessing.Integration.Kopernicus.csproj", "{CBE884D1-7422-50D5-2EB6-51FB3A3AFD53}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{716615EE-8E13-9EDC-DF92-0FD9A682F661}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{716615EE-8E13-9EDC-DF92-0FD9A682F661}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{716615EE-8E13-9EDC-DF92-0FD9A682F661}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CBE884D1-7422-50D5-2EB6-51FB3A3AFD53}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CBE884D1-7422-50D5-2EB6-51FB3A3AFD53}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CBE884D1-7422-50D5-2EB6-51FB3A3AFD53}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CBE884D1-7422-50D5-2EB6-51FB3A3AFD53}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <Description>BackgroundResourceProcessing Kopernicus Integration</Description>
+
+        <GenerateKSPAssemblyAttribute>true</GenerateKSPAssemblyAttribute>
+        <GenerateKSPAssemblyDependencyAttributes>true</GenerateKSPAssemblyDependencyAttributes>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="KSPBuildTools" Version="0.0.3" />
+        <ProjectReference
+            Include="$(ProjectDir)/../BackgroundResourceProcessing/BackgroundResourceProcessing.csproj" />
+
+        <Reference Include="0Harmony.dll">
+            <HintPath>$(ReferencePath)\GameData\000_Harmony\0Harmony.dll</HintPath>
+            <Private>false</Private>
+            <CKANIdentifier>Harmony2</CKANIdentifier>
+            <KSPAssemblyName>HarmonyKSP</KSPAssemblyName>
+            <KSPAssemblyVersion>1.0.0</KSPAssemblyVersion>
+        </Reference>
+
+        <Reference Include="Kopernicus.dll">
+            <HintPath>$(ReferencePath)\GameData\Kopernicus\Plugins\Kopernicus.dll</HintPath>
+            <Private>false</Private>
+            <CKANIdentifier>Kopernicus</CKANIdentifier>
+            <KSPAssemblyName>Kopernicus</KSPAssemblyName>
+            <KSPAssemblyName>1.0.0</KSPAssemblyName>
+        </Reference>
+
+        <InternalsVisibleTo Include="BackgroundResourceProcessing.Test" />
+    </ItemGroup>
+
+    <!--
+    It's really easy for old binaries to stick around in GameData and bin
+    directories. This step makes sure that doesn't happen.
+    -->
+    <Target Name="PostClean" AfterTargets="Clean">
+        <RemoveDir Directories="$(ProjectDir)\bin" />
+    </Target>
+</Project>
