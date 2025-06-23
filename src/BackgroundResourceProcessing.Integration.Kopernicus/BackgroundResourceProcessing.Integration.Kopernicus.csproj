@@ -24,7 +24,7 @@
             <Private>false</Private>
             <CKANIdentifier>Kopernicus</CKANIdentifier>
             <KSPAssemblyName>Kopernicus</KSPAssemblyName>
-            <KSPAssemblyName>1.0.0</KSPAssemblyName>
+            <KSPAssemblyVersion>1.0.0</KSPAssemblyVersion>
         </Reference>
 
         <InternalsVisibleTo Include="BackgroundResourceProcessing.Test" />
