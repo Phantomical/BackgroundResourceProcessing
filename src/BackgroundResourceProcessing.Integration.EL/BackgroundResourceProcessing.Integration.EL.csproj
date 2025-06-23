@@ -9,7 +9,10 @@
     <ItemGroup>
         <PackageReference Include="KSPBuildTools" Version="0.0.3" />
         <ProjectReference
-            Include="$(ProjectDir)/../BackgroundResourceProcessing/BackgroundResourceProcessing.csproj" />
+            Include="$(ProjectDir)/../BackgroundResourceProcessing/BackgroundResourceProcessing.csproj">
+            <KSPAssemblyName>BackgroundResourceProcessing</KSPAssemblyName>
+            <KSPAssemblyVersion>$(Version)</KSPAssemblyVersion>
+        </ProjectReference>
 
         <Reference Include="0Harmony.dll">
             <HintPath>$(ReferencePath)\GameData\000_Harmony\0Harmony.dll</HintPath>
