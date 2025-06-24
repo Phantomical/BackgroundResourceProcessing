@@ -30,7 +30,7 @@ namespace BackgroundResourceProcessing.Integration.EL
         [KSPField]
         public string WorkHoursResource;
 
-        protected override ConverterBehaviour GetConverterBehaviour()
+        protected override List<ConverterBehaviour> GetConverterBehaviours()
         {
             var launchpad = GetLinkedLaunchpad();
             if (launchpad == null)
@@ -106,7 +106,7 @@ namespace BackgroundResourceProcessing.Integration.EL
                 }
             }
 
-            return new ConstantConverter(inputs, outputs);
+            return [new ConstantConverter(inputs, outputs)];
         }
 
         public override BackgroundResourceSet GetLinkedBackgroundResources()

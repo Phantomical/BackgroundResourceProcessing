@@ -14,7 +14,7 @@ namespace BackgroundResourceProcessing.Integration.EL
         [KSPField(isPersistant = true)]
         private uint cachedPersistentModuleId;
 
-        protected override ConverterBehaviour GetConverterBehaviour()
+        protected override List<ConverterBehaviour> GetConverterBehaviours()
         {
             var workshop = GetLinkedWorkshop();
             if (workshop == null)
@@ -35,7 +35,7 @@ namespace BackgroundResourceProcessing.Integration.EL
                 outputs = outputs.Select(output => output.WithMultiplier(productivity));
             }
 
-            return new ConstantConverter(inputs.ToList(), outputs.ToList(), required);
+            return [new ConstantConverter(inputs.ToList(), outputs.ToList(), required)];
         }
 
         private ELWorkshop GetLinkedWorkshop()

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using BackgroundResourceProcessing.Modules;
 using Kopernicus.Components;
 
@@ -5,7 +6,7 @@ namespace BackgroundResourceProcessing.Integration.Kopernicus
 {
     public class ModuleBackgroundKopernicusSolarPanel : BackgroundConverterBase
     {
-        protected override ConverterBehaviour GetConverterBehaviour()
+        protected override List<ConverterBehaviour> GetConverterBehaviours()
         {
             // TODO:
             //  - Support alternating between 0 and flowRate when going into and
@@ -28,7 +29,7 @@ namespace BackgroundResourceProcessing.Integration.Kopernicus
             if (netEC == 0.0)
                 return null;
 
-            return new ConstantProducer([ratio]);
+            return [new ConstantProducer([ratio])];
         }
     }
 }

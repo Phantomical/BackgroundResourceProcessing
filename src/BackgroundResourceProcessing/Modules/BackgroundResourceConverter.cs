@@ -119,7 +119,7 @@ namespace BackgroundResourceProcessing.Modules
             return bonus;
         }
 
-        protected override ConverterBehaviour GetConverterBehaviour()
+        protected override List<ConverterBehaviour> GetConverterBehaviours()
         {
             if (Converter == null)
                 return null;
@@ -205,7 +205,7 @@ namespace BackgroundResourceProcessing.Modules
                 );
             }
 
-            return new ConstantConverter(inputList, outputList, required.ToList());
+            return [new ConstantConverter(inputList, outputList, required.ToList())];
         }
 
         public virtual void OnVesselRestore()

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 
 namespace BackgroundResourceProcessing.Modules
@@ -56,12 +57,12 @@ namespace BackgroundResourceProcessing.Modules
             SetMemberValue(lastUpdateMember, Module, Planetarium.GetUniversalTime());
         }
 
-        protected override ConverterBehaviour GetConverterBehaviour()
+        protected override List<ConverterBehaviour> GetConverterBehaviours()
         {
             if (!EvaluateCondition())
                 return null;
 
-            return base.GetConverterBehaviour();
+            return base.GetConverterBehaviours();
         }
 
         private void Setup()

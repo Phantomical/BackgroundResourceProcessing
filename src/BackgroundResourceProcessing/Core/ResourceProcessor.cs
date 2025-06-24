@@ -225,78 +225,7 @@ namespace BackgroundResourceProcessing.Core
             Dictionary<uint, List<FakePartResource>> seen = [];
 
             foreach (var part in vessel.Parts)
-            {
-                LogUtil.Debug(() => $"Inspecting part {part.name} for converters");
-
-                foreach (var partModule in part.Modules)
-                {
-                    if (partModule is not BackgroundConverterBase module)
-                        continue;
-
-                    LogUtil.Debug(() => $"Found converter module: {module.GetType().Name}");
-
-                    ConverterBehaviour behaviour;
-                    try
-                    {
-                        behaviour = module.GetBehaviour();
-                    }
-                    catch (Exception e)
-                    {
-                        LogUtil.Error(
-                            $"{module.GetType().Name}.GetBehaviour threw an exception: {e}"
-                        );
-                        continue;
-                    }
-
-                    if (behaviour == null)
-                    {
-                        LogUtil.Debug(() => $"Converter behaviour was null");
-                        continue;
-                    }
-
-                    behaviour.sourceModule = module.GetType().Name;
-                    behaviour.sourcePart = part.name;
-
-                    var index = converters.Count;
-                    var converter = new ResourceConverter(behaviour) { id = index };
-                    converter.Refresh(state);
-
-                    LogUtil.Debug(() =>
-                        $"Converter has {converter.inputs.Count} inputs and {converter.outputs.Count} outputs"
-                    );
-
-                    converters.Add(converter);
-                    converterParts.Add(part);
-
-                    BackgroundResourceSet linked;
-                    try
-                    {
-                        linked = module.GetLinkedBackgroundResources();
-                    }
-                    catch (Exception e)
-                    {
-                        LogUtil.Error(
-                            $"{module.GetType().Name}.GetLinkedBackgroundResources threw an exception: {e}"
-                        );
-                        continue;
-                    }
-
-                    if (linked == null)
-                        continue;
-
-                    if (linked.pull != null)
-                    {
-                        foreach (var resource in linked.pull)
-                            AddBackgroundPartResource(resource, seen, converter, true);
-                    }
-
-                    if (linked.push != null)
-                    {
-                        foreach (var resource in linked.push)
-                            AddBackgroundPartResource(resource, seen, converter, false);
-                    }
-                }
-            }
+                RecordPartConverters(part, state, converterParts, seen);
 
             ComputeInventoryIds();
 
@@ -373,6 +302,86 @@ namespace BackgroundResourceProcessing.Core
                         var id = new InventoryId(resource);
                         var index = inventoryIds[id];
                         set[index] = true;
+                    }
+                }
+            }
+        }
+
+        private void RecordPartConverters(
+            Part part,
+            VesselState state,
+            List<Part> converterParts,
+            Dictionary<uint, List<FakePartResource>> seen
+        )
+        {
+            LogUtil.Debug(() => $"Inspecting part {part.name} for converters");
+
+            foreach (var partModule in part.Modules)
+            {
+                if (partModule is not BackgroundConverterBase module)
+                    continue;
+
+                LogUtil.Debug(() => $"Found converter module: {module.GetType().Name}");
+
+                List<ConverterBehaviour> behaviours;
+                try
+                {
+                    behaviours = module.GetBehaviour();
+                }
+                catch (Exception e)
+                {
+                    LogUtil.Error($"{module.GetType().Name}.GetBehaviour threw an exception: {e}");
+                    continue;
+                }
+
+                if (behaviours == null)
+                {
+                    LogUtil.Debug(() => $"Converter behaviour was null");
+                    continue;
+                }
+
+                foreach (var behaviour in behaviours)
+                {
+                    behaviour.sourceModule = module.GetType().Name;
+                    behaviour.sourcePart = part.name;
+
+                    var index = converters.Count;
+                    var converter = new ResourceConverter(behaviour) { id = index };
+                    converter.Refresh(state);
+
+                    LogUtil.Debug(() =>
+                        $"Converter has {converter.inputs.Count} inputs and {converter.outputs.Count} outputs"
+                    );
+
+                    converters.Add(converter);
+                    converterParts.Add(part);
+
+                    BackgroundResourceSet linked;
+                    try
+                    {
+                        linked = module.GetLinkedBackgroundResources();
+                    }
+                    catch (Exception e)
+                    {
+                        LogUtil.Error(
+                            $"{module.GetType().Name}.GetLinkedBackgroundResources threw an exception: {e}"
+                        );
+                        continue;
+                    }
+
+                    if (linked == null)
+                        continue;
+
+                    if (linked.pull != null)
+                    {
+                        foreach (var resource in linked.pull)
+                            AddBackgroundPartResource(resource, seen, converter, true);
+                    }
+
+                    if (linked.push != null)
+                    {
+                        foreach (var resource in linked.push)
+                            AddBackgroundPartResource(resource, seen, converter, false);
                     }
                 }
             }

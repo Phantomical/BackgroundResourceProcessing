@@ -11,9 +11,9 @@ namespace BackgroundResourceProcessing.Modules
         public List<ResourceRatio> outputs = [];
         public List<ResourceConstraint> required = [];
 
-        protected override ConverterBehaviour GetConverterBehaviour()
+        protected override List<ConverterBehaviour> GetConverterBehaviours()
         {
-            return new ConstantConverter(inputs, outputs, required);
+            return [new ConstantConverter(inputs, outputs, required)];
         }
 
         public override void OnLoad(ConfigNode node)

@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace BackgroundResourceProcessing.Modules
 {
     /// <summary>
@@ -51,10 +53,17 @@ namespace BackgroundResourceProcessing.Modules
         public int priority = 0;
 
         /// <summary>
-        /// Get the <see cref="ConverterBehaviour"/> that describes the
+        /// Get the <see cref="ConverterBehaviour"/>s that describe the
         /// resources consumed, produced, and required by this part.
         /// </summary>
-        protected abstract ConverterBehaviour GetConverterBehaviour();
+        ///
+        /// <remarks>
+        /// Each <see cref="ConverterBehaviour"/> returned from this method
+        /// is considered to logically be its own converter. Generally, you
+        /// will only want to return a single converter, but this allows you
+        /// to return multiple at once.
+        /// </remarks>
+        protected abstract List<ConverterBehaviour> GetConverterBehaviours();
 
         /// <summary>
         /// Get the set of <see cref="IBackgroundPartResource"/> instances that
@@ -74,12 +83,20 @@ namespace BackgroundResourceProcessing.Modules
         /// Get the <see cref="ConverterBehaviour"/> that describes the
         /// resources consumed, produced, and required by this part.
         /// </summary>
-        public ConverterBehaviour GetBehaviour()
+        public List<ConverterBehaviour> GetBehaviour()
         {
-            var behaviour = GetConverterBehaviour();
-            if (behaviour != null)
+            var behaviours = GetConverterBehaviours();
+            if (behaviours == null)
+                return behaviours;
+
+            foreach (var behaviour in behaviours)
+            {
+                if (behaviour == null)
+                    continue;
                 behaviour.Priority = priority;
-            return behaviour;
+            }
+
+            return behaviours;
         }
     }
 }
