@@ -1,22 +1,33 @@
+using System.Collections.Generic;
 using BackgroundResourceProcessing.Collections;
 using UnityEngine;
 
 namespace BackgroundResourceProcessing.Addons
 {
     /// <summary>
-    /// This addon takes care of updating resource processor changepoints and
-    /// routing certain scoped events to the right vessel.
+    /// This addon takes care of calling processor changepoints at the right
+    /// time.
     /// </summary>
+    ///
+    /// <remarks>
+    /// This script disables itself if there are no pending changepoints to
+    /// handle.
+    /// </remarks>
     [KSPAddon(KSPAddon.Startup.AllGameScenes, false)]
     internal class EventDispatcher : MonoBehaviour
     {
         // In order to keep frame times from getting too laggy
-        const uint MaxChangepointUpdatesPerFrame = 32;
+        const uint MaxChangepointUpdatesPerFrame = 4;
+
+        private static readonly ReferenceEqualityComparer<BackgroundResourceProcessor> comparer =
+            new();
 
         public static EventDispatcher Instance { get; private set; }
 
-        public PriorityQueue<BackgroundResourceProcessor, double> queue = new();
+        private readonly PriorityQueue<BackgroundResourceProcessor, double> queue = new();
+        private bool mustBeEnabled = true;
 
+        #region Global API
         /// <summary>
         /// Register a <see cref="BackgroundResourceProcessor"/> to have its
         /// <c>OnChangepoint</c> method called at time <paramref name="signalAt"/>.
@@ -42,7 +53,7 @@ namespace BackgroundResourceProcessing.Addons
             if (signalAt == double.PositiveInfinity)
                 return;
 
-            Instance.queue.Enqueue(module, signalAt);
+            Instance.AddCallback(module, signalAt);
         }
 
         /// <summary>
@@ -54,8 +65,31 @@ namespace BackgroundResourceProcessing.Addons
             if (Instance == null)
                 return;
 
-            Instance.queue.Remove(module, out var _, out var _);
+            Instance.RemoveCallbacks(module);
         }
+        #endregion
+
+        #region Internal API
+        private void AddCallback(BackgroundResourceProcessor module, double signalAt)
+        {
+            queue.Enqueue(module, signalAt);
+            enabled = true;
+        }
+
+        private void RemoveCallbacks(BackgroundResourceProcessor module)
+        {
+            queue.Remove(module, out var _, out var _, comparer);
+
+            if (queue.IsEmpty)
+                Disable();
+        }
+
+        private void Disable()
+        {
+            if (!mustBeEnabled)
+                enabled = false;
+        }
+        #endregion
 
         void Awake()
         {
@@ -69,13 +103,8 @@ namespace BackgroundResourceProcessing.Addons
 
         void Start()
         {
-            // There is no way to specify that an addon should be loaded in all
-            // non-editor scenes so we just destroy it on the first frame after
-            // loading the editor.
-            if (HighLogic.LoadedSceneIsEditor)
-                GameObject.Destroy(this);
-
-            GameEvents.onVesselSOIChanged.Add(OnVesselSOIChanged);
+            GameEvents.onSceneConfirmExit.Add(OnSceneConfirmExit);
+            mustBeEnabled = false;
         }
 
         void OnDestroy()
@@ -85,7 +114,7 @@ namespace BackgroundResourceProcessing.Addons
             else
                 LogUtil.Error("Instance set to another instance of EventDispatcher in OnDestroy");
 
-            GameEvents.onVesselSOIChanged.Remove(OnVesselSOIChanged);
+            GameEvents.onSceneConfirmExit.Remove(OnSceneConfirmExit);
         }
 
         void FixedUpdate()
@@ -102,21 +131,30 @@ namespace BackgroundResourceProcessing.Addons
                 queue.Dequeue();
                 module.OnChangepoint(changepoint);
             }
+
+            // If we have no work to do
+            if (queue.IsEmpty)
+                Disable();
         }
 
-        private void OnVesselSOIChanged(GameEvents.HostedFromToAction<Vessel, CelestialBody> evt)
+        void OnSceneConfirmExit(GameScenes _)
         {
-            var vessel = evt.host;
+            enabled = true;
+            mustBeEnabled = true;
+        }
 
-            // We don't need to do anything for loaded vessels.
-            if (vessel.loaded)
-                return;
+        class ReferenceEqualityComparer<T>() : IEqualityComparer<T>
+            where T : class
+        {
+            public bool Equals(T x, T y)
+            {
+                return ReferenceEquals(x, y);
+            }
 
-            var module = vessel.FindVesselModuleImplementing<BackgroundResourceProcessor>();
-            if (module == null)
-                return;
-
-            module.OnVesselSOIChanged(evt);
+            public int GetHashCode(T obj)
+            {
+                return obj.GetHashCode();
+            }
         }
     }
 }

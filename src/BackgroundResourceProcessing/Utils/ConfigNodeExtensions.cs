@@ -1,3 +1,5 @@
+#pragma warning disable CS0419 // Ambiguous reference in cref attribute
+
 namespace BackgroundResourceProcessing.Utils
 {
     internal static class ConfigNodeExtensions
@@ -6,9 +8,6 @@ namespace BackgroundResourceProcessing.Utils
         /// A variant on <see cref="ConfigNode.TryGetValue"/> that properly
         /// handles infinite values in the node text.
         /// </summary>
-        /// <param name="node"></param>
-        /// <param name="value"></param>
-        /// <returns></returns>
         public static bool TryGetDouble(this ConfigNode node, string name, ref double value)
         {
             string text = "";

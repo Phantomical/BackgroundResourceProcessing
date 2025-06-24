@@ -136,7 +136,7 @@ namespace BackgroundResourceProcessing.UI
 
             GUILayout.EndVertical();
 
-            /// Must be last or buttons won't work.
+            // Must be last or buttons won't work.
             GUI.DragWindow();
         }
 

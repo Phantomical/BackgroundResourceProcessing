@@ -246,7 +246,7 @@ namespace BackgroundResourceProcessing.Core
 
                     foreach (var resource in pull.set)
                     {
-                        var set = converter.pull.GetOrAdd(
+                        var set = converter.Pull.GetOrAdd(
                             resource.resourceName,
                             () => new(inventories.Count)
                         );
@@ -269,7 +269,7 @@ namespace BackgroundResourceProcessing.Core
 
                     foreach (var resource in push.set)
                     {
-                        var set = converter.push.GetOrAdd(
+                        var set = converter.Push.GetOrAdd(
                             resource.resourceName,
                             () => new(inventories.Count)
                         );
@@ -294,7 +294,7 @@ namespace BackgroundResourceProcessing.Core
 
                     foreach (var resource in attached.set)
                     {
-                        var set = converter.constraint.GetOrAdd(
+                        var set = converter.Constraint.GetOrAdd(
                             resource.resourceName,
                             () => new(inventories.Count)
                         );
@@ -346,7 +346,7 @@ namespace BackgroundResourceProcessing.Core
                     behaviour.sourcePart = part.name;
 
                     var index = converters.Count;
-                    var converter = new ResourceConverter(behaviour) { id = index };
+                    var converter = new ResourceConverter(behaviour);
                     converter.Refresh(state);
 
                     LogUtil.Debug(() =>
@@ -470,7 +470,7 @@ namespace BackgroundResourceProcessing.Core
                     inventoryIds.Add(inventory.Id, index);
                 }
 
-                var linked = pulling ? converter.pull : converter.push;
+                var linked = pulling ? converter.Pull : converter.Push;
                 var set = linked.GetOrAdd(res.resourceName, () => new(inventories.Count));
 
                 set.Add(index);
@@ -505,10 +505,9 @@ namespace BackgroundResourceProcessing.Core
         }
 
         /// <summary>
-        /// Update the amount of resource stored in each resource.
+        /// Update the amount of resource stored in each resource inventory.
         /// </summary>
-        /// <param name="currentTime"></param>
-        public void UpdateInventories(double currentTime)
+        public void UpdateState(double currentTime)
         {
             using var span = new TraceSpan("ResourceProcessor.UpdateInventories");
 
@@ -534,6 +533,11 @@ namespace BackgroundResourceProcessing.Core
                         inventory.amount = inventory.maxAmount;
                 }
             }
+
+            foreach (var converter in converters)
+                converter.activeTime += deltaT * converter.rate;
+
+            lastUpdate = currentTime;
         }
 
         /// <summary>
@@ -626,21 +630,23 @@ namespace BackgroundResourceProcessing.Core
         /// </remarks>
         internal void ValidateReferencedInventories()
         {
-            foreach (var converter in converters)
+            for (int i = 0; i < converters.Count; ++i)
             {
-                foreach (var pull in converter.pull.Values.SelectMany(vals => vals))
+                var converter = converters[i];
+
+                foreach (var pull in converter.Pull.Values.SelectMany(vals => vals))
                 {
                     if (pull >= inventories.Count || pull < 0)
                         throw new Exception(
-                            $"Converter with id {converter.id} has pull reference to nonexistant inventory {pull}"
+                            $"Converter with id {i} has pull reference to nonexistant inventory {pull}"
                         );
                 }
 
-                foreach (var push in converter.pull.Values.SelectMany(vals => vals))
+                foreach (var push in converter.Pull.Values.SelectMany(vals => vals))
                 {
                     if (push >= inventories.Count || push < 0)
                         throw new Exception(
-                            $"Converter with id {converter.id} has push reference to nonexistant inventory {push}"
+                            $"Converter with id {i} has push reference to nonexistant inventory {push}"
                         );
                 }
             }

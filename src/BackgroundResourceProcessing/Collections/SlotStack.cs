@@ -3,7 +3,7 @@ using System.Collections.Generic;
 namespace BackgroundResourceProcessing.Collections
 {
     /// <summary>
-    /// A wrapper around <see cref="Stack"/> which doesn't allocate unless it
+    /// A wrapper around <c>Stack</c> which doesn't allocate unless it
     /// needs to store more than 1 element.
     /// </summary>
     /// <typeparam name="T"></typeparam>

@@ -1,19 +1,38 @@
 using System;
+using System.Collections.ObjectModel;
 using BackgroundResourceProcessing.Addons;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Modules;
 
 namespace BackgroundResourceProcessing
 {
+    /// <summary>
+    /// This is the core vessel module that takes care of updating vessel
+    /// states in the background.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// If you want to inspect or otherwise interact with the background state
+    /// of the vessel then this module is where you should start.
+    /// </remarks>
     public sealed class BackgroundResourceProcessor : VesselModule
     {
-        private ResourceProcessor processor = new();
+        private readonly ResourceProcessor processor = new();
 
         /// <summary>
-        /// A vessel-scoped event that is fired just before the vessel state is
-        /// recorded.
+        /// This event is fired when a changepoint occurs.
         /// </summary>
-        public static EventVoid OnBeforeVesselRecord { get; } = new("onBeforeVesselRecord");
+        ///
+        /// <remarks>
+        /// Specifically, it is fired after rates are computed for inventories
+        /// but before the rates are used for the next changepoint. This gives
+        /// you freedom to adjust the amount of resources stored in any of the
+        /// inventories in the vessel.
+        /// </remarks>
+        public static readonly EventData<
+            BackgroundResourceProcessor,
+            ChangepointEvent
+        > onVesselChangepoint = new("onVesselChangepoint");
 
         /// <summary>
         /// Whether background processing is actively running on this module.
@@ -25,6 +44,71 @@ namespace BackgroundResourceProcessing
         /// </remarks>
         public bool BackgroundProcessingActive { get; private set; } = false;
 
+        // This is the actual API that is meant to be used by other code for
+        // interacting with this module.
+        #region Public API
+        /// <summary>
+        /// Get a read-only view of the available inventories.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// Note that you can still modify the inventories themselves. You just
+        /// cannot add or remove inventories from the set.
+        /// </remarks>
+        public ReadOnlyCollection<ResourceInventory> Inventories =>
+            processor.inventories.AsReadOnly();
+
+        /// <summary>
+        /// Get a read-only view of the available converters.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// Note that you can still modify the inventories themselves. You just
+        /// cannot add or remove inventories from the set.
+        /// </remarks>
+        public ReadOnlyCollection<Core.ResourceConverter> Converters =>
+            processor.converters.AsReadOnly();
+
+        /// <summary>
+        /// Get an inventory directly from its <c><see cref="InventoryId"/></c>.
+        /// </summary>
+        /// <returns>
+        /// The <c><see cref="ResourceInventory"/></c>, or <c>null</c> if there is
+        /// no resource inventory with the requested id.
+        /// </returns>
+        public ResourceInventory GetInventoryById(InventoryId id)
+        {
+            if (!processor.inventoryIds.TryGetValue(id, out var index))
+                return null;
+
+            return processor.inventories[index];
+        }
+
+        /// <summary>
+        /// Update the vessel's stored inventory state to reflect the current
+        /// point in time.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// This does nothing if the vessel is currently active. It is also not
+        /// necessary to call this during an <see cref="onVesselChangepoint"/>
+        /// callback, as it will already have been applied during the callback.
+        /// </remarks>
+        public void UpdateBackgroundState()
+        {
+            if (Vessel.loaded)
+                return;
+            if (!BackgroundProcessingActive)
+                return;
+            var now = Planetarium.GetUniversalTime();
+            if (processor.lastUpdate >= now)
+                return;
+
+            processor.UpdateState(now);
+        }
+        #endregion
+
+        #region Overrides & Event Handlers
         public override Activation GetActivation()
         {
             return Activation.LoadedOrUnloaded;
@@ -32,18 +116,14 @@ namespace BackgroundResourceProcessing
 
         public override bool ShouldBeActive()
         {
-            switch (HighLogic.LoadedScene)
+            return HighLogic.LoadedScene switch
             {
-                case GameScenes.SPACECENTER:
-                case GameScenes.TRACKSTATION:
-                case GameScenes.PSYSTEM:
-                case GameScenes.FLIGHT:
-                    break;
-                default:
-                    return false;
-            }
-
-            return true;
+                GameScenes.SPACECENTER
+                or GameScenes.TRACKSTATION
+                or GameScenes.PSYSTEM
+                or GameScenes.FLIGHT => true,
+                _ => false,
+            };
         }
 
         public override int GetOrder()
@@ -108,31 +188,22 @@ namespace BackgroundResourceProcessing
                 );
         }
 
-        private void LoadVessel()
+        protected override void OnSave(ConfigNode node)
         {
-            var currentTime = Planetarium.GetUniversalTime();
+            base.OnSave(node);
+            processor.Save(node);
 
-            processor.UpdateInventories(currentTime);
-            processor.ApplyInventories(Vessel);
-            processor.ClearVesselState();
-
-            NotifyOnVesselRestore();
-
-            BackgroundProcessingActive = false;
+            node.AddValue("BackgroundProcessingActive", BackgroundProcessingActive);
         }
 
-        private void SaveVessel()
+        protected override void OnLoad(ConfigNode node)
         {
-            var currentTime = Planetarium.GetUniversalTime();
-            var state = new VesselState() { CurrentTime = currentTime, Vessel = Vessel };
+            base.OnLoad(node);
+            processor.Load(node);
 
-            OnBeforeVesselRecord.Fire();
-            processor.RecordVesselState(vessel, currentTime);
-            processor.ForceUpdateBehaviours(state);
-            processor.ComputeRates();
-            processor.UpdateNextChangepoint(currentTime);
-
-            BackgroundProcessingActive = true;
+            bool active = false;
+            if (node.TryGetValue("BackgroundProcessingActive", ref active))
+                BackgroundProcessingActive = active;
         }
 
         internal void OnChangepoint(double changepoint)
@@ -147,7 +218,7 @@ namespace BackgroundResourceProcessing
 
             var state = new VesselState { CurrentTime = changepoint, Vessel = Vessel };
 
-            processor.UpdateInventories(changepoint);
+            processor.UpdateState(changepoint);
             processor.UpdateBehaviours(state);
             processor.ComputeRates();
             processor.UpdateNextChangepoint(changepoint);
@@ -187,6 +258,34 @@ namespace BackgroundResourceProcessing
 
             SaveVessel();
         }
+        #endregion
+
+        #region Implementation Details
+        private void LoadVessel()
+        {
+            var currentTime = Planetarium.GetUniversalTime();
+
+            processor.UpdateState(currentTime);
+            processor.ApplyInventories(Vessel);
+            processor.ClearVesselState();
+
+            NotifyOnVesselRestore();
+
+            BackgroundProcessingActive = false;
+        }
+
+        private void SaveVessel()
+        {
+            var currentTime = Planetarium.GetUniversalTime();
+            var state = new VesselState() { CurrentTime = currentTime, Vessel = Vessel };
+
+            processor.RecordVesselState(vessel, currentTime);
+            processor.ForceUpdateBehaviours(state);
+            processor.ComputeRates();
+            processor.UpdateNextChangepoint(currentTime);
+
+            BackgroundProcessingActive = true;
+        }
 
         private void RegisterCallbacks()
         {
@@ -198,28 +297,6 @@ namespace BackgroundResourceProcessing
         {
             if (vessel.loaded)
                 GameEvents.onGameStateSave.Remove(OnGameStateSave);
-        }
-
-        /// <summary>
-        /// Find all background processing modules and resources on this vessel
-        /// and update the module state accordingly.
-        /// </summary>
-        ///
-        /// <remarks>
-        /// The only reason this isn't private is so that the debug UI can use
-        /// it to prepare the module for dumping.
-        /// </remarks>
-        internal void DebugRecordVesselState()
-        {
-            OnBeforeVesselRecord.Fire();
-            processor.RecordVesselState(Vessel, Planetarium.GetUniversalTime());
-            processor.ComputeRates();
-            processor.UpdateNextChangepoint(Planetarium.GetUniversalTime());
-        }
-
-        internal void DebugClearVesselState()
-        {
-            processor.ClearVesselState();
         }
 
         private void NotifyOnVesselRestore()
@@ -246,23 +323,30 @@ namespace BackgroundResourceProcessing
                 }
             }
         }
+        #endregion
 
-        protected override void OnSave(ConfigNode node)
+        #region Internal API
+        /// <summary>
+        /// Find all background processing modules and resources on this vessel
+        /// and update the module state accordingly.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// The only reason this isn't private is so that the debug UI can use
+        /// it to prepare the module for dumping.
+        /// </remarks>
+        internal void DebugRecordVesselState()
         {
-            base.OnSave(node);
-            processor.Save(node);
-
-            node.AddValue("BackgroundProcessingActive", BackgroundProcessingActive);
+            processor.RecordVesselState(Vessel, Planetarium.GetUniversalTime());
+            processor.ComputeRates();
+            processor.UpdateNextChangepoint(Planetarium.GetUniversalTime());
         }
 
-        protected override void OnLoad(ConfigNode node)
+        internal void DebugClearVesselState()
         {
-            base.OnLoad(node);
-            processor.Load(node);
-
-            bool active = false;
-            if (node.TryGetValue("BackgroundProcessingActive", ref active))
-                BackgroundProcessingActive = active;
+            processor.ClearVesselState();
         }
+
+        #endregion
     }
 }

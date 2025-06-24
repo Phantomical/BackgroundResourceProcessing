@@ -192,7 +192,7 @@ namespace BackgroundResourceProcessing.Solver
         {
             ids = [id];
             converters = [converter];
-            weight = GetPriorityWeight(converter.behaviour.Priority);
+            weight = GetPriorityWeight(converter.Behaviour.Priority);
         }
 
         public static GraphConverter Build(int id, Core.ResourceConverter converter)
@@ -351,7 +351,7 @@ namespace BackgroundResourceProcessing.Solver
 
                 converters.Add(i, conv);
 
-                foreach (var (resourceName, inventories) in converter.pull)
+                foreach (var (resourceName, inventories) in converter.Pull)
                 {
                     if (!converter.inputs.ContainsKey(resourceName))
                         continue;
@@ -361,7 +361,7 @@ namespace BackgroundResourceProcessing.Solver
                         row[inventoryId] = true;
                 }
 
-                foreach (var (resourceName, inventories) in converter.push)
+                foreach (var (resourceName, inventories) in converter.Push)
                 {
                     if (!converter.outputs.ContainsKey(resourceName))
                         continue;
@@ -373,7 +373,7 @@ namespace BackgroundResourceProcessing.Solver
 
                 foreach (var resourceName in conv.constraints.Keys)
                 {
-                    if (!converter.constraint.TryGetValue(resourceName, out var constraint))
+                    if (!converter.Constraint.TryGetValue(resourceName, out var constraint))
                         continue;
 
                     var row = constraints.GetConverterEntry(i);
@@ -393,7 +393,7 @@ namespace BackgroundResourceProcessing.Solver
             {
                 double total = 0.0;
 
-                if (rconv.constraint.TryGetValue(resource, out var constraint))
+                if (rconv.Constraint.TryGetValue(resource, out var constraint))
                     foreach (var invId in constraint)
                         total += processor.inventories[invId].amount;
 

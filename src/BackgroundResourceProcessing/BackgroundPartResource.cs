@@ -72,7 +72,6 @@ namespace BackgroundResourceProcessing
         /// <summary>
         /// Update the inventory with the new resource amount.
         /// </summary>
-        /// <param name="amount"></param>
         public void UpdateStoredAmount(string resourceName, double amount);
     }
 

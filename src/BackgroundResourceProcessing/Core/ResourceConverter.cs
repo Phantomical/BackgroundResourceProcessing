@@ -7,29 +7,81 @@ using Smooth.Collections;
 
 namespace BackgroundResourceProcessing.Core
 {
+    /// <summary>
+    /// The concrete resource converter used by the background solver.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// This is how the
+    /// </remarks>
     public class ResourceConverter(ConverterBehaviour behaviour)
     {
-        public Dictionary<string, DynamicBitSet> push = [];
-        public Dictionary<string, DynamicBitSet> pull = [];
-        public Dictionary<string, DynamicBitSet> constraint = [];
+        /// <summary>
+        /// Bitsets indicating which inventories this converter pushes
+        /// resources to, for each resource.
+        /// </summary>
+        public Dictionary<string, DynamicBitSet> Push = [];
 
-        public ConverterBehaviour behaviour = behaviour;
+        /// <summary>
+        /// Bitsets indicating which inventories this converter pulls
+        /// resources from, for each resource.
+        /// </summary>
+        public Dictionary<string, DynamicBitSet> Pull = [];
 
+        /// <summary>
+        /// Bitsets indicating which inventories this converter uses to
+        /// determine whether it is resource-constrained, for each resource.
+        /// </summary>
+        public Dictionary<string, DynamicBitSet> Constraint = [];
+
+        /// <summary>
+        /// The behaviour that indicates how this converter actually behaves.
+        /// </summary>
+        public ConverterBehaviour Behaviour { get; private set; } = behaviour;
+
+        /// <summary>
+        /// The resource inputs returned from the behaviour.
+        /// </summary>
         public Dictionary<string, ResourceRatio> inputs = [];
+
+        /// <summary>
+        /// The resource outputs returned from the behaviour.
+        /// </summary>
         public Dictionary<string, ResourceRatio> outputs = [];
+
+        /// <summary>
+        /// The resource requirements returned from the behaviour.
+        /// </summary>
         public Dictionary<string, ResourceConstraint> required = [];
 
         /// <summary>
-        /// A unique ID used to uniquely identify a converter in tests.
+        /// The time at which the behaviour has said that its behaviour might
+        /// change next.
         /// </summary>
-        public int id = -1;
         public double nextChangepoint = double.PositiveInfinity;
+
+        /// <summary>
+        /// The current rate at which this converter is running. This will
+        /// always be a number in the range <c>[0, 1]</c>.
+        /// </summary>
         public double rate = 0.0;
+
+        /// <summary>
+        /// The total amount of time that this converter has been active,
+        /// taking into account the activation rate.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// This isn't actually used for anything by background resource
+        /// processing. Rather, it is provided for use by other users of the
+        /// API.
+        /// </remarks>
+        public double activeTime = 0.0;
 
         public void Refresh(VesselState state)
         {
-            var resources = behaviour.GetResources(state);
-            nextChangepoint = behaviour.GetNextChangepoint(state);
+            var resources = Behaviour.GetResources(state);
+            nextChangepoint = Behaviour.GetNextChangepoint(state);
 
             inputs.Clear();
             outputs.Clear();
@@ -46,7 +98,6 @@ namespace BackgroundResourceProcessing.Core
         public void Load(ConfigNode node)
         {
             node.TryGetDouble("nextChangepoint", ref nextChangepoint);
-            node.TryGetValue("id", ref id);
             node.TryGetValue("rate", ref rate);
 
             foreach (var inner in node.GetNodes("PUSH_INVENTORIES"))
@@ -55,7 +106,7 @@ namespace BackgroundResourceProcessing.Core
                 if (!inner.TryGetValue("resourceName", ref resourceName))
                     continue;
 
-                push.Add(resourceName, LoadBitSet(inner));
+                Push.Add(resourceName, LoadBitSet(inner));
             }
 
             foreach (var inner in node.GetNodes("PULL_INVENTORIES"))
@@ -64,7 +115,7 @@ namespace BackgroundResourceProcessing.Core
                 if (!inner.TryGetValue("resourceName", ref resourceName))
                     continue;
 
-                pull.Add(resourceName, LoadBitSet(inner));
+                Pull.Add(resourceName, LoadBitSet(inner));
             }
 
             foreach (var inner in node.GetNodes("CONSTRAINT_INVENTORIES"))
@@ -73,12 +124,12 @@ namespace BackgroundResourceProcessing.Core
                 if (!inner.TryGetValue("resourceName", ref resourceName))
                     continue;
 
-                constraint.Add(resourceName, LoadBitSet(inner));
+                Constraint.Add(resourceName, LoadBitSet(inner));
             }
 
             var bNode = node.GetNode("BEHAVIOUR");
             if (bNode != null)
-                behaviour = ConverterBehaviour.LoadStatic(bNode);
+                Behaviour = ConverterBehaviour.LoadStatic(bNode);
 
             outputs.Clear();
             inputs.Clear();
@@ -110,7 +161,7 @@ namespace BackgroundResourceProcessing.Core
 
                 if (!inventoryIds.TryGetValue(id, out var index))
                     continue;
-                var set = push.GetOrAdd(id.resourceName, () => new(inventoryIds.Count));
+                var set = Push.GetOrAdd(id.resourceName, () => new(inventoryIds.Count));
                 set.Add(index);
             }
 
@@ -122,7 +173,7 @@ namespace BackgroundResourceProcessing.Core
                 if (!inventoryIds.TryGetValue(id, out var index))
                     continue;
 
-                var set = pull.GetOrAdd(id.resourceName, () => new(inventoryIds.Count));
+                var set = Pull.GetOrAdd(id.resourceName, () => new(inventoryIds.Count));
                 set.Add(index);
             }
         }
@@ -130,31 +181,30 @@ namespace BackgroundResourceProcessing.Core
         public void Save(ConfigNode node)
         {
             node.AddValue("nextChangepoint", nextChangepoint);
-            node.AddValue("id", id);
             node.AddValue("rate", rate);
 
-            foreach (var (resourceName, set) in push)
+            foreach (var (resourceName, set) in Push)
             {
                 var inner = node.AddNode("PUSH_INVENTORIES");
                 inner.AddValue("resourceName", resourceName);
                 SaveBitSet(inner, set);
             }
 
-            foreach (var (resourceName, set) in pull)
+            foreach (var (resourceName, set) in Pull)
             {
                 var inner = node.AddNode("PULL_INVENTORIES");
                 inner.AddValue("resourceName", resourceName);
                 SaveBitSet(inner, set);
             }
 
-            foreach (var (resourceName, set) in pull)
+            foreach (var (resourceName, set) in Pull)
             {
                 var inner = node.AddNode("CONSTRAINT_INVENTORIES");
                 inner.AddValue("resourceName", resourceName);
                 SaveBitSet(inner, set);
             }
 
-            behaviour.Save(node.AddNode("BEHAVIOUR"));
+            Behaviour.Save(node.AddNode("BEHAVIOUR"));
             ConfigUtil.SaveOutputResources(node, outputs.Select(output => output.Value));
             ConfigUtil.SaveInputResources(node, inputs.Select(input => input.Value));
             ConfigUtil.SaveRequiredResources(node, required.Select(required => required.Value));

@@ -2,10 +2,25 @@ using BackgroundResourceProcessing.Utils;
 
 namespace BackgroundResourceProcessing.Core
 {
+    /// <summary>
+    /// An ID that uniquely identifies where a resource inventory came from.
+    /// </summary>
     public struct InventoryId(uint partId, string resourceName, uint? moduleId = null)
     {
+        /// <summary>
+        /// The persistent ID of the part this inventory came from.
+        /// </summary>
         public uint partId = partId;
+
+        /// <summary>
+        /// If this inventory is actually from a <see cref="IBackgroundPartResource"/>
+        /// then this is the persistent module ID of the relevant module.
+        /// </summary>
         public uint? moduleId = moduleId;
+
+        /// <summary>
+        /// The name of the resource stored in this inventory.
+        /// </summary>
         public string resourceName = resourceName;
 
         public InventoryId(PartResource resource, uint? moduleId = null)
@@ -68,8 +83,13 @@ namespace BackgroundResourceProcessing.Core
     }
 
     /// <summary>
-    /// A modelled resource inventory within a part.
+    /// A resource inventory within a part.
     /// </summary>
+    ///
+    /// <remarks>
+    /// This all the state that is known by <see cref="BackgroundResourceProcessor"/>
+    /// about any individual resource inventory.
+    /// </remarks>
     public class ResourceInventory
     {
         /// <summary>
@@ -106,7 +126,7 @@ namespace BackgroundResourceProcessing.Core
         public double rate = 0.0;
 
         /// <summary>
-        /// The <see cref="amount"> value when this resource inventory was
+        /// The <see cref="amount" /> value when this resource inventory was
         /// recorded.
         /// </summary>
         ///
@@ -116,7 +136,14 @@ namespace BackgroundResourceProcessing.Core
         /// </remarks>
         public double originalAmount;
 
+        /// <summary>
+        /// Is this inventory full?
+        /// </summary>
         public bool Full => maxAmount - amount < ResourceProcessor.ResourceEpsilon;
+
+        /// <summary>
+        /// Is this inventory empty?
+        /// </summary>
         public bool Empty => amount < ResourceProcessor.ResourceEpsilon;
 
         /// <summary>

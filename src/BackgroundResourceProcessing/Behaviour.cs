@@ -37,9 +37,8 @@ namespace BackgroundResourceProcessing
     /// <remarks>
     /// <para>
     ///   This attribute marks a class that can be deserialized as a
-    ///   <see cref="BaseBehaviour"/>. It is used by
-    ///   <see cref="Registrar.RegisterAllBehaviours"/> to
-    ///   discover behaviour classes in an assembly.
+    ///   <see cref="ConverterBehaviour"/>. It is used to customize the <c>name</c>
+    ///   field in the serialized representation.
     /// </para>
     ///
     /// <para>
