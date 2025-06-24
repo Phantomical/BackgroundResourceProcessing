@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using BackgroundResourceProcessing.Solver.Graph;
 using BackgroundResourceProcessing.Utils;
 
 #pragma warning disable CS0660 // Type defines operator == or operator != but does not override Object.Equals(object o)

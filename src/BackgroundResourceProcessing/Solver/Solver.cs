@@ -3,17 +3,26 @@ using System.Collections.Generic;
 using System.Linq;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
-using BackgroundResourceProcessing.Solver.Graph;
 using BackgroundResourceProcessing.Tracing;
 
 namespace BackgroundResourceProcessing.Solver
 {
+    internal struct SolverSolution
+    {
+        public double[] inventoryRates;
+        public double[] converterRates;
+    }
+
     internal class Solver
     {
-        public IntMap<double> ComputeInventoryRates(ResourceProcessor processor)
+        public SolverSolution ComputeInventoryRates(ResourceProcessor processor)
         {
             using var span = new TraceSpan("ResourceProcessor.ComputeInventoryRates");
             var graph = new ResourceGraph(processor);
+
+            var summaries = new InventorySummary[processor.inventories.Count];
+            for (int i = 0; i < summaries.Length; ++i)
+                summaries[i] = new(processor.inventories[i]);
 
             // Pre-processing: We can make final problem smaller (and thus
             // cheaper to solve) by combining together converters and
@@ -46,13 +55,13 @@ namespace BackgroundResourceProcessing.Solver
             // outputs with dumpExcess = true
             IntMap<LinearEquation> dRates = new(inventoryCount);
 
-            // Total resource rate by resource name across the vessel.
-            Dictionary<string, LinearEquation> totals = [];
+            // Scratch space used for building constraint totals.
+            Dictionary<string, LinearEquation> constraintEqs = [];
 
             List<int> connected = [];
 
             // The object function that we are optimizing.
-            LinearEquation func = new();
+            LinearEquation func = [];
 
             foreach (var (converterId, converter) in graph.converters)
             {
@@ -67,9 +76,6 @@ namespace BackgroundResourceProcessing.Solver
                 foreach (var (resource, input) in converter.inputs)
                 {
                     var rate = input.rate * alpha;
-
-                    LinearEquation total = totals.GetOrAdd(resource, () => new());
-                    total.Sub(rate);
 
                     connected.Clear();
 
@@ -129,9 +135,6 @@ namespace BackgroundResourceProcessing.Solver
                 foreach (var (resource, output) in converter.outputs)
                 {
                     var rate = output.rate * alpha;
-
-                    LinearEquation total = totals.GetOrAdd(resource, () => new());
-                    total.Add(rate);
 
                     connected.Clear();
 
@@ -210,18 +213,31 @@ namespace BackgroundResourceProcessing.Solver
                 // * total >= 0
                 //
                 // i.e. either the converter must be disabled or the net
-                // resource production of the constraining resource msut be
+                // resource production of the constraining resource must be
                 // positive.
                 //
-                // Note that we support both upper and lower bound constraints,
-                // so the condition can vary.
+                // Note that converters can have flow modes associated with
+                // their constraints so we need to build up equations for the
+                // relevant constraints.
+
+                constraintEqs.Clear();
+                foreach (var inventoryId in graph.constraints.GetConverterEntry(converterId))
+                {
+                    var inventory = graph.inventories[inventoryId];
+                    if (!converter.constraints.ContainsKey(inventory.resourceName))
+                        continue;
+                    if (!iRates.TryGetValue(inventoryId, out var irate))
+                        continue;
+
+                    constraintEqs[inventory.resourceName] += irate;
+                }
 
                 foreach (var (resource, constraint) in converter.constraints)
                 {
                     // If the constrained resource does not have a total rate
                     // then its rate is 0 and we can skip emitting the constraint
                     // since it will always be true.
-                    if (!totals.TryGetValue(resource, out var total))
+                    if (!constraintEqs.TryGetValue(resource, out var total))
                         continue;
 
                     switch (constraint)
@@ -280,7 +296,7 @@ namespace BackgroundResourceProcessing.Solver
 
             var soln = problem.Maximize(func);
 
-            IntMap<double> inventoryRates = new(inventoryCount);
+            double[] inventoryRates = new double[inventoryCount];
             foreach (var (invId, iRate) in iRates)
             {
                 double rate = 0.0;
@@ -313,10 +329,34 @@ namespace BackgroundResourceProcessing.Solver
                 if (Math.Abs(rate) < 1e-6 && Math.Abs(rate) / Math.Sqrt(norm) < 1e-6)
                     rate = 0.0;
 
-                inventoryRates[invId] = rate;
+                // The array defaults to 0, so no need to actually do the work
+                // to set things if the rate is always 0.
+                if (rate == 0.0)
+                    continue;
+
+                var inventory = graph.inventories[invId];
+                var total = rate < 0.0 ? inventory.amount : inventory.maxAmount - inventory.amount;
+                foreach (var realId in inventory.ids)
+                {
+                    var summary = summaries[realId];
+                    double frac =
+                        (rate < 0.0 ? summary.amount : summary.maxAmount - summary.amount) / total;
+
+                    inventoryRates[realId] = rate * frac;
+                }
             }
 
-            return graph.ExpandInventoryRates(inventoryRates, processor);
+            double[] converterRates = new double[converterMap.Capacity];
+            foreach (var (convId, varId) in converterMap)
+                converterRates[convId] = soln[rates[varId]];
+
+            return new() { inventoryRates = inventoryRates, converterRates = converterRates };
+        }
+
+        private struct InventorySummary(ResourceInventory inventory)
+        {
+            public double amount = inventory.amount;
+            public double maxAmount = inventory.maxAmount;
         }
     }
 }

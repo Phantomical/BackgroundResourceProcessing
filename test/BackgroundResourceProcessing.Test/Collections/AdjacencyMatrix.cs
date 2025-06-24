@@ -1,5 +1,5 @@
 using BackgroundResourceProcessing.Collections;
-using BackgroundResourceProcessing.Solver.Graph;
+using BackgroundResourceProcessing.Solver;
 using BackgroundResourceProcessing.Test;
 
 namespace BackgroundResourceProcessing.Text.Collections

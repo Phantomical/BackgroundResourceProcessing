@@ -11,6 +11,7 @@ namespace BackgroundResourceProcessing.Core
     {
         public Dictionary<string, DynamicBitSet> push = [];
         public Dictionary<string, DynamicBitSet> pull = [];
+        public Dictionary<string, DynamicBitSet> constraint = [];
 
         public ConverterBehaviour behaviour = behaviour;
 
@@ -23,6 +24,7 @@ namespace BackgroundResourceProcessing.Core
         /// </summary>
         public int id = -1;
         public double nextChangepoint = double.PositiveInfinity;
+        public double rate = 0.0;
 
         public void Refresh(VesselState state)
         {
@@ -45,6 +47,7 @@ namespace BackgroundResourceProcessing.Core
         {
             node.TryGetDouble("nextChangepoint", ref nextChangepoint);
             node.TryGetValue("id", ref id);
+            node.TryGetValue("rate", ref rate);
 
             foreach (var inner in node.GetNodes("PUSH_INVENTORIES"))
             {
@@ -62,6 +65,15 @@ namespace BackgroundResourceProcessing.Core
                     continue;
 
                 pull.Add(resourceName, LoadBitSet(inner));
+            }
+
+            foreach (var inner in node.GetNodes("CONSTRAINT_INVENTORIES"))
+            {
+                string resourceName = null;
+                if (!inner.TryGetValue("resourceName", ref resourceName))
+                    continue;
+
+                constraint.Add(resourceName, LoadBitSet(inner));
             }
 
             var bNode = node.GetNode("BEHAVIOUR");
@@ -119,6 +131,7 @@ namespace BackgroundResourceProcessing.Core
         {
             node.AddValue("nextChangepoint", nextChangepoint);
             node.AddValue("id", id);
+            node.AddValue("rate", rate);
 
             foreach (var (resourceName, set) in push)
             {
@@ -130,6 +143,13 @@ namespace BackgroundResourceProcessing.Core
             foreach (var (resourceName, set) in pull)
             {
                 var inner = node.AddNode("PULL_INVENTORIES");
+                inner.AddValue("resourceName", resourceName);
+                SaveBitSet(inner, set);
+            }
+
+            foreach (var (resourceName, set) in pull)
+            {
+                var inner = node.AddNode("CONSTRAINT_INVENTORIES");
                 inner.AddValue("resourceName", resourceName);
                 SaveBitSet(inner, set);
             }

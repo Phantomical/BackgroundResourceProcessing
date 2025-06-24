@@ -235,10 +235,16 @@ namespace BackgroundResourceProcessing
         /// </summary>
         public Constraint Constraint = Constraint.AT_LEAST;
 
+        /// <summary>
+        /// The flow mode to use when computing inventory resource constraints.
+        /// </summary>
+        public ResourceFlowMode FlowMode = ResourceFlowMode.ALL_VESSEL;
+
         public void Load(ConfigNode node)
         {
             node.TryGetValue("ResourceName", ref ResourceName);
             node.TryGetEnum("Constraint", ref Constraint, Constraint.AT_LEAST);
+            node.TryGetEnum("FlowMode", ref FlowMode, ResourceFlowMode.ALL_VESSEL);
 
             if (!node.TryGetValue("Amount", ref Amount))
             {
@@ -256,6 +262,7 @@ namespace BackgroundResourceProcessing
             node.AddValue("ResourceName", ResourceName);
             node.AddValue("Amount", Amount);
             node.AddValue("Constraint", Constraint);
+            node.AddValue("FlowMode", FlowMode);
         }
     }
 

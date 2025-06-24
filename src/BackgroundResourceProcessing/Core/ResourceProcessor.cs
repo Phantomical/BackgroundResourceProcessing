@@ -99,26 +99,24 @@ namespace BackgroundResourceProcessing.Core
             try
             {
                 var solver = new Solver.Solver();
-                var rates = solver.ComputeInventoryRates(this);
+                var soln = solver.ComputeInventoryRates(this);
 
                 foreach (var inventory in inventories)
                     inventory.rate = 0.0;
+                foreach (var converter in converters)
+                    converter.rate = 0.0;
 
-                foreach (var (index, rate) in rates)
-                {
-                    var inventory = inventories[index];
-
-                    // Floating point errors can result in a non-zero (but extremely small)
-                    // rate even when it should mathematically be 0. To avoid that being an
-                    // issue we just truncate any sufficiently small rate to 0.
-                    if (Math.Abs(rate) >= 1e-9)
-                        inventory.rate = rate;
-                }
+                for (int i = 0; i < inventories.Count; ++i)
+                    inventories[i].rate = soln.inventoryRates[i];
+                for (int i = 0; i < converters.Count; ++i)
+                    converters[i].rate = soln.converterRates[i];
             }
             catch (Exception e)
             {
                 foreach (var inventory in inventories)
                     inventory.rate = 0.0;
+                foreach (var converter in converters)
+                    converter.rate = 0.0;
 
                 DumpCrashReport(e);
             }
@@ -307,7 +305,7 @@ namespace BackgroundResourceProcessing.Core
                 var converter = converters[i];
                 var part = converterParts[i];
 
-                foreach (var (_, ratio) in converter.inputs)
+                foreach (var ratio in converter.inputs.Values)
                 {
                     var pull = GetConnectedResources(
                         vessel,
@@ -330,7 +328,7 @@ namespace BackgroundResourceProcessing.Core
                     }
                 }
 
-                foreach (var (_, ratio) in converter.outputs)
+                foreach (var ratio in converter.outputs.Values)
                 {
                     var push = GetConnectedResources(
                         vessel,
@@ -343,6 +341,31 @@ namespace BackgroundResourceProcessing.Core
                     foreach (var resource in push.set)
                     {
                         var set = converter.push.GetOrAdd(
+                            resource.resourceName,
+                            () => new(inventories.Count)
+                        );
+
+                        var id = new InventoryId(resource);
+                        var index = inventoryIds[id];
+                        set[index] = true;
+                    }
+                }
+
+                foreach (var req in converter.required.Values)
+                {
+                    // Treat constraints as if they are pulling resources when
+                    // determining which resources they are attached to.
+                    var attached = GetConnectedResources(
+                        vessel,
+                        part,
+                        req.ResourceName,
+                        req.FlowMode,
+                        true
+                    );
+
+                    foreach (var resource in attached.set)
+                    {
+                        var set = converter.constraint.GetOrAdd(
                             resource.resourceName,
                             () => new(inventories.Count)
                         );

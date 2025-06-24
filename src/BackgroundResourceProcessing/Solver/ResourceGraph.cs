@@ -2,15 +2,12 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
-using UnityEngine.UI;
 
-namespace BackgroundResourceProcessing.Solver.Graph
+namespace BackgroundResourceProcessing.Solver
 {
     public class InvalidMergeException(string message) : Exception(message) { }
 
@@ -93,12 +90,17 @@ namespace BackgroundResourceProcessing.Solver.Graph
         public InventoryState state;
         public string resourceName;
 
+        public double amount;
+        public double maxAmount;
+
         public HashSet<int> ids;
 
         public GraphInventory(ResourceInventory inventory, int id)
         {
             resourceName = inventory.resourceName;
             ids = [id];
+            amount = inventory.amount;
+            maxAmount = inventory.maxAmount;
 
             state = InventoryState.Unconstrained;
             if (inventory.Full)
@@ -115,6 +117,8 @@ namespace BackgroundResourceProcessing.Solver.Graph
                 );
 
             state &= other.state;
+            amount += other.amount;
+            maxAmount += other.maxAmount;
             ids.UnionWith(other.ids);
         }
 
@@ -191,42 +195,11 @@ namespace BackgroundResourceProcessing.Solver.Graph
             weight = GetPriorityWeight(converter.behaviour.Priority);
         }
 
-        public static GraphConverter Build(
-            int id,
-            Core.ResourceConverter converter,
-            Dictionary<string, double> totals
-        )
+        public static GraphConverter Build(int id, Core.ResourceConverter converter)
         {
             using var span = new TraceSpan("GraphConverter.Build");
 
             var conv = new GraphConverter(id, converter);
-
-            foreach (var (resource, required) in converter.required)
-            {
-                var total = totals.GetValueOr(resource, 0.0);
-                if (MathUtil.ApproxEqual(required.Amount, total, ResourceProcessor.ResourceEpsilon))
-                {
-                    conv.constraints.Add(resource, required.Constraint);
-                    continue;
-                }
-
-                switch (required.Constraint)
-                {
-                    case Constraint.AT_LEAST:
-                        if (required.Amount > total)
-                            return null;
-                        break;
-                    case Constraint.AT_MOST:
-                        if (required.Amount < total)
-                            return null;
-                        break;
-                    default:
-                        LogUtil.Warn(
-                            $"Got unexpected constraint {required.Constraint} on resource {required.ResourceName}. This converter will be ignored."
-                        );
-                        return null;
-                }
-            }
 
             foreach (var (resource, input) in converter.inputs)
                 conv.inputs.Add(resource, new Input(input.Ratio));
@@ -336,6 +309,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
         // - Y-axis is converter ID
         public AdjacencyMatrix inputs;
         public AdjacencyMatrix outputs;
+        public AdjacencyMatrix constraints;
 
         public UnionFind inventoryIds;
         public UnionFind converterIds;
@@ -353,26 +327,26 @@ namespace BackgroundResourceProcessing.Solver.Graph
             inventories = new(nInventories);
             converters = new(nConverters);
 
-            Dictionary<string, double> totals = [];
             Dictionary<InventoryId, int> idMap = [];
 
             inputs = AdjacencyMatrixExt.Create(nInventories, nConverters);
             outputs = AdjacencyMatrixExt.Create(nInventories, nConverters);
+            constraints = AdjacencyMatrixExt.Create(nInventories, nConverters);
 
             for (int i = 0; i < nInventories; ++i)
             {
                 var inventory = processor.inventories[i];
                 inventories.Add(i, new(inventory, i));
-
-                if (!totals.TryAddExt(inventory.resourceName, inventory.amount))
-                    totals[inventory.resourceName] += inventory.amount;
             }
 
             for (int i = 0; i < nConverters; ++i)
             {
                 var converter = processor.converters[i];
-                var conv = GraphConverter.Build(i, converter, totals);
+                var conv = GraphConverter.Build(i, converter);
                 if (conv == null)
+                    continue;
+
+                if (!SatisfiesConstraints(processor, converter, conv))
                     continue;
 
                 converters.Add(i, conv);
@@ -396,7 +370,58 @@ namespace BackgroundResourceProcessing.Solver.Graph
                     foreach (var inventoryId in inventories)
                         row[inventoryId] = true;
                 }
+
+                foreach (var resourceName in conv.constraints.Keys)
+                {
+                    if (!converter.constraint.TryGetValue(resourceName, out var constraint))
+                        continue;
+
+                    var row = constraints.GetConverterEntry(i);
+                    foreach (var inventoryId in constraint)
+                        row[inventoryId] = true;
+                }
             }
+        }
+
+        private bool SatisfiesConstraints(
+            ResourceProcessor processor,
+            Core.ResourceConverter rconv,
+            GraphConverter gconv
+        )
+        {
+            foreach (var (resource, required) in rconv.required)
+            {
+                double total = 0.0;
+
+                if (rconv.constraint.TryGetValue(resource, out var constraint))
+                    foreach (var invId in constraint)
+                        total += processor.inventories[invId].amount;
+
+                if (MathUtil.ApproxEqual(required.Amount, total, ResourceProcessor.ResourceEpsilon))
+                {
+                    gconv.constraints.Add(resource, required.Constraint);
+                    continue;
+                }
+
+                switch (required.Constraint)
+                {
+                    case Constraint.AT_LEAST:
+                        if (total < required.Amount)
+                            return false;
+                        break;
+                    case Constraint.AT_MOST:
+                        if (total > required.Amount)
+                            return false;
+                        break;
+                    default:
+                        LogUtil.Warn(
+                            $"Got unexpected constraint {required.Constraint} on resource {required.ResourceName}. This converter will be ignored."
+                        );
+                        return false;
+                }
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -435,6 +460,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
                 // currently checking.
                 inputs.RemoveUnequalColumns(equal, inventoryId);
                 outputs.RemoveUnequalColumns(equal, inventoryId);
+                constraints.RemoveUnequalColumns(equal, inventoryId);
 
                 foreach (var otherId in equal)
                 {
@@ -456,11 +482,13 @@ namespace BackgroundResourceProcessing.Solver.Graph
             {
                 var iDst = inputs.GetRow(r).Bits;
                 var oDst = outputs.GetRow(r).Bits;
+                var cDst = constraints.GetRow(r).Bits;
 
                 for (int w = 0; w < src.Length; ++w)
                 {
                     iDst[w] &= ~src[w];
                     oDst[w] &= ~src[w];
+                    cDst[w] &= ~src[w];
                 }
             }
         }
@@ -491,6 +519,7 @@ namespace BackgroundResourceProcessing.Solver.Graph
             {
                 var inputEdges = inputs.GetConverterEntry(converterId);
                 var outputEdges = outputs.GetConverterEntry(converterId);
+                var constraintEdges = constraints.GetConverterEntry(converterId);
 
                 foreach (
                     var (otherId, otherConverter) in converters.GetEnumeratorAt(converterId + 1)
@@ -501,175 +530,24 @@ namespace BackgroundResourceProcessing.Solver.Graph
 
                     var otherInputs = inputs.GetConverterEntry(otherId);
                     var otherOutputs = outputs.GetConverterEntry(otherId);
+                    var otherConstraints = constraints.GetConverterEntry(otherId);
 
                     if (inputEdges != otherInputs)
                         continue;
                     if (outputEdges != otherOutputs)
                         continue;
+                    if (constraintEdges != otherConstraints)
+                        continue;
 
                     otherInputs.Zero();
                     otherOutputs.Zero();
+                    otherConstraints.Zero();
 
                     converter.Merge(otherConverter);
                     converterIds.Union(converterId, otherId);
                     converters.Remove(otherId);
                 }
             }
-        }
-
-        /// <summary>
-        /// Returns whether any of the converters in this resource graph have a
-        /// resource input our output that is being split among multiple inventories.
-        /// </summary>
-        ///
-        /// <remarks>
-        /// Generally, this is the case for most ships in KSP. However, usually
-        /// the flow rules are uniform enough this will no longer be true after
-        /// <see cref="MergeEquivalentInventories"/> is called.
-        /// </remarks>
-        public bool HasSplitResourceEdges()
-        {
-            using var _span = new TraceSpan("ResourceGraph.HasSplitResourceEdges");
-
-            HashSet<string> present = [];
-            foreach (var (converterId, converter) in converters)
-            {
-                present.Clear();
-                foreach (var inventoryId in inputs.GetConverterEntry(converterId))
-                {
-                    var inventory = inventories[inventoryIds.Find(inventoryId)];
-                    if (!present.Add(inventory.resourceName))
-                        return true;
-                }
-
-                present.Clear();
-                foreach (var inventoryId in outputs.GetConverterEntry(converterId))
-                {
-                    var inventory = inventories[inventoryIds.Find(inventoryId)];
-                    if (!present.Add(inventory.resourceName))
-                        return true;
-                }
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Compute the rates of change in individual inventories given the
-        /// provided activation rates for individual converters.
-        /// </summary>
-        /// <param name="rates"></param>
-        /// <returns></returns>
-        public IntMap<double> ComputeLogicalInventoryRates(
-            IEnumerable<KeyValuePair<int, double>> rates
-        )
-        {
-            // Rates for the logical inventories
-            IntMap<double> inventoryRates = new(inventoryIds.Count);
-
-            foreach (var (id1, rate) in rates)
-            {
-                var converterId = converterIds.Find(id1);
-                var converter = converters[converterId];
-
-                foreach (var id2 in inputs.GetConverterEntry(converterId))
-                {
-                    var inventoryId = inventoryIds.Find(id2);
-                    var inventory = inventories[inventoryId];
-
-                    var input = converter.inputs[inventory.resourceName];
-
-                    inventoryRates.TryAdd(inventoryId, 0.0);
-                    inventoryRates[inventoryId] -= input.rate * rate;
-                }
-
-                foreach (var id2 in outputs.GetConverterEntry(converterId))
-                {
-                    var inventoryId = inventoryIds.Find(id2);
-                    var inventory = inventories[inventoryId];
-
-                    var output = converter.outputs[inventory.resourceName];
-
-                    inventoryRates.TryAdd(inventoryId, 0.0);
-                    inventoryRates[inventoryId] += output.rate * rate;
-                }
-            }
-
-            return inventoryRates;
-        }
-
-        public IntMap<double> ExpandInventoryRates(
-            IEnumerable<KeyValuePair<int, double>> inventoryRates,
-            ResourceProcessor processor
-        )
-        {
-            IntMap<double> result = new(processor.inventories.Count);
-            List<int> available = [];
-            foreach (var (id, rate) in inventoryRates)
-            {
-                available.Clear();
-                var inventory = inventories[id];
-                var total = 0.0;
-
-                if (rate < 0.0)
-                {
-                    foreach (var subid in inventory.ids)
-                    {
-                        var real = processor.inventories[subid];
-                        if (real.Empty)
-                        {
-                            result.Add(subid, 0.0);
-                            continue;
-                        }
-
-                        available.Add(subid);
-                        total += real.amount;
-                    }
-
-                    foreach (var subid in available)
-                    {
-                        var real = processor.inventories[subid];
-                        result.Add(subid, rate * (real.amount / total));
-                    }
-                }
-                else if (rate > 0.0)
-                {
-                    foreach (var subid in inventory.ids)
-                    {
-                        var real = processor.inventories[subid];
-                        if (real.Full)
-                        {
-                            result.Add(subid, 0.0);
-                            continue;
-                        }
-
-                        available.Add(subid);
-                        total += real.maxAmount - real.amount;
-                    }
-
-                    foreach (var subid in available)
-                    {
-                        var real = processor.inventories[subid];
-                        result.Add(subid, rate * ((real.maxAmount - real.amount) / total));
-                    }
-                }
-                else
-                {
-                    foreach (var subid in inventory.ids)
-                        result.Add(subid, 0.0);
-                }
-            }
-
-            return result;
-        }
-
-        public IntMap<double> ComputeInventoryRates(
-            IEnumerable<KeyValuePair<int, double>> rates,
-            ResourceProcessor processor
-        )
-        {
-            var logicalRates = ComputeLogicalInventoryRates(rates);
-            return ExpandInventoryRates(logicalRates, processor);
         }
     }
 }

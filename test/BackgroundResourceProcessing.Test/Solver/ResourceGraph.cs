@@ -1,5 +1,4 @@
 using BackgroundResourceProcessing.Solver;
-using BackgroundResourceProcessing.Solver.Graph;
 
 namespace BackgroundResourceProcessing.Test.Solver
 {
@@ -67,8 +66,6 @@ namespace BackgroundResourceProcessing.Test.Solver
 
             graph.MergeEquivalentInventories();
             graph.MergeEquivalentConverters();
-
-            graph.HasSplitResourceEdges();
         }
 
         [TestMethod]
