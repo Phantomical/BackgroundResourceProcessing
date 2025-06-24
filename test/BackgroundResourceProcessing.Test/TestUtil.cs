@@ -127,7 +127,7 @@ namespace BackgroundResourceProcessing.Test
 #if DEBUG
             LogUtil.Sink = sink;
 #endif
-            Registrar.RegisterAllBehaviours(typeof(Registrar).Assembly);
+            BehaviourRegistry.RegisterAllBehaviours(typeof(BehaviourRegistry).Assembly);
         }
 
         [AssemblyInitialize()]

@@ -20,7 +20,7 @@ namespace BackgroundResourceProcessing.Addons
 
         void OnPartLoaderLoaded()
         {
-            Registrar.RegisterAllBehaviours();
+            BehaviourRegistry.RegisterAllBehaviours();
             GameEvents.OnPartLoaderLoaded.Remove(OnPartLoaderLoaded);
         }
     }

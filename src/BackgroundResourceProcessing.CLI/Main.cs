@@ -50,7 +50,7 @@ namespace BackgroundResourceProcessing.CLI
             else
                 LogUtil.Sink = new SilentLogSink();
 
-            Registrar.RegisterAllBehaviours(typeof(Registrar).Assembly);
+            BehaviourRegistry.RegisterAllBehaviours(typeof(BehaviourRegistry).Assembly);
         }
 
         public static ResourceProcessor LoadVessel(string path)
