@@ -154,13 +154,13 @@ namespace BackgroundResourceProcessing
 
         void OnDestroy()
         {
+            // Prevent a nullref exception during vesselmodule enumeration.
+            if (vessel == null)
+                return;
+
             if (BackgroundProcessingActive)
             {
                 EventDispatcher.UnregisterChangepointCallbacks(this);
-            }
-            else if (vessel.loaded)
-            {
-                // SaveVessel();
             }
 
             UnregisterCallbacks();
