@@ -58,7 +58,6 @@ namespace BackgroundResourceProcessing.Utils
             private Expression ParseAndExpression()
             {
                 Expression body = Expression.Constant(true);
-                var module = Expression.Parameter(typeof(PartModule), "module");
 
                 while (true)
                 {
@@ -76,7 +75,7 @@ namespace BackgroundResourceProcessing.Utils
                     break;
                 }
 
-                return Expression.Lambda<Func<PartModule, bool>>(body, module);
+                return body;
             }
 
             private Expression ParseBracedExpression()
@@ -140,14 +139,14 @@ namespace BackgroundResourceProcessing.Utils
 
                     case TokenType.True:
                         lexer.Advance();
-                        return Expression.Constant("true");
+                        return Expression.Constant("True");
 
                     case TokenType.False:
                         lexer.Advance();
-                        return Expression.Constant("false");
+                        return Expression.Constant("False");
 
                     case TokenType.TargetField:
-                        var field = Current.Span.ToString();
+                        var field = Current.Span.Slice(1).ToString();
                         lexer.Advance();
 
                         return InvokeFunc(module =>
@@ -157,17 +156,22 @@ namespace BackgroundResourceProcessing.Utils
                             if (field == "name")
                                 return type.Name;
 
-                            var info = type.GetField(field, BindingFlags.NonPublic);
+                            var info = type.GetField(
+                                field,
+                                BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance
+                            );
                             if (info == null)
                                 return null;
 
                             var value = info.GetValue(module);
-                            return value switch
+                            var ret = value switch
                             {
                                 null => null,
                                 string s => s,
                                 _ => value.ToString(),
                             };
+
+                            return ret;
                         });
 
                     default:
@@ -185,9 +189,9 @@ namespace BackgroundResourceProcessing.Utils
                 var copy = lexer;
                 var token = Current;
                 lexer.Advance();
-                if (token.Span == "==")
+                if (token.Span == "==".AsSpan())
                     return Comparison.Equals;
-                if (token.Span == "!=")
+                if (token.Span == "!=".AsSpan())
                     return Comparison.NotEquals;
 
                 lexer = copy;
@@ -214,17 +218,25 @@ namespace BackgroundResourceProcessing.Utils
             }
         }
 
-        private ref struct Lexer(string expr)
+        private ref struct Lexer
         {
-            public readonly ReadOnlySpan<char> original = expr;
-            ReadOnlySpan<char> span = expr;
+            public readonly ReadOnlySpan<char> original;
+            ReadOnlySpan<char> span;
 
             public Token current = default;
+
+            public Lexer(string expr)
+            {
+                original = expr;
+                span = expr;
+
+                Advance();
+            }
 
             public void Advance()
             {
                 DoAdvance();
-                current.Offset = CalculateOffset(current.Span);
+                current.Offset = CalculateOffset(current.Span.span);
             }
 
             private void DoAdvance()
@@ -233,7 +245,7 @@ namespace BackgroundResourceProcessing.Utils
 
                 if (span.IsEmpty)
                 {
-                    current = new() { Span = span, Type = TokenType.Eof };
+                    current = new(span, TokenType.Eof);
                     return;
                 }
 
@@ -244,22 +256,8 @@ namespace BackgroundResourceProcessing.Utils
                     || span.StartsWith("||")
                 )
                 {
-                    current = new() { Span = span.Slice(0, 2), Type = TokenType.Operator };
+                    current = new(span.Slice(0, 2), TokenType.Operator);
                     span = span.Slice(2);
-                    return;
-                }
-
-                if (span[0] == '(')
-                {
-                    current = new() { Span = span.Slice(0, 1), Type = TokenType.LParen };
-                    span = span.Slice(1);
-                    return;
-                }
-
-                if (span[0] == ')')
-                {
-                    current = new() { Span = span.Slice(0, 1), Type = TokenType.RParen };
-                    span = span.Slice(1);
                     return;
                 }
 
@@ -270,6 +268,16 @@ namespace BackgroundResourceProcessing.Utils
                     case '%':
                     case '?':
                         break;
+
+                    case '(':
+                        current = new(span.Slice(0, 1), TokenType.LParen);
+                        span = span.Slice(1);
+                        return;
+
+                    case ')':
+                        current = new(span.Slice(0, 1), TokenType.RParen);
+                        span = span.Slice(1);
+                        return;
 
                     default:
                         index = 0;
@@ -306,27 +314,27 @@ namespace BackgroundResourceProcessing.Utils
                     );
                 }
 
-                var token = span.Slice(0, index);
+                var token = new TokenSpan(span.Slice(0, index));
                 TokenType type;
 
-                if (current.Span == "null")
+                if (token == "null")
                     type = TokenType.Null;
-                else if (current.Span == "true")
+                else if (token.EqualsIgnoreCase("true"))
                     type = TokenType.True;
-                else if (current.Span == "false")
+                else if (token.EqualsIgnoreCase("false"))
                     type = TokenType.False;
-                else if (current.Span.StartsWith("@"))
+                else if (token.StartsWith("%"))
                     type = TokenType.TargetField;
-                else if (current.Span.StartsWith("%"))
+                else if (token.StartsWith("@"))
                     type = TokenType.ConfigField;
-                else if (current.Span.StartsWith("?"))
+                else if (token.StartsWith("?"))
                     type = TokenType.NullableConfigField;
                 else
                 {
                     throw RenderError($"Unexpected token `{token.ToString()}`", index);
                 }
 
-                current = new() { Span = token, Type = type };
+                current = new(token, type);
                 span = span.Slice(index);
             }
 
@@ -343,7 +351,7 @@ namespace BackgroundResourceProcessing.Utils
                         {
                             if (inner < start)
                                 return -1;
-                            return (int)(start - inner);
+                            return (int)(inner - start);
                         }
                     }
                 }
@@ -367,6 +375,64 @@ namespace BackgroundResourceProcessing.Utils
                 return new ModuleFilterException(
                     $"{message}\n | {original.ToString()}\n | {new string(' ', offset)}^"
                 );
+            }
+        }
+
+        private readonly ref struct TokenSpan(ReadOnlySpan<char> span)
+        {
+            public readonly ReadOnlySpan<char> span = span;
+
+            public static bool operator ==(TokenSpan span, string str) =>
+                MemoryExtensions.Equals(span.span, str, StringComparison.Ordinal);
+
+            public static bool operator ==(TokenSpan span, ReadOnlySpan<char> str) =>
+                MemoryExtensions.Equals(span.span, str, StringComparison.Ordinal);
+
+            public static bool operator ==(TokenSpan span, Span<char> str) =>
+                MemoryExtensions.Equals(span.span, str, StringComparison.Ordinal);
+
+            public static bool operator !=(TokenSpan span, string str) => !(span == str);
+
+            public static bool operator !=(TokenSpan span, ReadOnlySpan<char> str) =>
+                !(span == str);
+
+            public static bool operator !=(TokenSpan span, Span<char> str) => !(span == str);
+
+            public bool EqualsIgnoreCase(ReadOnlySpan<char> str) =>
+                MemoryExtensions.Equals(span, str, StringComparison.OrdinalIgnoreCase);
+
+            public TokenSpan Slice(int start)
+            {
+                return new(span.Slice(start));
+            }
+
+            public TokenSpan Slice(int start, int length)
+            {
+                return new(span.Slice(start, length));
+            }
+
+            public bool StartsWith(ReadOnlySpan<char> value)
+            {
+                return span.StartsWith(value);
+            }
+
+            public override string ToString()
+            {
+                return span.ToString();
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj switch
+                {
+                    string s => this == s,
+                    _ => false,
+                };
+            }
+
+            public override int GetHashCode()
+            {
+                throw new NotImplementedException();
             }
         }
 
@@ -410,11 +476,14 @@ namespace BackgroundResourceProcessing.Utils
             RParen,
         }
 
-        ref struct Token
+        ref struct Token(TokenSpan span, TokenType type)
         {
-            public ReadOnlySpan<char> Span;
-            public TokenType Type;
+            public TokenSpan Span = span;
+            public TokenType Type = type;
             public int Offset;
+
+            public Token(ReadOnlySpan<char> span, TokenType type)
+                : this(new TokenSpan(span), type) { }
 
             public override readonly string ToString()
             {
