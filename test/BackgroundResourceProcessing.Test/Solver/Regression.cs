@@ -13,5 +13,14 @@ namespace BackgroundResourceProcessing.Test.Solver
 
             solver.ComputeInventoryRates(processor);
         }
+
+        [TestMethod]
+        public void TestCrashBadVariableSelection()
+        {
+            var processor = TestUtil.LoadVessel("regression/crash-bad-var-selection.cfg");
+            var solver = new BackgroundResourceProcessing.Solver.Solver();
+
+            solver.ComputeInventoryRates(processor);
+        }
     }
 }

@@ -556,7 +556,7 @@ namespace BackgroundResourceProcessing.Solver
             {
                 var y = FindSetColumnValue(tableau, x);
                 if (y == -1)
-                    throw new Exception($"Selected column {x} was empty");
+                    continue;
 
                 values[inverse[x]] = tableau[tableau.Width - 1, y];
             }
@@ -582,20 +582,23 @@ namespace BackgroundResourceProcessing.Solver
 
         private static int FindSetColumnValue(Matrix tableau, int column)
         {
+            int row = -1;
+
             for (int i = 0; i < tableau.Height; ++i)
             {
                 var elem = tableau[column, i];
                 if (elem == 0.0)
                     continue;
-                if (elem == 1.0)
-                    return i;
+                if (elem != 1.0)
+                    return -1;
 
-                throw new Exception(
-                    $"Selected column {column} in the tableau contained an entry that was neither 0 nor 1"
-                );
+                if (row < 0)
+                    row = i;
+                else
+                    return -1;
             }
 
-            return -1;
+            return row;
         }
 
         private void CheckSolution(LinearSolution soln, double tol = 1e-6)
