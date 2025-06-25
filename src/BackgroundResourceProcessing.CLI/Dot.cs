@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using BackgroundResourceProcessing.Collections;
+using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Solver;
 using CommandLine;
 using DotNetGraph.Compilation;
@@ -128,17 +129,17 @@ namespace BackgroundResourceProcessing.CLI
             graph.CompileAsync(context).Wait();
         }
 
-        private static string InventoryStateIdent(InventoryState state)
+        private static string InventoryStateIdent(Solver.InventoryState state)
         {
             switch (state)
             {
-                case InventoryState.Unconstrained:
+                case Solver.InventoryState.Unconstrained:
                     return "U";
-                case InventoryState.Empty:
+                case Solver.InventoryState.Empty:
                     return "E";
-                case InventoryState.Full:
+                case Solver.InventoryState.Full:
                     return "F";
-                case InventoryState.Zero:
+                case Solver.InventoryState.Zero:
                     return "0";
                 default:
                     return "invalid";

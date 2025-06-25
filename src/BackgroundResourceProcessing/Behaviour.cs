@@ -135,6 +135,29 @@ namespace BackgroundResourceProcessing
             node.AddValue("Constraint", Constraint);
             node.AddValue("FlowMode", FlowMode);
         }
+
+        internal ResourceConstraint WithDefaultedFlowMode()
+        {
+            if (FlowMode != ResourceFlowMode.NULL)
+                return this;
+
+            int resourceId = ResourceName.GetHashCode();
+            var definition = PartResourceLibrary.Instance.GetDefinition(resourceId);
+
+            if (definition == null)
+            {
+                LogUtil.Error(
+                    $"Resource {ResourceName} had no resource definition in PartResourceLibrary."
+                );
+                FlowMode = ResourceFlowMode.ALL_VESSEL_BALANCE;
+            }
+            else
+            {
+                FlowMode = definition.resourceFlowMode;
+            }
+
+            return this;
+        }
     }
 
     public struct ConverterResources()

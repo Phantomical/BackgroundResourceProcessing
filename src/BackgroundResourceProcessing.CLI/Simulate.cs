@@ -64,7 +64,7 @@ namespace BackgroundResourceProcessing.CLI
                 if (currentTime == prev)
                     throw new Exception("Simulation failed to progress");
 
-                processor.UpdateState(currentTime);
+                processor.UpdateState(currentTime, false);
                 processor.lastUpdate = currentTime;
             }
 

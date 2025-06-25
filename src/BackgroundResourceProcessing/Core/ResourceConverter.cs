@@ -78,21 +78,21 @@ namespace BackgroundResourceProcessing.Core
         /// </remarks>
         public double activeTime = 0.0;
 
-        public void Refresh(VesselState state)
+        public bool Refresh(VesselState state)
         {
             var resources = Behaviour.GetResources(state);
             nextChangepoint = Behaviour.GetNextChangepoint(state);
 
-            inputs.Clear();
-            outputs.Clear();
-            required.Clear();
+            bool changed = false;
 
-            foreach (var input in resources.Inputs)
-                inputs.Add(input.ResourceName, input.WithDefaultedFlowMode());
-            foreach (var output in resources.Outputs)
-                outputs.Add(output.ResourceName, output.WithDefaultedFlowMode());
-            foreach (var req in resources.Requirements)
-                required.Add(req.ResourceName, req);
+            if (OverwriteRatios(ref inputs, resources.Inputs))
+                changed = true;
+            if (OverwriteRatios(ref outputs, resources.Outputs))
+                changed = true;
+            if (OverwriteConstraints(ref required, resources.Requirements))
+                changed = true;
+
+            return changed;
         }
 
         public void Load(ConfigNode node)
@@ -242,6 +242,34 @@ namespace BackgroundResourceProcessing.Core
         public override string ToString()
         {
             return $"{string.Join(",", inputs.Keys)} => {string.Join(",", outputs.Keys)}";
+        }
+
+        private static bool OverwriteRatios(
+            ref Dictionary<string, ResourceRatio> ratios,
+            List<ResourceRatio> inputs
+        )
+        {
+            var old = ratios;
+            ratios = new(inputs.Count);
+
+            foreach (var ratio in inputs)
+                ratios.Add(ratio.ResourceName, ratio);
+
+            return old == ratios;
+        }
+
+        private static bool OverwriteConstraints(
+            ref Dictionary<string, ResourceConstraint> ratios,
+            List<ResourceConstraint> inputs
+        )
+        {
+            var old = ratios;
+            ratios = new(inputs.Count);
+
+            foreach (var ratio in inputs)
+                ratios.Add(ratio.ResourceName, ratio);
+
+            return old == ratios;
         }
     }
 

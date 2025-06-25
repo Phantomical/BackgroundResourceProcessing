@@ -1,3 +1,4 @@
+using BackgroundResourceProcessing.Solver;
 using BackgroundResourceProcessing.Utils;
 
 namespace BackgroundResourceProcessing.Core
@@ -137,6 +138,17 @@ namespace BackgroundResourceProcessing.Core
         public double originalAmount;
 
         /// <summary>
+        /// A reference to the <c><see cref="ProtoPartResourceSnapshot"/></c>
+        /// that this inventory corresponds to.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// It is not guaranteed that this will actually be set in all conditions.
+        /// Notably, fake inventory resources will not have it set.
+        /// </remarks>
+        public ProtoPartResourceSnapshot Snapshot { get; internal set; } = null;
+
+        /// <summary>
         /// Is this inventory full?
         /// </summary>
         public bool Full => maxAmount - amount < ResourceProcessor.ResourceEpsilon;
@@ -216,6 +228,18 @@ namespace BackgroundResourceProcessing.Core
             node.TryGetDouble("maxAmount", ref maxAmount);
             node.TryGetValue("rate", ref rate);
             node.TryGetValue("originalAmount", ref originalAmount);
+        }
+
+        internal Solver.InventoryState GetInventoryState()
+        {
+            var state = Solver.InventoryState.Unconstrained;
+
+            if (Full)
+                state |= Solver.InventoryState.Full;
+            if (Empty)
+                state |= Solver.InventoryState.Empty;
+
+            return state;
         }
     }
 }

@@ -50,6 +50,12 @@ namespace BackgroundResourceProcessing.Core
         public double lastUpdate = 0.0;
         public double nextChangepoint = double.PositiveInfinity;
 
+        /// <summary>
+        /// Whether we have assigned <see cref="ProtoPartResourceSnapshot"/>s
+        /// to each inventory.
+        /// </summary>
+        private bool snapshotsDirty = true;
+
         public ResourceProcessor() { }
 
         public void Load(ConfigNode node)
@@ -485,17 +491,27 @@ namespace BackgroundResourceProcessing.Core
             nextChangepoint = double.PositiveInfinity;
         }
 
-        public void UpdateBehaviours(VesselState state)
+        /// <summary>
+        /// Update behaviours that have indicated their next changepoint has
+        /// passed.
+        /// </summary>
+        /// <param name="state"></param>
+        /// <returns>Whether there has been any actual update to converters</returns>
+        public bool UpdateBehaviours(VesselState state)
         {
             var currentTime = state.CurrentTime;
+            var changed = false;
 
             foreach (var converter in converters)
             {
                 if (converter.nextChangepoint > currentTime)
                     continue;
 
-                converter.Refresh(state);
+                if (converter.Refresh(state))
+                    changed = true;
             }
+
+            return changed;
         }
 
         public void ForceUpdateBehaviours(VesselState state)
@@ -507,13 +523,25 @@ namespace BackgroundResourceProcessing.Core
         /// <summary>
         /// Update the amount of resource stored in each resource inventory.
         /// </summary>
-        public void UpdateState(double currentTime)
+        ///
+        /// <returns><c>true</c> if this state is currently at a changepoint</returns>
+        public bool UpdateState(double currentTime, bool updateSnapshots)
         {
             using var span = new TraceSpan("ResourceProcessor.UpdateInventories");
 
+            var changepoint = false;
             var deltaT = currentTime - lastUpdate;
             foreach (var inventory in inventories)
             {
+                var oldState = inventory.GetInventoryState();
+                var snapshot = updateSnapshots ? inventory.Snapshot : null;
+
+                if (snapshot != null)
+                {
+                    inventory.amount = snapshot.amount;
+                    inventory.maxAmount = snapshot.maxAmount;
+                }
+
                 inventory.amount += inventory.rate * deltaT;
 
                 if (inventory.Full)
@@ -532,12 +560,45 @@ namespace BackgroundResourceProcessing.Core
                     else
                         inventory.amount = inventory.maxAmount;
                 }
+
+                if (snapshot != null)
+                {
+                    snapshot.amount = inventory.amount;
+                    inventory.originalAmount = inventory.amount;
+                }
+
+                if (oldState != inventory.GetInventoryState())
+                    changepoint = true;
             }
 
             foreach (var converter in converters)
                 converter.activeTime += deltaT * converter.rate;
 
             lastUpdate = currentTime;
+            return changepoint;
+        }
+
+        public void RecordProtoInventories(Vessel vessel)
+        {
+            if (!snapshotsDirty)
+                return;
+
+            foreach (var part in vessel.protoVessel.protoPartSnapshots)
+            {
+                var partId = part.persistentId;
+
+                foreach (var resource in part.resources)
+                {
+                    var id = new InventoryId(partId, resource.resourceName);
+                    if (!inventoryIds.TryGetValue(id, out var index))
+                        continue;
+                    var inventory = inventories[index];
+
+                    inventory.Snapshot = resource;
+                }
+            }
+
+            snapshotsDirty = false;
         }
 
         /// <summary>
@@ -545,6 +606,11 @@ namespace BackgroundResourceProcessing.Core
         /// this module.
         /// </summary>
         public void ApplyInventories(Vessel vessel)
+        {
+            ApplyRealInventories(vessel);
+        }
+
+        private void ApplyRealInventories(Vessel vessel)
         {
             Dictionary<uint, Part> parts = [];
             parts.AddAll(

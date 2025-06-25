@@ -104,7 +104,7 @@ namespace BackgroundResourceProcessing
             if (processor.lastUpdate >= now)
                 return;
 
-            processor.UpdateState(now);
+            processor.UpdateState(now, true);
         }
         #endregion
 
@@ -217,10 +217,15 @@ namespace BackgroundResourceProcessing
             );
 
             var state = new VesselState { CurrentTime = changepoint, Vessel = Vessel };
+            var recompute = false;
 
-            processor.UpdateState(changepoint);
-            processor.UpdateBehaviours(state);
-            processor.ComputeRates();
+            processor.RecordProtoInventories(vessel);
+            if (processor.UpdateState(changepoint, true))
+                recompute = true;
+            if (processor.UpdateBehaviours(state))
+                recompute = true;
+            if (recompute)
+                processor.ComputeRates();
             processor.UpdateNextChangepoint(changepoint);
 
             EventDispatcher.RegisterChangepointCallback(this, processor.nextChangepoint);
@@ -265,7 +270,7 @@ namespace BackgroundResourceProcessing
         {
             var currentTime = Planetarium.GetUniversalTime();
 
-            processor.UpdateState(currentTime);
+            processor.UpdateState(currentTime, false);
             processor.ApplyInventories(Vessel);
             processor.ClearVesselState();
 

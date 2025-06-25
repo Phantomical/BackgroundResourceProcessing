@@ -1,3 +1,4 @@
+using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Solver;
 
 namespace BackgroundResourceProcessing.Test.Solver
@@ -35,12 +36,12 @@ namespace BackgroundResourceProcessing.Test.Solver
 
             // Also all the resources involved should be unconstrained except
             // for BRPSpaceObjectMass
-            Assert.AreEqual(InventoryState.Unconstrained, graph.inventories[0].state); // EC
-            Assert.AreEqual(InventoryState.Unconstrained, graph.inventories[1].state); // Monoprop
-            Assert.AreEqual(InventoryState.Unconstrained, graph.inventories[4].state); // LF
-            Assert.AreEqual(InventoryState.Unconstrained, graph.inventories[5].state); // Ox
+            Assert.AreEqual(BackgroundResourceProcessing.Solver.InventoryState.Unconstrained, graph.inventories[0].state); // EC
+            Assert.AreEqual(BackgroundResourceProcessing.Solver.InventoryState.Unconstrained, graph.inventories[1].state); // Monoprop
+            Assert.AreEqual(BackgroundResourceProcessing.Solver.InventoryState.Unconstrained, graph.inventories[4].state); // LF
+            Assert.AreEqual(BackgroundResourceProcessing.Solver.InventoryState.Unconstrained, graph.inventories[5].state); // Ox
 
-            Assert.AreEqual(InventoryState.Full, graph.inventories[17].state); // Mass
+            Assert.AreEqual(BackgroundResourceProcessing.Solver.InventoryState.Full, graph.inventories[17].state); // Mass
         }
 
         [TestMethod]
@@ -55,7 +56,7 @@ namespace BackgroundResourceProcessing.Test.Solver
             // (one empty, one full, and one unconstrained) to get an unconstrained
             // merged inventory.
 
-            Assert.AreEqual(InventoryState.Unconstrained, graph.inventories[4].state);
+            Assert.AreEqual(BackgroundResourceProcessing.Solver.InventoryState.Unconstrained, graph.inventories[4].state);
         }
 
         [TestMethod]
