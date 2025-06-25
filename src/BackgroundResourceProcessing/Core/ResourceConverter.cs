@@ -253,7 +253,7 @@ namespace BackgroundResourceProcessing.Core
             ratios = new(inputs.Count);
 
             foreach (var ratio in inputs)
-                ratios.Add(ratio.ResourceName, ratio);
+                ratios.Add(ratio.ResourceName, ratio.WithDefaultedFlowMode());
 
             return old == ratios;
         }
@@ -267,7 +267,7 @@ namespace BackgroundResourceProcessing.Core
             ratios = new(inputs.Count);
 
             foreach (var ratio in inputs)
-                ratios.Add(ratio.ResourceName, ratio);
+                ratios.Add(ratio.ResourceName, ratio.WithDefaultedFlowMode());
 
             return old == ratios;
         }

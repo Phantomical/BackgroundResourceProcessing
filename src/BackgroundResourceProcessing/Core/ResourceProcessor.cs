@@ -799,7 +799,7 @@ namespace BackgroundResourceProcessing.Core
             var exportDir = Path.Combine(pluginDir, @"..\Crashes");
             var now = DateTime.Now;
             var outputName =
-                $"crash-{now.Year}-{now.Month:D2}-{now.Day:D2}-{now.Hour:D2}-{now.Minute:D2}-{now.Second:D2}.cfg";
+                $"crash-{now.Year}-{now.Month:D2}-{now.Day:D2}-{now.Hour:D2}-{now.Minute:D2}-{now.Second:D2}.cfg.crash";
             var outputPath = Path.Combine(exportDir, outputName);
 
             Directory.CreateDirectory(exportDir);

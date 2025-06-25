@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Tracing;
 
 namespace BackgroundResourceProcessing.Solver
@@ -9,7 +10,7 @@ namespace BackgroundResourceProcessing.Solver
         const double Epsilon = 1e-9;
         const uint MaxIterations = 1000;
 
-        internal static void SolveTableau(Matrix tableau)
+        internal static void SolveTableau(Matrix tableau, BitSet selected)
         {
             using var iterSpan = new TraceSpan("Simplex.SolveTableau");
 
@@ -25,6 +26,7 @@ namespace BackgroundResourceProcessing.Solver
 
                 Trace(() => $"Pivoting on column {col}, row {row}:\n{tableau}");
 
+                selected[col] = true;
                 tableau.InvScaleRow(row, tableau[col, row]);
                 for (int y = 0; y < tableau.Height; ++y)
                 {

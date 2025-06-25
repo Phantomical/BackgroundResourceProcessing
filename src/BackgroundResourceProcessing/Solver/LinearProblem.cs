@@ -4,9 +4,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using BackgroundResourceProcessing.Collections;
-using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
-using BackgroundResourceProcessing.Utils;
+using KSPAchievements;
 
 namespace BackgroundResourceProcessing.Solver
 {
@@ -154,6 +153,7 @@ namespace BackgroundResourceProcessing.Solver
             do
             {
                 equalities.Sort();
+                equalities.Deduplicate();
 
                 Matrix matrix = new(VariableCount + 1, equalities.Count);
                 for (int y = 0; y < equalities.Count; ++y)
@@ -310,10 +310,11 @@ namespace BackgroundResourceProcessing.Solver
 
                 BuildVarMap(varMap, entry.choices, binaryIndices);
                 var tableau = BuildSimplexTableau(func, entry.choices, varMap);
+                BitSet selected = new(tableau.Width);
 
                 try
                 {
-                    Simplex.SolveTableau(tableau);
+                    Simplex.SolveTableau(tableau, selected);
                 }
                 catch (UnsolvableProblemException)
                 {
@@ -327,7 +328,7 @@ namespace BackgroundResourceProcessing.Solver
 
                 Trace(() =>
                 {
-                    var current = ExtractTableauSolution(tableau, entry.choices, varMap);
+                    var current = ExtractTableauSolution(tableau, entry.choices, varMap, selected);
                     return $"Step solution {current} with score {score}";
                 });
 
@@ -337,7 +338,7 @@ namespace BackgroundResourceProcessing.Solver
                 if (score <= best)
                     continue;
 
-                var current = ExtractTableauSolution(tableau, entry.choices, varMap);
+                var current = ExtractTableauSolution(tableau, entry.choices, varMap, selected);
                 if (entry.depth == disjunctions.Count)
                 {
                     // We've reached the bottom of the search tree. This means
@@ -539,7 +540,8 @@ namespace BackgroundResourceProcessing.Solver
         private LinearSolution ExtractTableauSolution(
             Matrix tableau,
             BinaryChoice[] choices,
-            IntMap<int> varMap
+            IntMap<int> varMap,
+            BitSet selected
         )
         {
             using var span = new TraceSpan("LinearProblem.ExtractTableauSolution");
@@ -550,8 +552,14 @@ namespace BackgroundResourceProcessing.Solver
 
             double[] values = new double[VariableCount];
 
-            foreach (var (x, y) in FindBasicVariables(tableau, varMap.Count))
+            foreach (var x in selected)
+            {
+                var y = FindSetColumnValue(tableau, x);
+                if (y == -1)
+                    throw new Exception($"Selected column {x} was empty");
+
                 values[inverse[x]] = tableau[tableau.Width - 1, y];
+            }
 
             var soln = new LinearSolution(values);
 
@@ -572,35 +580,22 @@ namespace BackgroundResourceProcessing.Solver
             return soln;
         }
 
-        private IEnumerable<KeyValuePair<int, int>> FindBasicVariables(Matrix tableau, int nvars)
+        private static int FindSetColumnValue(Matrix tableau, int column)
         {
-            for (int x = 0; x < nvars; ++x)
+            for (int i = 0; i < tableau.Height; ++i)
             {
-                int pivot = -1;
+                var elem = tableau[column, i];
+                if (elem == 0.0)
+                    continue;
+                if (elem == 1.0)
+                    return i;
 
-                for (int y = 0; y < tableau.Height; ++y)
-                {
-                    var elem = tableau[x, y];
-                    if (elem == 0.0)
-                        continue;
-                    if (elem == 1.0)
-                    {
-                        if (pivot != -1)
-                            goto OUTER;
-
-                        pivot = y;
-                    }
-                    else
-                    {
-                        goto OUTER;
-                    }
-                }
-
-                yield return new(x, pivot);
-
-                OUTER:
-                ;
+                throw new Exception(
+                    $"Selected column {column} in the tableau contained an entry that was neither 0 nor 1"
+                );
             }
+
+            return -1;
         }
 
         private void CheckSolution(LinearSolution soln, double tol = 1e-6)

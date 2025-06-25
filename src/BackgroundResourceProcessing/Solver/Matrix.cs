@@ -80,13 +80,25 @@ namespace BackgroundResourceProcessing.Solver
             }
         }
 
+        public Span<double> GetRow(int y)
+        {
+            if (y < 0 || y > Height)
+                throw new IndexOutOfRangeException($"row index {y} was out of bounds");
+
+            Span<double> data = values;
+            return data.Slice(y * Width, Width);
+        }
+
         public void SwapRows(int r1, int r2)
         {
             if (r1 == r2)
                 return;
 
+            var v1 = GetRow(r1);
+            var v2 = GetRow(r2);
+
             for (int i = 0; i < Width; ++i)
-                (this[i, r2], this[i, r1]) = (this[i, r1], this[i, r2]);
+                (v2[i], v1[i]) = (v1[i], v1[i]);
         }
 
         public void ScaleRow(int row, double scale)
@@ -94,8 +106,9 @@ namespace BackgroundResourceProcessing.Solver
             if (scale == 1.0)
                 return;
 
+            var vals = GetRow(row);
             for (int i = 0; i < Width; ++i)
-                this[i, row] *= scale;
+                vals[i] *= scale;
         }
 
         public void Reduce(int dst, int src, double scale)
@@ -105,8 +118,11 @@ namespace BackgroundResourceProcessing.Solver
             if (scale == 0.0)
                 return;
 
+            var vdst = GetRow(dst);
+            var vsrc = GetRow(src);
+
             for (int i = 0; i < Width; ++i)
-                this[i, dst] += this[i, src] * scale;
+                vdst[i] += vsrc[i] * scale;
         }
 
         public void InvScaleRow(int row, double scale)
@@ -114,10 +130,12 @@ namespace BackgroundResourceProcessing.Solver
             if (scale == 1.0)
                 return;
 
+            var vals = GetRow(row);
+
             // Note: We use division instead of multiplication by inverse here
             //       for numerical accuracy reasons.
             for (int i = 0; i < Width; ++i)
-                this[i, row] /= scale;
+                vals[i] /= scale;
         }
 
         public void ScaleReduce(int dst, int src, int pivot)
@@ -130,13 +148,16 @@ namespace BackgroundResourceProcessing.Solver
                     "Pivot index was larger than width of matrix"
                 );
 
+            var vdst = GetRow(dst);
+            var vsrc = GetRow(src);
+
             var scale = this[pivot, dst];
             if (scale == 0.0)
                 return;
 
             for (int i = 0; i < Width; ++i)
             {
-                this[i, dst] -= this[i, src] * scale;
+                vdst[i] -= vsrc[i] * scale;
 
                 // This is a bit of a hack. Numerical imprecision can result in
                 // certain values failing to cancel out when they really should.
@@ -147,8 +168,8 @@ namespace BackgroundResourceProcessing.Solver
                 // However, problems in KSP tend to be pretty well-behaved
                 // numerically, so this is preferable to numerical errors
                 // causing unexpected non-optimal solutions.
-                if (Math.Abs(this[i, dst]) < 1e-6)
-                    this[i, dst] = 0.0;
+                if (Math.Abs(vdst[i]) < 1e-6)
+                    vdst[i] = 0.0;
             }
         }
 

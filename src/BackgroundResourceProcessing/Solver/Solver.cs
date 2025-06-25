@@ -90,7 +90,7 @@ namespace BackgroundResourceProcessing.Solver
                     {
                         // The converter has no inventories attached to this
                         // input. This means its rate must be 0.
-                        problem.AddConstraint(rate == 0);
+                        problem.AddConstraint(alpha == 0);
                     }
                     else if (connected.Count == 1)
                     {
