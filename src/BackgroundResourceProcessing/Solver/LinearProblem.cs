@@ -136,9 +136,11 @@ namespace BackgroundResourceProcessing.Solver
 
             var soln = SolveBranchAndBound(func);
 
-#if DEBUG
+            // This isn't strictly necessary but it is cheap and has proven to
+            // be incredibly useful for catching bugs so I've enabled it
+            // unconditionally.
             CheckSolution(soln);
-#endif
+
             return soln;
         }
 
