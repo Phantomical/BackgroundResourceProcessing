@@ -197,7 +197,7 @@ namespace BackgroundResourceProcessing.Core
                 SaveBitSet(inner, set);
             }
 
-            foreach (var (resourceName, set) in Pull)
+            foreach (var (resourceName, set) in Constraint)
             {
                 var inner = node.AddNode("CONSTRAINT_INVENTORIES");
                 inner.AddValue("resourceName", resourceName);
