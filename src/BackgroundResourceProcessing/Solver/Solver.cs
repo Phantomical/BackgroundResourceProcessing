@@ -229,7 +229,8 @@ namespace BackgroundResourceProcessing.Solver
                     if (!iRates.TryGetValue(inventoryId, out var irate))
                         continue;
 
-                    constraintEqs[inventory.resourceName] += irate;
+                    var eq = constraintEqs.GetOrAdd(inventory.resourceName, () => new());
+                    eq += irate;
                 }
 
                 foreach (var (resource, constraint) in converter.constraints)

@@ -360,9 +360,7 @@ namespace BackgroundResourceProcessing.Utils
                     {
                         fixed (char* inner = &span[0])
                         {
-                            if (inner < start)
-                                return -1;
-                            return (int)(inner - start);
+                            return Math.Abs((int)(inner - start));
                         }
                     }
                 }
@@ -370,7 +368,10 @@ namespace BackgroundResourceProcessing.Utils
 
             public readonly ModuleFilterException RenderError(string message, int offset = -1)
             {
-                if (offset == -1)
+                if (offset < -1)
+                    LogUtil.Warn($"RenderError called with invalid offset ({offset})");
+
+                if (offset < 0)
                     offset = current.Offset;
 
                 return new ModuleFilterException(
