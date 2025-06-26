@@ -22,5 +22,14 @@ namespace BackgroundResourceProcessing.Test.Solver
 
             solver.ComputeInventoryRates(processor);
         }
+
+        [TestMethod]
+        public void TestCrashSelectedSlack()
+        {
+            var processor = TestUtil.LoadVessel("regression/crash-selected-slack.cfg");
+            var solver = new BackgroundResourceProcessing.Solver.Solver();
+
+            solver.ComputeInventoryRates(processor);
+        }
     }
 }

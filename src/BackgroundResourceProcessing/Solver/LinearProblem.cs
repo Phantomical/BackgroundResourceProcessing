@@ -556,6 +556,11 @@ namespace BackgroundResourceProcessing.Solver
 
             foreach (var x in selected)
             {
+                // We may have selected one of the slack variables. However we
+                // don't set those in the solution.
+                if (x >= VariableCount)
+                    break;
+
                 var y = FindSetColumnValue(tableau, x);
                 if (y == -1)
                     continue;

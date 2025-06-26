@@ -281,7 +281,18 @@ namespace BackgroundResourceProcessing.Utils
 
                     default:
                         index = 0;
-                        break;
+
+                        if (char.IsLetter(span[0]))
+                            break;
+
+                        for (; index < span.Length; index++)
+                        {
+                            if (char.IsWhiteSpace(span[index]))
+                                break;
+                        }
+
+                        var tok = span.Slice(0, index);
+                        throw RenderError($"Unexpected token `{tok.ToString()}`", tok);
                 }
 
                 bool first = true;
@@ -289,10 +300,10 @@ namespace BackgroundResourceProcessing.Utils
                 {
                     var ch = span[index];
 
-                    if (!first && IsNumeric(ch))
+                    if (!first && char.IsDigit(ch))
                         continue;
                     first = false;
-                    if (IsAlpha(ch) || ch == '_')
+                    if (char.IsLetter(ch) || ch == '_')
                         continue;
 
                     break;
@@ -357,17 +368,7 @@ namespace BackgroundResourceProcessing.Utils
                 }
             }
 
-            private static bool IsAlpha(char c)
-            {
-                return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z');
-            }
-
-            private static bool IsNumeric(char c)
-            {
-                return '0' <= c && c <= '9';
-            }
-
-            public ModuleFilterException RenderError(string message, int offset = -1)
+            public readonly ModuleFilterException RenderError(string message, int offset = -1)
             {
                 if (offset == -1)
                     offset = current.Offset;
@@ -376,6 +377,11 @@ namespace BackgroundResourceProcessing.Utils
                     $"{message}\n | {original.ToString()}\n | {new string(' ', offset)}^"
                 );
             }
+
+            public readonly ModuleFilterException RenderError(
+                string message,
+                ReadOnlySpan<char> span
+            ) => RenderError(message, CalculateOffset(span));
         }
 
         private readonly ref struct TokenSpan(ReadOnlySpan<char> span)

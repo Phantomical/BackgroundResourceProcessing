@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using BackgroundResourceProcessing.Utils;
+using UnityEngine.Rendering;
 
 namespace BackgroundResourceProcessing.Modules
 {
@@ -52,9 +54,26 @@ namespace BackgroundResourceProcessing.Modules
             }
         }
 
+        // KSP stores part modules as part of a prefab. That uses Unity's serialization
+        // system to instantiate a new copy of the module.
+        //
+        // However, we can only compile the filter with the original ConfigNode.
+        // As it is not serializable, this means we need to do some custom tricks
+        // in order to actually recover it when the module is recreated.
+        //
+        // To do so we keep a unique filterID which is used to get the original
+        // filter back.
+
         private bool cached = false;
+
         private T module = null;
+
         private Func<PartModule, bool> filter = null;
+
+        // The index of the compiled filter in the global list. This is used to
+        // recover the filter when we are reloaded.
+        [UnityEngine.SerializeField]
+        private int filterID = -1;
 
         public override void OnStart(StartState state)
         {
@@ -165,21 +184,8 @@ namespace BackgroundResourceProcessing.Modules
         {
             base.OnLoad(node);
 
-            if (TargetFilter != null)
-            {
-                try
-                {
-                    if (filter != null)
-                        filter = ModuleFilter.Compile(TargetFilter, node);
-                }
-                catch (ModuleFilterException e)
-                {
-                    LogUtil.Error(
-                        $"{GetType().Name}: Error while compiling TargetFilter:\n    {e}"
-                    );
-                    filter = _ => false;
-                }
-            }
+            if (TargetFilter != null && filter == null)
+                filter = CompileFilter(node);
 
             if (TargetModule == null && TargetIndex != -1)
             {
@@ -187,6 +193,49 @@ namespace BackgroundResourceProcessing.Modules
                     $"{GetType().Name}: TargetModule not specified but TargetIndex is. Behaviour will be unpredictable."
                 );
             }
+        }
+
+        public override void OnCopy(PartModule fromModule)
+        {
+            base.OnCopy(fromModule);
+
+            if (fromModule is not BackgroundLinkedConverter<T> other)
+                return;
+
+            cached = false;
+            module = null;
+            filter = other.filter;
+            filterID = other.filterID;
+        }
+
+        private static List<Func<PartModule, bool>> CompiledFilters = [];
+        private static Func<PartModule, bool> EmptyFilter = _ => false;
+
+        private Func<PartModule, bool> CompileFilter(ConfigNode node)
+        {
+            if (filter != null)
+                return filter;
+
+            if (filterID > 0)
+                return CompiledFilters[filterID];
+
+            Func<PartModule, bool> compiled = EmptyFilter;
+            try
+            {
+                compiled = ModuleFilter.Compile(TargetFilter, node);
+            }
+            catch (ModuleFilterException e)
+            {
+                LogUtil.Error(
+                    $"PART[{part.name}]:MODULE[{GetType().Name}]: Error while compiling TargetFilter:\n{e}"
+                );
+            }
+
+            var id = CompiledFilters.Count;
+            CompiledFilters.Add(compiled);
+            filterID = id;
+
+            return compiled;
         }
     }
 }

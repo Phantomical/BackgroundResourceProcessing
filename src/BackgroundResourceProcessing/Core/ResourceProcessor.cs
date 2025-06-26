@@ -113,9 +113,20 @@ namespace BackgroundResourceProcessing.Core
                     converter.rate = 0.0;
 
                 for (int i = 0; i < inventories.Count; ++i)
-                    inventories[i].rate = soln.inventoryRates[i];
+                {
+                    var rate = soln.inventoryRates[i];
+                    if (!MathUtil.IsFinite(rate))
+                        throw new Exception($"Rate for inventory {inventories[i].Id} was {rate}");
+                    inventories[i].rate = rate;
+                }
+
                 for (int i = 0; i < converters.Count; ++i)
-                    converters[i].rate = soln.converterRates[i];
+                {
+                    double rate = soln.converterRates[i];
+                    if (!MathUtil.IsFinite(rate))
+                        throw new Exception($"Rate for converter {i} was {rate}");
+                    converters[i].rate = rate;
+                }
             }
             catch (Exception e)
             {
@@ -544,7 +555,14 @@ namespace BackgroundResourceProcessing.Core
 
                 inventory.amount += inventory.rate * deltaT;
 
-                if (inventory.Full)
+                if (!MathUtil.IsFinite(inventory.amount))
+                {
+                    LogUtil.Error(
+                        $"Refusing to update inventory to {inventory.amount:g4}/{inventory.maxAmount:g4} {inventory.resourceName}"
+                    );
+                    continue;
+                }
+                else if (inventory.Full)
                     inventory.amount = inventory.maxAmount;
                 else if (inventory.Empty)
                     inventory.amount = 0.0;
@@ -607,11 +625,6 @@ namespace BackgroundResourceProcessing.Core
         /// </summary>
         public void ApplyInventories(Vessel vessel)
         {
-            ApplyRealInventories(vessel);
-        }
-
-        private void ApplyRealInventories(Vessel vessel)
-        {
             Dictionary<uint, Part> parts = [];
             parts.AddAll(
                 vessel.Parts.Select(part => DictUtil.CreateKeyValuePair(part.persistentId, part))
@@ -629,6 +642,14 @@ namespace BackgroundResourceProcessing.Core
                         continue;
 
                     var amount = inventory.amount;
+                    if (!MathUtil.IsFinite(amount))
+                    {
+                        LogUtil.Error(
+                            $"Refusing to update inventory on {part.name} to {amount:g4}/{resource.maxAmount:g4} {resource.resourceName}"
+                        );
+                        continue;
+                    }
+
                     if (!MathUtil.ApproxEqual(inventory.originalAmount, resource.amount))
                     {
                         var difference = resource.amount - inventory.originalAmount;

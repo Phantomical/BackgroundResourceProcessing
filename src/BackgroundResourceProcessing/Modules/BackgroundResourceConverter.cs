@@ -81,7 +81,7 @@ namespace BackgroundResourceProcessing.Modules
         /// <para>
         ///   Note that this is only checked when the behaviour is being
         ///   created (i.e. at vessel unload time) and will not be called
-        ///   again until the next <c>GetConverterBehaviour</c> is called.
+        ///   again until the next time <c>GetConverterBehaviour</c> is called.
         /// </para>
         /// </remarks>
         protected virtual bool IsConverterEnabled()

@@ -127,5 +127,16 @@ namespace BackgroundResourceProcessing.Test.Utils
             filter = ModuleFilter.Compile("%True != %False", node);
             Assert.IsTrue(filter(module));
         }
+
+        [TestMethod]
+        public void TestFilterCompilation()
+        {
+            ConfigNode node = new();
+            node.AddValue("ConverterName", "LF+Ox");
+
+            Assert.ThrowsException<ModuleFilterException>(() =>
+                ModuleFilter.Compile("%ConverterName = ?ConverterName", node)
+            );
+        }
     }
 }

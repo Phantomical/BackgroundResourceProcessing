@@ -8,10 +8,7 @@ namespace BackgroundResourceProcessing.Addons
     [KSPAddon(KSPAddon.Startup.Instantly, true)]
     public class BackgroundResourceProcessingLoader : MonoBehaviour
     {
-        void Awake()
-        {
-            // GameEventsBase.debugEvents = true;
-        }
+        public static bool IsPartLoadingComplete = false;
 
         void Start()
         {
@@ -22,6 +19,7 @@ namespace BackgroundResourceProcessing.Addons
         {
             BehaviourRegistry.RegisterAllBehaviours();
             GameEvents.OnPartLoaderLoaded.Remove(OnPartLoaderLoaded);
+            IsPartLoadingComplete = true;
         }
     }
 }
