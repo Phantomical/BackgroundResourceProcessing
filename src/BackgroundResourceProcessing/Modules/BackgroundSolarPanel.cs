@@ -28,7 +28,6 @@ namespace BackgroundResourceProcessing.Modules
                     ratio = new()
                     {
                         ResourceName = panel.resourceName,
-                        DumpExcess = true,
                         FlowMode = ResourceFlowMode.ALL_VESSEL_BALANCE,
                     };
                 }

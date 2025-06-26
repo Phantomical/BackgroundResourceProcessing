@@ -336,6 +336,12 @@ namespace BackgroundResourceProcessing.Solver
 
                 var inventory = graph.inventories[invId];
                 var total = rate < 0.0 ? inventory.amount : inventory.maxAmount - inventory.amount;
+
+                // This is possible when solvers have DumpExcess = true.
+                // In that case we just leave the inventory rates at 0.
+                if (total == 0.0)
+                    continue;
+
                 foreach (var realId in inventory.ids)
                 {
                     var summary = summaries[realId];

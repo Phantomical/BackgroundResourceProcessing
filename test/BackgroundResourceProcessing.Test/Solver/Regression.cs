@@ -31,5 +31,14 @@ namespace BackgroundResourceProcessing.Test.Solver
 
             solver.ComputeInventoryRates(processor);
         }
+
+        [TestMethod]
+        public void TestFullDumpExcess()
+        {
+            var processor = TestUtil.LoadVessel("regression/crash-full-dump-excess.cfg");
+            var solver = new BackgroundResourceProcessing.Solver.Solver();
+
+            solver.ComputeInventoryRates(processor);
+        }
     }
 }
