@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Tracing;
 using CommandLine;
 
@@ -57,6 +58,14 @@ namespace BackgroundResourceProcessing.CLI
                 using (var dumpSpan = new TraceSpan("DumpProcessor"))
                 {
                     Program.DumpVessel(processor, Path.Combine(options.Output, $"ship-{i}.cfg"));
+                }
+
+                LogUtil.Log("Dumping resource rates");
+                foreach (var (resource, state) in processor.GetResourceTotals())
+                {
+                    LogUtil.Log(
+                        $"  rate {state.rate} with total {state.amount}/{state.maxAmount} {resource}"
+                    );
                 }
 
                 if (double.IsNaN(currentTime) || double.IsInfinity(currentTime))

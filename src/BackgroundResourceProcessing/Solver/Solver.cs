@@ -308,7 +308,7 @@ namespace BackgroundResourceProcessing.Solver
                     var eval = soln.Evaluate(var);
 
                     rate += eval;
-                    norm += eval * eval;
+                    norm += Math.Abs(eval);
                 }
 
                 // This is a bit of a hack.
@@ -327,7 +327,16 @@ namespace BackgroundResourceProcessing.Solver
                 // we do truncate.
                 //
                 // In practice this seems to work well enough.
-                if (Math.Abs(rate) < 1e-6 && Math.Abs(rate) / Math.Sqrt(norm) < 1e-6)
+                if (Math.Abs(rate) < 1e-6 && Math.Abs(rate) / norm < 1e-6)
+                    rate = 0.0;
+
+                // Otherwise, if the rate is small enough we can just truncate
+                // it to 0. At 1e-9 it would take 127 kerbin years just to
+                // create a single unit of a resource.
+                //
+                // KSP converters decide to truncate to 0 at this point so this
+                // is likely OK.
+                if (Math.Abs(rate) < 1e-9)
                     rate = 0.0;
 
                 // The array defaults to 0, so no need to actually do the work

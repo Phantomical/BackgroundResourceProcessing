@@ -53,5 +53,18 @@ namespace BackgroundResourceProcessing.Test.Solver
             // change should be exactly 0.
             Assert.AreEqual(0.0, rates.inventoryRates[0], 0.0);
         }
+
+        [TestMethod]
+        public void TestUnderflowInstability()
+        {
+            var processor = TestUtil.LoadVessel("regression/underflow-instability.cfg");
+            var solver = new BackgroundResourceProcessing.Solver.Solver();
+
+            var rates = solver.ComputeInventoryRates(processor);
+
+            // All inventories in this test case should have a rate of 0.
+            for (int i = 0; i < rates.inventoryRates.Length; ++i)
+                Assert.AreEqual(0.0, rates.inventoryRates[i], 0.0);
+        }
     }
 }

@@ -157,7 +157,21 @@ namespace BackgroundResourceProcessing.Solver
 
             for (int i = 0; i < Width; ++i)
             {
-                vdst[i] -= vsrc[i] * scale;
+                var d = vdst[i];
+                var s = vsrc[i] * scale;
+                var r = d - s;
+
+                vdst[i] = r;
+
+                // Some hacks to attempt to truncate numerical errors down to
+                // 0 without breaking the simplex algorithm when working with
+                // big-M constants.
+                if (Math.Abs(r) >= 1e-9)
+                    continue;
+
+                // If d and s almost perfectly cancel out then just truncate to 0.
+                if (Math.Abs(r) / (Math.Abs(d) + Math.Abs(s)) < 1e-9)
+                    vdst[i] = 0.0;
             }
         }
 
