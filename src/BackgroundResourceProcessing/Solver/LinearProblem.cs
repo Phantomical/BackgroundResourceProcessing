@@ -341,6 +341,26 @@ namespace BackgroundResourceProcessing.Solver
                     continue;
 
                 var current = ExtractTableauSolution(tableau, entry.choices, varMap, selected);
+
+                // If the solution has set variables that we were going to recurse
+                // on anyway then we should just set those and avoid doing extra
+                // solver iterations.
+                //
+                // Doing this immediately also means that we will prioritize the
+                // deeper iterations due to how the priority queue works.
+                for (; entry.depth < disjunctions.Count; ++entry.depth)
+                {
+                    var var = disjunctions[entry.depth].variable;
+                    var value = current[var];
+
+                    if (value == 0.0)
+                        entry.choices[entry.depth] = BinaryChoice.Left;
+                    else if (value == 1.0)
+                        entry.choices[entry.depth] = BinaryChoice.Right;
+                    else
+                        break;
+                }
+
                 if (entry.depth == disjunctions.Count)
                 {
                     // We've reached the bottom of the search tree. This means
@@ -358,51 +378,36 @@ namespace BackgroundResourceProcessing.Solver
                     var var = disjunctions[entry.depth].variable;
                     var value = current[var];
 
-                    if (value == 0.0)
+                    var lc = (BinaryChoice[])entry.choices.Clone();
+                    var rc = entry.choices;
+
+                    lc[entry.depth] = BinaryChoice.Left;
+                    rc[entry.depth] = BinaryChoice.Right;
+
+                    var left = new QueueEntry()
                     {
-                        entry.choices[entry.depth] = BinaryChoice.Left;
-                        entry.depth += 1;
-                        entries.Enqueue(entry, new(entry.depth, score));
-                    }
-                    else if (value == 1.0)
+                        score = score,
+                        depth = entry.depth + 1,
+                        choices = rc,
+                    };
+                    var right = new QueueEntry()
                     {
-                        entry.choices[entry.depth] = BinaryChoice.Right;
-                        entry.depth += 1;
-                        entries.Enqueue(entry, new(entry.depth, score));
+                        score = score,
+                        depth = entry.depth + 1,
+                        choices = lc,
+                    };
+
+                    if (value < 0.5)
+                    {
+                        // prioritize setting z=0 next
+                        entries.Enqueue(right, new(entry.depth + 1, score));
+                        entries.Enqueue(left, new(entry.depth + 1, score));
                     }
                     else
                     {
-                        var lc = (BinaryChoice[])entry.choices.Clone();
-                        var rc = entry.choices;
-
-                        lc[entry.depth] = BinaryChoice.Left;
-                        rc[entry.depth] = BinaryChoice.Right;
-
-                        var left = new QueueEntry()
-                        {
-                            score = score,
-                            depth = entry.depth + 1,
-                            choices = rc,
-                        };
-                        var right = new QueueEntry()
-                        {
-                            score = score,
-                            depth = entry.depth + 1,
-                            choices = lc,
-                        };
-
-                        if (value < 0.5)
-                        {
-                            // prioritize setting z=0 next
-                            entries.Enqueue(right, new(entry.depth + 1, score));
-                            entries.Enqueue(left, new(entry.depth + 1, score));
-                        }
-                        else
-                        {
-                            // prioritize setting z=1 next
-                            entries.Enqueue(right, new(entry.depth + 1, score));
-                            entries.Enqueue(left, new(entry.depth + 1, score));
-                        }
+                        // prioritize setting z=1 next
+                        entries.Enqueue(right, new(entry.depth + 1, score));
+                        entries.Enqueue(left, new(entry.depth + 1, score));
                     }
                 }
             }

@@ -158,18 +158,6 @@ namespace BackgroundResourceProcessing.Solver
             for (int i = 0; i < Width; ++i)
             {
                 vdst[i] -= vsrc[i] * scale;
-
-                // This is a bit of a hack. Numerical imprecision can result in
-                // certain values failing to cancel out when they really should.
-                // By clamping values to 0 when they are too small, we can avoid
-                // that problem at the expense of potentially truncating some
-                // columns.
-                //
-                // However, problems in KSP tend to be pretty well-behaved
-                // numerically, so this is preferable to numerical errors
-                // causing unexpected non-optimal solutions.
-                if (Math.Abs(vdst[i]) < 1e-6)
-                    vdst[i] = 0.0;
             }
         }
 

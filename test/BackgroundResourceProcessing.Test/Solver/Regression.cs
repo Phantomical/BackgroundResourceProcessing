@@ -40,5 +40,18 @@ namespace BackgroundResourceProcessing.Test.Solver
 
             solver.ComputeInventoryRates(processor);
         }
+
+        [TestMethod]
+        public void TestDisjunctionInstability()
+        {
+            var processor = TestUtil.LoadVessel("regression/disjunction-instability.cfg");
+            var solver = new BackgroundResourceProcessing.Solver.Solver();
+
+            var rates = solver.ComputeInventoryRates(processor);
+
+            // The first inventory here has ElectricCharge and its rate of
+            // change should be exactly 0.
+            Assert.AreEqual(0.0, rates.inventoryRates[0], 0.0);
+        }
     }
 }
