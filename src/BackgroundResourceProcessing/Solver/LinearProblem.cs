@@ -646,7 +646,7 @@ namespace BackgroundResourceProcessing.Solver
                 builder.Append(or.lhs.ToRelationString("<="));
                 builder.Append(" || ");
                 builder.Append(or.rhs.ToRelationString("<="));
-                builder.Append(")");
+                builder.Append(")\n");
             }
 
             if (substitutions != null)
