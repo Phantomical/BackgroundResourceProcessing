@@ -80,7 +80,9 @@ namespace BackgroundResourceProcessing.Modules
             var converter = base.FindLinkedModule();
             if (converter is not ModuleResourceHarvester)
             {
-                LogUtil.Error($"{GetType().Name}: Linked module is not a ModuleResourceHarvester");
+                LogUtil.Error(
+                    $"{GetType().Name}: Linked module is not a ModuleResourceHarvester (got {converter.GetType().Name} instead)"
+                );
                 return null;
             }
 
