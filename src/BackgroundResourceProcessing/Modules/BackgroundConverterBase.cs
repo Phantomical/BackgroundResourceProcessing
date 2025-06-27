@@ -80,6 +80,16 @@ namespace BackgroundResourceProcessing.Modules
         }
 
         /// <summary>
+        /// Get a unique label that can be used when printing out error/log
+        /// messages or looking at export dumps.
+        /// </summary>
+        /// <returns></returns>
+        public virtual string GetLabel()
+        {
+            return GetType().Name;
+        }
+
+        /// <summary>
         /// Get the <see cref="ConverterBehaviour"/> that describes the
         /// resources consumed, produced, and required by this part.
         /// </summary>

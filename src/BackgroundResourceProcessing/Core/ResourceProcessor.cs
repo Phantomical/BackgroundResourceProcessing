@@ -359,7 +359,7 @@ namespace BackgroundResourceProcessing.Core
 
                 foreach (var behaviour in behaviours)
                 {
-                    behaviour.sourceModule = module.GetType().Name;
+                    behaviour.label = module.GetLabel();
                     behaviour.sourcePart = part.name;
 
                     var index = converters.Count;

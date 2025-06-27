@@ -81,6 +81,13 @@ namespace BackgroundResourceProcessing.Modules
             var _ = Module;
         }
 
+        public override string GetLabel()
+        {
+            if (module == null)
+                return $"{base.GetLabel()} targeting null";
+            return $"{base.GetLabel()} targeting {module.GetType().Name}";
+        }
+
         /// <summary>
         /// Find the linked module.
         /// </summary>

@@ -207,8 +207,8 @@ namespace BackgroundResourceProcessing
         /// This is mainly used for debugging and log messages. It will be
         /// automatically set when returned from a component module.
         /// </remarks>
-        public string SourceModule => sourceModule;
-        internal string sourceModule = null;
+        public string Label => label;
+        internal string label = null;
 
         /// <summary>
         /// The part that contained the source module for this behaviour.
@@ -291,7 +291,8 @@ namespace BackgroundResourceProcessing
         /// </remarks>
         protected virtual void Load(ConfigNode node)
         {
-            node.TryGetValue("sourceModule", ref sourceModule);
+            if (!node.TryGetValue("label", ref label))
+                node.TryGetValue("sourceModule", ref label);
             node.TryGetValue("sourcePart", ref sourcePart);
             node.TryGetValue("priority", ref Priority);
         }
@@ -306,8 +307,8 @@ namespace BackgroundResourceProcessing
             node.AddValue("name", BehaviourRegistry.GetBehaviourName(GetType()));
             node.AddValue("priority", Priority);
 
-            if (sourceModule != null)
-                node.AddValue("sourceModule", sourceModule);
+            if (label != null)
+                node.AddValue("label", label);
             if (sourcePart != null)
                 node.AddValue("sourcePart", sourcePart);
         }
