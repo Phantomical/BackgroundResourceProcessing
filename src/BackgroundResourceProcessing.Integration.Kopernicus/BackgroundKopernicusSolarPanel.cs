@@ -4,7 +4,7 @@ using Kopernicus.Components;
 
 namespace BackgroundResourceProcessing.Integration.Kopernicus
 {
-    public class ModuleBackgroundKopernicusSolarPanel : BackgroundConverterBase
+    public class ModuleBackgroundKopernicusSolarPanel : BackgroundConverter
     {
         protected override List<ConverterBehaviour> GetConverterBehaviours()
         {

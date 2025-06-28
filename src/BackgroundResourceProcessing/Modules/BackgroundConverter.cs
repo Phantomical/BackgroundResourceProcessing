@@ -5,7 +5,7 @@ namespace BackgroundResourceProcessing.Modules
     /// <summary>
     /// A simple converter that always converts resources at a constant rate.
     /// </summary>
-    public class ModuleBackgroundConverter : BackgroundConverterBase
+    public class ModuleBackgroundConverter : BackgroundConverter
     {
         public List<ResourceRatio> inputs = [];
         public List<ResourceRatio> outputs = [];

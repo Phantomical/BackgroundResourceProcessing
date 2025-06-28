@@ -36,7 +36,7 @@ namespace BackgroundResourceProcessing.Modules
     /// into a <see cref="ConverterBehaviour"/> that can persist beyond when
     /// the current vessel is unloaded.
     /// </remarks>
-    public abstract class BackgroundConverterBase : PartModule
+    public abstract class BackgroundConverter : PartModule
     {
         /// <summary>
         /// The priority with which this converter will consume produced resources.

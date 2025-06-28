@@ -190,7 +190,6 @@ namespace BackgroundResourceProcessing
     /// <summary>
     /// A behaviour that describes a converter.
     /// </summary>
-    /// <param name="priority"></param>
     ///
     /// <remarks>
     ///   This is more or less the core type of UBP. It is used by the

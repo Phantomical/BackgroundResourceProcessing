@@ -106,6 +106,24 @@ namespace BackgroundResourceProcessing
 
             processor.UpdateState(now, true);
         }
+
+        /// <summary>
+        /// Get a simulator that allows you to model the resource state of the
+        /// vessel into the future.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// The simulator will <b>not</b> update the behaviours on the ship, so
+        /// this will not be an exact representation of what will happen.
+        /// </remarks>
+        public ResourceSimulator GetSimulator()
+        {
+            var currentTime = Planetarium.GetUniversalTime();
+            var clone = processor.CloneForSimulator();
+            clone.UpdateState(currentTime, false);
+            clone.UpdateNextChangepoint(currentTime);
+            return new(clone);
+        }
         #endregion
 
         #region Overrides & Event Handlers

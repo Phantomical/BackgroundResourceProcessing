@@ -271,6 +271,14 @@ namespace BackgroundResourceProcessing.Core
 
             return old == ratios;
         }
+
+        internal ResourceConverter CloneForSimulator()
+        {
+            var clone = (ResourceConverter)MemberwiseClone();
+            clone.Behaviour = null;
+            clone.nextChangepoint = double.PositiveInfinity;
+            return clone;
+        }
     }
 
     internal static class ResourceRatioExtensions

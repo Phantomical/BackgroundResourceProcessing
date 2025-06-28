@@ -58,6 +58,7 @@ namespace BackgroundResourceProcessing.Core
 
         public ResourceProcessor() { }
 
+        #region Serialization
         public void Load(ConfigNode node)
         {
             node.TryGetDouble("lastUpdate", ref lastUpdate);
@@ -97,6 +98,7 @@ namespace BackgroundResourceProcessing.Core
             foreach (var converter in converters)
                 converter.Save(node.AddNode("CONVERTER"));
         }
+        #endregion
 
         public void ComputeRates()
         {
@@ -196,6 +198,7 @@ namespace BackgroundResourceProcessing.Core
             return changepoint;
         }
 
+        #region Vessel Recording
         public void RecordVesselState(Vessel vessel, double currentTime)
         {
             using var span = new TraceSpan("ResourceProcessor.RecordVesselState");
@@ -335,7 +338,7 @@ namespace BackgroundResourceProcessing.Core
 
             foreach (var partModule in part.Modules)
             {
-                if (partModule is not BackgroundConverterBase module)
+                if (partModule is not BackgroundConverter module)
                     continue;
 
                 LogUtil.Debug(() => $"Found converter module: {module.GetType().Name}");
@@ -501,6 +504,7 @@ namespace BackgroundResourceProcessing.Core
             inventoryIds.Clear();
             nextChangepoint = double.PositiveInfinity;
         }
+        #endregion
 
         /// <summary>
         /// Update behaviours that have indicated their next changepoint has
@@ -737,6 +741,14 @@ namespace BackgroundResourceProcessing.Core
                         );
                 }
             }
+        }
+
+        internal ResourceProcessor CloneForSimulator()
+        {
+            var clone = (ResourceProcessor)MemberwiseClone();
+            clone.inventories = [.. inventories.Select(inv => inv.CloneForSimulator())];
+            clone.converters = [.. converters.Select(conv => conv.CloneForSimulator())];
+            return clone;
         }
 
         private PartSet.ResourcePrioritySet GetConnectedResources(

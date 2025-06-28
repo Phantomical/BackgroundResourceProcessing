@@ -241,5 +241,12 @@ namespace BackgroundResourceProcessing.Core
 
             return state;
         }
+
+        internal ResourceInventory CloneForSimulator()
+        {
+            var clone = (ResourceInventory)MemberwiseClone();
+            clone.Snapshot = null;
+            return clone;
+        }
     }
 }
