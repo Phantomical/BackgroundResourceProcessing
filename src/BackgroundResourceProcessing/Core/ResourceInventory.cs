@@ -6,12 +6,12 @@ namespace BackgroundResourceProcessing.Core
     /// <summary>
     /// An ID that uniquely identifies where a resource inventory came from.
     /// </summary>
-    public struct InventoryId(uint partId, string resourceName, uint? moduleId = null)
+    public struct InventoryId(uint flightId, string resourceName, uint? moduleId = null)
     {
         /// <summary>
         /// The persistent ID of the part this inventory came from.
         /// </summary>
-        public uint partId = partId;
+        public uint flightId = flightId;
 
         /// <summary>
         /// If this inventory is actually from a <see cref="IBackgroundPartResource"/>
@@ -25,11 +25,11 @@ namespace BackgroundResourceProcessing.Core
         public string resourceName = resourceName;
 
         public InventoryId(PartResource resource, uint? moduleId = null)
-            : this(resource.part.persistentId, resource.resourceName, moduleId) { }
+            : this(resource.part.flightID, resource.resourceName, moduleId) { }
 
         public void Load(ConfigNode node)
         {
-            node.TryGetValue("partId", ref partId);
+            node.TryGetValue("flightId", ref flightId);
             node.TryGetValue("resourceName", ref resourceName);
 
             uint moduleId = 0;
@@ -39,7 +39,7 @@ namespace BackgroundResourceProcessing.Core
 
         public void Save(ConfigNode node)
         {
-            node.AddValue("partId", partId);
+            node.AddValue("flightId", flightId);
             node.AddValue("resourceName", resourceName);
 
             if (moduleId != null)
@@ -49,8 +49,8 @@ namespace BackgroundResourceProcessing.Core
         public override readonly string ToString()
         {
             if (moduleId == null)
-                return $"{{resourceName={resourceName},partId={partId}}}";
-            return $"{{resourceName={resourceName},partId={partId},moduleId={moduleId}}}";
+                return $"{{resourceName={resourceName},flightId={flightId}}}";
+            return $"{{resourceName={resourceName},flightId={flightId},moduleId={moduleId}}}";
         }
     }
 
@@ -97,7 +97,7 @@ namespace BackgroundResourceProcessing.Core
         /// The persistent part id. Used to find the part again when the
         /// vessel goes off the rails.
         /// </summary>
-        public uint partId;
+        public uint flightId;
 
         /// <summary>
         /// The persistent ID of the module implementing <see cref="IBackgroundPartResource"/>.
@@ -175,7 +175,7 @@ namespace BackgroundResourceProcessing.Core
             }
         }
 
-        public InventoryId Id => new(partId, resourceName, moduleId);
+        public InventoryId Id => new(flightId, resourceName, moduleId);
         public InventoryState State => new(amount, maxAmount, rate);
 
         public ResourceInventory() { }
@@ -184,7 +184,7 @@ namespace BackgroundResourceProcessing.Core
         {
             var part = resource.part;
 
-            partId = part.persistentId;
+            flightId = part.flightID;
             resourceName = resource.resourceName;
             amount = resource.amount;
             maxAmount = resource.maxAmount;
@@ -195,7 +195,7 @@ namespace BackgroundResourceProcessing.Core
         {
             var part = module.part;
 
-            partId = part.persistentId;
+            flightId = part.flightID;
             moduleId = module.GetPersistentId();
             resourceName = resource.resourceName;
             amount = resource.amount;
@@ -205,7 +205,7 @@ namespace BackgroundResourceProcessing.Core
 
         public void Save(ConfigNode node)
         {
-            node.AddValue("partId", partId);
+            node.AddValue("flightId", flightId);
             if (moduleId != null)
                 node.AddValue("moduleId", (uint)moduleId);
             node.AddValue("resourceName", resourceName);
@@ -217,7 +217,7 @@ namespace BackgroundResourceProcessing.Core
 
         public void Load(ConfigNode node)
         {
-            node.TryGetValue("partId", ref partId);
+            node.TryGetValue("flightId", ref flightId);
 
             uint moduleId = 0;
             if (node.TryGetValue("moduleId", ref moduleId))

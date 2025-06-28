@@ -221,7 +221,7 @@ namespace BackgroundResourceProcessing.Core
 
             foreach (var part in vessel.Parts)
             {
-                var partId = part.persistentId;
+                var flightId = part.flightID;
 
                 LogUtil.Debug(() => $"Inspecting part {part.name} for inventories");
 
@@ -607,11 +607,11 @@ namespace BackgroundResourceProcessing.Core
 
             foreach (var part in vessel.protoVessel.protoPartSnapshots)
             {
-                var partId = part.persistentId;
+                var flightId = part.flightID;
 
                 foreach (var resource in part.resources)
                 {
-                    var id = new InventoryId(partId, resource.resourceName);
+                    var id = new InventoryId(flightId, resource.resourceName);
                     if (!inventoryIds.TryGetValue(id, out var index))
                         continue;
                     var inventory = inventories[index];
@@ -636,7 +636,7 @@ namespace BackgroundResourceProcessing.Core
 
             foreach (var inventory in inventories)
             {
-                if (!parts.TryGetValue(inventory.partId, out var part))
+                if (!parts.TryGetValue(inventory.flightId, out var part))
                     continue;
 
                 if (inventory.moduleId == null)

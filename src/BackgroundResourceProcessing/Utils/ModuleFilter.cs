@@ -579,6 +579,8 @@ namespace BackgroundResourceProcessing.Utils
 
             private static string Quoted(string value)
             {
+                if (value == null)
+                    return "null";
                 return $"\"{value.Replace("\"", "\\\"")}\"";
             }
         }
