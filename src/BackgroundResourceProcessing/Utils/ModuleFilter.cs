@@ -8,10 +8,10 @@ namespace BackgroundResourceProcessing.Utils
 {
     internal static class ModuleFilter
     {
-        internal class CompiledFilter(Expression<Func<PartModule, bool>> expression)
+        internal class CompiledFilter(Func<PartModule, bool> filter, string expansion)
         {
-            readonly string expansion = expression.ToString();
-            readonly Func<PartModule, bool> filter = expression.Compile();
+            readonly string expansion = expansion;
+            readonly Func<PartModule, bool> filter = filter;
 
             public bool Invoke(PartModule module)
             {
@@ -27,12 +27,7 @@ namespace BackgroundResourceProcessing.Utils
         /// <summary>
         /// An empty filter that always returns false.
         /// </summary>
-        internal static readonly CompiledFilter EmptyFilter = new(
-            Expression.Lambda<Func<PartModule, bool>>(
-                Expression.Constant(false),
-                Expression.Parameter(typeof(PartModule), "module")
-            )
-        );
+        internal static readonly CompiledFilter EmptyFilter = new(_ => false, "false");
 
         public static CompiledFilter Compile(string expression, ConfigNode node)
         {
@@ -54,13 +49,13 @@ namespace BackgroundResourceProcessing.Utils
             public CompiledFilter Parse()
             {
                 var expression = ParseOrExpression();
-                var lambda = Expression.Lambda<Func<PartModule, bool>>(expression, module);
-                return new(lambda);
+                var lambda = Expression.Lambda<Func<PartModule, bool>>(expression.expr, module);
+                return new(lambda.Compile(), expression.text);
             }
 
-            private Expression ParseOrExpression()
+            private FilterExpr ParseOrExpression()
             {
-                Expression? body = null;
+                FilterExpr? body = null;
 
                 while (true)
                 {
@@ -70,7 +65,7 @@ namespace BackgroundResourceProcessing.Utils
                     if (body == null)
                         body = expr;
                     else
-                        body = Expression.OrElse(body, expr);
+                        body = FilterExpr.OrElse((FilterExpr)body, expr);
 
                     if (Current.Type == TokenType.Operator && Current.Span == "||")
                     {
@@ -81,12 +76,12 @@ namespace BackgroundResourceProcessing.Utils
                     break;
                 }
 
-                return body ?? Expression.Constant(false);
+                return body ?? FilterExpr.Constant(false);
             }
 
-            private Expression ParseAndExpression()
+            private FilterExpr ParseAndExpression()
             {
-                Expression? body = null;
+                FilterExpr? body = null;
 
                 while (true)
                 {
@@ -96,7 +91,7 @@ namespace BackgroundResourceProcessing.Utils
                     if (body == null)
                         body = expr;
                     else
-                        body = Expression.AndAlso(body, expr);
+                        body = FilterExpr.AndAlso((FilterExpr)body, expr);
 
                     if (Current.Type == TokenType.Operator && Current.Span == "&&")
                     {
@@ -107,10 +102,10 @@ namespace BackgroundResourceProcessing.Utils
                     break;
                 }
 
-                return body ?? Expression.Constant(true);
+                return body ?? FilterExpr.Constant(true);
             }
 
-            private Expression ParseBracedExpression()
+            private FilterExpr ParseBracedExpression()
             {
                 if (Current.Type != TokenType.LParen)
                     return ParseComparisonExpression();
@@ -122,10 +117,10 @@ namespace BackgroundResourceProcessing.Utils
                     throw RenderError($"Unexpected token `{Current.ToString()}`");
                 lexer.Advance();
 
-                return expr;
+                return new(expr.expr, $"({expr.text})");
             }
 
-            private Expression ParseComparisonExpression()
+            private FilterExpr ParseComparisonExpression()
             {
                 var lhs = ParseValueExpression();
                 var op = ParseComparision();
@@ -133,15 +128,15 @@ namespace BackgroundResourceProcessing.Utils
 
                 return op switch
                 {
-                    Comparison.Equals => Expression.Equal(lhs, rhs),
-                    Comparison.NotEquals => Expression.NotEqual(lhs, rhs),
+                    Comparison.Equals => FilterExpr.Equal(lhs, rhs),
+                    Comparison.NotEquals => FilterExpr.NotEqual(lhs, rhs),
                     _ => throw new NotImplementedException(
                         $"Unimplemented comparison operator {op}"
                     ),
                 };
             }
 
-            private Expression ParseValueExpression()
+            private FilterExpr ParseValueExpression()
             {
                 string name;
                 string? value;
@@ -156,32 +151,32 @@ namespace BackgroundResourceProcessing.Utils
                             );
 
                         lexer.Advance();
-                        return Expression.Constant(value);
+                        return FilterExpr.Constant(value);
 
                     case TokenType.NullableConfigField:
                         name = Current.Span.Slice(1).ToString();
                         value = null;
                         node.TryGetValue(name, ref value);
                         lexer.Advance();
-                        return Expression.Constant(value);
+                        return FilterExpr.Constant(value);
 
                     case TokenType.Null:
                         lexer.Advance();
-                        return Expression.Constant(null);
+                        return FilterExpr.Null();
 
                     case TokenType.True:
                         lexer.Advance();
-                        return Expression.Constant("True");
+                        return FilterExpr.Constant("True");
 
                     case TokenType.False:
                         lexer.Advance();
-                        return Expression.Constant("False");
+                        return FilterExpr.Constant("False");
 
                     case TokenType.TargetField:
                         var field = Current.Span.Slice(1).ToString();
                         lexer.Advance();
 
-                        return InvokeFunc(module =>
+                        var func = InvokeFunc(module =>
                         {
                             var type = module.GetType();
 
@@ -205,6 +200,8 @@ namespace BackgroundResourceProcessing.Utils
 
                             return ret;
                         });
+
+                        return new(func, Current.Span.ToString());
 
                     default:
                         throw RenderError(
@@ -478,7 +475,7 @@ namespace BackgroundResourceProcessing.Utils
             }
         }
 
-        enum TokenType
+        private enum TokenType
         {
             // The end of the file.
             Eof = 0,
@@ -518,7 +515,7 @@ namespace BackgroundResourceProcessing.Utils
             RParen,
         }
 
-        ref struct Token(TokenSpan span, TokenType type)
+        private ref struct Token(TokenSpan span, TokenType type)
         {
             public TokenSpan Span = span;
             public TokenType Type = type;
@@ -532,6 +529,57 @@ namespace BackgroundResourceProcessing.Utils
                 if (Type == TokenType.Eof)
                     return "<eof>";
                 return Span.ToString();
+            }
+        }
+
+        private readonly struct FilterExpr(Expression expr, string text)
+        {
+            public readonly Expression expr = expr;
+            public readonly string text = text;
+
+            public static FilterExpr Constant(bool value)
+            {
+                return new(Expression.Constant(value), value.ToString());
+            }
+
+            public static FilterExpr Constant(string value)
+            {
+                return new(Expression.Constant(value), Quoted(value));
+            }
+
+            public static FilterExpr Null()
+            {
+                return new(Expression.Constant(null), "null");
+            }
+
+            public static FilterExpr Equal(FilterExpr lhs, FilterExpr rhs)
+            {
+                return new(Expression.Equal(lhs.expr, rhs.expr), $"{lhs.text} == {rhs.text}");
+            }
+
+            public static FilterExpr NotEqual(FilterExpr lhs, FilterExpr rhs)
+            {
+                return new(Expression.NotEqual(lhs.expr, rhs.expr), $"{lhs.text} != {rhs.text}");
+            }
+
+            public static FilterExpr AndAlso(FilterExpr lhs, FilterExpr rhs)
+            {
+                return new(Expression.AndAlso(lhs.expr, rhs.expr), $"{lhs.text} && {rhs.text}");
+            }
+
+            public static FilterExpr OrElse(FilterExpr lhs, FilterExpr rhs)
+            {
+                return new(Expression.OrElse(lhs.expr, rhs.expr), $"{lhs.text} || {rhs.text}");
+            }
+
+            public override string ToString()
+            {
+                return text;
+            }
+
+            private static string Quoted(string value)
+            {
+                return $"\"{value.Replace("\"", "\\\"")}\"";
             }
         }
     }

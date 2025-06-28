@@ -226,7 +226,7 @@ namespace BackgroundResourceProcessing.Modules
                     builder.Append(", ");
 
                 builder.Append("TargetFilter = ");
-                builder.Append(TargetFilter);
+                builder.Append(filter.ToString());
             }
 
             return builder.ToString();
