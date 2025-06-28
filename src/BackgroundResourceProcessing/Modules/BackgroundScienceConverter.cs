@@ -83,14 +83,7 @@ namespace BackgroundResourceProcessing.Modules
 
         protected override BaseConverter FindLinkedModule()
         {
-            var converter = base.FindLinkedModule();
-            if (converter is not ModuleScienceConverter)
-            {
-                LogUtil.Error($"{GetType().Name}: Linked module is not a ModuleScienceConverter");
-                return null;
-            }
-
-            return converter;
+            return FindLinkedModuleAs<ModuleResourceHarvester>();
         }
 
         public override void OnSave(ConfigNode node)

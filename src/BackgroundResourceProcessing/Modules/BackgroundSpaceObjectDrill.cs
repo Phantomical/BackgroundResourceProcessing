@@ -107,14 +107,7 @@ namespace BackgroundResourceProcessing.Modules
 
         protected override BaseConverter FindLinkedModule()
         {
-            var converter = base.FindLinkedModule();
-            if (converter is not ModuleAsteroidDrill)
-            {
-                LogUtil.Error($"{GetType().Name}: Linked module is not a ModuleAsteroidDrill");
-                return null;
-            }
-
-            return converter;
+            return FindLinkedModuleAs<ModuleAsteroidDrill>();
         }
 
         protected override Part GetDrillPotato()
@@ -146,14 +139,7 @@ namespace BackgroundResourceProcessing.Modules
 
         protected override BaseConverter FindLinkedModule()
         {
-            var converter = base.FindLinkedModule();
-            if (converter is not ModuleCometDrill)
-            {
-                LogUtil.Error($"{GetType().Name}: Linked module is not a ModuleCometDrill");
-                return null;
-            }
-
-            return converter;
+            return FindLinkedModuleAs<ModuleCometDrill>();
         }
 
         protected override Part GetDrillPotato()

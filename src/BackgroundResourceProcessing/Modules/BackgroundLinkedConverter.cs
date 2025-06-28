@@ -102,6 +102,11 @@ namespace BackgroundResourceProcessing.Modules
         /// </remarks>
         protected virtual T FindLinkedModule()
         {
+            return FindLinkedModuleImpl();
+        }
+
+        private T FindLinkedModuleImpl()
+        {
             T found = null;
             int index = 0;
             for (int i = 0; i < part.Modules.Count; ++i)
@@ -170,6 +175,28 @@ namespace BackgroundResourceProcessing.Modules
             }
 
             return found;
+        }
+
+        /// <summary>
+        /// Find a linked module, but require that it is assignable to
+        /// <typeparamref name="U"/>.
+        /// </summary>
+        protected U FindLinkedModuleAs<U>()
+            where U : T
+        {
+            T module = FindLinkedModule();
+            if (module == null)
+                return null;
+            if (module is U derived)
+                return derived;
+
+            var typename = typeof(U).Name;
+            var realname = module.GetType().Name;
+
+            LogUtil.Error(
+                $"{GetType().Name}: Linked module is not a {typename} (found {realname} instead)"
+            );
+            return null;
         }
 
         private string GetFilterText()

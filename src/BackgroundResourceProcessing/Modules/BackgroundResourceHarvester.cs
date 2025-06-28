@@ -1,4 +1,5 @@
 using Expansions.Missions.Editor;
+using UnityEngine.AI;
 
 namespace BackgroundResourceProcessing.Modules
 {
@@ -77,16 +78,7 @@ namespace BackgroundResourceProcessing.Modules
 
         protected override BaseConverter FindLinkedModule()
         {
-            var converter = base.FindLinkedModule();
-            if (converter is not ModuleResourceHarvester)
-            {
-                LogUtil.Error(
-                    $"{GetType().Name}: Linked module is not a ModuleResourceHarvester (got {converter.GetType().Name} instead)"
-                );
-                return null;
-            }
-
-            return converter;
+            return FindLinkedModuleAs<ModuleResourceHarvester>();
         }
     }
 }
