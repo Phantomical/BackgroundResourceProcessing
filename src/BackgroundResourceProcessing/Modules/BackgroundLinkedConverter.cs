@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using BackgroundResourceProcessing.Utils;
 using UnityEngine.Rendering;
 
@@ -68,7 +69,7 @@ namespace BackgroundResourceProcessing.Modules
 
         private T module = null;
 
-        private Func<PartModule, bool> filter = null;
+        private ModuleFilter.CompiledFilter filter = null;
 
         // The index of the compiled filter in the global list. This is used to
         // recover the filter when we are reloaded.
@@ -127,7 +128,7 @@ namespace BackgroundResourceProcessing.Modules
                 {
                     try
                     {
-                        if (!filter(module))
+                        if (!filter.Invoke(module))
                             continue;
                     }
                     catch (Exception e)
@@ -141,9 +142,9 @@ namespace BackgroundResourceProcessing.Modules
                 {
                     LogUtil.Warn(
                         $"{GetType().Name}: Multiple modules found on part {part.name} ",
-                        "matching filters. Only the first one will be selected."
+                        $"matching filter ({GetFilterText()}). Only the first one will be selected."
                     );
-                    continue;
+                    break;
                 }
 
                 found = module;
@@ -162,22 +163,46 @@ namespace BackgroundResourceProcessing.Modules
 
             if (found == null)
             {
-                if (TargetModule != null)
-                {
-                    LogUtil.Error(
-                        $"{GetType().Name}: No converter module of type {TargetModule} matching filters found on part {part.name}. This module will be disabled."
-                    );
-                }
-                else
-                {
-                    LogUtil.Error(
-                        $"{GetType().Name}: No converter module matching filters found on part {part.name}. This module will be disabled."
-                    );
-                }
+                LogUtil.Error(
+                    $"{GetType().Name}: No converter module matching filter ({GetFilterText()}) found on part {part.name}. This module will be disabled."
+                );
                 return null;
             }
 
             return found;
+        }
+
+        private string GetFilterText()
+        {
+            StringBuilder builder = new();
+            bool first = true;
+
+            if (TargetModule != null)
+            {
+                builder.Append("TargetModule = ");
+                builder.Append(TargetModule);
+                first = false;
+            }
+
+            if (TargetIndex != null)
+            {
+                if (!first)
+                    builder.Append(", ");
+
+                builder.Append("TargetIndex = ");
+                builder.Append(TargetIndex);
+            }
+
+            if (filter != null)
+            {
+                if (!first)
+                    builder.Append(", ");
+
+                builder.Append("TargetFilter = ");
+                builder.Append(TargetFilter);
+            }
+
+            return builder.ToString();
         }
 
         private T GetLinkedModule()
@@ -215,10 +240,9 @@ namespace BackgroundResourceProcessing.Modules
             filterID = other.filterID;
         }
 
-        private static List<Func<PartModule, bool>> CompiledFilters = [];
-        private static Func<PartModule, bool> EmptyFilter = _ => false;
+        private static List<ModuleFilter.CompiledFilter> CompiledFilters = [];
 
-        private Func<PartModule, bool> CompileFilter(ConfigNode node)
+        private ModuleFilter.CompiledFilter CompileFilter(ConfigNode node)
         {
             if (filter != null)
                 return filter;
@@ -226,7 +250,7 @@ namespace BackgroundResourceProcessing.Modules
             if (filterID > 0)
                 return CompiledFilters[filterID];
 
-            Func<PartModule, bool> compiled = EmptyFilter;
+            ModuleFilter.CompiledFilter compiled = ModuleFilter.EmptyFilter;
             try
             {
                 compiled = ModuleFilter.Compile(TargetFilter, node);

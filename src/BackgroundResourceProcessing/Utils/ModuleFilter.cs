@@ -8,7 +8,33 @@ namespace BackgroundResourceProcessing.Utils
 {
     internal static class ModuleFilter
     {
-        public static Func<PartModule, bool> Compile(string expression, ConfigNode node)
+        internal class CompiledFilter(Expression<Func<PartModule, bool>> expression)
+        {
+            readonly string expansion = expression.ToString();
+            readonly Func<PartModule, bool> filter = expression.Compile();
+
+            public bool Invoke(PartModule module)
+            {
+                return filter(module);
+            }
+
+            public override string ToString()
+            {
+                return expansion;
+            }
+        }
+
+        /// <summary>
+        /// An empty filter that always returns false.
+        /// </summary>
+        internal static readonly CompiledFilter EmptyFilter = new(
+            Expression.Lambda<Func<PartModule, bool>>(
+                Expression.Constant(false),
+                Expression.Parameter(typeof(PartModule), "module")
+            )
+        );
+
+        public static CompiledFilter Compile(string expression, ConfigNode node)
         {
             Parser parser = new(expression, node);
             return parser.Parse();
@@ -25,23 +51,26 @@ namespace BackgroundResourceProcessing.Utils
 
             readonly Token Current => lexer.current;
 
-            public Func<PartModule, bool> Parse()
+            public CompiledFilter Parse()
             {
                 var expression = ParseOrExpression();
                 var lambda = Expression.Lambda<Func<PartModule, bool>>(expression, module);
-                return lambda.Compile();
+                return new(lambda);
             }
 
             private Expression ParseOrExpression()
             {
-                Expression body = Expression.Constant(false);
+                Expression? body = null;
 
                 while (true)
                 {
                     var expr = ParseAndExpression();
 
                     // total = total || expr(module)
-                    body = Expression.OrElse(body, expr);
+                    if (body == null)
+                        body = expr;
+                    else
+                        body = Expression.OrElse(body, expr);
 
                     if (Current.Type == TokenType.Operator && Current.Span == "||")
                     {
@@ -52,19 +81,22 @@ namespace BackgroundResourceProcessing.Utils
                     break;
                 }
 
-                return body;
+                return body ?? Expression.Constant(false);
             }
 
             private Expression ParseAndExpression()
             {
-                Expression body = Expression.Constant(true);
+                Expression? body = null;
 
                 while (true)
                 {
                     var expr = ParseBracedExpression();
 
                     // total = total && expr(module)
-                    body = Expression.AndAlso(body, expr);
+                    if (body == null)
+                        body = expr;
+                    else
+                        body = Expression.AndAlso(body, expr);
 
                     if (Current.Type == TokenType.Operator && Current.Span == "&&")
                     {
@@ -75,7 +107,7 @@ namespace BackgroundResourceProcessing.Utils
                     break;
                 }
 
-                return body;
+                return body ?? Expression.Constant(true);
             }
 
             private Expression ParseBracedExpression()
@@ -374,8 +406,11 @@ namespace BackgroundResourceProcessing.Utils
                 if (offset < 0)
                     offset = current.Offset;
 
+                var s = original.ToString();
+                offset = MathUtil.Clamp(offset, 0, s.Length);
+
                 return new ModuleFilterException(
-                    $"{message}\n | {original.ToString()}\n | {new string(' ', offset)}^"
+                    $"{message}\n | {s}\n | {new string(' ', offset)}^"
                 );
             }
 

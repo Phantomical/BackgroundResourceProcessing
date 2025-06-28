@@ -1,5 +1,4 @@
 using BackgroundResourceProcessing.Utils;
-using Expansions.Missions;
 
 namespace BackgroundResourceProcessing.Test.Utils
 {
@@ -9,38 +8,38 @@ namespace BackgroundResourceProcessing.Test.Utils
         [TestMethod]
         public void TestConstants()
         {
-            Func<PartModule, bool> filter;
+            ModuleFilter.CompiledFilter filter;
             ConfigNode node = new();
             node.AddValue("a", "True");
             node.AddValue("b", "False");
             node.AddValue("c", "null");
 
             filter = ModuleFilter.Compile("@a == true", node);
-            Assert.IsTrue(filter(null));
+            Assert.IsTrue(filter.Invoke(null));
 
             filter = ModuleFilter.Compile("@b == false", node);
-            Assert.IsTrue(filter(null));
+            Assert.IsTrue(filter.Invoke(null));
 
             filter = ModuleFilter.Compile("@c == null", node);
-            Assert.IsFalse(filter(null));
+            Assert.IsFalse(filter.Invoke(null));
 
             filter = ModuleFilter.Compile("?d == null", node);
-            Assert.IsTrue(filter(null));
+            Assert.IsTrue(filter.Invoke(null));
         }
 
         [TestMethod]
         public void TestConfigReadNonNull()
         {
-            Func<PartModule, bool> filter;
+            ModuleFilter.CompiledFilter filter;
             ConfigNode node = new();
             node.AddValue("a", "test1");
             node.AddValue("b", "test2");
 
             filter = ModuleFilter.Compile("@a == @a", node);
-            Assert.IsTrue(filter(null));
+            Assert.IsTrue(filter.Invoke(null));
 
             filter = ModuleFilter.Compile("@a != @b", node);
-            Assert.IsTrue(filter(null));
+            Assert.IsTrue(filter.Invoke(null));
 
             Assert.ThrowsException<ModuleFilterException>(() =>
                 ModuleFilter.Compile("@c == @a", node)
@@ -50,29 +49,29 @@ namespace BackgroundResourceProcessing.Test.Utils
         [TestMethod]
         public void TestConfigReadNullable()
         {
-            Func<PartModule, bool> filter;
+            ModuleFilter.CompiledFilter filter;
             ConfigNode node = new();
             node.AddValue("a", "test1");
             node.AddValue("b", "test1");
             node.AddValue("c", "test2");
 
             filter = ModuleFilter.Compile("?a == @a", node);
-            Assert.IsTrue(filter(null));
+            Assert.IsTrue(filter.Invoke(null));
 
             filter = ModuleFilter.Compile("?a == @b", node);
-            Assert.IsTrue(filter(null));
+            Assert.IsTrue(filter.Invoke(null));
 
             filter = ModuleFilter.Compile("?a == @c", node);
-            Assert.IsFalse(filter(null));
+            Assert.IsFalse(filter.Invoke(null));
 
             filter = ModuleFilter.Compile("?a == ?z", node);
-            Assert.IsFalse(filter(null));
+            Assert.IsFalse(filter.Invoke(null));
 
             filter = ModuleFilter.Compile("?a != ?z", node);
-            Assert.IsTrue(filter(null));
+            Assert.IsTrue(filter.Invoke(null));
 
             filter = ModuleFilter.Compile("?x == ?y", node);
-            Assert.IsTrue(filter(null));
+            Assert.IsTrue(filter.Invoke(null));
         }
 
         public class DummyPartModule() : PartModule
@@ -90,7 +89,7 @@ namespace BackgroundResourceProcessing.Test.Utils
         [TestMethod]
         public void TestFieldAccess()
         {
-            Func<PartModule, bool> filter;
+            ModuleFilter.CompiledFilter filter;
             ConfigNode node = new();
             node.AddValue("Value1", "TestValue1");
             node.AddValue("Value2", "Enabled");
@@ -101,31 +100,31 @@ namespace BackgroundResourceProcessing.Test.Utils
             DummyPartModule module = new();
 
             filter = ModuleFilter.Compile("%Field1 == @Value1", node);
-            Assert.IsTrue(filter(module));
+            Assert.IsTrue(filter.Invoke(module));
 
             filter = ModuleFilter.Compile("%Field1 != @Value3", node);
-            Assert.IsTrue(filter(module));
+            Assert.IsTrue(filter.Invoke(module));
 
             filter = ModuleFilter.Compile("%Field2 != null", node);
-            Assert.IsTrue(filter(module));
+            Assert.IsTrue(filter.Invoke(module));
 
             filter = ModuleFilter.Compile("%Field3 == null", node);
-            Assert.IsTrue(filter(module));
+            Assert.IsTrue(filter.Invoke(module));
 
             filter = ModuleFilter.Compile("%True == true", node);
-            Assert.IsTrue(filter(module));
+            Assert.IsTrue(filter.Invoke(module));
 
             filter = ModuleFilter.Compile("%False == false", node);
-            Assert.IsTrue(filter(module));
+            Assert.IsTrue(filter.Invoke(module));
 
             filter = ModuleFilter.Compile("%FlowMode == @Value4", node);
-            Assert.IsTrue(filter(module));
+            Assert.IsTrue(filter.Invoke(module));
 
             filter = ModuleFilter.Compile("%FlowMode != %Field1", node);
-            Assert.IsTrue(filter(module));
+            Assert.IsTrue(filter.Invoke(module));
 
             filter = ModuleFilter.Compile("%True != %False", node);
-            Assert.IsTrue(filter(module));
+            Assert.IsTrue(filter.Invoke(module));
         }
 
         [TestMethod]
@@ -133,10 +132,13 @@ namespace BackgroundResourceProcessing.Test.Utils
         {
             ConfigNode node = new();
             node.AddValue("ConverterName", "LF+Ox");
+            node.AddValue("moduleID", "converter1");
 
             Assert.ThrowsException<ModuleFilterException>(() =>
                 ModuleFilter.Compile("%ConverterName = ?ConverterName", node)
             );
+
+            ModuleFilter.Compile("%moduleID == @moduleID", node);
         }
     }
 }

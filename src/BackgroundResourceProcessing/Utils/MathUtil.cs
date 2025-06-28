@@ -26,6 +26,11 @@ namespace BackgroundResourceProcessing.Utils
             return Math.Max(Math.Min(x, hi), lo);
         }
 
+        public static int Clamp(int x, int lo, int hi)
+        {
+            return Math.Max(Math.Min(x, hi), lo);
+        }
+
         internal static int TrailingZeroCount(ulong v)
         {
             int c = 64;
