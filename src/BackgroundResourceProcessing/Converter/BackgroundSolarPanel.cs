@@ -2,7 +2,7 @@ namespace BackgroundResourceProcessing.Converter
 {
     public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPanel>
     {
-        public override AdapterBehaviour GetBehaviour(ModuleDeployableSolarPanel module)
+        public override ModuleBehaviour GetBehaviour(ModuleDeployableSolarPanel module)
         {
             if (module.flowRate == 0.0)
                 return null;

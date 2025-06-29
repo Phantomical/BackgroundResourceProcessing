@@ -23,7 +23,7 @@ namespace BackgroundResourceProcessing.Integration.EL
         [KSPField]
         public double BaseProductionRate = 1.0 / 3600.0;
 
-        public override AdapterBehaviour GetBehaviour(ELWorkshop workshop)
+        public override ModuleBehaviour GetBehaviour(ELWorkshop workshop)
         {
             if (!workshop.isActive)
                 return null;
@@ -43,7 +43,7 @@ namespace BackgroundResourceProcessing.Integration.EL
                 },
             ];
 
-            var behaviour = new AdapterBehaviour(new ConstantProducer(outputs));
+            var behaviour = new ModuleBehaviour(new ConstantProducer(outputs));
             behaviour.AddPullModule(workshop);
             return behaviour;
         }

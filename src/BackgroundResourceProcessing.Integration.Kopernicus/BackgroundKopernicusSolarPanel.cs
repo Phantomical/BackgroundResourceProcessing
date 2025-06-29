@@ -7,7 +7,7 @@ namespace BackgroundResourceProcessing.Integration.Kopernicus
 {
     public class BackgroundKopernicusSolarPanel : BackgroundConverter<KopernicusSolarPanel>
     {
-        public override AdapterBehaviour GetBehaviour(KopernicusSolarPanel panel)
+        public override ModuleBehaviour GetBehaviour(KopernicusSolarPanel panel)
         {
             // TODO:
             //  - Support alternating between 0 and flowRate when going into and

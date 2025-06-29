@@ -16,7 +16,7 @@ namespace BackgroundResourceProcessing.Converter
     /// up for more advanced use cases involving fake inventories or multiple
     /// converters on the same part.
     /// </remarks>
-    public class AdapterBehaviour()
+    public class ModuleBehaviour()
     {
         public List<ConverterBehaviour> Converters = null;
 
@@ -47,7 +47,7 @@ namespace BackgroundResourceProcessing.Converter
         /// </summary>
         public List<PartModule> Constraint = null;
 
-        public AdapterBehaviour(ConverterBehaviour behaviour)
+        public ModuleBehaviour(ConverterBehaviour behaviour)
             : this()
         {
             Converters = [behaviour];
@@ -128,10 +128,10 @@ namespace BackgroundResourceProcessing.Converter
         /// </summary>
         /// <param name="module"></param>
         /// <returns>
-        ///   An <see cref="AdapterBehaviour"/>, or <c>null</c> if the
+        ///   An <see cref="ModuleBehaviour"/>, or <c>null</c> if the
         ///   there is nothing active on <paramref name="module"/>.
         /// </returns>
-        public abstract AdapterBehaviour GetBehaviour(PartModule module);
+        public abstract ModuleBehaviour GetBehaviour(PartModule module);
 
         /// <summary>
         /// Called during vessel restore for each <see cref="ConverterBehaviour"/>
@@ -219,9 +219,9 @@ namespace BackgroundResourceProcessing.Converter
     /// </summary>
     /// <typeparam name="T"></typeparam>
     public abstract class BackgroundConverter<T> : BackgroundConverter
-        where T : PartModule
+        where T : class
     {
-        public sealed override AdapterBehaviour GetBehaviour(PartModule module)
+        public sealed override ModuleBehaviour GetBehaviour(PartModule module)
         {
             if (module == null)
                 return GetBehaviour((T)null);
@@ -235,7 +235,7 @@ namespace BackgroundResourceProcessing.Converter
             return GetBehaviour(downcasted);
         }
 
-        public abstract AdapterBehaviour GetBehaviour(T module);
+        public abstract ModuleBehaviour GetBehaviour(T module);
 
         public sealed override void OnRestore(PartModule module, ResourceConverter converter)
         {

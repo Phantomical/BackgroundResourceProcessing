@@ -318,7 +318,7 @@ namespace BackgroundResourceProcessing.Core
 
             LogUtil.Debug(() => $"Found converter adapter for module: {partModule.GetType().Name}");
 
-            AdapterBehaviour behaviours;
+            ModuleBehaviour behaviours;
             try
             {
                 behaviours = adapter.GetBehaviour(partModule);

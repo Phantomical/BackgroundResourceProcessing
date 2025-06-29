@@ -7,7 +7,7 @@ namespace BackgroundResourceProcessing.Converter
         [KSPField]
         public string TimePassedResourceName = "BRPScienceLabTime";
 
-        public override AdapterBehaviour GetBehaviour(ModuleScienceConverter module)
+        public override ModuleBehaviour GetBehaviour(ModuleScienceConverter module)
         {
             List<ResourceRatio> inputs =
             [
@@ -30,7 +30,7 @@ namespace BackgroundResourceProcessing.Converter
                 },
             ];
 
-            var behaviour = new AdapterBehaviour(new ConstantConverter(inputs, outputs));
+            var behaviour = new ModuleBehaviour(new ConstantConverter(inputs, outputs));
             behaviour.AddPushModule(module);
             return behaviour;
         }

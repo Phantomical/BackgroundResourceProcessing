@@ -28,7 +28,7 @@ namespace BackgroundResourceProcessing.Integration.EL
         [KSPField]
         public string WorkHoursResource = "BRPELWorkHours";
 
-        public override AdapterBehaviour GetBehaviour(ELLaunchpad module)
+        public override ModuleBehaviour GetBehaviour(ELLaunchpad module)
         {
             var control = module.control;
             if (control == null)
@@ -105,7 +105,7 @@ namespace BackgroundResourceProcessing.Integration.EL
                 return null;
             }
 
-            AdapterBehaviour behaviour = new(new ConstantConverter(inputs, outputs));
+            ModuleBehaviour behaviour = new(new ConstantConverter(inputs, outputs));
             behaviour.AddPushModule(module);
 
             var workNet = control.workNet;

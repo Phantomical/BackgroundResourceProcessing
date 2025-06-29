@@ -28,7 +28,7 @@ namespace BackgroundResourceProcessing.Converter
         private ModuleFilter activeCondition;
         private FieldExtractor<double> multiplierField;
 
-        public override AdapterBehaviour GetBehaviour(PartModule module)
+        public override ModuleBehaviour GetBehaviour(PartModule module)
         {
             if (!activeCondition.Invoke(module))
                 return null;

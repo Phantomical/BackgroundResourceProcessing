@@ -12,7 +12,7 @@ namespace BackgroundResourceProcessing.Converter
     {
         readonly List<ConverterEntry> options = [];
 
-        public override AdapterBehaviour GetBehaviour(PartModule module)
+        public override ModuleBehaviour GetBehaviour(PartModule module)
         {
             foreach (var option in options)
             {

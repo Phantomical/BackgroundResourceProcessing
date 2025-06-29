@@ -86,7 +86,7 @@ namespace BackgroundResourceProcessing.Converter
         private MemberInfo outputsMember;
         private MemberInfo requiredMember;
 
-        public override AdapterBehaviour GetBehaviour(PartModule module)
+        public override ModuleBehaviour GetBehaviour(PartModule module)
         {
             if (disabled)
                 return null;

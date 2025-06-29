@@ -42,7 +42,7 @@ namespace BackgroundResourceProcessing.Converter
 
         private FieldExtractor<double> multiplierExtractor = null;
 
-        public override AdapterBehaviour GetBehaviour(T module)
+        public override ModuleBehaviour GetBehaviour(T module)
         {
             if (module == null)
                 return null;

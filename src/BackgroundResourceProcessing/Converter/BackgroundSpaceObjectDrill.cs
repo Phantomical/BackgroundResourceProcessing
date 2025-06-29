@@ -19,7 +19,7 @@ namespace BackgroundResourceProcessing.Converter
         [KSPField]
         public string MassResourceName = "BRPSpaceObjectMass";
 
-        public override AdapterBehaviour GetBehaviour(T module)
+        public override ModuleBehaviour GetBehaviour(T module)
         {
             var behaviour = base.GetBehaviour(module);
             if (behaviour == null)

@@ -99,7 +99,7 @@ namespace BackgroundResourceProcessing.Inventory
     }
 
     public abstract class BackgroundInventory<T> : BackgroundInventory
-        where T : PartModule
+        where T : class
     {
         /// <summary>
         /// Get a list of <see cref="FakePartResource"/>s that are present on
@@ -124,22 +124,33 @@ namespace BackgroundResourceProcessing.Inventory
 
         public sealed override List<FakePartResource> GetResources(PartModule module)
         {
-            if (module == null || module is T)
-                return GetResources((T)module);
+            if (module == null)
+                return GetResources((T)null);
 
-            LogUnexpectedType(module);
-            return null;
+            if (module is not T downcasted)
+            {
+                LogUnexpectedType(module);
+                return null;
+            }
+
+            return GetResources(downcasted);
         }
 
         public sealed override void UpdateResource(PartModule module, ResourceInventory inventory)
         {
-            if (module == null || module is T)
+            if (module == null)
             {
-                UpdateResource((T)module, inventory);
+                UpdateResource((T)null, inventory);
                 return;
             }
 
-            LogUnexpectedType(module);
+            if (module is not T downcasted)
+            {
+                LogUnexpectedType(module);
+                return;
+            }
+
+            UpdateResource(downcasted, inventory);
         }
 
         private void LogUnexpectedType(PartModule module)
