@@ -140,5 +140,25 @@ namespace BackgroundResourceProcessing.Test.Utils
 
             ModuleFilter.Compile("%moduleID == @moduleID", node);
         }
+
+        [TestMethod]
+        public void TestUnaryExpressions()
+        {
+            ConfigNode node = new();
+            node.AddValue("ConverterName", "LF+Ox");
+            node.AddValue("moduleID", "converter1");
+
+            ModuleFilter filter;
+            DummyPartModule module = new();
+
+            filter = ModuleFilter.Compile("%True || %False", node);
+            Assert.IsTrue(filter.Invoke(module));
+
+            filter = ModuleFilter.Compile("%True && !%False", node);
+            Assert.IsTrue(filter.Invoke(module));
+
+            filter = ModuleFilter.Compile("!%True", node);
+            Assert.IsFalse(filter.Invoke(module));
+        }
     }
 }

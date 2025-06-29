@@ -70,7 +70,7 @@ namespace BackgroundResourceProcessing.Utils
                     else
                         body = FilterExpr.OrElse((FilterExpr)body, expr);
 
-                    if (Current.Type == TokenType.Operator && Current.Span == "||")
+                    if (Current.Type == TokenType.Or)
                     {
                         lexer.Advance();
                         continue;
@@ -96,7 +96,7 @@ namespace BackgroundResourceProcessing.Utils
                     else
                         body = FilterExpr.AndAlso((FilterExpr)body, expr);
 
-                    if (Current.Type == TokenType.Operator && Current.Span == "&&")
+                    if (Current.Type == TokenType.And)
                     {
                         lexer.Advance();
                         continue;
@@ -151,7 +151,7 @@ namespace BackgroundResourceProcessing.Utils
             private FilterExpr ParseComparisonExpression()
             {
                 var lhs = ParseValueExpression();
-                if (Current.Type != TokenType.Operator)
+                if (!Current.IsComparisonOperator)
                 {
                     var func = (string value) =>
                     {
@@ -271,7 +271,7 @@ namespace BackgroundResourceProcessing.Utils
 
             private Comparison ParseComparision()
             {
-                if (Current.Type != TokenType.Operator)
+                if (!Current.IsComparisonOperator)
                     throw RenderError($"Unexpected `{Current.ToString()}`, expected `==` or `!=`");
 
                 var copy = lexer;
@@ -337,14 +337,30 @@ namespace BackgroundResourceProcessing.Utils
                     return;
                 }
 
-                if (
-                    span.StartsWith("==")
-                    || span.StartsWith("!=")
-                    || span.StartsWith("&&")
-                    || span.StartsWith("||")
-                )
+                if (span.StartsWith("=="))
                 {
-                    current = new(span.Slice(0, 2), TokenType.Operator);
+                    current = new(span.Slice(0, 2), TokenType.Equal);
+                    span = span.Slice(2);
+                    return;
+                }
+
+                if (span.StartsWith("!="))
+                {
+                    current = new(span.Slice(0, 2), TokenType.NotEqual);
+                    span = span.Slice(2);
+                    return;
+                }
+
+                if (span.StartsWith("&&"))
+                {
+                    current = new(span.Slice(0, 2), TokenType.And);
+                    span = span.Slice(2);
+                    return;
+                }
+
+                if (span.StartsWith("||"))
+                {
+                    current = new(span.Slice(0, 2), TokenType.Or);
                     span = span.Slice(2);
                     return;
                 }
@@ -549,8 +565,17 @@ namespace BackgroundResourceProcessing.Utils
             // This is an ident prefixed with `%`.
             TargetField,
 
-            // An operator (==, !=, &&, ||)
-            Operator,
+            // ==
+            Equal,
+
+            // !=
+            NotEqual,
+
+            // &&
+            And,
+
+            // ||
+            Or,
 
             // A reference to a key on the current ConfigNode.
             //
@@ -587,6 +612,10 @@ namespace BackgroundResourceProcessing.Utils
             public TokenSpan Span = span;
             public TokenType Type = type;
             public int Offset;
+
+            public readonly bool IsComparisonOperator =>
+                Type == TokenType.Equal || Type == TokenType.NotEqual;
+            public readonly bool IsBooleanOperator => Type == TokenType.And || Type == TokenType.Or;
 
             public Token(ReadOnlySpan<char> span, TokenType type)
                 : this(new TokenSpan(span), type) { }
