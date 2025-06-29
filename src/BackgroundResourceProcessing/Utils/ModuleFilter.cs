@@ -1,35 +1,38 @@
 using System;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.InteropServices;
 
 #nullable enable
 
 namespace BackgroundResourceProcessing.Utils
 {
-    internal static class ModuleFilter
+    internal class ModuleFilter(Func<PartModule, bool> filter, string expansion)
     {
-        internal class CompiledFilter(Func<PartModule, bool> filter, string expansion)
-        {
-            readonly string expansion = expansion;
-            readonly Func<PartModule, bool> filter = filter;
-
-            public bool Invoke(PartModule module)
-            {
-                return filter(module);
-            }
-
-            public override string ToString()
-            {
-                return expansion;
-            }
-        }
+        readonly string expansion = expansion;
+        readonly Func<PartModule, bool> filter = filter;
 
         /// <summary>
-        /// An empty filter that always returns false.
+        /// A filter that always returns false.
         /// </summary>
-        internal static readonly CompiledFilter EmptyFilter = new(_ => false, "false");
+        internal static readonly ModuleFilter Never = new(_ => false, "false");
 
-        public static CompiledFilter Compile(string expression, ConfigNode node)
+        /// <summary>
+        /// A filter that always returns true.
+        /// </summary>
+        internal static readonly ModuleFilter Always = new(_ => true, "true");
+
+        public bool Invoke(PartModule module)
+        {
+            return filter(module);
+        }
+
+        public override string ToString()
+        {
+            return expansion;
+        }
+
+        public static ModuleFilter Compile(string expression, ConfigNode node)
         {
             Parser parser = new(expression, node);
             return parser.Parse();
@@ -46,7 +49,7 @@ namespace BackgroundResourceProcessing.Utils
 
             readonly Token Current => lexer.current;
 
-            public CompiledFilter Parse()
+            public ModuleFilter Parse()
             {
                 var expression = ParseOrExpression();
                 var lambda = Expression.Lambda<Func<PartModule, bool>>(expression.expr, module);
@@ -85,7 +88,7 @@ namespace BackgroundResourceProcessing.Utils
 
                 while (true)
                 {
-                    var expr = ParseBracedExpression();
+                    var expr = ParseNotExpression();
 
                     // total = total && expr(module)
                     if (body == null)
@@ -103,6 +106,31 @@ namespace BackgroundResourceProcessing.Utils
                 }
 
                 return body ?? FilterExpr.Constant(true);
+            }
+
+            private FilterExpr ParseNotExpression()
+            {
+                if (Current.Type != TokenType.Not)
+                    return ParseBracedExpression();
+
+                lexer.Advance();
+                if (Current.Type == TokenType.LParen)
+                    return FilterExpr.Not(ParseBracedExpression());
+
+                var expr = ParseValueExpression();
+                var func = (string value) =>
+                {
+                    if (value == null)
+                        return true;
+                    if (value == "False")
+                        return true;
+                    return false;
+                };
+
+                return new(
+                    Expression.Invoke(Expression.Constant(func), expr.expr),
+                    $"!{expr.text}"
+                );
             }
 
             private FilterExpr ParseBracedExpression()
@@ -123,6 +151,18 @@ namespace BackgroundResourceProcessing.Utils
             private FilterExpr ParseComparisonExpression()
             {
                 var lhs = ParseValueExpression();
+                if (Current.Type != TokenType.Operator)
+                {
+                    var func = (string value) =>
+                    {
+                        if (value == "False" || value == null)
+                            return false;
+                        return true;
+                    };
+
+                    return new(Expression.Invoke(Expression.Constant(func), lhs.expr), lhs.text);
+                }
+
                 var op = ParseComparision();
                 var rhs = ParseValueExpression();
 
@@ -183,14 +223,7 @@ namespace BackgroundResourceProcessing.Utils
                             if (field == "name")
                                 return type.Name;
 
-                            var info = type.GetField(
-                                field,
-                                BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance
-                            );
-                            if (info == null)
-                                return null;
-
-                            var value = info.GetValue(module);
+                            var value = GetMemberValue(module, field);
                             var ret = value switch
                             {
                                 null => null,
@@ -207,6 +240,32 @@ namespace BackgroundResourceProcessing.Utils
                         throw RenderError(
                             $"Unexpected token `{Current.ToString()}`, expected `null`, `true`, `false`, `@<field>`, `%<field>`, or `?<field>`"
                         );
+                }
+            }
+
+            private static object? GetMemberValue(object obj, string member)
+            {
+                const BindingFlags Flags =
+                    BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance;
+
+                var type = obj.GetType();
+                try
+                {
+                    var field = type.GetField(member, Flags);
+                    if (field != null)
+                        return field.GetValue(obj);
+
+                    var prop = type.GetProperty(member, Flags);
+                    if (prop == null)
+                        return null;
+                    if (!prop.CanRead)
+                        return null;
+                    return prop.GetValue(obj);
+                }
+                catch (Exception e)
+                {
+                    LogUtil.Warn($"Access of field {type.Name}.{member} threw an excpetion: {e}");
+                    return null;
                 }
             }
 
@@ -305,6 +364,11 @@ namespace BackgroundResourceProcessing.Utils
 
                     case ')':
                         current = new(span.Slice(0, 1), TokenType.RParen);
+                        span = span.Slice(1);
+                        return;
+
+                    case '!':
+                        current = new(span.Slice(0, 1), TokenType.Not);
                         span = span.Slice(1);
                         return;
 
@@ -513,6 +577,9 @@ namespace BackgroundResourceProcessing.Utils
 
             // A closing parenthesis `)`
             RParen,
+
+            // The operator `!`
+            Not,
         }
 
         private ref struct Token(TokenSpan span, TokenType type)
@@ -550,6 +617,11 @@ namespace BackgroundResourceProcessing.Utils
             public static FilterExpr Null()
             {
                 return new(Expression.Constant(null), "null");
+            }
+
+            public static FilterExpr Not(FilterExpr expr)
+            {
+                return new(Expression.Not(expr.expr), $"!{expr.text}");
             }
 
             public static FilterExpr Equal(FilterExpr lhs, FilterExpr rhs)

@@ -1,24 +1,30 @@
 using System.Collections.Generic;
 using System.Linq;
-using BackgroundResourceProcessing.Modules;
+using BackgroundResourceProcessing.Converter;
 using ExtraplanetaryLaunchpads;
 
 namespace BackgroundResourceProcessing.Integration.EL
 {
-    public interface IBackgroundELWorkSink : IBackgroundPartResource { }
-
-    public class ModuleBackgroundELWorkshop : ModuleBackgroundConverter
+    /// <summary>
+    /// A background version of <see cref="ELWorkshop"/>. It produces
+    /// <see cref="WorkHoursResource"/> at a constant rate determined by the
+    /// workshop.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// It assumes that there is a background inventory on the workshop
+    /// module that can store <see cref="WorkHoursResource"/>.
+    /// </remarks>
+    public class BackgroundELWorkshop : BackgroundConverter<ELWorkshop>
     {
-        private ELWorkshop module;
+        [KSPField]
+        public string WorkHoursResource = "BRPELWorkHours";
 
-        [KSPField(isPersistant = true)]
-        private uint cachedPersistentModuleId;
+        [KSPField]
+        public double BaseProductionRate = 1.0 / 3600.0;
 
-        protected override List<ConverterBehaviour> GetConverterBehaviours()
+        public override AdapterBehaviour GetBehaviour(ELWorkshop workshop)
         {
-            var workshop = GetLinkedWorkshop();
-            if (workshop == null)
-                return null;
             if (!workshop.isActive)
                 return null;
 
@@ -26,29 +32,20 @@ namespace BackgroundResourceProcessing.Integration.EL
             if (productivity == 0.0)
                 return null;
 
-            IEnumerable<ResourceRatio> inputs = this.inputs;
-            IEnumerable<ResourceRatio> outputs = this.outputs;
+            List<ResourceRatio> outputs =
+            [
+                new()
+                {
+                    ResourceName = WorkHoursResource,
+                    Ratio = BaseProductionRate * productivity,
+                    DumpExcess = false,
+                    FlowMode = ResourceFlowMode.NO_FLOW,
+                },
+            ];
 
-            if (productivity != 1.0)
-            {
-                inputs = inputs.Select(input => input.WithMultiplier(productivity));
-                outputs = outputs.Select(output => output.WithMultiplier(productivity));
-            }
-
-            return [new ConstantConverter(inputs.ToList(), outputs.ToList(), required)];
-        }
-
-        private ELWorkshop GetLinkedWorkshop()
-        {
-            if (module != null)
-                return module;
-
-            var workshop = LinkedModuleUtil.GetLinkedModule<ELWorkshop>(
-                this,
-                ref cachedPersistentModuleId
-            );
-            module = workshop;
-            return workshop;
+            var behaviour = new AdapterBehaviour(new ConstantProducer(outputs));
+            behaviour.AddPullModule(workshop);
+            return behaviour;
         }
     }
 }

@@ -10,7 +10,6 @@
   <ItemGroup>
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
     <PackageReference Include="DotNetGraph" Version="3.3.0" />
-    <PackageReference Include="KSPBuildTools" Version="0.0.3" />
 
     <ProjectReference Include="$(ProjectRootDir)\src\BackgroundResourceProcessing\BackgroundResourceProcessing.csproj" />
   </ItemGroup>

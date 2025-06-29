@@ -1,35 +1,30 @@
 using System.Collections.Generic;
-using BackgroundResourceProcessing.Modules;
+using BackgroundResourceProcessing.Converter;
 using Kopernicus.Components;
+using UnityEngine.AI;
 
 namespace BackgroundResourceProcessing.Integration.Kopernicus
 {
-    public class ModuleBackgroundKopernicusSolarPanel : BackgroundConverter
+    public class BackgroundKopernicusSolarPanel : BackgroundConverter<KopernicusSolarPanel>
     {
-        protected override List<ConverterBehaviour> GetConverterBehaviours()
+        public override AdapterBehaviour GetBehaviour(KopernicusSolarPanel panel)
         {
             // TODO:
             //  - Support alternating between 0 and flowRate when going into and
             //    out of planet shadows.
             //  - Compute a non-zero background rate when in shadow.
             //  - Be smarter when landed on a planet.
-            var netEC = 0.0;
-            var panels = GetComponents<KopernicusSolarPanel>();
-
-            foreach (var panel in panels)
-                netEC += panel.currentOutput;
+            if (panel.currentOutput == 0)
+                return null;
 
             var ratio = new ResourceRatio()
             {
-                Ratio = netEC,
+                Ratio = panel.currentOutput,
                 ResourceName = "ElectricCharge",
                 FlowMode = ResourceFlowMode.ALL_VESSEL_BALANCE,
             };
 
-            if (netEC == 0.0)
-                return null;
-
-            return [new ConstantProducer([ratio])];
+            return new(new ConstantProducer([ratio]));
         }
     }
 }

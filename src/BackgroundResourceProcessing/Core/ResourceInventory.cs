@@ -1,3 +1,4 @@
+using BackgroundResourceProcessing.Inventory;
 using BackgroundResourceProcessing.Solver;
 using BackgroundResourceProcessing.Utils;
 
@@ -14,8 +15,7 @@ namespace BackgroundResourceProcessing.Core
         public uint flightId = flightId;
 
         /// <summary>
-        /// If this inventory is actually from a <see cref="IBackgroundPartResource"/>
-        /// then this is the persistent module ID of the relevant module.
+        /// If non-null, this indicates the module that stores this inventory.
         /// </summary>
         public uint? moduleId = moduleId;
 
@@ -26,6 +26,9 @@ namespace BackgroundResourceProcessing.Core
 
         public InventoryId(PartResource resource, uint? moduleId = null)
             : this(resource.part.flightID, resource.resourceName, moduleId) { }
+
+        public InventoryId(PartModule module, string resourceName)
+            : this(module.part.flightID, resourceName, module.GetPersistentId()) { }
 
         public void Load(ConfigNode node)
         {
@@ -100,7 +103,8 @@ namespace BackgroundResourceProcessing.Core
         public uint flightId;
 
         /// <summary>
-        /// The persistent ID of the module implementing <see cref="IBackgroundPartResource"/>.
+        /// The persistent ID of the module, if this corresponds to a
+        /// <see cref="BackgroundInventory"/>.
         /// </summary>
         public uint? moduleId;
 

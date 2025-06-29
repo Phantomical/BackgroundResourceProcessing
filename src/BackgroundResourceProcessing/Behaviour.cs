@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using BackgroundResourceProcessing.Utils;
 
 namespace BackgroundResourceProcessing
 {
@@ -29,45 +31,6 @@ namespace BackgroundResourceProcessing
     }
 
     public class InvalidBehaviourException(string message) : Exception(message) { }
-
-    /// <summary>
-    /// Marks the current class as a behaviour for the purposes of serialization.
-    /// </summary>
-    ///
-    /// <remarks>
-    /// <para>
-    ///   This attribute marks a class that can be deserialized as a
-    ///   <see cref="ConverterBehaviour"/>. It is used to customize the <c>name</c>
-    ///   field in the serialized representation.
-    /// </para>
-    ///
-    /// <para>
-    ///   The key information that this attribute collects is a unique primary
-    ///   name for the behaviour, along with a number of alternate names. The
-    ///   primary name can be provided directly as a string or can be determined
-    ///   from a provided <see cref="Type"/> object. Alternates are intended to
-    ///   allow for migrations. They will result in a warning if they are not
-    ///   unique but do allow for collisions.
-    /// </para>
-    /// </remarks>
-    [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
-    public class Behaviour : Attribute
-    {
-        public readonly string Name;
-        public readonly string[] Alternates;
-
-        public Behaviour(Type type, string[] alternates = null)
-        {
-            Name = type.Name;
-            Alternates = alternates ?? [];
-        }
-
-        public Behaviour(string name, string[] alternates = null)
-        {
-            Name = name;
-            Alternates = alternates ?? [];
-        }
-    }
 
     /// <summary>
     /// The type of constraint applied on this converter.
@@ -110,6 +73,14 @@ namespace BackgroundResourceProcessing
         /// The flow mode to use when computing inventory resource constraints.
         /// </summary>
         public ResourceFlowMode FlowMode = ResourceFlowMode.ALL_VESSEL;
+
+        public ResourceConstraint(ResourceRatio ratio)
+            : this()
+        {
+            ResourceName = ratio.ResourceName;
+            Amount = ratio.Ratio;
+            FlowMode = ratio.FlowMode;
+        }
 
         public void Load(ConfigNode node)
         {
@@ -197,6 +168,7 @@ namespace BackgroundResourceProcessing
     ///   produced.
     /// </remarks>
     public abstract class ConverterBehaviour(int priority = 0)
+        : DynamicallySerializable<ConverterBehaviour>()
     {
         /// <summary>
         /// The module that constructed this behaviour.
@@ -206,8 +178,10 @@ namespace BackgroundResourceProcessing
         /// This is mainly used for debugging and log messages. It will be
         /// automatically set when returned from a component module.
         /// </remarks>
-        public string Label => label;
-        internal string label = null;
+        public string SourceModule => sourceModule;
+
+        [KSPField]
+        internal string sourceModule = null;
 
         /// <summary>
         /// The part that contained the source module for this behaviour.
@@ -217,6 +191,8 @@ namespace BackgroundResourceProcessing
         /// This is purely added for debugging purposes.
         /// </remarks>
         public string SourcePart => sourcePart;
+
+        [KSPField]
         internal string sourcePart = null;
 
         /// <summary>
@@ -230,6 +206,7 @@ namespace BackgroundResourceProcessing
         ///   consume resources first. The default is 0, and generally you can
         ///   leave the priority at that.
         /// </remarks>
+        [KSPField]
         public int Priority = priority;
 
         /// <summary>
@@ -278,69 +255,23 @@ namespace BackgroundResourceProcessing
             return double.PositiveInfinity;
         }
 
-        /// <summary>
-        /// Use this to load fields in your derived type. Make sure to call
-        /// <c>base.Load</c> so that base classes can load their fields too.
-        /// </summary>
-        ///
-        /// <remarks>
-        ///   Don't call this to load a type from a <c>ConfigNode</c>. Use
-        ///   <c>LoadStatic</c> instead, as it will deal with constructing
-        ///   the right class and loading that.
-        /// </remarks>
-        protected virtual void Load(ConfigNode node)
+        public static new ConverterBehaviour Load(ConfigNode node)
         {
-            if (!node.TryGetValue("label", ref label))
-                node.TryGetValue("sourceModule", ref label);
-            node.TryGetValue("sourcePart", ref sourcePart);
-            node.TryGetValue("priority", ref Priority);
+            return (ConverterBehaviour)DynamicallySerializable<ConverterBehaviour>.Load(node);
         }
 
-        /// <summary>
-        /// Save fields within your type to the <c>ConfigNode</c>. Make sure
-        /// to call <c>base.Save</c> so that base classes save their fields
-        /// as well.
-        /// </summary>
-        public virtual void Save(ConfigNode node)
+        internal static void RegisterAll()
         {
-            node.AddValue("name", BehaviourRegistry.GetBehaviourName(GetType()));
-            node.AddValue("priority", Priority);
+            var types = AssemblyLoader
+                .GetSubclassesOfParentClass(typeof(ConverterBehaviour))
+                .Where(type => !type.IsAbstract);
 
-            if (label != null)
-                node.AddValue("label", label);
-            if (sourcePart != null)
-                node.AddValue("sourcePart", sourcePart);
+            RegisterAll(types);
         }
 
-        public static ConverterBehaviour LoadStatic(ConfigNode node)
+        internal static new void RegisterAll(IEnumerable<Type> types)
         {
-            string name = null;
-            if (!node.TryGetValue("name", ref name))
-            {
-                LogUtil.Error("ConfigNode for BaseBehaviour did not have a 'name' property");
-                return null;
-            }
-
-            var type = BehaviourRegistry.Registry.GetRegisteredType(name);
-            if (type == null)
-            {
-                LogUtil.Error(
-                    $"Attempted to load a Behaviour ConfigNode with name '{name}' but no behaviour has been registered with that name"
-                );
-                return null;
-            }
-
-            var inst = Activator.CreateInstance(type);
-            if (inst is not ConverterBehaviour behaviour)
-            {
-                LogUtil.Error(
-                    $"Registered type for Behaviour with name '{name}' did not derive from BaseBehaviour"
-                );
-                return null;
-            }
-
-            behaviour.Load(node);
-            return behaviour;
+            DynamicallySerializable<ConverterBehaviour>.RegisterAll(types);
         }
     }
 
@@ -454,17 +385,17 @@ namespace BackgroundResourceProcessing
             return resources;
         }
 
-        protected override void Load(ConfigNode node)
+        protected override void OnLoad(ConfigNode node)
         {
-            base.Load(node);
+            base.OnLoad(node);
             inputs = [.. ConfigUtil.LoadInputResources(node)];
             outputs = [.. ConfigUtil.LoadOutputResources(node)];
             required = [.. ConfigUtil.LoadRequiredResources(node)];
         }
 
-        public override void Save(ConfigNode node)
+        protected override void OnSave(ConfigNode node)
         {
-            base.Save(node);
+            base.OnSave(node);
             ConfigUtil.SaveInputResources(node, inputs);
             ConfigUtil.SaveOutputResources(node, outputs);
             ConfigUtil.SaveRequiredResources(node, required);
@@ -490,15 +421,15 @@ namespace BackgroundResourceProcessing
             return outputs;
         }
 
-        protected override void Load(ConfigNode node)
+        protected override void OnLoad(ConfigNode node)
         {
-            base.Load(node);
+            base.OnLoad(node);
             outputs = [.. ConfigUtil.LoadOutputResources(node)];
         }
 
-        public override void Save(ConfigNode node)
+        protected override void OnSave(ConfigNode node)
         {
-            base.Save(node);
+            base.OnSave(node);
             ConfigUtil.SaveOutputResources(node, outputs);
         }
     }
@@ -522,15 +453,15 @@ namespace BackgroundResourceProcessing
             return inputs;
         }
 
-        protected override void Load(ConfigNode node)
+        protected override void OnLoad(ConfigNode node)
         {
-            base.Load(node);
+            base.OnLoad(node);
             inputs = [.. ConfigUtil.LoadInputResources(node)];
         }
 
-        public override void Save(ConfigNode node)
+        protected override void OnSave(ConfigNode node)
         {
-            base.Save(node);
+            base.OnSave(node);
             ConfigUtil.SaveInputResources(node, inputs);
         }
     }

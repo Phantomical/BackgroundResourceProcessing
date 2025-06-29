@@ -2,7 +2,6 @@ using System;
 using System.Collections.ObjectModel;
 using BackgroundResourceProcessing.Addons;
 using BackgroundResourceProcessing.Core;
-using BackgroundResourceProcessing.Modules;
 
 namespace BackgroundResourceProcessing
 {
@@ -292,8 +291,6 @@ namespace BackgroundResourceProcessing
             processor.ApplyInventories(Vessel);
             processor.ClearVesselState();
 
-            NotifyOnVesselRestore();
-
             BackgroundProcessingActive = false;
         }
 
@@ -320,31 +317,6 @@ namespace BackgroundResourceProcessing
         {
             if (vessel.loaded)
                 GameEvents.onGameStateSave.Remove(OnGameStateSave);
-        }
-
-        private void NotifyOnVesselRestore()
-        {
-            foreach (var part in Vessel.Parts)
-            {
-                foreach (var module in part.Modules)
-                {
-                    if (module is not IBackgroundVesselRestoreHandler handler)
-                        continue;
-
-                    try
-                    {
-                        handler.OnVesselRestore();
-                    }
-                    catch (Exception e)
-                    {
-                        var typeName = handler.GetType().FullName;
-
-                        LogUtil.Error(
-                            $"OnVesselRestore handler for type {typeName} threw an excecption: {e}"
-                        );
-                    }
-                }
-            }
         }
         #endregion
 

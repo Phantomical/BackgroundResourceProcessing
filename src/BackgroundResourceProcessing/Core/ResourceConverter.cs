@@ -129,7 +129,7 @@ namespace BackgroundResourceProcessing.Core
 
             var bNode = node.GetNode("BEHAVIOUR");
             if (bNode != null)
-                Behaviour = ConverterBehaviour.LoadStatic(bNode);
+                Behaviour = ConverterBehaviour.Load(bNode);
 
             outputs.Clear();
             inputs.Clear();

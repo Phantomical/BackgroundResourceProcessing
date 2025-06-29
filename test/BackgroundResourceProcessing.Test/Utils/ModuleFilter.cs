@@ -8,7 +8,7 @@ namespace BackgroundResourceProcessing.Test.Utils
         [TestMethod]
         public void TestConstants()
         {
-            ModuleFilter.CompiledFilter filter;
+            ModuleFilter filter;
             ConfigNode node = new();
             node.AddValue("a", "True");
             node.AddValue("b", "False");
@@ -30,7 +30,7 @@ namespace BackgroundResourceProcessing.Test.Utils
         [TestMethod]
         public void TestConfigReadNonNull()
         {
-            ModuleFilter.CompiledFilter filter;
+            ModuleFilter filter;
             ConfigNode node = new();
             node.AddValue("a", "test1");
             node.AddValue("b", "test2");
@@ -49,7 +49,7 @@ namespace BackgroundResourceProcessing.Test.Utils
         [TestMethod]
         public void TestConfigReadNullable()
         {
-            ModuleFilter.CompiledFilter filter;
+            ModuleFilter filter;
             ConfigNode node = new();
             node.AddValue("a", "test1");
             node.AddValue("b", "test1");
@@ -89,7 +89,7 @@ namespace BackgroundResourceProcessing.Test.Utils
         [TestMethod]
         public void TestFieldAccess()
         {
-            ModuleFilter.CompiledFilter filter;
+            ModuleFilter filter;
             ConfigNode node = new();
             node.AddValue("Value1", "TestValue1");
             node.AddValue("Value2", "Enabled");

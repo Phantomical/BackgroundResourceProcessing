@@ -4,10 +4,11 @@
 
         <GenerateKSPAssemblyAttribute>true</GenerateKSPAssemblyAttribute>
         <GenerateKSPAssemblyDependencyAttributes>true</GenerateKSPAssemblyDependencyAttributes>
+
+        <KSPBinaryType>plugin</KSPBinaryType>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="KSPBuildTools" Version="0.0.3" />
         <ProjectReference
             Include="$(ProjectDir)/../BackgroundResourceProcessing/BackgroundResourceProcessing.csproj">
             <KSPAssemblyName>BackgroundResourceProcessing</KSPAssemblyName>

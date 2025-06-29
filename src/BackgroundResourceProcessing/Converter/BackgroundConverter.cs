@@ -1,0 +1,257 @@
+using System;
+using System.Collections.Generic;
+using BackgroundResourceProcessing.Collections;
+using BackgroundResourceProcessing.Inventory;
+using BackgroundResourceProcessing.Utils;
+
+namespace BackgroundResourceProcessing.Converter
+{
+    /// <summary>
+    /// The net behaviour of a part module.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// In most cases this will just be a wrapper around a single
+    /// <see cref="ConverterBehaviour"/> but it also allows you to set things
+    /// up for more advanced use cases involving fake inventories or multiple
+    /// converters on the same part.
+    /// </remarks>
+    public class AdapterBehaviour()
+    {
+        public List<ConverterBehaviour> Converters = null;
+
+        /// <summary>
+        /// A set of <see cref="PartModule"/>s to inspect for background
+        /// inventories. Any part modules that have a valid
+        /// <see cref="BackgroundInventory"/> entry will be added to the set of
+        /// inventories that the converters in <see cref="Converters"/> can push
+        /// resource to.
+        /// </summary>
+        public List<PartModule> Push = null;
+
+        /// <summary>
+        /// A set of <see cref="PartModule"/>s to inspect for background
+        /// inventories. Any part modules that have a valid
+        /// <see cref="BackgroundInventory"/> entry will be added to the set of
+        /// inventories that the converters in <see cref="Converters"/> can pull
+        /// resource from.
+        /// </summary>
+        public List<PartModule> Pull = null;
+
+        /// <summary>
+        /// A set of <see cref="PartModule"/>s to inspect for background
+        /// inventories. Any part modules that have a valid
+        /// <see cref="BackgroundInventory"/> entry will be added to the set of
+        /// inventories that the converters in <see cref="Converters"/>
+        /// reference for constraints.
+        /// </summary>
+        public List<PartModule> Constraint = null;
+
+        public AdapterBehaviour(ConverterBehaviour behaviour)
+            : this()
+        {
+            Converters = [behaviour];
+        }
+
+        /// <summary>
+        /// Add a new <see cref="ConverterBehaviour"/>.
+        /// </summary>
+        /// <param name="behaviour"></param>
+        public void Add(ConverterBehaviour behaviour)
+        {
+            Converters ??= [];
+            Converters.Add(behaviour);
+        }
+
+        /// <summary>
+        /// Add a part module that this converter will push resources to.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// This is only for use with <see cref="BackgroundInventory"/> modules.
+        /// Regular resources are connected using KSPs flow rules.
+        /// </remarks>
+        public void AddPushModule(PartModule module)
+        {
+            Push ??= [];
+            Push.Add(module);
+        }
+
+        /// <summary>
+        /// Add a part module that this converter will push resources to.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// This is only for use with <see cref="BackgroundInventory"/> modules.
+        /// Regular resources are connected using KSPs flow rules.
+        /// </remarks>
+        public void AddPullModule(PartModule module)
+        {
+            Pull ??= [];
+            Pull.Add(module);
+        }
+
+        /// <summary>
+        /// Add a part module that this converter will refer to when determining
+        /// whether its requirements are satisfied.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// This is only for use with <see cref="BackgroundInventory"/> modules.
+        /// Regular resources are connected using KSPs flow rules.
+        /// </remarks>
+        public void AddConstraintModule(PartModule module)
+        {
+            Pull ??= [];
+            Pull.Add(module);
+        }
+    }
+
+    /// <summary>
+    /// An adapter for a part module that defines the behaviour said converter
+    /// will have when run in the background.
+    /// </summary>
+    public abstract class BackgroundConverter : IRegistryItem
+    {
+        public const string NodeName = "BACKGROUND_CONVERTER";
+        private static readonly TypeRegistry<BackgroundConverter> registry = new(NodeName);
+
+        private readonly BaseFieldList fields;
+
+        public BackgroundConverter()
+        {
+            fields = new(this);
+        }
+
+        /// <summary>
+        /// Get the behaviour for a specific part module.
+        /// </summary>
+        /// <param name="module"></param>
+        /// <returns>
+        ///   An <see cref="AdapterBehaviour"/>, or <c>null</c> if the
+        ///   there is nothing active on <paramref name="module"/>.
+        /// </returns>
+        public abstract AdapterBehaviour GetBehaviour(PartModule module);
+
+        /// <summary>
+        /// Called during vessel restore for each <see cref="ConverterBehaviour"/>
+        /// that was emitted by this adapter.
+        /// </summary>
+        /// <param name="module"></param>
+        /// <param name="converter"></param>
+        public virtual void OnRestore(PartModule module, ResourceConverter converter) { }
+
+        /// <summary>
+        /// Load your adapter from a <see cref="ConfigNode"/>.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// The base method will automatically deserialize any fields annotated
+        /// with <c>[KSPField]</c>.
+        /// </remarks>
+        protected virtual void OnLoad(ConfigNode node)
+        {
+            fields.Load(node);
+        }
+
+        void IRegistryItem.Load(ConfigNode node)
+        {
+            OnLoad(node);
+        }
+
+        public static BackgroundConverter Load(ConfigNode node)
+        {
+            string adapter = null;
+            if (!node.TryGetValue("adapter", ref adapter))
+            {
+                LogUtil.Error($"{NodeName} did not have an `adapter` key");
+                return null;
+            }
+
+            Type adapterType = AssemblyLoader.GetClassByName(typeof(BackgroundConverter), adapter);
+            if (adapterType == null)
+            {
+                LogUtil.Error($"{NodeName}: Unable to find BackgroundConverter {adapter}");
+                return null;
+            }
+
+            try
+            {
+                var instance = (BackgroundConverter)Activator.CreateInstance(adapterType);
+                instance.OnLoad(node);
+                return instance;
+            }
+            catch (Exception e)
+            {
+                LogUtil.Error($"{NodeName}: {adapter} load threw an exception: {e}");
+                return null;
+            }
+        }
+
+        public static BackgroundConverter GetConverterForType(Type type)
+        {
+            return registry.GetEntryForType(type);
+        }
+
+        public static BackgroundConverter GetConverterForModule(PartModule module)
+        {
+            return GetConverterForType(module.GetType());
+        }
+
+        public static Type GetTargetType(ConfigNode node)
+        {
+            string name = null;
+            if (!node.TryGetValue("name", ref name))
+                return null;
+
+            return AssemblyLoader.GetClassByName(typeof(PartModule), name);
+        }
+
+        internal static void LoadAll()
+        {
+            registry.LoadAll();
+        }
+    }
+
+    /// <summary>
+    /// A helper class that allows you to implement <c>GetBehaviour</c> for the
+    /// type you actually care about, instead of <c><see cref="PartModule"/></c>.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    public abstract class BackgroundConverter<T> : BackgroundConverter
+        where T : PartModule
+    {
+        public sealed override AdapterBehaviour GetBehaviour(PartModule module)
+        {
+            if (module == null)
+                return GetBehaviour((T)null);
+
+            if (module is not T downcasted)
+            {
+                LogUnexpectedType(module);
+                return null;
+            }
+
+            return GetBehaviour(downcasted);
+        }
+
+        public abstract AdapterBehaviour GetBehaviour(T module);
+
+        public sealed override void OnRestore(PartModule module, ResourceConverter converter)
+        {
+            if (module is not T downcasted)
+                LogUnexpectedType(module);
+            else
+                OnRestore(downcasted, converter);
+        }
+
+        public virtual void OnRestore(T module, ResourceConverter converter) { }
+
+        private void LogUnexpectedType(PartModule module)
+        {
+            LogUtil.Error(
+                $"{GetType().Name}: Expected a part module derived from {typeof(T).Name} but got {module.GetType().Name} instead"
+            );
+        }
+    }
+}

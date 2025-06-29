@@ -27,7 +27,6 @@
     <PackageReference Include="MSTest" Version="3.6.4" />
 
     <ProjectReference Include="$(ProjectRootDir)\src\BackgroundResourceProcessing\BackgroundResourceProcessing.csproj" />
-    <PackageReference Include="KSPBuildTools" Version="0.0.3" />
   </ItemGroup>
 
   <ItemGroup>

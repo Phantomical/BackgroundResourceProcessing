@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using BackgroundResourceProcessing.Core;
+using BackgroundResourceProcessing.Utils;
 using KSPAchievements;
 
 namespace BackgroundResourceProcessing.Test
@@ -127,7 +128,7 @@ namespace BackgroundResourceProcessing.Test
 #if DEBUG
             LogUtil.Sink = sink;
 #endif
-            BehaviourRegistry.RegisterAllBehaviours(typeof(BehaviourRegistry).Assembly);
+            TypeRegistry.RegisterForTest();
         }
 
         [AssemblyInitialize()]

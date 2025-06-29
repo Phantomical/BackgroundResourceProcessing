@@ -1,6 +1,8 @@
-using System;
 using System.Collections.Generic;
-using BackgroundResourceProcessing.Modules;
+using System.Reflection;
+using BackgroundResourceProcessing.Converter;
+using BackgroundResourceProcessing.Core;
+using BackgroundResourceProcessing.Inventory;
 using ExtraplanetaryLaunchpads;
 using UnityEngine;
 
@@ -12,31 +14,23 @@ namespace BackgroundResourceProcessing.Integration.EL
     ///
     /// <remarks>
     ///   This module works by taking a <see cref="WorkHoursResource"/> and
-    ///   either consuming or building the required resources for the ship being
-    ///   built. It has a fake inventory that tracks the amount of work that
-    ///   has been done, then when the ship is loaded again, it updates the
-    ///   resources used by the linked launchpad module.
+    ///   either consuming or building the required resources for the ship
+    ///   being built. It expects a <see cref="BackgroundELLaunchpadInventory"/>
+    ///   to be present on the same module which will update the EL WorkNet.
     /// </remarks>
-    public class ModuleBackgroundELLaunchpad : BackgroundConverter, IBackgroundELWorkSink
+    public class BackgroundELLaunchpad : BackgroundConverter<ELLaunchpad>
     {
-        private ELLaunchpad module;
-
-        [KSPField(isPersistant = true)]
-        private uint cachedPersistentModuleId;
-
-        [KSPField(isPersistant = true)]
-        private double totalWork = 0.0;
+        private static readonly FieldInfo SourcesField = typeof(ELVesselWorkNet).GetField(
+            "sources",
+            BindingFlags.Instance | BindingFlags.NonPublic
+        );
 
         [KSPField]
-        public string WorkHoursResource;
+        public string WorkHoursResource = "BRPELWorkHours";
 
-        protected override List<ConverterBehaviour> GetConverterBehaviours()
+        public override AdapterBehaviour GetBehaviour(ELLaunchpad module)
         {
-            var launchpad = GetLinkedLaunchpad();
-            if (launchpad == null)
-                return null;
-
-            var control = launchpad.control;
+            var control = module.control;
             if (control == null)
                 return null;
             if (!control.isActive)
@@ -52,9 +46,10 @@ namespace BackgroundResourceProcessing.Integration.EL
                     FlowMode = ResourceFlowMode.ALL_VESSEL,
                 },
             ];
+
             List<ResourceRatio> outputs =
             [
-                new ResourceRatio()
+                new()
                 {
                     ResourceName = WorkHoursResource,
                     Ratio = work,
@@ -105,23 +100,55 @@ namespace BackgroundResourceProcessing.Integration.EL
                     );
                 }
             }
-
-            return [new ConstantConverter(inputs, outputs)];
-        }
-
-        public override BackgroundResourceSet GetLinkedBackgroundResources()
-        {
-            var set = new BackgroundResourceSet();
-            set.AddPushResource(this);
-            return set;
-        }
-
-        public IEnumerable<FakePartResource> GetResources()
-        {
-            var launchpad = GetLinkedLaunchpad();
-            if (launchpad == null)
+            else
+            {
                 return null;
+            }
 
+            AdapterBehaviour behaviour = new(new ConstantConverter(inputs, outputs));
+            behaviour.AddPushModule(module);
+
+            var workNet = control.workNet;
+            if (workNet != null)
+            {
+                var sinks = (List<ELWorkSource>)SourcesField.GetValue(workNet);
+                if (sinks != null)
+                {
+                    foreach (var sink in sinks)
+                    {
+                        if (sink is PartModule partModule)
+                            behaviour.AddPullModule(partModule);
+                    }
+                }
+            }
+
+            return behaviour;
+        }
+
+        private static BuildResource FindResource(List<BuildResource> list, string name)
+        {
+            foreach (var res in list)
+            {
+                if (res.name == name)
+                    return res;
+            }
+
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// An inventory representing the amount of <see cref="WorkHoursResource"/>
+    /// that need to be produced before the vessel is complete. On resume it
+    /// updates the state of its linked <see cref="ELLaunchpad"/>.
+    /// </summary>
+    public class BackgroundELLaunchpadInventory : BackgroundInventory<ELLaunchpad>
+    {
+        [KSPField]
+        public string WorkHoursResource = "BRPELWorkHours";
+
+        public override List<FakePartResource> GetResources(ELLaunchpad launchpad)
+        {
             var control = launchpad.control;
             if (control == null)
                 return null;
@@ -136,23 +163,17 @@ namespace BackgroundResourceProcessing.Integration.EL
                 maxAmount = work,
             };
 
-            totalWork = work;
-
             return [output];
         }
 
-        public void UpdateStoredAmount(string resourceName, double amount)
+        public override void UpdateResource(ELLaunchpad launchpad, ResourceInventory inventory)
         {
             // The main thing we need to do here is to update the launchpad's
             // tracked resources to account for the work done in the background.
 
-            if (resourceName != WorkHoursResource)
+            if (inventory.resourceName != WorkHoursResource)
                 return;
-            if (amount == 0.0)
-                return;
-
-            var launchpad = GetLinkedLaunchpad();
-            if (launchpad == null)
+            if (inventory.amount == 0.0)
                 return;
 
             var control = launchpad.control;
@@ -161,22 +182,17 @@ namespace BackgroundResourceProcessing.Integration.EL
             if (!control.isActive)
                 return;
 
-            // This method is called before OnStart so control hasn't yet had
-            // a chance to actually find the vessel WorkNet module.
+            var vessel = launchpad.vessel;
             var workNet = vessel.FindVesselModuleImplementing<ELVesselWorkNet>();
             if (workNet == null)
                 return;
 
-            var workHours = amount;
-            var total = totalWork;
-            if (totalWork == 0.0)
-                total = control.CalculateWork();
-            if (totalWork <= 0.0 || !MathUtil.IsFinite(totalWork))
+            var workHours = inventory.amount;
+            var total = inventory.maxAmount;
+            if (total <= 0.0 || !MathUtil.IsFinite(total))
                 return;
 
             var ratio = MathUtil.Clamp01(workHours / total);
-
-            Debug.Log($"[BRP] Ratio is {ratio:g4} = {workHours:g4}/{total:g4}");
 
             if (control.state == ELBuildControl.State.Building)
             {
@@ -186,10 +202,6 @@ namespace BackgroundResourceProcessing.Integration.EL
                 {
                     if (res.amount <= 0.0)
                         continue;
-
-                    Debug.Log(
-                        $"[BRP] Resource {res.name}: current={res.amount:g4} delta={res.amount * ratio}"
-                    );
 
                     res.amount -= res.amount * ratio;
                 }
@@ -214,20 +226,6 @@ namespace BackgroundResourceProcessing.Integration.EL
             // Prevent EL from doing its own catch-up, since we have already
             // updated the relevant work sinks.
             workNet.lastUpdate = Planetarium.GetUniversalTime();
-            totalWork = 0.0;
-        }
-
-        private ELLaunchpad GetLinkedLaunchpad()
-        {
-            if (module != null)
-                return module;
-
-            var launchpad = LinkedModuleUtil.GetLinkedModule<ELLaunchpad>(
-                this,
-                ref cachedPersistentModuleId
-            );
-            module = launchpad;
-            return launchpad;
         }
 
         private static BuildResource FindResource(List<BuildResource> list, string name)

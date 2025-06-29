@@ -1,0 +1,152 @@
+using System;
+using System.Collections.Generic;
+using BackgroundResourceProcessing.Core;
+using BackgroundResourceProcessing.Utils;
+
+namespace BackgroundResourceProcessing.Inventory
+{
+    /// <summary>
+    /// A fake <see cref="PartResource"/> that is only present for background
+    /// processing. See the documentation on <see cref="BackgroundInventory"/>
+    /// for details on how this is meant to be used.
+    /// </summary>
+    public class FakePartResource
+    {
+        /// <summary>
+        /// The name of the resource that is being stored within this fake
+        /// inventory.
+        /// </summary>
+        public string resourceName;
+
+        /// <summary>
+        /// The amount of resource that is stored in this inventory.
+        /// </summary>
+        public double amount = 0.0;
+
+        /// <summary>
+        /// The maximum amount of resource that can be stored in this inventory.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// This is permitted to be infinite, but negative or NaN values will
+        /// result in this inventory being ignored.
+        /// </remarks>
+        public double maxAmount = 0.0;
+    }
+
+    /// <summary>
+    /// An adapter for a part module that defines a "fake" resource inventory
+    /// related to that module.s
+    /// </summary>
+    ///
+    /// <remarks>
+    /// This is meant to used as a bridge between things that aren't technically
+    /// resources and the resource that they are modelled as within the solver.
+    /// </remarks>
+    public abstract class BackgroundInventory : IRegistryItem
+    {
+        private static readonly TypeRegistry<BackgroundInventory> registry = new(
+            "BACKGROUND_INVENTORY"
+        );
+
+        private readonly BaseFieldList fields;
+
+        public BackgroundInventory()
+        {
+            fields = new(this);
+        }
+
+        /// <summary>
+        /// Get a list of <see cref="FakePartResource"/>s that are present on
+        /// this part.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// Each resource here will create a new inventory in the resource
+        /// processor.
+        /// </remarks>
+        public abstract List<FakePartResource> GetResources(PartModule module);
+
+        /// <summary>
+        /// Update this resource with the new state for one of its inventories.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// This method will be called once for every resource that was returned
+        /// from <see cref="GetResources"/>.
+        /// </remarks>
+        public abstract void UpdateResource(PartModule module, ResourceInventory inventory);
+
+        public virtual void Load(ConfigNode node)
+        {
+            fields.Load(node);
+        }
+
+        public static BackgroundInventory GetInventoryForType(Type type)
+        {
+            return registry.GetEntryForType(type);
+        }
+
+        public static BackgroundInventory GetInventoryForModule(PartModule module)
+        {
+            return GetInventoryForType(module.GetType());
+        }
+
+        internal static void LoadAll()
+        {
+            registry.LoadAll();
+        }
+    }
+
+    public abstract class BackgroundInventory<T> : BackgroundInventory
+        where T : PartModule
+    {
+        /// <summary>
+        /// Get a list of <see cref="FakePartResource"/>s that are present on
+        /// this part.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// Each resource here will create a new inventory in the resource
+        /// processor.
+        /// </remarks>
+        public abstract List<FakePartResource> GetResources(T module);
+
+        /// <summary>
+        /// Update this resource with the new state for one of its inventories.
+        /// </summary>
+        ///
+        /// <remarks>
+        /// This method will be called once for every resource that was returned
+        /// from <c>GetResources</c>.
+        /// </remarks>
+        public abstract void UpdateResource(T module, ResourceInventory inventory);
+
+        public sealed override List<FakePartResource> GetResources(PartModule module)
+        {
+            if (module == null || module is T)
+                return GetResources((T)module);
+
+            LogUnexpectedType(module);
+            return null;
+        }
+
+        public sealed override void UpdateResource(PartModule module, ResourceInventory inventory)
+        {
+            if (module == null || module is T)
+            {
+                UpdateResource((T)module, inventory);
+                return;
+            }
+
+            LogUnexpectedType(module);
+        }
+
+        private void LogUnexpectedType(PartModule module)
+        {
+            LogUtil.Error(
+                $"{GetType().Name}: Expected a part module derived from {typeof(T).Name} but got {module.GetType().Name} instead"
+            );
+        }
+    }
+}

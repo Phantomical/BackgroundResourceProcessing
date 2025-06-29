@@ -1,7 +1,9 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using BackgroundResourceProcessing.Core;
+using BackgroundResourceProcessing.Utils;
 using CommandLine;
 
 namespace BackgroundResourceProcessing.CLI
@@ -50,7 +52,7 @@ namespace BackgroundResourceProcessing.CLI
             else
                 LogUtil.Sink = new SilentLogSink();
 
-            BehaviourRegistry.RegisterAllBehaviours(typeof(BehaviourRegistry).Assembly);
+            TypeRegistry.RegisterForTest();
         }
 
         public static ResourceProcessor LoadVessel(string path)
