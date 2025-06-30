@@ -19,6 +19,12 @@ namespace BackgroundResourceProcessing.Converter
         [KSPField]
         public bool ConvertByMass = false;
 
+        [KSPField]
+        public bool PushToLocalBackgroundInventory = false;
+
+        [KSPField]
+        public bool PullFromLocalBackgroundInventory = false;
+
         private ModuleFilter activeCondition;
         private List<ConverterMultiplier> multipliers = [];
 
@@ -48,7 +54,16 @@ namespace BackgroundResourceProcessing.Converter
                 required = BackgroundResourceConverter.ConvertConstraintToUnits(required);
             }
 
-            return new(new ConstantConverter(inputs.ToList(), outputs.ToList(), required.ToList()));
+            var behaviour = new ModuleBehaviour(
+                new ConstantConverter(inputs.ToList(), outputs.ToList(), required.ToList())
+            );
+
+            if (PushToLocalBackgroundInventory)
+                behaviour.AddPushModule(module);
+            if (PullFromLocalBackgroundInventory)
+                behaviour.AddPullModule(module);
+
+            return behaviour;
         }
 
         protected override void OnLoad(ConfigNode node)
