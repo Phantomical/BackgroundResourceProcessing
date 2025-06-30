@@ -14,19 +14,13 @@ namespace BackgroundResourceProcessing.Converter
         public List<ResourceConstraint> required = [];
 
         [KSPField]
-        public string ActiveCondition = null;
-
-        [KSPField]
-        public double Multiplier = 1.0;
-
-        [KSPField]
-        public string MultiplierField = null;
+        public string ActiveCondition = "true";
 
         [KSPField]
         public bool ConvertByMass = false;
 
         private ModuleFilter activeCondition;
-        private FieldExtractor<double> multiplierField;
+        private List<ConverterMultiplier> multipliers = [];
 
         public override ModuleBehaviour GetBehaviour(PartModule module)
         {
@@ -37,7 +31,10 @@ namespace BackgroundResourceProcessing.Converter
             IEnumerable<ResourceRatio> outputs = this.outputs;
             IEnumerable<ResourceConstraint> required = this.required;
 
-            var mult = Multiplier * multiplierField.GetValue(module);
+            var mult = 1.0;
+            foreach (var field in multipliers)
+                mult *= field.Evaluate(module);
+
             if (mult != 1.0)
             {
                 inputs = inputs.Select(input => input.WithMultiplier(mult));
@@ -59,12 +56,8 @@ namespace BackgroundResourceProcessing.Converter
             base.OnLoad(node);
 
             var target = GetTargetType(node);
-            multiplierField = new(target, MultiplierField, 1.0);
-
-            if (ActiveCondition != null)
-                activeCondition = ModuleFilter.Compile(ActiveCondition, node);
-            else
-                activeCondition = ModuleFilter.Always;
+            activeCondition = ModuleFilter.Compile(ActiveCondition, node);
+            multipliers = ConverterMultiplier.LoadAll(target, node);
         }
     }
 }

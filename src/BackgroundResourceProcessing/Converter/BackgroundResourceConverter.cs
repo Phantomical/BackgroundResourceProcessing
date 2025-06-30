@@ -23,24 +23,23 @@ namespace BackgroundResourceProcessing.Converter
             BindingFlags.Instance | BindingFlags.NonPublic
         );
 
-        private readonly Dictionary<string, RecipeOverride> overrides = [];
-
         /// <summary>
         /// Ignore the listed elements on the converter and instead use the
         /// recipe as it is returned from <c>PrepareRecipe</c>.
-        ///
-        /// The recipe will still be overriden by recipe overrides, if specified.
         /// </summary>
         [KSPField]
-        public bool UseReturnedRecipe = false;
+        public bool UsePreparedRecipe = false;
 
         /// <summary>
-        /// Instruct the configuration to not apply any efficiency bonuses.
+        /// Indicate whether the recipe should use the efficiency bonus as
+        /// calculated from the converter.
+        ///
+        /// Defaults to false if <c>UsePreparedRecipe</c> is true, and true
+        /// otherwise.
         /// </summary>
-        [KSPField]
-        public bool IgnoreBonus = false;
+        public bool? UseEfficiencyBonus = null;
 
-        private FieldExtractor<double> multiplierExtractor = null;
+        private List<ConverterMultiplier> multipliers;
 
         public override ModuleBehaviour GetBehaviour(T module)
         {
@@ -49,48 +48,38 @@ namespace BackgroundResourceProcessing.Converter
             if (!IsConverterEnabled(module))
                 return null;
 
-            if (!overrides.TryGetValue(module.ConverterName, out var recipe))
-                recipe = null;
-
             IEnumerable<ResourceRatio> inputs;
             IEnumerable<ResourceRatio> outputs;
             IEnumerable<ResourceConstraint> required;
 
-            double fillAmount = module.FillAmount;
-            double takeAmount = module.TakeAmount;
+            double fillAmount;
+            double takeAmount;
 
-            if (recipe != null)
+            bool useEfficiencyBonus;
+
+            if (UsePreparedRecipe)
             {
+                var recipe = InvokePrepareRecipe(module, 1.0);
+
                 inputs = recipe.Inputs;
                 outputs = recipe.Outputs;
-                required = recipe.Requirements;
+                required = recipe.Requirements.Select(req => new ResourceConstraint(req));
 
-                fillAmount = recipe.FillAmount ?? fillAmount;
-                takeAmount = recipe.TakeAmount ?? takeAmount;
+                fillAmount = recipe.FillAmount;
+                takeAmount = recipe.TakeAmount;
 
-                if (recipe.ConvertByMass ?? false)
-                {
-                    inputs = ConvertRecipeToUnits(inputs);
-                    outputs = ConvertRecipeToUnits(outputs);
-                    required = ConvertConstraintToUnits(required);
-                }
-            }
-            else if (UseReturnedRecipe)
-            {
-                var cr = InvokePrepareRecipe(module, 1.0);
-
-                inputs = cr.Inputs;
-                outputs = cr.Outputs;
-                required = cr.Requirements.Select(req => new ResourceConstraint(req));
-
-                fillAmount = cr.FillAmount;
-                takeAmount = cr.TakeAmount;
+                useEfficiencyBonus = UseEfficiencyBonus ?? false;
             }
             else
             {
                 inputs = module.inputList;
                 outputs = module.outputList;
                 required = module.reqList.Select(req => new ResourceConstraint(req));
+
+                fillAmount = module.FillAmount;
+                takeAmount = module.TakeAmount;
+
+                useEfficiencyBonus = UseEfficiencyBonus ?? true;
 
                 if (ConvertByMass(module))
                 {
@@ -108,14 +97,17 @@ namespace BackgroundResourceProcessing.Converter
             if (additional.Requirements != null && additional.Requirements.Count != 0)
                 required = required.Concat(additional.Requirements);
 
-            if (!IgnoreBonus)
+            var bonus = 1.0;
+            if (useEfficiencyBonus)
+                bonus *= GetOptimalEfficiencyBonus(module);
+
+            foreach (var multiplier in multipliers)
+                bonus *= multiplier.Evaluate(module);
+
+            if (bonus != 1.0)
             {
-                var multiplier = GetOptimalEfficiencyBonus(module, recipe);
-                if (multiplier != 1.0)
-                {
-                    inputs = inputs.Select(res => res.WithMultiplier(multiplier));
-                    outputs = outputs.Select(res => res.WithMultiplier(multiplier));
-                }
+                inputs = inputs.Select(res => res.WithMultiplier((double)bonus));
+                outputs = outputs.Select(res => res.WithMultiplier((double)bonus));
             }
 
             var inputList = inputs.ToList();
@@ -221,17 +213,16 @@ namespace BackgroundResourceProcessing.Converter
         /// default optimal efficiency bonus.
         /// </summary>
         /// <returns></returns>
-        protected virtual double GetOptimalEfficiencyBonus(T converter, RecipeOverride recipe)
+        protected virtual double GetOptimalEfficiencyBonus(T converter)
         {
-            double bonus = recipe?.BaseEfficiency ?? 1.0;
+            double bonus = 1.0;
 
             foreach (var (_, modifier) in converter.EfficiencyModifiers)
                 bonus *= modifier;
 
-            bonus *= multiplierExtractor?.GetValue(converter) ?? 1.0;
             bonus *= converter.GetCrewEfficiencyBonus();
-            bonus *= recipe?.OverrideEfficiencyBonus ?? converter.EfficiencyBonus;
-            bonus *= recipe?.OverrideThermalEfficiency ?? GetMaxThermalEfficiencyBonus(converter);
+            bonus *= converter.EfficiencyBonus;
+            bonus *= GetMaxThermalEfficiencyBonus(converter);
 
             return bonus;
         }
@@ -262,14 +253,12 @@ namespace BackgroundResourceProcessing.Converter
         {
             base.OnLoad(node);
 
-            foreach (var inner in node.GetNodes("RECIPE_OVERRIDE"))
-            {
-                var recipe = RecipeOverride.Load(inner);
-                if (recipe == null)
-                    continue;
+            bool useEfficiencyBonus = false;
+            if (node.TryGetValue("UseEfficiencyBonus", ref useEfficiencyBonus))
+                UseEfficiencyBonus = useEfficiencyBonus;
 
-                overrides.Add(recipe.name, recipe);
-            }
+            var target = GetTargetType(node);
+            multipliers = ConverterMultiplier.LoadAll(target, node);
         }
 
         public static IEnumerable<ResourceRatio> ConvertRecipeToUnits(

@@ -16,7 +16,7 @@ namespace BackgroundResourceProcessing.Converter
         {
             foreach (var option in options)
             {
-                if (!option.filter.Invoke(module))
+                if (!option.condition.Invoke(module))
                     continue;
 
                 return option.converter.GetBehaviour(module);
@@ -29,20 +29,22 @@ namespace BackgroundResourceProcessing.Converter
         {
             base.OnLoad(node);
 
+            var name = node.GetValue("name");
+
             foreach (var child in node.GetNodes(NodeName))
             {
                 try
                 {
+                    child.SetValue("name", name);
+
+                    ModuleFilter filter = ModuleFilter.Always;
+                    string condition = null;
+                    if (child.TryGetValue("condition", ref condition))
+                        filter = ModuleFilter.Compile(condition, child);
+
                     var converter = Load(child);
 
-                    ModuleFilter filter;
-                    string filterExpr = null;
-                    if (child.TryGetValue("filter", ref filterExpr))
-                        filter = ModuleFilter.Compile(filterExpr, child);
-                    else
-                        filter = ModuleFilter.Always;
-
-                    options.Add(new() { filter = filter, converter = converter });
+                    options.Add(new() { condition = filter, converter = converter });
                 }
                 catch (Exception e)
                 {
@@ -53,7 +55,7 @@ namespace BackgroundResourceProcessing.Converter
 
         private struct ConverterEntry
         {
-            public ModuleFilter filter;
+            public ModuleFilter condition;
             public BackgroundConverter converter;
         }
     }

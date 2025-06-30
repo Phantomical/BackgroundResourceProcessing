@@ -6,6 +6,9 @@ namespace BackgroundResourceProcessing.Converter
     {
         protected override ConverterResources GetAdditionalRecipe(ModuleResourceHarvester module)
         {
+            if (UsePreparedRecipe)
+                return default;
+
             var vessel = module.vessel;
             var type = (HarvestTypes)module.HarvesterType;
 

@@ -48,13 +48,13 @@ namespace BackgroundResourceProcessing.Inventory
             //
             // In that case, we try to remain accurate, but this may not be
             // possible depending on how updates have happened.
-            var missed = Math.Max(savedUpdate - lastUpdate, 0.0);
+            var missed = Math.Max(lastUpdate - savedUpdate, 0.0);
 
             // If we missed more time than we should have, we just saturate
             // to say that no time has passed.
             var amount = Math.Max(inventory.amount - missed, 0.0);
 
-            var newUpdate = Math.Min(lastUpdate + amount, now);
+            var newUpdate = now - amount;
             LastUpdateTimeField.SetValue(module, newUpdate);
         }
     }

@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 
 namespace BackgroundResourceProcessing.Utils
 {
-    internal class ModuleFilter(Func<PartModule, bool> filter, string expansion)
+    internal readonly struct ModuleFilter(Func<PartModule, bool> filter, string expansion)
     {
         readonly string expansion = expansion;
         readonly Func<PartModule, bool> filter = filter;
@@ -120,9 +120,7 @@ namespace BackgroundResourceProcessing.Utils
                 var expr = ParseValueExpression();
                 var func = (string value) =>
                 {
-                    if (value == null)
-                        return true;
-                    if (value == "False")
+                    if (value == null || EqualsCaseInsensitive(value, "False"))
                         return true;
                     return false;
                 };
@@ -155,7 +153,7 @@ namespace BackgroundResourceProcessing.Utils
                 {
                     var func = (string value) =>
                     {
-                        if (value == "False" || value == null)
+                        if (value == null || EqualsCaseInsensitive(value, "False"))
                             return false;
                         return true;
                     };
@@ -297,6 +295,11 @@ namespace BackgroundResourceProcessing.Utils
             private ModuleFilterException RenderError(string message, int offset = -1)
             {
                 return lexer.RenderError(message, offset);
+            }
+
+            private static bool EqualsCaseInsensitive(string a, string b)
+            {
+                return MemoryExtensions.Equals(a, b, StringComparison.OrdinalIgnoreCase);
             }
 
             enum Comparison

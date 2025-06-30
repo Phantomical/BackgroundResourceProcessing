@@ -23,24 +23,6 @@ namespace BackgroundResourceProcessing.Converter
         public string ActiveCondition = null;
 
         /// <summary>
-        /// A condition that decides whether to apply <see cref="Multiplier"/>.
-        /// </summary>
-        [KSPField]
-        public string MultiplierCondition = null;
-
-        /// <summary>
-        /// A multiplier to apply to resource rates.
-        /// </summary>
-        [KSPField]
-        public double Multiplier = 1.0;
-
-        /// <summary>
-        /// A field that we should read to get the multiplier rate.
-        /// </summary>
-        [KSPField]
-        public string MultiplierField = null;
-
-        /// <summary>
         /// The name of a field to update with <c>Planetarium.GetUniversalTime()</c>
         /// when this ship is loaded.
         /// </summary>
@@ -64,7 +46,7 @@ namespace BackgroundResourceProcessing.Converter
         /// <c>ResourceDefinition</c>s.
         /// </summary>
         [KSPField]
-        public string RequirementsField = null;
+        public string OutputsField = null;
 
         /// <summary>
         /// A field to read on the target type containing a list of resource
@@ -74,13 +56,10 @@ namespace BackgroundResourceProcessing.Converter
         /// <c>ResourceDefinition</c>s.
         /// </summary>
         [KSPField]
-        public string OutputsField = null;
+        public string RequirementsField = null;
 
-        bool disabled = false;
-
-        private ModuleFilter activeConditionMember;
-        private ModuleFilter multiplierConditionMember;
-        private MemberInfo multiplierMember;
+        private ModuleFilter activeCondition = ModuleFilter.Always;
+        private List<ConverterMultiplier> multipliers;
         private MemberInfo lastUpdateMember;
         private MemberInfo inputsMember;
         private MemberInfo outputsMember;
@@ -88,10 +67,7 @@ namespace BackgroundResourceProcessing.Converter
 
         public override ModuleBehaviour GetBehaviour(PartModule module)
         {
-            if (disabled)
-                return null;
-
-            if (!(EvaluateCondition(module, activeConditionMember) ?? true))
+            if (activeCondition.Invoke(module))
                 return null;
 
             IEnumerable<ResourceRatio> inputs;
@@ -169,13 +145,12 @@ namespace BackgroundResourceProcessing.Converter
                 };
             }
 
-            if (EvaluateCondition(module, multiplierConditionMember) ?? false)
-            {
-                double mult =
-                    multiplierMember != null
-                        ? (double)GetMemberValue(multiplierMember, module)
-                        : Multiplier;
+            double mult = 1.0;
+            foreach (var field in multipliers)
+                mult *= field.Evaluate(module);
 
+            if (mult != 1.0)
+            {
                 inputs = inputs.Select(input => input.WithMultiplier(mult));
                 outputs = outputs.Select(output => output.WithMultiplier(mult));
             }
@@ -185,13 +160,8 @@ namespace BackgroundResourceProcessing.Converter
 
         public override void OnRestore(PartModule module, ResourceConverter converter)
         {
-            if (disabled)
-                return;
-
             if (lastUpdateMember != null)
-            {
                 SetMemberValue(lastUpdateMember, module, Planetarium.GetUniversalTime());
-            }
         }
 
         protected override void OnLoad(ConfigNode node)
@@ -202,45 +172,19 @@ namespace BackgroundResourceProcessing.Converter
             if (!node.TryGetValue("name", ref name))
                 return;
 
-            var module = AssemblyLoader.GetClassByName(typeof(PartModule), name);
-            if (module == null)
-            {
-                LogUtil.Error($"{GetType().Name}: No target module with name {name}");
-                return;
-            }
+            var target = GetTargetType(node);
+            multipliers = ConverterMultiplier.LoadAll(target, node);
 
-            var type = module.GetType();
-
-            try
-            {
-                if (ActiveCondition != null)
-                    activeConditionMember = GetConditionFilter(ActiveCondition, node);
-                if (MultiplierCondition != null)
-                    multiplierConditionMember = GetConditionFilter(MultiplierCondition, node);
-                if (MultiplierField != null)
-                    multiplierMember = GetTypedMember<double>(type, MultiplierField, Access.Read);
-                if (LastUpdateField != null)
-                    lastUpdateMember = GetTypedMember<double>(type, LastUpdateField, Access.Write);
-                if (InputsField != null)
-                    inputsMember = GetRateListMember(type, InputsField);
-                if (OutputsField != null)
-                    outputsMember = GetRateListMember(type, OutputsField);
-                if (RequirementsField != null)
-                    requiredMember = GetConstraintListMember(type, RequirementsField);
-            }
-            catch (Exception e)
-            {
-                LogUtil.Error($"{e.Message}. This {GetType().Name} module will be disabled.");
-                disabled = true;
-            }
-        }
-
-        private static bool? EvaluateCondition(PartModule module, ModuleFilter filter)
-        {
-            if (filter == null)
-                return null;
-
-            return filter.Invoke(module);
+            if (ActiveCondition != null)
+                activeCondition = ModuleFilter.Compile(ActiveCondition, node);
+            if (LastUpdateField != null)
+                lastUpdateMember = GetTypedMember<double>(target, LastUpdateField, Access.Write);
+            if (InputsField != null)
+                inputsMember = GetRateListMember(target, InputsField);
+            if (OutputsField != null)
+                outputsMember = GetRateListMember(target, OutputsField);
+            if (RequirementsField != null)
+                requiredMember = GetConstraintListMember(target, RequirementsField);
         }
 
         private enum Access
@@ -251,14 +195,6 @@ namespace BackgroundResourceProcessing.Converter
         }
 
         private class MemberException(string message) : Exception(message) { }
-
-        private static ModuleFilter GetConditionFilter(string filter, ConfigNode node)
-        {
-            if (filter == null)
-                return null;
-
-            return ModuleFilter.Compile(filter, node);
-        }
 
         private static MemberInfo GetTypedMember<T>(Type type, string fieldName, Access access)
         {
@@ -378,6 +314,24 @@ namespace BackgroundResourceProcessing.Converter
                 propertyInfo.SetValue(obj, value);
             else
                 throw new NotImplementedException();
+        }
+
+        private struct Mult()
+        {
+            public ModuleFilter Condition;
+            public double Multiplier = 1.0;
+
+            static Mult Load(ConfigNode node)
+            {
+                var mult = new Mult();
+                node.TryGetValue("Multiplier", ref mult.Multiplier);
+
+                string Condition = null;
+                if (node.TryGetValue("Condition", ref Condition))
+                    mult.Condition = ModuleFilter.Compile(Condition, node);
+
+                return mult;
+            }
         }
     }
 }

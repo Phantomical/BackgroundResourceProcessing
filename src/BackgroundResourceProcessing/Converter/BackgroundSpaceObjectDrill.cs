@@ -47,7 +47,7 @@ namespace BackgroundResourceProcessing.Converter
             var outputs = new List<ResourceRatio>();
             var inputs = new List<ResourceRatio>();
 
-            if (!UseReturnedRecipe)
+            if (!UsePreparedRecipe)
                 inputs.Add(GetPowerConsumption(module));
 
             foreach (var resource in resources)
@@ -61,7 +61,7 @@ namespace BackgroundResourceProcessing.Converter
                     FlowMode = ResourceFlowMode.NULL,
                 };
 
-                if (!UseReturnedRecipe)
+                if (!UsePreparedRecipe)
                     outputs.Add(ratio);
                 massRate += resource.abundance * definition.density;
             }
@@ -93,9 +93,9 @@ namespace BackgroundResourceProcessing.Converter
             return drill.status == NoStorageSpace || drill.status == InsufficientPower;
         }
 
-        protected override double GetOptimalEfficiencyBonus(T converter, RecipeOverride recipe)
+        protected override double GetOptimalEfficiencyBonus(T converter)
         {
-            return base.GetOptimalEfficiencyBonus(converter, recipe) * converter.Efficiency;
+            return base.GetOptimalEfficiencyBonus(converter) * converter.Efficiency;
         }
     }
 
