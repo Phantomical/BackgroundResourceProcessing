@@ -27,6 +27,7 @@
         <Move
             SourceFiles="$(BinariesOutputPath)/$(ProjectName).dll"
             DestinationFiles="$(BinariesOutputPath)/$(ProjectName).dll.plugin"
+            OverwriteReadOnlyFiles="true"
         />
     </Target>
 

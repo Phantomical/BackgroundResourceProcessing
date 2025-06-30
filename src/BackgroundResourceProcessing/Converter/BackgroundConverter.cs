@@ -202,9 +202,14 @@ namespace BackgroundResourceProcessing.Converter
         {
             string name = null;
             if (!node.TryGetValue("name", ref name))
-                return null;
+                throw new Exception("GetTargetType: ConfigNode was missing a `name` field");
 
-            return AssemblyLoader.GetClassByName(typeof(PartModule), name);
+            var type = AssemblyLoader.GetClassByName(typeof(PartModule), name);
+            if (type == null)
+                throw new NullReferenceException(
+                    $"GetTargetType: No BackgroundConverter type exists with name `{name}`"
+                );
+            return type;
         }
 
         internal static void LoadAll()

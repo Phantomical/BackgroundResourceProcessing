@@ -73,6 +73,10 @@ namespace BackgroundResourceProcessing.Converter
             var target = GetTargetType(node);
             activeCondition = ModuleFilter.Compile(ActiveCondition, node);
             multipliers = ConverterMultiplier.LoadAll(target, node);
+
+            inputs.AddRange(ConfigUtil.LoadInputResources(node));
+            outputs.AddRange(ConfigUtil.LoadOutputResources(node));
+            required.AddRange(ConfigUtil.LoadRequiredResources(node));
         }
     }
 }

@@ -37,6 +37,19 @@ namespace BackgroundResourceProcessing.Converter
         public bool UsePreparedRecipe = false;
 
         /// <summary>
+        /// Use the current efficiency bonus of the converter instead of trying
+        /// to calculate an optimal efficiency bonus.
+        /// </summary>
+        [KSPField]
+        public bool UseCurrentEfficiency = false;
+
+        /// <summary>
+        /// Override the maximum thermal efficiency
+        /// </summary>
+        [KSPField]
+        public double? OverrideMaxThermalEfficiency = null;
+
+        /// <summary>
         /// Indicate whether the recipe should use the efficiency bonus as
         /// calculated from the converter.
         ///
@@ -107,7 +120,12 @@ namespace BackgroundResourceProcessing.Converter
 
             var bonus = 1.0;
             if (useEfficiencyBonus)
-                bonus *= GetOptimalEfficiencyBonus(module);
+            {
+                if (UseCurrentEfficiency)
+                    bonus *= module.GetEfficiencyMultiplier();
+                else
+                    bonus *= GetOptimalEfficiencyBonus(module);
+            }
 
             foreach (var multiplier in multipliers)
                 bonus *= multiplier.Evaluate(module);
@@ -230,7 +248,7 @@ namespace BackgroundResourceProcessing.Converter
 
             bonus *= converter.GetCrewEfficiencyBonus();
             bonus *= converter.EfficiencyBonus;
-            bonus *= GetMaxThermalEfficiencyBonus(converter);
+            bonus *= OverrideMaxThermalEfficiency ?? GetMaxThermalEfficiencyBonus(converter);
 
             return bonus;
         }

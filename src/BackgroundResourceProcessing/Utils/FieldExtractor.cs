@@ -26,6 +26,12 @@ namespace BackgroundResourceProcessing.Utils
             if (field == null)
                 return;
 
+            if (type == null)
+                throw new ArgumentNullException(
+                    "type",
+                    "Attempted to create a FieldExtractor from a null type"
+                );
+
             member = (MemberInfo)type.GetField(field, Flags) ?? type.GetProperty(field, Flags);
             if (member == null)
                 throw new Exception($"There is no member on {type.Name} named `{field}`");
@@ -36,7 +42,7 @@ namespace BackgroundResourceProcessing.Utils
                     throw new Exception($"Property {type.Name}.{field} is not readable");
             }
 
-            var memberType = GetMemberType(type);
+            var memberType = GetMemberType(member);
             if (!IsCompatibleType(memberType))
                 throw new Exception(
                     $"{type.Name}.{field} is not of type {typeof(T).Name} (found {memberType.Name} instead)"
@@ -69,7 +75,9 @@ namespace BackgroundResourceProcessing.Utils
             {
                 FieldInfo fieldInfo => fieldInfo.FieldType,
                 PropertyInfo propertyInfo => propertyInfo.PropertyType,
-                _ => throw new NotImplementedException(),
+                _ => throw new NotImplementedException(
+                    $"Cannot handle a member of type {member.MemberType}"
+                ),
             };
         }
 
@@ -79,7 +87,9 @@ namespace BackgroundResourceProcessing.Utils
             {
                 FieldInfo fieldInfo => fieldInfo.GetValue(obj),
                 PropertyInfo propertyInfo => propertyInfo.GetValue(obj),
-                _ => throw new NotImplementedException(),
+                _ => throw new NotImplementedException(
+                    $"Cannot handle a member of type {member.MemberType}"
+                ),
             };
         }
     }

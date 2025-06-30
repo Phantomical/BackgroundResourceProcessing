@@ -111,12 +111,12 @@ namespace BackgroundResourceProcessing.Integration.EL
             var workNet = control.workNet;
             if (workNet != null)
             {
-                var sinks = (List<ELWorkSource>)SourcesField.GetValue(workNet);
-                if (sinks != null)
+                var sources = (List<ELWorkSource>)SourcesField.GetValue(workNet);
+                if (sources != null)
                 {
-                    foreach (var sink in sinks)
+                    foreach (var source in sources)
                     {
-                        if (sink is PartModule partModule)
+                        if (source is PartModule partModule)
                             behaviour.AddPullModule(partModule);
                     }
                 }

@@ -312,11 +312,13 @@ namespace BackgroundResourceProcessing.Core
             var part = partModule.part;
             var vessel = part.vessel;
 
-            var adapter = Converter.BackgroundConverter.GetConverterForModule(partModule);
+            var adapter = BackgroundConverter.GetConverterForModule(partModule);
             if (adapter == null)
                 return;
 
-            LogUtil.Debug(() => $"Found converter adapter for module: {partModule.GetType().Name}");
+            LogUtil.Debug(() =>
+                $"Found converter adapter {adapter.GetType().Name} for module {partModule.GetType().Name}"
+            );
 
             ModuleBehaviour behaviours;
             try

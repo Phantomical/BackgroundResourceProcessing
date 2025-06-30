@@ -24,7 +24,7 @@ namespace BackgroundResourceProcessing.Converter
             };
 
             if (ResourceMap.Instance == null)
-                LogUtil.Error("ResourceMap.Instance is null");
+                throw new NullReferenceException("ResourceMap.Instance was null");
 
             double rate = ResourceMap.Instance.GetAbundance(request) * module.Efficiency;
             if (type == HarvestTypes.Atmospheric)

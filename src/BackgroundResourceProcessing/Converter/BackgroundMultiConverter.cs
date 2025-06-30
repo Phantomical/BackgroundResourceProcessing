@@ -14,11 +14,15 @@ namespace BackgroundResourceProcessing.Converter
 
         public override ModuleBehaviour GetBehaviour(PartModule module)
         {
-            foreach (var option in options)
+            for (int i = 0; i < options.Count; ++i)
             {
+                var option = options[i];
                 if (!option.condition.Invoke(module))
                     continue;
 
+                LogUtil.Log(
+                    $"Selecting sub-converter {option.converter.GetType().Name} at index {i}"
+                );
                 return option.converter.GetBehaviour(module);
             }
 
@@ -35,7 +39,7 @@ namespace BackgroundResourceProcessing.Converter
             {
                 try
                 {
-                    child.SetValue("name", name);
+                    child.SetValue("name", name, createIfNotFound: true);
 
                     ModuleFilter filter = ModuleFilter.Always;
                     string condition = null;
