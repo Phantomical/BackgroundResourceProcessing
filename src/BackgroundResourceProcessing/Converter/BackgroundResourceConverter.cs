@@ -13,14 +13,20 @@ namespace BackgroundResourceProcessing.Converter
     public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
         where T : BaseConverter
     {
-        private static MethodInfo PrepareRecipeMethod = typeof(BaseConverter).GetMethod(
+        private const BindingFlags Flags =
+            BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+
+        private static readonly MethodInfo PrepareRecipeMethod = typeof(BaseConverter).GetMethod(
             "PrepareRecipe",
-            BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public
+            Flags
         );
+
+        private static readonly FieldInfo PreCalculateEfficiencyField =
+            typeof(BaseConverter).GetField("_preCalculateEfficiency", Flags);
 
         protected static readonly FieldInfo LastUpdateTimeField = typeof(BaseConverter).GetField(
             "lastUpdateTime",
-            BindingFlags.Instance | BindingFlags.NonPublic
+            Flags
         );
 
         /// <summary>
@@ -37,7 +43,7 @@ namespace BackgroundResourceProcessing.Converter
         /// Defaults to false if <c>UsePreparedRecipe</c> is true, and true
         /// otherwise.
         /// </summary>
-        public bool? UseEfficiencyBonus = null;
+        private ModuleFilter? UseEfficiencyBonus = null;
 
         private List<ConverterMultiplier> multipliers;
 
@@ -68,7 +74,9 @@ namespace BackgroundResourceProcessing.Converter
                 fillAmount = recipe.FillAmount;
                 takeAmount = recipe.TakeAmount;
 
-                useEfficiencyBonus = UseEfficiencyBonus ?? false;
+                useEfficiencyBonus =
+                    UseEfficiencyBonus?.Invoke(module)
+                    ?? (bool)PreCalculateEfficiencyField.GetValue(module);
             }
             else
             {
@@ -79,7 +87,7 @@ namespace BackgroundResourceProcessing.Converter
                 fillAmount = module.FillAmount;
                 takeAmount = module.TakeAmount;
 
-                useEfficiencyBonus = UseEfficiencyBonus ?? true;
+                useEfficiencyBonus = UseEfficiencyBonus?.Invoke(module) ?? true;
 
                 if (ConvertByMass(module))
                 {
@@ -253,9 +261,9 @@ namespace BackgroundResourceProcessing.Converter
         {
             base.OnLoad(node);
 
-            bool useEfficiencyBonus = false;
+            string useEfficiencyBonus = null;
             if (node.TryGetValue("UseEfficiencyBonus", ref useEfficiencyBonus))
-                UseEfficiencyBonus = useEfficiencyBonus;
+                UseEfficiencyBonus = ModuleFilter.Compile(useEfficiencyBonus, node);
 
             var target = GetTargetType(node);
             multipliers = ConverterMultiplier.LoadAll(target, node);
