@@ -8,10 +8,28 @@ namespace BackgroundResourceProcessing.UI
     [KSPAddon(KSPAddon.Startup.Flight, false)]
     internal partial class DebugUI : MonoBehaviour
     {
+        internal interface IGUIWindowProvider
+        {
+            Rect GUILayoutWindow(
+                int id,
+                Rect screenRect,
+                GUI.WindowFunction func,
+                string text,
+                GUIStyle style
+            );
+        }
+
+        internal static IGUIWindowProvider WindowProvider = new KSPWindowProvider();
+
+        const int DefaultWidth = 600;
+        const int DefaultHeight = 100;
+        static int CloseButtonSize = 15;
+        static int CloseButtonMargin = 5;
+
         enum Submenu
         {
             Resources,
-            Export,
+            Converter,
         }
 
         static bool InitializedStatics = false;
@@ -23,12 +41,11 @@ namespace BackgroundResourceProcessing.UI
         static ApplicationLauncherButton button;
 
         bool showGUI = false;
-        bool refreshButtonState = false;
 
         Submenu submenu = Submenu.Resources;
         ResourceProcessor processor;
 
-        Rect window = new(100, 100, 450, 600);
+        Rect window = new(100, 100, DefaultWidth, DefaultWidth);
 
         void Awake()
         {
@@ -39,7 +56,12 @@ namespace BackgroundResourceProcessing.UI
         void Start()
         {
             InitStatics();
-            window = new Rect(Screen.width / 2 - 450 / 2, Screen.height / 2 - 50, 450, 100);
+            window = new Rect(
+                Screen.width / 2 - DefaultWidth / 2,
+                Screen.height / 2 - DefaultHeight / 2,
+                DefaultWidth,
+                DefaultHeight
+            );
 
             var settings = HighLogic.CurrentGame.Parameters.CustomParams<DebugSettings>();
             if (settings.DebugUI)
@@ -108,14 +130,17 @@ namespace BackgroundResourceProcessing.UI
         void ShowToolbarGUI()
         {
             showGUI = true;
-
             processor = GetMainVesselProcessor();
+
+            converterTab = new(this);
         }
 
         void HideToolbarGUI()
         {
             showGUI = false;
             processor = null;
+
+            converterTab = null;
         }
 
         void Nothing() { }
@@ -125,7 +150,7 @@ namespace BackgroundResourceProcessing.UI
             if (!showGUI)
                 return;
 
-            window = GUILayoutWindow(
+            window = WindowProvider.GUILayoutWindow(
                 GetInstanceID(),
                 window,
                 DrawWindow,
@@ -134,22 +159,19 @@ namespace BackgroundResourceProcessing.UI
             );
         }
 
-        // This is a patch point for the ClickThroughBlocker integration to
-        // override GUILayout.Window with the equivalent from CTB.
-        Rect GUILayoutWindow(
-            int id,
-            Rect screenRect,
-            GUI.WindowFunction func,
-            string text,
-            GUIStyle style
-        )
-        {
-            return GUILayout.Window(id, screenRect, func, text, style);
-        }
-
         void DrawWindow(int windowId)
         {
             using var skin = new PushGUISkin(HighLogic.Skin);
+
+            var closeButtonRect = new Rect(
+                window.width - CloseButtonSize - CloseButtonMargin,
+                CloseButtonMargin,
+                CloseButtonSize,
+                CloseButtonSize
+            );
+            if (GUI.Button(closeButtonRect, "X"))
+                HideToolbarGUI();
+
             GUILayout.BeginVertical();
 
             DrawSubmenuSelector();
@@ -159,10 +181,13 @@ namespace BackgroundResourceProcessing.UI
                 case Submenu.Resources:
                     DrawResourceState();
                     break;
-                case Submenu.Export:
-                    DrawExportButton();
+                case Submenu.Converter:
+                    DrawConverterTab();
                     break;
             }
+
+            if (submenu != Submenu.Converter)
+                converterTab.CancelPartSelection();
 
             GUILayout.EndVertical();
 
@@ -172,25 +197,12 @@ namespace BackgroundResourceProcessing.UI
 
         void DrawSubmenuSelector()
         {
-            GUILayout.BeginHorizontal();
-
-            var resources = DrawSubmenuButton("Resources", submenu == Submenu.Resources);
-            var export = DrawSubmenuButton("Ship Export", submenu == Submenu.Export);
-
-            if (resources)
-                submenu = Submenu.Resources;
-            else if (export)
-                submenu = Submenu.Export;
-
-            GUILayout.EndHorizontal();
-        }
-
-        bool DrawSubmenuButton(string label, bool active)
-        {
-            GUI.enabled = !active;
-            var clicked = GUILayout.Button(label, ButtonActive);
-            GUI.enabled = true;
-            return clicked;
+            submenu = (Submenu)
+                GUILayout.Toolbar(
+                    (int)submenu,
+                    ["Resources", "Debug Converters"],
+                    GUILayout.ExpandWidth(true)
+                );
         }
 
         ResourceProcessor GetMainVesselProcessor()
@@ -224,29 +236,75 @@ namespace BackgroundResourceProcessing.UI
             }
         }
 
-        struct PushVerticalGroup : IDisposable
+        ref struct PushVerticalGroup : IDisposable
         {
             public PushVerticalGroup()
             {
                 GUILayout.BeginVertical();
             }
 
-            public void Dispose()
+            public readonly void Dispose()
             {
                 GUILayout.EndVertical();
             }
         }
 
-        struct PushHorizontalGroup : IDisposable
+        ref struct PushHorizontalGroup : IDisposable
         {
             public PushHorizontalGroup()
             {
                 GUILayout.BeginHorizontal();
             }
 
-            public void Dispose()
+            public readonly void Dispose()
             {
                 GUILayout.EndHorizontal();
+            }
+        }
+
+        readonly ref struct PushEnabeled : IDisposable
+        {
+            readonly bool prev;
+
+            public PushEnabeled(bool enabled)
+            {
+                prev = GUI.enabled;
+                GUI.enabled = enabled;
+            }
+
+            public void Dispose()
+            {
+                GUI.enabled = prev;
+            }
+        }
+
+        readonly ref struct PushDepth : IDisposable
+        {
+            readonly int depth;
+
+            public PushDepth(int depth)
+            {
+                this.depth = GUI.depth;
+                GUI.depth = depth;
+            }
+
+            public void Dispose()
+            {
+                GUI.depth = depth;
+            }
+        }
+
+        class KSPWindowProvider : IGUIWindowProvider
+        {
+            public Rect GUILayoutWindow(
+                int id,
+                Rect screenRect,
+                GUI.WindowFunction func,
+                string text,
+                GUIStyle style
+            )
+            {
+                return GUILayout.Window(id, screenRect, func, text, style);
             }
         }
     }

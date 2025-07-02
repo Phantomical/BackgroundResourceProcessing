@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using BackgroundResourceProcessing.Core;
 using UnityEngine;
 
@@ -8,13 +10,6 @@ namespace BackgroundResourceProcessing.UI
 {
     internal partial class DebugUI
     {
-        internal struct ResourceTab()
-        {
-            public bool refreshButton = false;
-        }
-
-        ResourceTab resourceTab = new();
-
         private void DrawResourceState()
         {
             List<KeyValuePair<string, InventoryState>> totals = [];
@@ -42,10 +37,12 @@ namespace BackgroundResourceProcessing.UI
 
             GUILayout.EndHorizontal();
 
-            var prevState = resourceTab.refreshButton;
-            resourceTab.refreshButton = GUILayout.Button("Refresh");
-            if (resourceTab.refreshButton && !prevState)
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Refresh"))
                 processor = GetMainVesselProcessor();
+            if (GUILayout.Button("Export Ship"))
+                DumpCurrentVessel();
+            GUILayout.EndHorizontal();
         }
 
         void DrawColumn(string label, IEnumerable<double> values)
@@ -63,6 +60,44 @@ namespace BackgroundResourceProcessing.UI
             if (Math.Abs(n) < 0.1)
                 return $"{n:g3}";
             return $"{n:N}";
+        }
+
+        internal static void DumpCurrentVessel()
+        {
+            var pluginDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            var exportDir = Path.Combine(pluginDir, @"..\Exports");
+
+            Directory.CreateDirectory(exportDir);
+            var vessel = FlightGlobals.ActiveVessel;
+            if (!vessel)
+            {
+                ScreenMessages.PostScreenMessage("Error: There is no active vessel to export.");
+                return;
+            }
+
+            var module = vessel.GetComponent<BackgroundResourceProcessor>();
+            if (!module)
+            {
+                var type = typeof(BackgroundResourceProcessor);
+                ScreenMessages.PostScreenMessage(
+                    $"Error: The active vessel does not have a {type.Name} module"
+                );
+                return;
+            }
+
+            module.DebugRecordVesselState();
+
+            ConfigNode root = new();
+            ConfigNode node = root.AddNode("BRP_SHIP");
+            module.Save(node);
+
+            module.DebugClearVesselState();
+
+            var name = vessel.GetDisplayName();
+            var outputPath = Path.GetFullPath(Path.Combine(exportDir, $"{name}.cfg.export"));
+            root.Save(outputPath);
+
+            ScreenMessages.PostScreenMessage($"Ship resource graph exported to {outputPath}");
         }
     }
 }
