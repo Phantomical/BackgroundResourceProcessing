@@ -20,7 +20,7 @@ namespace BackgroundResourceProcessing.Converter
                 if (!option.condition.Invoke(module))
                     continue;
 
-                LogUtil.Log(
+                LogUtil.Debug(() =>
                     $"Selecting sub-converter {option.converter.GetType().Name} at index {i}"
                 );
                 return option.converter.GetBehaviour(module);
