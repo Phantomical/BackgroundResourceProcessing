@@ -1,3 +1,4 @@
+using BackgroundResourceProcessing.Utils;
 using UnityEngine;
 
 namespace BackgroundResourceProcessing.Addons
@@ -11,18 +12,18 @@ namespace BackgroundResourceProcessing.Addons
     {
         void Start()
         {
-            // There is no way to specify that an addon should be loaded in all
-            // non-editor scenes so we just destroy it on the first frame after
-            // loading the editor.
-            if (HighLogic.LoadedSceneIsEditor)
-                GameObject.Destroy(this);
-
             GameEvents.onVesselSOIChanged.Add(OnVesselSOIChanged);
+            GameEvents.OnGameSettingsApplied.Add(OnSettingsUpdate);
+            GameEvents.OnGameDatabaseLoaded.Add(OnGameDatabaseLoaded);
+
+            OnSettingsUpdate();
         }
 
         void OnDestroy()
         {
             GameEvents.onVesselSOIChanged.Remove(OnVesselSOIChanged);
+            GameEvents.OnGameSettingsApplied.Remove(OnSettingsUpdate);
+            GameEvents.OnGameDatabaseLoaded.Remove(OnGameDatabaseLoaded);
         }
 
         private void OnVesselSOIChanged(GameEvents.HostedFromToAction<Vessel, CelestialBody> evt)
@@ -38,6 +39,23 @@ namespace BackgroundResourceProcessing.Addons
                 return;
 
             module.OnVesselSOIChanged(evt);
+        }
+
+        private static void OnSettingsUpdate()
+        {
+            var settings = HighLogic.CurrentGame?.Parameters.CustomParams<DebugSettings>();
+
+            // Safety: We would get a lot of NREs if the settings instance was
+            //         ever set to null so just to be careful we do a check here.
+            if (settings == null)
+                return;
+
+            DebugSettings.Instance = settings;
+        }
+
+        private static void OnGameDatabaseLoaded()
+        {
+            TypeRegistry.Reload();
         }
     }
 }

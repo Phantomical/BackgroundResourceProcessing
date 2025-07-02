@@ -19,13 +19,14 @@ namespace BackgroundResourceProcessing.UI
             Export,
         }
 
+        static bool InitializedStatics = false;
         static GUIStyle HeaderStyle;
         static GUIStyle CellStyle;
         static GUIStyle ButtonActive;
+        static Texture ButtonTexture;
 
         static ApplicationLauncherButton button;
 
-        bool initialized = false;
         bool showGUI = false;
         bool exportButtonState = false;
         bool refreshButtonState = false;
@@ -44,20 +45,45 @@ namespace BackgroundResourceProcessing.UI
 
         void Start()
         {
-            if (initialized)
+            InitStatics();
+            window = new Rect(Screen.width / 2 - 450 / 2, Screen.height / 2 - 50, 450, 100);
+
+            var settings = HighLogic.CurrentGame.Parameters.CustomParams<DebugSettings>();
+            if (settings.DebugUI)
+                CreateApplication();
+            else
+                GameEvents.OnGameSettingsApplied.Add(OnGameSettingsApplied);
+        }
+
+        void OnDestroy()
+        {
+            if (button)
+                ApplicationLauncher.Instance.RemoveModApplication(button);
+            else
+                GameEvents.OnGameSettingsApplied.Remove(OnGameSettingsApplied);
+        }
+
+        void InitStatics()
+        {
+            if (InitializedStatics)
                 return;
 
             HeaderStyle = new(HighLogic.Skin.label) { fontStyle = FontStyle.Bold };
             CellStyle = new(HighLogic.Skin.label) { alignment = TextAnchor.MiddleRight };
             ButtonActive = new(HighLogic.Skin.button) { onNormal = HighLogic.Skin.button.onActive };
-
-            initialized = true;
-            window = new Rect(Screen.width / 2 - 450 / 2, Screen.height / 2 - 50, 450, 100);
-
-            Texture buttonTexture = GameDatabase.Instance.GetTexture(
+            ButtonTexture = GameDatabase.Instance.GetTexture(
                 "BackgroundResourceProcessing/Textures/ToolbarButton",
                 false
             );
+
+            InitializedStatics = true;
+        }
+
+        void CreateApplication()
+        {
+            if (button != null)
+                return;
+
             button = ApplicationLauncher.Instance.AddModApplication(
                 ShowToolbarGUI,
                 HideToolbarGUI,
@@ -66,14 +92,24 @@ namespace BackgroundResourceProcessing.UI
                 Nothing,
                 Nothing,
                 ApplicationLauncher.AppScenes.FLIGHT | ApplicationLauncher.AppScenes.MAPVIEW,
-                buttonTexture
+                ButtonTexture
             );
         }
 
-        void OnDestroy()
+        void OnGameSettingsApplied()
         {
-            if (button)
-                ApplicationLauncher.Instance.RemoveModApplication(button);
+            if (button != null)
+            {
+                GameEvents.OnGameSettingsApplied.Remove(OnGameSettingsApplied);
+                return;
+            }
+
+            var settings = HighLogic.CurrentGame.Parameters.CustomParams<DebugSettings>();
+            if (!settings.DebugUI)
+                return;
+
+            CreateApplication();
+            GameEvents.OnGameSettingsApplied.Remove(OnGameSettingsApplied);
         }
 
         void ShowToolbarGUI()

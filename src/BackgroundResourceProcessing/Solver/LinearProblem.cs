@@ -29,6 +29,8 @@ namespace BackgroundResourceProcessing.Solver
 
         IntMap<LinearEquality> substitutions = null;
 
+        private static bool Trace => DebugSettings.Instance?.SolverTrace ?? false;
+
         public LinearProblem() { }
 
         #region variable creation
@@ -132,7 +134,8 @@ namespace BackgroundResourceProcessing.Solver
         public LinearSolution Maximize(LinearEquation func)
         {
             using var span = new TraceSpan("LinearProblem.Maximize");
-            Trace(() => $"\nMaximize Z = {func}\nsubject to\n{this}");
+            if (Trace)
+                LogUtil.Log($"\nMaximize Z = {func}\nsubject to\n{this}");
 
             var soln = SolveBranchAndBound(func);
 
@@ -263,7 +266,8 @@ namespace BackgroundResourceProcessing.Solver
             foreach (var sub in substitutions.Values)
                 func.Substitute(sub.variable, sub.equation);
 
-            Trace(() => $"After presolve:\nMaximize Z = {func}\nsubject to\n{this}");
+            if (Trace)
+                LogUtil.Log($"After presolve:\nMaximize Z = {func}\nsubject to\n{this}");
 
             // Do a depth-first search but order by score in order to break depth ties.
             PriorityQueue<QueueEntry, KeyValuePair<int, double>> entries = new(
@@ -306,9 +310,10 @@ namespace BackgroundResourceProcessing.Solver
                     }
                 }
 
-                Trace(() =>
-                    $"Solving relaxation with choice variables: {RenderChoices(entry.choices)}"
-                );
+                if (Trace)
+                    LogUtil.Log(
+                        $"Solving relaxation with choice variables: {RenderChoices(entry.choices)}"
+                    );
 
                 BuildVarMap(varMap, entry.choices, binaryIndices);
                 var tableau = BuildSimplexTableau(func, entry.choices, varMap);
@@ -328,11 +333,11 @@ namespace BackgroundResourceProcessing.Solver
 
                 var score = tableau[tableau.Width - 1, 0];
 
-                Trace(() =>
+                if (Trace)
                 {
-                    var current = ExtractTableauSolution(tableau, entry.choices, varMap, selected);
-                    return $"Step solution {current} with score {score}";
-                });
+                    var dbg = ExtractTableauSolution(tableau, entry.choices, varMap, selected);
+                    LogUtil.Log($"Step solution {dbg} with score {score}");
+                }
 
                 // The relaxation we got here (or solution) is not better than
                 // the current incumbent solution, so we have no extra work to
@@ -415,7 +420,8 @@ namespace BackgroundResourceProcessing.Solver
             if (soln == null)
                 throw new UnsolvableProblemException();
 
-            Trace(() => $"Final solution {soln} with score {best}");
+            if (Trace)
+                LogUtil.Log($"Final solution {soln} with score {best}");
 
             return (LinearSolution)soln;
         }
@@ -827,14 +833,6 @@ namespace BackgroundResourceProcessing.Solver
 
                 return y.Value.CompareTo(x.Value);
             }
-        }
-
-        [Conditional("SOLVERTRACE")]
-        private static void Trace(Func<string> func)
-        {
-#if SOLVERTRACE
-            LogUtil.Log(func());
-#endif
         }
     }
 

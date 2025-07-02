@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -83,7 +84,7 @@ namespace BackgroundResourceProcessing.Addons
             //
             // We do this by sticking it as an extra loading screen step
             // that happens at the very end.
-            LoadingScreen.Instance.loaders.Add(new BackgroundLoadingSystem());
+            LoadingScreen.Instance.loaders.Add(gameObject.AddComponent<RegistryLoadingSystem>());
 
             // And now we clean up after ourselves.
             Destroy(this);
@@ -204,13 +205,14 @@ namespace BackgroundResourceProcessing.Addons
             return Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         }
 
-        private class BackgroundLoadingSystem() : LoadingSystem
+        private class RegistryLoadingSystem() : LoadingSystem
         {
             private string title;
+            private bool done;
 
             public override bool IsReady()
             {
-                return true;
+                return done;
             }
 
             public override string ProgressTitle()
@@ -221,8 +223,28 @@ namespace BackgroundResourceProcessing.Addons
 
             public override void StartLoad()
             {
-                TypeRegistry.RegisterAll();
-                GameEvents.OnGameDatabaseLoaded.Add(TypeRegistry.Reload);
+                StartCoroutine(DoLoad());
+            }
+
+            private IEnumerator DoLoad()
+            {
+                try
+                {
+                    yield return 0;
+                    var watch = new System.Diagnostics.Stopwatch();
+                    watch.Start();
+
+                    TypeRegistry.RegisterAll();
+
+                    watch.Stop();
+                    var elapsed = watch.ElapsedMilliseconds;
+
+                    LogUtil.Log($"Loaded background converters in {elapsed} ms");
+                }
+                finally
+                {
+                    done = true;
+                }
             }
         }
     }

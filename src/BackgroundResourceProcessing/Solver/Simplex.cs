@@ -10,6 +10,8 @@ namespace BackgroundResourceProcessing.Solver
         const double Epsilon = 1e-9;
         const uint MaxIterations = 1000;
 
+        private static bool Trace => DebugSettings.Instance?.SolverTrace ?? false;
+
         internal static void SolveTableau(Matrix tableau, BitSet selected)
         {
             using var iterSpan = new TraceSpan("Simplex.SolveTableau");
@@ -24,7 +26,8 @@ namespace BackgroundResourceProcessing.Solver
                 if (row < 0)
                     throw new UnsolvableProblemException("LP problem has unbounded solutions");
 
-                Trace(() => $"Pivoting on column {col}, row {row}:\n{tableau}");
+                if (Trace)
+                    LogUtil.Log($"Pivoting on column {col}, row {row}:\n{tableau}");
 
                 selected[col] = true;
                 tableau.InvScaleRow(row, tableau[col, row]);
@@ -37,7 +40,8 @@ namespace BackgroundResourceProcessing.Solver
                 }
             }
 
-            Trace(() => $"Final:\n{tableau}");
+            if (Trace)
+                LogUtil.Log($"Final:\n{tableau}");
         }
 
         static int SelectPivot(Matrix tableau)
@@ -86,7 +90,8 @@ namespace BackgroundResourceProcessing.Solver
                 // if (ratio == 0.0 && den < 0.0)
                 //     continue;
 
-                Trace(() => $"Considering row {y} {num:g4}/{den:g4} = {ratio:g4}");
+                if (Trace)
+                    LogUtil.Log($"Considering row {y} {num:g4}/{den:g4} = {ratio:g4}");
 
                 if (ratio < value)
                 {
@@ -96,14 +101,6 @@ namespace BackgroundResourceProcessing.Solver
             }
 
             return index;
-        }
-
-        [Conditional("SOLVERTRACE")]
-        private static void Trace(Func<string> func)
-        {
-#if SOLVERTRACE
-            LogUtil.Log(func());
-#endif
         }
     }
 }

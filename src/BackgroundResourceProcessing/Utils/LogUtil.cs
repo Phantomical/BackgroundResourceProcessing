@@ -45,9 +45,8 @@ namespace BackgroundResourceProcessing
 
         internal static void Debug(DebugExpression dbgexpr)
         {
-#if DEBUG
-            Log(dbgexpr());
-#endif
+            if (DebugSettings.Instance.DebugLogging)
+                Log(dbgexpr());
         }
 
         public static void Log(params object[] args)
