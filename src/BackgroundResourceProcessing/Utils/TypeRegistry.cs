@@ -127,6 +127,12 @@ namespace BackgroundResourceProcessing.Utils
             BackgroundInventory.LoadAll();
         }
 
+        internal static void Reload()
+        {
+            BackgroundConverter.LoadAll();
+            BackgroundInventory.LoadAll();
+        }
+
         internal static void RegisterForTest()
         {
             var assembly = typeof(TypeRegistry).Assembly;

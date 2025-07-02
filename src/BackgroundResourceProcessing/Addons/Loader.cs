@@ -222,6 +222,7 @@ namespace BackgroundResourceProcessing.Addons
             public override void StartLoad()
             {
                 TypeRegistry.RegisterAll();
+                GameEvents.OnGameDatabaseLoaded.Add(TypeRegistry.Reload);
             }
         }
     }
