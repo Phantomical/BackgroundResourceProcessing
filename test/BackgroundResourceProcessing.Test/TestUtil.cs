@@ -120,15 +120,19 @@ namespace BackgroundResourceProcessing.Test
             }
         }
 
-        static TestLogSink sink;
+        static readonly TestLogSink sink;
 
         static Setup()
         {
             sink = new TestLogSink(Path.Combine(TestUtil.ProjectDirectory, "bin/test-output.log"));
-#if DEBUG
             LogUtil.Sink = sink;
-#endif
+
             TypeRegistry.RegisterForTest();
+
+            DebugSettings.Instance.DebugLogging = true;
+#if SOLVERTRACE
+            DebugSettings.Instance.SolverTrace = true;
+#endif
         }
 
         [AssemblyInitialize()]

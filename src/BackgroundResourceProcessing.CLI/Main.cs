@@ -52,6 +52,14 @@ namespace BackgroundResourceProcessing.CLI
             else
                 LogUtil.Sink = new SilentLogSink();
 
+            if (options.Verbose)
+            {
+                DebugSettings.Instance.DebugLogging = true;
+#if SOLVERTRACE
+                DebugSettings.Instance.SolverTrace = true;
+#endif
+            }
+
             TypeRegistry.RegisterForTest();
         }
 
