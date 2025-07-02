@@ -180,8 +180,8 @@ namespace BackgroundResourceProcessing.UI
         {
             GUILayout.BeginHorizontal();
 
-            var resources = GUILayout.Button("Resources");
-            var export = GUILayout.Button("Ship Export");
+            var resources = DrawSubmenuButton("Resources", submenu == Submenu.Resources);
+            var export = DrawSubmenuButton("Ship Export", submenu == Submenu.Export);
 
             if (resources)
                 submenu = Submenu.Resources;
@@ -189,6 +189,14 @@ namespace BackgroundResourceProcessing.UI
                 submenu = Submenu.Export;
 
             GUILayout.EndHorizontal();
+        }
+
+        bool DrawSubmenuButton(string label, bool active)
+        {
+            GUI.enabled = !active;
+            var clicked = GUILayout.Button(label, ButtonActive);
+            GUI.enabled = true;
+            return clicked;
         }
 
         void DrawResourceState()
