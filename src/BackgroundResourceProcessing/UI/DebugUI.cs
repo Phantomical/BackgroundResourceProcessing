@@ -200,7 +200,7 @@ namespace BackgroundResourceProcessing.UI
             submenu = (Submenu)
                 GUILayout.Toolbar(
                     (int)submenu,
-                    ["Resources", "Debug Converters"],
+                    ["Resources", "Debug Inspector"],
                     GUILayout.ExpandWidth(true)
                 );
         }

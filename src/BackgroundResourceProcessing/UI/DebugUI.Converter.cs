@@ -77,19 +77,27 @@ namespace BackgroundResourceProcessing.UI
                         cancelSelection = true;
                 }
 
-                using var disabled = new PushEnabeled(popup == null && part != null);
-                if (GUILayout.Button("Select Part Module"))
                 {
-                    var x = ui.GetPopupRectX(100);
-                    var y = ui.window.yMin;
+                    using var disabled = new PushEnabeled(popup == null && part != null);
+                    if (GUILayout.Button("Select Part Module"))
+                    {
+                        var x = ui.GetPopupRectX(100);
+                        var y = ui.window.yMin;
 
-                    if (popup != null)
-                        popup.Close();
+                        if (popup != null)
+                            popup.Close();
 
-                    popup = ui.gameObject.AddComponent<ModuleSelectorPopup>();
-                    popup.ui = this;
-                    popup.modules = GetValidPartModules(part);
-                    popup.SetPosition(x, y);
+                        popup = ui.gameObject.AddComponent<ModuleSelectorPopup>();
+                        popup.ui = this;
+                        popup.modules = GetValidPartModules(part);
+                        popup.SetPosition(x, y);
+                    }
+                }
+
+                {
+                    using var disabled = new PushEnabeled(module != null);
+                    if (GUILayout.Button("Refresh"))
+                        SetModule(module);
                 }
             }
 

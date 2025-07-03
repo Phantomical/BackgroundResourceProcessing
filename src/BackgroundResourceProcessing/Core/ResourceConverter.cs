@@ -83,6 +83,15 @@ namespace BackgroundResourceProcessing.Core
             var resources = Behaviour.GetResources(state);
             nextChangepoint = Behaviour.GetNextChangepoint(state);
 
+            if (nextChangepoint < state.CurrentTime)
+            {
+                LogUtil.Error(
+                    $"Behaviour {Behaviour.GetType().Name} returned changepoint in the past. ",
+                    "Setting changepoint to infinity instead."
+                );
+                nextChangepoint = double.PositiveInfinity;
+            }
+
             bool changed = false;
 
             if (OverwriteRatios(ref inputs, resources.Inputs))
