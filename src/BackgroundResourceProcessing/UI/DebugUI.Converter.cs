@@ -53,7 +53,8 @@ namespace BackgroundResourceProcessing.UI
                 scroll = GUILayout.BeginScrollView(
                     scroll,
                     GUILayout.ExpandHeight(true),
-                    GUILayout.ExpandWidth(true)
+                    GUILayout.ExpandWidth(true),
+                    GUILayout.MinHeight(400)
                 );
                 DrawRecipeInfo();
                 GUILayout.EndScrollView();
