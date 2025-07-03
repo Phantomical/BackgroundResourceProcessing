@@ -20,10 +20,8 @@
             <Private>false</Private>
 
             <KSPAssemblyName>ClickThroughBlocker</KSPAssemblyName>
-            <KSPAssemblyVersion>1.0.0</KSPAssemblyVersion>
+            <KSPAssemblyVersion>2.0.0</KSPAssemblyVersion>
         </Reference>
-
-        <InternalsVisibleTo Include="BackgroundResourceProcessing.Test" />
     </ItemGroup>
 
     <!--

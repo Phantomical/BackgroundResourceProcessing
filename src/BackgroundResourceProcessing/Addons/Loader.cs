@@ -17,6 +17,24 @@ namespace BackgroundResourceProcessing.Addons
     [KSPAddon(KSPAddon.Startup.Instantly, true)]
     internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
     {
+        // This defines the dependencies that need to be satisfied in order for
+        // us to load a plugin dll.
+        private static readonly Dictionary<string, List<AssemblyDependency>> Dependencies =
+        [
+            new(
+                "BackgroundResourceProcessing.Integration.ClickThroughBlocker",
+                [new KSPAssemblyDependency("ClickThroughBlocker", new(2, 0))]
+            ),
+            new(
+                "BackgroundResourceProcessing.Integration.EL",
+                [new DirectAssemblyDependency("Launchpad", new(6, 99))]
+            ),
+            new(
+                "BackgroundResourceProcessing.Integration.Kopernicus",
+                [new KSPAssemblyDependency("Kopernicus", new(1, 0))]
+            ),
+        ];
+
         void Awake()
         {
             string pluginDir = GetPluginDirectory();
@@ -25,10 +43,16 @@ namespace BackgroundResourceProcessing.Addons
 
             foreach (var plugin in plugins)
             {
-                var name = Path.GetFileNameWithoutExtension(plugin);
+                var name = GetPluginNameWithoutExtension(plugin);
 
                 try
                 {
+                    if (!ShouldLoadPlugin(name))
+                    {
+                        LogUtil.Log($"Skipping assembly {name} as dependencies are not satisfied");
+                        continue;
+                    }
+
                     var assembly = Assembly.LoadFile(plugin);
                     var loaded = new AssemblyLoader.LoadedAssembly(
                         assembly,
@@ -43,22 +67,17 @@ namespace BackgroundResourceProcessing.Addons
                     list.Add(loaded);
                     AssemblyLoader.loadedAssemblies.Add(loaded);
                 }
+                catch (ReflectionTypeLoadException e)
+                {
+                    LogUtil.Warn($"Failed to load integration {name}: {e}");
+                    var message = "Additional information:";
+                    foreach (Exception inner in e.LoaderExceptions)
+                        message += $"\n{inner}";
+                    LogUtil.Warn(message);
+                }
                 catch (Exception e)
                 {
-#if DEBUG
                     LogUtil.Warn($"Failed to load integration {name}: {e}");
-
-                    if (e is ReflectionTypeLoadException re)
-                    {
-                        var message = "Additional information:\n";
-                        foreach (Exception inner in re.LoaderExceptions)
-                            message += "\n" + inner.ToString();
-
-                        LogUtil.Warn(message);
-                    }
-#else
-                    LogUtil.Log($"Skipping integration {name}");
-#endif
                 }
             }
 
@@ -117,6 +136,28 @@ namespace BackgroundResourceProcessing.Addons
                     loaded.typesDictionary.Add(key, item);
                 }
             }
+        }
+
+        private static bool ShouldLoadPlugin(string name)
+        {
+            if (!Dependencies.TryGetValue(name, out var deps))
+                return true;
+
+            foreach (var dep in deps)
+            {
+                if (!dep.IsSatisfied())
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static string GetPluginNameWithoutExtension(string path)
+        {
+            path = Path.GetFileName(path);
+            if (path.EndsWith(".dll.plugin"))
+                path = path.Substring(0, path.Length - ".dll.plugin".Length);
+            return path;
         }
 
         /// <summary>
@@ -190,6 +231,13 @@ namespace BackgroundResourceProcessing.Addons
             return count;
         }
 
+        private static string StripPrefix(string s, string prefix)
+        {
+            if (s.StartsWith(prefix))
+                return s.Substring(prefix.Length);
+            return s;
+        }
+
         private static readonly MethodInfo StartAddonMethod = typeof(AddonLoader).GetMethod(
             "StartAddon",
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
@@ -203,6 +251,16 @@ namespace BackgroundResourceProcessing.Addons
         private static string GetPluginDirectory()
         {
             return Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        }
+
+        private static bool IsVersionCompatible(Version existing, Version required)
+        {
+            if (existing.Major != required.Major)
+                return false;
+            if (existing.Minor < required.Minor)
+                return false;
+
+            return true;
         }
 
         private class RegistryLoadingSystem() : LoadingSystem
@@ -245,6 +303,52 @@ namespace BackgroundResourceProcessing.Addons
                 {
                     done = true;
                 }
+            }
+        }
+
+        private abstract class AssemblyDependency
+        {
+            public abstract bool IsSatisfied();
+        }
+
+        private class KSPAssemblyDependency(string name, Version version) : AssemblyDependency
+        {
+            public override bool IsSatisfied()
+            {
+                var loaded = AssemblyLoader.loadedAssemblies;
+
+                foreach (var assembly in loaded)
+                {
+                    if (assembly.name != name)
+                        continue;
+
+                    var assemblyVersion = new Version(assembly.versionMajor, assembly.versionMinor);
+                    if (IsVersionCompatible(assemblyVersion, version))
+                        return true;
+                }
+
+                return false;
+            }
+        }
+
+        private class DirectAssemblyDependency(string name, Version version) : AssemblyDependency
+        {
+            public override bool IsSatisfied()
+            {
+                var domain = AppDomain.CurrentDomain;
+
+                foreach (var assembly in domain.GetAssemblies())
+                {
+                    var asmName = assembly.GetName();
+                    if (asmName.Name != name)
+                        continue;
+                    if (!IsVersionCompatible(asmName.Version, version))
+                        continue;
+
+                    return true;
+                }
+
+                return false;
             }
         }
     }

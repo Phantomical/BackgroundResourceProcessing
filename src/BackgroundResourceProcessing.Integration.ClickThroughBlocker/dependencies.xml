@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<Plugin>
+  <Dependency Name="ClickThroughBlocker" Version="2.0.0" />
+</Plugin>
