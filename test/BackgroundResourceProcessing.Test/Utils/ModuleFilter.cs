@@ -83,6 +83,9 @@ namespace BackgroundResourceProcessing.Test.Utils
             public bool True = true;
             public bool False = false;
 
+            public bool BoolPropertyTrue => true;
+            public bool BoolPropertyFalse => false;
+
             public ResourceFlowMode FlowMode = ResourceFlowMode.ALL_VESSEL;
         }
 
@@ -125,6 +128,12 @@ namespace BackgroundResourceProcessing.Test.Utils
 
             filter = ModuleFilter.Compile("%True != %False", node);
             Assert.IsTrue(filter.Invoke(module));
+
+            filter = ModuleFilter.Compile("%BoolPropertyTrue", node);
+            Assert.IsTrue(filter.Invoke(module));
+
+            filter = ModuleFilter.Compile("%BoolPropertyFalse", node);
+            Assert.IsFalse(filter.Invoke(module));
         }
 
         [TestMethod]

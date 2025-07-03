@@ -34,12 +34,19 @@ namespace BackgroundResourceProcessing.UI
             Part part = null;
             PartModule module = null;
             List<ConverterInfo> infos = null;
+            Exception exception = null;
 
             public ModuleSelectorPopup popup = null;
             bool selectorActive = false;
             bool cancelSelection = false;
 
             Vector2 scroll = new();
+
+            readonly GUIStyle exceptionStyle = new(HighLogic.Skin.label)
+            {
+                alignment = TextAnchor.UpperLeft,
+            };
+            readonly GUIStyle rightHeader = new(HeaderStyle) { alignment = TextAnchor.MiddleRight };
 
             public void Draw()
             {
@@ -122,7 +129,16 @@ namespace BackgroundResourceProcessing.UI
             void DrawRecipeInfo()
             {
                 using var h1 = new PushHorizontalGroup();
-                var RightHeader = new GUIStyle(HeaderStyle) { alignment = TextAnchor.MiddleRight };
+
+                if (exception != null)
+                {
+                    GUILayout.Label(
+                        exception.ToString(),
+                        exceptionStyle,
+                        GUILayout.ExpandWidth(true)
+                    );
+                    return;
+                }
 
                 if (infos == null)
                     return;
@@ -183,7 +199,7 @@ namespace BackgroundResourceProcessing.UI
 
                 DrawColumn(() =>
                 {
-                    GUILayout.Label("Ratio", RightHeader, GUILayout.ExpandWidth(true));
+                    GUILayout.Label("Ratio", rightHeader, GUILayout.ExpandWidth(true));
 
                     foreach (var info in infos)
                     {
@@ -213,7 +229,7 @@ namespace BackgroundResourceProcessing.UI
 
                 DrawColumn(() =>
                 {
-                    GUILayout.Label("Constraint", RightHeader, GUILayout.ExpandWidth(true));
+                    GUILayout.Label("Constraint", rightHeader, GUILayout.ExpandWidth(true));
 
                     foreach (var info in infos)
                     {
@@ -243,7 +259,7 @@ namespace BackgroundResourceProcessing.UI
 
                 DrawColumn(() =>
                 {
-                    GUILayout.Label("Flow Mode", RightHeader, GUILayout.ExpandWidth(true));
+                    GUILayout.Label("Flow Mode", rightHeader, GUILayout.ExpandWidth(true));
 
                     foreach (var info in infos)
                     {
@@ -292,33 +308,47 @@ namespace BackgroundResourceProcessing.UI
             {
                 this.module = module;
                 this.infos = null;
+                this.exception = null;
 
-                var adapter = BackgroundConverter.GetConverterForModule(module);
-                if (adapter == null)
-                    return;
-
-                List<ConverterInfo> infos = [];
-                var behaviour = adapter.GetBehaviour(module);
-                if (behaviour == null)
-                    return;
-
-                var state = new VesselState()
+                try
                 {
-                    Vessel = module.vessel,
-                    CurrentTime = Planetarium.GetUniversalTime(),
-                };
+                    var adapter = BackgroundConverter.GetConverterForModule(module);
+                    if (adapter == null)
+                        return;
 
-                foreach (var converter in behaviour.Converters)
-                {
-                    var resources = converter.GetResources(state);
-                    resources.Inputs ??= [];
-                    resources.Outputs ??= [];
-                    resources.Requirements ??= [];
+                    List<ConverterInfo> infos = [];
+                    var behaviour = adapter.GetBehaviour(module);
+                    if (behaviour == null)
+                    {
+                        this.infos = [];
+                        return;
+                    }
 
-                    infos.Add(new() { converter = converter, resources = resources });
+                    var state = new VesselState()
+                    {
+                        Vessel = module.vessel,
+                        CurrentTime = Planetarium.GetUniversalTime(),
+                    };
+
+                    foreach (var converter in behaviour.Converters)
+                    {
+                        var resources = converter.GetResources(state);
+                        resources.Inputs ??= [];
+                        resources.Outputs ??= [];
+                        resources.Requirements ??= [];
+
+                        infos.Add(new() { converter = converter, resources = resources });
+                    }
+
+                    this.infos = infos;
                 }
+                catch (Exception e)
+                {
+                    LogUtil.Error($"Evaluating adapter behaviours threw an exception: {e}");
 
-                this.infos = infos;
+                    this.infos = null;
+                    this.exception = e;
+                }
             }
 
             public void CancelPartSelection()
