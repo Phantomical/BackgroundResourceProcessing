@@ -46,6 +46,7 @@ namespace BackgroundResourceProcessing.UI
         ResourceProcessor processor;
 
         Rect window = new(100, 100, DefaultWidth, DefaultWidth);
+        bool resetHeight = false;
 
         void Awake()
         {
@@ -157,6 +158,10 @@ namespace BackgroundResourceProcessing.UI
                 "Background Resource Processing",
                 HighLogic.Skin.window
             );
+
+            if (resetHeight)
+                window.height = DefaultHeight;
+            resetHeight = false;
         }
 
         void DrawWindow(int windowId)
@@ -197,12 +202,16 @@ namespace BackgroundResourceProcessing.UI
 
         void DrawSubmenuSelector()
         {
+            var prev = submenu;
             submenu = (Submenu)
                 GUILayout.Toolbar(
                     (int)submenu,
                     ["Resources", "Debug Inspector"],
                     GUILayout.ExpandWidth(true)
                 );
+
+            if (prev != submenu)
+                resetHeight = true;
         }
 
         ResourceProcessor GetMainVesselProcessor()
@@ -220,7 +229,7 @@ namespace BackgroundResourceProcessing.UI
             return processor;
         }
 
-        struct PushGUISkin : IDisposable
+        readonly struct PushGUISkin : IDisposable
         {
             readonly GUISkin prev;
 
@@ -236,7 +245,7 @@ namespace BackgroundResourceProcessing.UI
             }
         }
 
-        ref struct PushVerticalGroup : IDisposable
+        readonly ref struct PushVerticalGroup : IDisposable
         {
             public PushVerticalGroup()
             {
@@ -249,7 +258,7 @@ namespace BackgroundResourceProcessing.UI
             }
         }
 
-        ref struct PushHorizontalGroup : IDisposable
+        readonly ref struct PushHorizontalGroup : IDisposable
         {
             public PushHorizontalGroup()
             {
