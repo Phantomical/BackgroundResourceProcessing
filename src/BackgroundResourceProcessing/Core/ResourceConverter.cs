@@ -81,7 +81,7 @@ public class ResourceConverter(ConverterBehaviour behaviour)
     public bool Refresh(VesselState state)
     {
         var resources = Behaviour.GetResources(state);
-        nextChangepoint = Behaviour.GetNextChangepoint(state);
+        nextChangepoint = resources.NextChangepoint;
 
         if (nextChangepoint < state.CurrentTime)
         {
@@ -104,7 +104,7 @@ public class ResourceConverter(ConverterBehaviour behaviour)
         return changed;
     }
 
-    public void Load(ConfigNode node)
+    public void Load(ConfigNode node, Vessel vessel = null)
     {
         node.TryGetDouble("nextChangepoint", ref nextChangepoint);
         node.TryGetValue("rate", ref rate);
@@ -138,7 +138,7 @@ public class ResourceConverter(ConverterBehaviour behaviour)
 
         var bNode = node.GetNode("BEHAVIOUR");
         if (bNode != null)
-            Behaviour = ConverterBehaviour.Load(bNode);
+            Behaviour = ConverterBehaviour.Load(bNode, behaviour => behaviour.Vessel = vessel);
 
         outputs.Clear();
         inputs.Clear();

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading;
 using BackgroundResourceProcessing.Collections;
 
@@ -53,8 +54,13 @@ public abstract class DynamicallySerializable<T> : DynamicallySerializable
         OnSave(node);
     }
 
-    protected static DynamicallySerializable<T> Load(ConfigNode node)
+    protected static DynamicallySerializable<T> Load(
+        ConfigNode node,
+        Action<DynamicallySerializable<T>> preload = null
+    )
     {
+        Type type;
+
         try
         {
             rwlock.EnterReadLock();
@@ -66,22 +72,24 @@ public abstract class DynamicallySerializable<T> : DynamicallySerializable
                 return null;
             }
 
-            if (!registry.TryGetValue(name, out var type))
+            if (!registry.TryGetValue(name, out type))
             {
                 LogUtil.Error(
                     $"Attempted to load a ConfigNode with name `{name}` but no type has been registered with that name"
                 );
                 return null;
             }
-
-            var inst = (DynamicallySerializable<T>)Activator.CreateInstance(type);
-            inst.OnLoad(node);
-            return inst;
         }
         finally
         {
             rwlock.ExitReadLock();
         }
+
+        var inst = (DynamicallySerializable<T>)Activator.CreateInstance(type);
+
+        preload?.Invoke(inst);
+        inst.OnLoad(node);
+        return inst;
     }
 
     protected static void RegisterAll(IEnumerable<Type> types)

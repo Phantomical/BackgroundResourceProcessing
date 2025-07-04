@@ -82,6 +82,10 @@ public class SolarPanelBehaviour : ConverterBehaviour
             rate *= GetSolarFlux(state) / PhysicsGlobals.SolarLuminosityAtHome;
         }
 
+        var efficiencyCh = GetTimeEfficiencyChangepoint(state);
+        var powerCh = GetPowerChangepoint(state);
+        var changepoint = Math.Min(efficiencyCh, powerCh);
+
         var resources = new ConverterResources
         {
             Inputs =
@@ -93,16 +97,9 @@ public class SolarPanelBehaviour : ConverterBehaviour
                     FlowMode = FlowMode,
                 },
             ],
+            NextChangepoint = changepoint,
         };
         return resources;
-    }
-
-    public override double GetNextChangepoint(VesselState state)
-    {
-        var efficiencyCh = GetTimeEfficiencyChangepoint(state);
-        var powerCh = GetPowerChangepoint(state);
-
-        return Math.Min(efficiencyCh, powerCh);
     }
 
     protected virtual double GetSolarDistance(VesselState state)

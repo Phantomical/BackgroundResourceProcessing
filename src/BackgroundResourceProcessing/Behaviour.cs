@@ -125,13 +125,33 @@ public struct ConverterResources()
     /// A list of constraints on what resources must be present on the
     /// vessel in order for this converter to be active.
     /// </summary>
+    public List<ResourceConstraint> Requirements = [];
+
+    /// <summary>
+    /// The time at which the resources emitted by this vessel will change next.
+    /// </summary>
     ///
     /// <remarks>
-    /// <para>
-    ///   It is possible to have constraints that
-    /// </para>
+    ///   <para>
+    ///     This can be used to simulate behaviours that have non-linear
+    ///     behaviour by approximating them using a piecewise linear rate
+    ///     function. However, adding more changepoints does have a cost so
+    ///     it is best to limit updates to at most once per day per vessel.
+    ///   </para>
+    ///
+    ///   <para>
+    ///     In cases where there are no future changepoints, you can return
+    ///     <c>double.PositiveInfinity</c>. In this case, the behaviour rates
+    ///     will not be loaded again due to changepoint timeout. Note that
+    ///     refreshes will still happen when the vessel is switched to, or
+    ///     when it switches from one SOI to another.
+    ///   </para>
+    ///
+    ///   <para>
+    ///     By default, this is <c>double.PositiveInfinity</c>.
+    ///   </para>
     /// </remarks>
-    public List<ResourceConstraint> Requirements = [];
+    public double NextChangepoint = double.PositiveInfinity;
 }
 
 /// <summary>
@@ -156,7 +176,7 @@ public abstract class ConverterBehaviour(int priority = 0)
     /// </remarks>
     public string SourceModule => sourceModule;
 
-    [KSPField]
+    [KSPField(isPersistant = true)]
     internal string sourceModule = null;
 
     /// <summary>
@@ -168,7 +188,7 @@ public abstract class ConverterBehaviour(int priority = 0)
     /// </remarks>
     public string SourcePart => sourcePart;
 
-    [KSPField]
+    [KSPField(isPersistant = true)]
     internal string sourcePart = null;
 
     /// <summary>
@@ -192,7 +212,7 @@ public abstract class ConverterBehaviour(int priority = 0)
     ///   consume resources first. The default is 0, and generally you can
     ///   leave the priority at that.
     /// </remarks>
-    [KSPField]
+    [KSPField(isPersistant = true)]
     public int Priority = priority;
 
     /// <summary>
@@ -210,40 +230,18 @@ public abstract class ConverterBehaviour(int priority = 0)
     public abstract ConverterResources GetResources(VesselState state);
 
     /// <summary>
-    /// Get the time at which the rates for this behaviour will change next.
+    /// This is called when the behaviour is removed from the vessel.
     /// </summary>
-    ///
-    /// <param name="state">State information about the vessel.</param>
-    /// <returns>The duration until the next changepoint, in seconds.</returns>
-    ///
-    /// <remarks>
-    ///   <para>
-    ///     This can be used to simulate behaviours that have non-linear
-    ///     behaviour by approximating them using a piecewise linear rate
-    ///     function. However, adding more changepoints does have a cost so
-    ///     it is best to limit updates to at most once per day per vessel.
-    ///   </para>
-    ///
-    ///   <para>
-    ///     In cases where there are no future changepoints, you can return
-    ///     <c>double.PositiveInfinity</c>. In this case, the behaviour rates
-    ///     will not be loaded again due to changepoint timeout. Note that
-    ///     refreshes will still happen when the vessel is switched to, or
-    ///     when it switches from one SOI to another.
-    ///   </para>
-    ///
-    ///   <para>
-    ///     By default, this returns <c>double.PositiveInfinity</c>.
-    ///   </para>
-    /// </remarks>
-    public virtual double GetNextChangepoint(VesselState state)
-    {
-        return double.PositiveInfinity;
-    }
+    public virtual void OnDestroy() { }
 
-    public static new ConverterBehaviour Load(ConfigNode node)
+    public static ConverterBehaviour Load(ConfigNode node, Action<ConverterBehaviour> action = null)
     {
-        return (ConverterBehaviour)DynamicallySerializable<ConverterBehaviour>.Load(node);
+        Action<DynamicallySerializable<ConverterBehaviour>> castaction = null;
+        if (action != null)
+            castaction = behaviour => action((ConverterBehaviour)behaviour);
+
+        return (ConverterBehaviour)
+            DynamicallySerializable<ConverterBehaviour>.Load(node, castaction);
     }
 
     internal static void RegisterAll()

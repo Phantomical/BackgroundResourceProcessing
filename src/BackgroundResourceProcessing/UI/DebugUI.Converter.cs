@@ -352,7 +352,7 @@ internal partial class DebugUI
                     infos.Add(
                         new()
                         {
-                            changepoint = converter.GetNextChangepoint(state) - state.CurrentTime,
+                            changepoint = resources.NextChangepoint - state.CurrentTime,
                             converter = converter,
                             resources = resources,
                         }

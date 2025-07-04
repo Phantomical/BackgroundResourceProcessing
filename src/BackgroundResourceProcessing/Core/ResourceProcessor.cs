@@ -60,7 +60,7 @@ internal class ResourceProcessor
     public ResourceProcessor() { }
 
     #region Serialization
-    public void Load(ConfigNode node)
+    public void Load(ConfigNode node, Vessel vessel = null)
     {
         node.TryGetDouble("lastUpdate", ref lastUpdate);
         node.TryGetDouble("nextChangepoint", ref nextChangepoint);
@@ -68,7 +68,7 @@ internal class ResourceProcessor
         foreach (var cNode in node.GetNodes("CONVERTER"))
         {
             ResourceConverter converter = new(null);
-            converter.Load(cNode);
+            converter.Load(cNode, vessel);
             converters.Add(converter);
         }
 

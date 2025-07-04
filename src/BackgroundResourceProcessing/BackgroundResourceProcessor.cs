@@ -17,6 +17,7 @@ public sealed class BackgroundResourceProcessor : VesselModule
 {
     private readonly ResourceProcessor processor = new();
 
+    #region Events
     /// <summary>
     /// This event is fired when a changepoint occurs.
     /// </summary>
@@ -31,6 +32,7 @@ public sealed class BackgroundResourceProcessor : VesselModule
         BackgroundResourceProcessor,
         ChangepointEvent
     > onVesselChangepoint = new("onVesselChangepoint");
+    #endregion
 
     /// <summary>
     /// Whether background processing is actively running on this module.
@@ -214,7 +216,7 @@ public sealed class BackgroundResourceProcessor : VesselModule
     protected override void OnLoad(ConfigNode node)
     {
         base.OnLoad(node);
-        processor.Load(node);
+        processor.Load(node, Vessel);
 
         bool active = false;
         if (node.TryGetValue("BackgroundProcessingActive", ref active))
