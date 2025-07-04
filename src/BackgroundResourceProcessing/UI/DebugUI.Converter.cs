@@ -196,7 +196,8 @@ internal partial class DebugUI
                 {
                     GUILayout.Space(5);
                     GUILayout.Label("");
-                    GUILayout.Label("");
+                    if (info.changepoint < double.PositiveInfinity)
+                        GUILayout.Label("");
 
                     foreach (var input in info.resources.Inputs)
                         GUILayout.Label(input.ResourceName, GUILayout.ExpandWidth(true));
@@ -215,7 +216,8 @@ internal partial class DebugUI
                 {
                     GUILayout.Space(5);
                     GUILayout.Label("");
-                    GUILayout.Label("");
+                    if (info.changepoint < double.PositiveInfinity)
+                        GUILayout.Label("");
 
                     foreach (var input in info.resources.Inputs)
                         GUILayout.Label(
@@ -246,7 +248,8 @@ internal partial class DebugUI
                 {
                     GUILayout.Space(5);
                     GUILayout.Label("");
-                    GUILayout.Label("");
+                    if (info.changepoint < double.PositiveInfinity)
+                        GUILayout.Label("");
 
                     foreach (var input in info.resources.Inputs)
                         GUILayout.Label(
@@ -277,7 +280,8 @@ internal partial class DebugUI
                 {
                     GUILayout.Space(5);
                     GUILayout.Label("");
-                    GUILayout.Label("");
+                    if (info.changepoint < double.PositiveInfinity)
+                        GUILayout.Label("");
 
                     foreach (var input in info.resources.Inputs)
                         GUILayout.Label(
@@ -353,7 +357,7 @@ internal partial class DebugUI
                     infos.Add(
                         new()
                         {
-                            changepoint = converter.GetNextChangepoint(state),
+                            changepoint = converter.GetNextChangepoint(state) - state.CurrentTime,
                             converter = converter,
                             resources = resources,
                         }

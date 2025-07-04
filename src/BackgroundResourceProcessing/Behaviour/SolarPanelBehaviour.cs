@@ -185,28 +185,19 @@ public class SolarPanelBehaviour : ConverterBehaviour
         if (lo <= orbit.PeR && orbit.ApR <= hi)
             return double.PositiveInfinity;
 
-        double? chV = null;
-        if (lo < orbit.PeR)
-        {
-            var loV = orbit.TrueAnomalyAtRadius(lo);
-            if (MathUtil.IsFinite(loV))
-                chV = loV;
-        }
+        double hiV = FutureTrueAnomalyAtRadius(orbit, hi);
+        double loV = FutureTrueAnomalyAtRadius(orbit, lo);
 
-        if (orbit.ApR < hi)
-        {
-            var hiV = orbit.TrueAnomalyAtRadius(hi);
-            if (MathUtil.IsFinite(hiV))
-            {
-                if ((chV ?? double.NegativeInfinity) < hiV)
-                    chV = hiV;
-            }
-        }
+        double chV = double.PositiveInfinity;
+        if (hiV < chV)
+            chV = hiV;
+        if (loV < chV)
+            chV = loV;
 
-        if (chV == null)
+        if (double.IsInfinity(chV))
             return double.PositiveInfinity;
 
-        return orbit.GetUTforTrueAnomaly((double)chV, 0.0);
+        return orbit.TimeOfTrueAnomaly(chV, state.CurrentTime);
     }
 
     /// <summary>
@@ -232,6 +223,53 @@ public class SolarPanelBehaviour : ConverterBehaviour
         }
 
         return new() { star = parent, planet = current };
+    }
+
+    // Get the true anomaly at the next time the orbit will be at radius r.
+    // Returns NaN if the orbit will not cross r in the future.
+    private double FutureTrueAnomalyAtRadius(Orbit orbit, double r)
+    {
+        double a = orbit.semiMajorAxis;
+        double e = orbit.eccentricity;
+        double current = orbit.trueAnomaly;
+        double cosv = (a * (1 - e * e) - r) / (r * e);
+
+        if (cosv < -1.0 || cosv > 1.0)
+            return double.NaN;
+
+        // Acos returns the anomaly in the first half of the orbit relative
+        // to the PE (e.g. PE -> AP).
+        double v = Math.Acos(cosv);
+        double u = 2 * Math.PI - v;
+
+        if (orbit.eccentricity >= 1.0)
+        {
+            // For hyperbolic orbits we cannot go around so we need to be
+            // somewhat more careful in how we check this.
+
+            if (current < 2 * Math.PI)
+            {
+                if (current <= v)
+                    return v;
+                return double.NaN;
+            }
+            else
+            {
+                if (current <= u)
+                    return u;
+                return v;
+            }
+        }
+        else
+        {
+            // Normal orbits loop around so it's just a matter of checking
+            // the cases in order.
+            if (current <= v)
+                return v;
+            if (current < u)
+                return u;
+            return v;
+        }
     }
 
     private struct ReferenceBodies
