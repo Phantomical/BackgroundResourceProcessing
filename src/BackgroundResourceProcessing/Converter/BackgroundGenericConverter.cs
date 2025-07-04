@@ -67,7 +67,7 @@ namespace BackgroundResourceProcessing.Converter
 
         public override ModuleBehaviour GetBehaviour(PartModule module)
         {
-            if (activeCondition.Invoke(module))
+            if (!activeCondition.Invoke(module))
                 return null;
 
             IEnumerable<ResourceRatio> inputs;
