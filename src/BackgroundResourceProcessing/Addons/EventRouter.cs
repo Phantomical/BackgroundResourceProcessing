@@ -41,7 +41,7 @@ namespace BackgroundResourceProcessing.Addons
             module.OnVesselSOIChanged(evt);
         }
 
-        private static void OnSettingsUpdate()
+        private void OnSettingsUpdate()
         {
             var settings = HighLogic.CurrentGame?.Parameters.CustomParams<DebugSettings>();
 
@@ -53,7 +53,7 @@ namespace BackgroundResourceProcessing.Addons
             DebugSettings.Instance = settings;
         }
 
-        private static void OnGameDatabaseLoaded()
+        private void OnGameDatabaseLoaded()
         {
             TypeRegistry.Reload();
         }
