@@ -1,5 +1,6 @@
 using System;
 using System.Reflection;
+using KSPAchievements;
 
 #nullable enable
 
@@ -32,7 +33,7 @@ namespace BackgroundResourceProcessing.Utils
                     "Attempted to create a FieldExtractor from a null type"
                 );
 
-            member = (MemberInfo)type.GetField(field, Flags) ?? type.GetProperty(field, Flags);
+            member = GetMember(type, field, Flags);
             if (member == null)
                 throw new Exception($"There is no member on {type.Name} named `{field}`");
 
@@ -52,9 +53,55 @@ namespace BackgroundResourceProcessing.Utils
         public T? GetValue(object obj)
         {
             if (member == null)
-                return value;
+                return this.value;
 
-            return (T)GetMemberValue(member, obj);
+            var value = GetCompatibleValue(GetMemberValue(member, obj));
+            if (value == null)
+                return (T?)value;
+
+            if (value is T downcasted)
+                return downcasted;
+
+            throw new InvalidCastException(
+                $"Value of type {value.GetType().Name} cannot be casted to {typeof(T).Name}"
+            );
+        }
+
+        public object? GetCompatibleValue(object? value)
+        {
+            if (typeof(T) == typeof(double))
+            {
+                return value switch
+                {
+                    double v => v,
+                    float v => (double)v,
+                    ushort v => (double)v,
+                    uint v => (double)v,
+                    ulong v => (double)v,
+                    short v => (double)v,
+                    int v => (double)v,
+                    long v => (double)v,
+                    _ => value,
+                };
+            }
+
+            if (typeof(T) == typeof(float))
+            {
+                return value switch
+                {
+                    float v => v,
+                    double v => (float)v,
+                    ushort v => (float)v,
+                    uint v => (float)v,
+                    ulong v => (float)v,
+                    short v => (float)v,
+                    int v => (float)v,
+                    long v => (float)v,
+                    _ => value,
+                };
+            }
+
+            return value;
         }
 
         private static bool IsCompatibleType(Type type)
@@ -62,9 +109,18 @@ namespace BackgroundResourceProcessing.Utils
             if (type == typeof(T))
                 return true;
 
-            // Special case, we can cast doubles to floats
-            if (typeof(T) == typeof(double) && type == typeof(float))
-                return true;
+            // Special case, we can cast a whole bunch of types to double/float
+            if (typeof(T) == typeof(double) || typeof(T) == typeof(float))
+            {
+                return type == typeof(float)
+                    || type == typeof(double)
+                    || type == typeof(ushort)
+                    || type == typeof(uint)
+                    || type == typeof(ulong)
+                    || type == typeof(short)
+                    || type == typeof(int)
+                    || type == typeof(long);
+            }
 
             return false;
         }
@@ -79,6 +135,19 @@ namespace BackgroundResourceProcessing.Utils
                     $"Cannot handle a member of type {member.MemberType}"
                 ),
             };
+        }
+
+        private static MemberInfo? GetMember(Type type, string name, BindingFlags flags)
+        {
+            var field = type.GetField(name, flags);
+            if (field != null)
+                return field;
+
+            var property = type.GetProperty(name, flags);
+            if (property != null)
+                return property;
+
+            return null;
         }
 
         private static object GetMemberValue(MemberInfo member, object obj)
