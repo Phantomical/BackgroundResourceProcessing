@@ -4,6 +4,7 @@ using System.Linq;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
+using BackgroundResourceProcessing.Utils;
 
 namespace BackgroundResourceProcessing.Solver;
 
@@ -355,8 +356,13 @@ internal class Solver
             foreach (var realId in inventory.ids)
             {
                 var summary = summaries[realId];
-                double frac =
-                    (rate < 0.0 ? summary.amount : summary.maxAmount - summary.amount) / total;
+                double frac = 0.0;
+                if (!MathUtil.IsFinite(total))
+                    frac = 1.0 / inventory.ids.Count;
+                else if (frac < 0.0)
+                    frac = summary.amount / total;
+                else
+                    frac = (summary.maxAmount - summary.amount) / total;
 
                 inventoryRates[realId] = rate * frac;
             }

@@ -32,7 +32,7 @@ namespace BackgroundResourceProcessing.CLI
 
             using var trace = options.Trace != null ? Tracing.Trace.Start(options.Trace) : null;
 
-            var processor = Program.LoadVessel(options.ShipPath);
+            var processor = Program.LoadVessel(options.ShipPath).CloneForSimulator();
             Directory.CreateDirectory(options.Output);
             foreach (var file in Directory.EnumerateFiles(options.Output))
             {

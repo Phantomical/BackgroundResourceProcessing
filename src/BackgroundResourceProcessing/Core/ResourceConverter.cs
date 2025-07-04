@@ -213,7 +213,7 @@ public class ResourceConverter(ConverterBehaviour behaviour)
             SaveBitSet(inner, set);
         }
 
-        Behaviour.Save(node.AddNode("BEHAVIOUR"));
+        Behaviour?.Save(node.AddNode("BEHAVIOUR"));
         ConfigUtil.SaveOutputResources(node, outputs.Select(output => output.Value));
         ConfigUtil.SaveInputResources(node, inputs.Select(input => input.Value));
         ConfigUtil.SaveRequiredResources(node, required.Select(required => required.Value));
