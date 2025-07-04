@@ -1,11 +1,10 @@
-namespace BackgroundResourceProcessing
+namespace BackgroundResourceProcessing;
+
+/// <summary>
+/// The event fired when a changepoint occurs.
+/// </summary>
+public struct ChangepointEvent
 {
-    /// <summary>
-    /// The event fired when a changepoint occurs.
-    /// </summary>
-    public struct ChangepointEvent
-    {
-        public double LastChangepoint;
-        public double CurrentChangepoint;
-    }
+    public double LastChangepoint;
+    public double CurrentChangepoint;
 }

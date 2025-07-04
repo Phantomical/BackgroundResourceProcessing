@@ -1,9 +1,8 @@
-namespace BackgroundResourceProcessing.Solver
+namespace BackgroundResourceProcessing.Solver;
+
+internal enum Relation
 {
-    internal enum Relation
-    {
-        LEqual,
-        GEqual,
-        Equal,
-    }
+    LEqual,
+    GEqual,
+    Equal,
 }

@@ -1,379 +1,362 @@
 using System;
 using System.Collections.Generic;
-using System.IO.Ports;
-using System.Runtime.InteropServices;
 using BackgroundResourceProcessing.Collections;
-using KSP.UI.Rendering;
 using UnityEngine;
 
-namespace BackgroundResourceProcessing.Utils
+namespace BackgroundResourceProcessing.Utils;
+
+internal static class MathUtil
 {
-    internal static class MathUtil
+    /// <summary>
+    /// This is present in .NET standard 2.1 but KSP doesn't have that available.
+    /// </summary>
+    /// <param name="v"></param>
+    /// <returns></returns>
+    public static bool IsFinite(double v)
     {
-        /// <summary>
-        /// This is present in .NET standard 2.1 but KSP doesn't have that available.
-        /// </summary>
-        /// <param name="v"></param>
-        /// <returns></returns>
-        public static bool IsFinite(double v)
+        long bits = BitConverter.DoubleToInt64Bits(v);
+        return (bits & 0x7FFFFFFFFFFFFFFF) < 0x7FF0000000000000;
+    }
+
+    public static bool ApproxEqual(double a, double b, double epsilon = 1e-6)
+    {
+        return Math.Abs(a - b) < epsilon;
+    }
+
+    public static double Clamp(double x, double lo, double hi)
+    {
+        return Math.Max(Math.Min(x, hi), lo);
+    }
+
+    public static int Clamp(int x, int lo, int hi)
+    {
+        return Math.Max(Math.Min(x, hi), lo);
+    }
+
+    internal static int TrailingZeroCount(ulong v)
+    {
+        int c = 64;
+
+        v &= (ulong)-(long)v;
+        if (v != 0)
+            c--;
+        if ((v & 0x00000000FFFFFFFF) != 0)
+            c -= 32;
+        if ((v & 0x0000FFFF0000FFFF) != 0)
+            c -= 16;
+        if ((v & 0x00FF00FF00FF00FF) != 0)
+            c -= 8;
+        if ((v & 0x0F0F0F0F0F0F0F0F) != 0)
+            c -= 4;
+        if ((v & 0x3333333333333333) != 0)
+            c -= 2;
+        if ((v & 0x5555555555555555) != 0)
+            c -= 1;
+
+        return c;
+    }
+
+    /// <summary>
+    /// Find the previous time at which the curve will have had value
+    /// <paramref name="epsilon"/>.
+    /// </summary>
+    ///
+    /// <param name="curve">The float curve.</param>
+    /// <param name="start">The starting time.</param>
+    /// <param name="epsilon">The value to check.</param>
+    /// <returns>
+    /// The resulting time, or <see cref="float.NegativeInfinity"/> otherwise.
+    /// </returns>
+    internal static float FindErrorBoundaryForward(FloatCurve curve, float start, float epsilon)
+    {
+        var index = FindKeyFrameIndex(curve, start);
+        var frames = curve.Curve.keys;
+
+        var current = curve.Evaluate(start);
+        var hi = current * (1f + epsilon);
+        var lo = current * (1f - epsilon);
+
+        if (index == frames.Length)
+            return float.PositiveInfinity;
+
+        if (index == -1)
         {
-            long bits = BitConverter.DoubleToInt64Bits(v);
-            return (bits & 0x7FFFFFFFFFFFFFFF) < 0x7FF0000000000000;
+            if (frames[0].value < lo || frames[0].value > hi)
+                return frames[0].time;
+            index = 0;
         }
 
-        public static bool ApproxEqual(double a, double b, double epsilon = 1e-6)
+        for (; index < frames.Length - 1; ++index)
         {
-            return Math.Abs(a - b) < epsilon;
-        }
+            var frame0 = frames[index];
+            var frame1 = frames[index + 1];
 
-        public static double Clamp(double x, double lo, double hi)
-        {
-            return Math.Max(Math.Min(x, hi), lo);
-        }
+            var dt = frame1.time - frame0.time;
 
-        public static int Clamp(int x, int lo, int hi)
-        {
-            return Math.Max(Math.Min(x, hi), lo);
-        }
+            // We treat x as time here and use that to get the control points.
+            var x0 = 0;
+            var x1 = frame0.outWeight * dt;
+            var x2 = dt * (1f - frame1.inWeight);
+            var x3 = dt;
 
-        internal static int TrailingZeroCount(ulong v)
-        {
-            int c = 64;
+            // Then y is the float curve value
+            var y0 = frame0.value;
+            var y1 = frame0.value + frame0.outTangent * frame0.outWeight * dt;
+            var y2 = frame1.value - frame1.inTangent * frame1.inWeight * dt;
+            var y3 = frame1.value;
 
-            v &= (ulong)-(long)v;
-            if (v != 0)
-                c--;
-            if ((v & 0x00000000FFFFFFFF) != 0)
-                c -= 32;
-            if ((v & 0x0000FFFF0000FFFF) != 0)
-                c -= 16;
-            if ((v & 0x00FF00FF00FF00FF) != 0)
-                c -= 8;
-            if ((v & 0x0F0F0F0F0F0F0F0F) != 0)
-                c -= 4;
-            if ((v & 0x3333333333333333) != 0)
-                c -= 2;
-            if ((v & 0x5555555555555555) != 0)
-                c -= 1;
+            // Solve y(t) = v for t
+            // y(t) = (1-t)³ y0 + 3t(1-t)² y1 + 3t²(1-t) y2 + t³ y3
+            var a = -y0 + 3 * y1 - 3 * y2 + y3;
+            var b = 3 * y2 - 6 * y1 + 3 * y0;
+            var c = -3 * y0 + 3 * y1;
+            var d = y0;
 
-            return c;
-        }
+            var min = Mathf.Min(frame0.value, frame1.value);
+            var max = Mathf.Max(frame0.value, frame1.value);
 
-        /// <summary>
-        /// Find the previous time at which the curve will have had value
-        /// <paramref name="epsilon"/>.
-        /// </summary>
-        ///
-        /// <param name="curve">The float curve.</param>
-        /// <param name="start">The starting time.</param>
-        /// <param name="epsilon">The value to check.</param>
-        /// <returns>
-        /// The resulting time, or <see cref="float.NegativeInfinity"/> otherwise.
-        /// </returns>
-        internal static float FindErrorBoundaryForward(FloatCurve curve, float start, float epsilon)
-        {
-            var index = FindKeyFrameIndex(curve, start);
-            var frames = curve.Curve.keys;
-
-            var current = curve.Evaluate(start);
-            var hi = current * (1f + epsilon);
-            var lo = current * (1f - epsilon);
-
-            if (index == frames.Length)
-                return float.PositiveInfinity;
-
-            if (index == -1)
+            // Can this curve even return a value for v in the range 0 <= t <= 1
+            var extremes = SolveQuadratic(3 * a, 2 * b, c);
+            if (extremes != null)
             {
-                if (frames[0].value < lo || frames[0].value > hi)
-                    return frames[0].time;
-                index = 0;
-            }
+                var (t0, t1) = extremes.Value;
 
-            for (; index < frames.Length - 1; ++index)
-            {
-                var frame0 = frames[index];
-                var frame1 = frames[index + 1];
-
-                var dt = frame1.time - frame0.time;
-
-                // We treat x as time here and use that to get the control points.
-                var x0 = 0;
-                var x1 = frame0.outWeight * dt;
-                var x2 = dt * (1f - frame1.inWeight);
-                var x3 = dt;
-
-                // Then y is the float curve value
-                var y0 = frame0.value;
-                var y1 = frame0.value + frame0.outTangent * frame0.outWeight * dt;
-                var y2 = frame1.value - frame1.inTangent * frame1.inWeight * dt;
-                var y3 = frame1.value;
-
-                // Solve y(t) = v for t
-                // y(t) = (1-t)³ y0 + 3t(1-t)² y1 + 3t²(1-t) y2 + t³ y3
-                var a = -y0 + 3 * y1 - 3 * y2 + y3;
-                var b = 3 * y2 - 6 * y1 + 3 * y0;
-                var c = -3 * y0 + 3 * y1;
-                var d = y0;
-
-                var min = Mathf.Min(frame0.value, frame1.value);
-                var max = Mathf.Max(frame0.value, frame1.value);
-
-                // Can this curve even return a value for v in the range 0 <= t <= 1
-                var extremes = SolveQuadratic(3 * a, 2 * b, c);
-                if (extremes != null)
+                if (0 <= t0 && t0 <= 1)
                 {
-                    var (t0, t1) = extremes.Value;
-
-                    if (0 <= t0 && t0 <= 1)
-                    {
-                        var y = ((a * t0 + b) * t0 + c) * t0 + d;
-                        min = Mathf.Min(min, y);
-                        max = Mathf.Max(max, y);
-                    }
-
-                    if (0 <= t1 && t1 <= 1)
-                    {
-                        var y = ((a * t1 + b) * t1 + c) * t1 + d;
-                        min = Mathf.Min(min, y);
-                        max = Mathf.Max(max, y);
-                    }
+                    var y = ((a * t0 + b) * t0 + c) * t0 + d;
+                    min = Mathf.Min(min, y);
+                    max = Mathf.Max(max, y);
                 }
 
-                // We don't need to check this segment.
-                if (lo <= min && max <= hi)
-                    continue;
-
-                var guess = 0f;
-                if (frame0.time < start)
-                    guess = (start - frame0.time) / dt;
-
-                // Is there a solution?
-                var hiS = SolveCubic01(a, b, c, d - hi, guess);
-                var loS = SolveCubic01(a, b, c, d - lo, guess);
-
-                if (hiS == null && loS == null)
-                    continue;
-
-                // We now have a solution for t, so we just need to get the
-                // time value out of the bezier.
-
-                var t = Mathf.Min(hiS ?? float.PositiveInfinity, loS ?? float.PositiveInfinity);
-                var u = 1f - t;
-
-                var t2 = t * t;
-                var t3 = t2 * t;
-                var u2 = u * u;
-                var u3 = u2 * u;
-
-                var time = u3 * x0 + 3 * t * u2 * x1 + 3 * t2 * u * x2 + t3 * x3;
-                if (time < start)
-                    continue;
-
-                return time;
+                if (0 <= t1 && t1 <= 1)
+                {
+                    var y = ((a * t1 + b) * t1 + c) * t1 + d;
+                    min = Mathf.Min(min, y);
+                    max = Mathf.Max(max, y);
+                }
             }
 
-            return float.PositiveInfinity;
+            // We don't need to check this segment.
+            if (lo <= min && max <= hi)
+                continue;
+
+            var guess = 0f;
+            if (frame0.time < start)
+                guess = (start - frame0.time) / dt;
+
+            // Is there a solution?
+            var hiS = SolveCubic01(a, b, c, d - hi, guess);
+            var loS = SolveCubic01(a, b, c, d - lo, guess);
+
+            if (hiS == null && loS == null)
+                continue;
+
+            // We now have a solution for t, so we just need to get the
+            // time value out of the bezier.
+
+            var t = Mathf.Min(hiS ?? float.PositiveInfinity, loS ?? float.PositiveInfinity);
+            var u = 1f - t;
+
+            var t2 = t * t;
+            var t3 = t2 * t;
+            var u2 = u * u;
+            var u3 = u2 * u;
+
+            var time = u3 * x0 + 3 * t * u2 * x1 + 3 * t2 * u * x2 + t3 * x3;
+            if (time < start)
+                continue;
+
+            return time;
         }
 
-        /// <summary>
-        /// Find the previous time at which the curve will have had value
-        /// <paramref name="epsilon"/>.
-        /// </summary>
-        ///
-        /// <param name="curve">The float curve.</param>
-        /// <param name="start">The starting time.</param>
-        /// <param name="epsilon">The value to check.</param>
-        /// <returns>
-        /// The resulting time, or <see cref="float.NegativeInfinity"/> otherwise.
-        /// </returns>
-        internal static float FindErrorBoundaryBackward(
-            FloatCurve curve,
-            float start,
-            float epsilon
-        )
+        return float.PositiveInfinity;
+    }
+
+    /// <summary>
+    /// Find the previous time at which the curve will have had value
+    /// <paramref name="epsilon"/>.
+    /// </summary>
+    ///
+    /// <param name="curve">The float curve.</param>
+    /// <param name="start">The starting time.</param>
+    /// <param name="epsilon">The value to check.</param>
+    /// <returns>
+    /// The resulting time, or <see cref="float.NegativeInfinity"/> otherwise.
+    /// </returns>
+    internal static float FindErrorBoundaryBackward(FloatCurve curve, float start, float epsilon)
+    {
+        var index = FindKeyFrameIndex(curve, start);
+        var frames = curve.Curve.keys;
+
+        var current = curve.Evaluate(start);
+        var hi = current * (1f + epsilon);
+        var lo = current * (1f - epsilon);
+
+        if (index == -1)
+            return float.PositiveInfinity;
+
+        if (index == frames.Length)
         {
-            var index = FindKeyFrameIndex(curve, start);
-            var frames = curve.Curve.keys;
+            var last = frames.Length - 1;
+            if (frames[last].value < lo || frames[last].value > hi)
+                return frames[0].time;
+            index = last;
+        }
 
-            var current = curve.Evaluate(start);
-            var hi = current * (1f + epsilon);
-            var lo = current * (1f - epsilon);
+        for (; index > 0; --index)
+        {
+            var frame0 = frames[index];
+            var frame1 = frames[index - 1];
 
-            if (index == -1)
-                return float.PositiveInfinity;
+            var dt = frame1.time - frame0.time;
 
-            if (index == frames.Length)
+            // We treat x as time here and use that to get the control points.
+            var x0 = 0;
+            var x1 = frame0.outWeight * dt;
+            var x2 = dt * (1f - frame1.inWeight);
+            var x3 = dt;
+
+            // Then y is the float curve value
+            var y0 = frame0.value;
+            var y1 = frame0.value + frame0.outTangent * frame0.outWeight * dt;
+            var y2 = frame1.value - frame1.inTangent * frame1.inWeight * dt;
+            var y3 = frame1.value;
+
+            // Solve y(t) = v for t
+            // y(t) = (1-t)³ y0 + 3t(1-t)² y1 + 3t²(1-t) y2 + t³ y3
+            var a = -y0 + 3 * y1 - 3 * y2 + y3;
+            var b = 3 * y2 - 6 * y1 + 3 * y0;
+            var c = -3 * y0 + 3 * y1;
+            var d = y0;
+
+            var min = Mathf.Min(frame0.value, frame1.value);
+            var max = Mathf.Max(frame0.value, frame1.value);
+
+            // Can this curve even return a value for v in the range 0 <= t <= 1
+            var extremes = SolveQuadratic(3 * a, 2 * b, c);
+            if (extremes != null)
             {
-                var last = frames.Length - 1;
-                if (frames[last].value < lo || frames[last].value > hi)
-                    return frames[0].time;
-                index = last;
-            }
+                var (t0, t1) = extremes.Value;
 
-            for (; index > 0; --index)
-            {
-                var frame0 = frames[index];
-                var frame1 = frames[index - 1];
-
-                var dt = frame1.time - frame0.time;
-
-                // We treat x as time here and use that to get the control points.
-                var x0 = 0;
-                var x1 = frame0.outWeight * dt;
-                var x2 = dt * (1f - frame1.inWeight);
-                var x3 = dt;
-
-                // Then y is the float curve value
-                var y0 = frame0.value;
-                var y1 = frame0.value + frame0.outTangent * frame0.outWeight * dt;
-                var y2 = frame1.value - frame1.inTangent * frame1.inWeight * dt;
-                var y3 = frame1.value;
-
-                // Solve y(t) = v for t
-                // y(t) = (1-t)³ y0 + 3t(1-t)² y1 + 3t²(1-t) y2 + t³ y3
-                var a = -y0 + 3 * y1 - 3 * y2 + y3;
-                var b = 3 * y2 - 6 * y1 + 3 * y0;
-                var c = -3 * y0 + 3 * y1;
-                var d = y0;
-
-                var min = Mathf.Min(frame0.value, frame1.value);
-                var max = Mathf.Max(frame0.value, frame1.value);
-
-                // Can this curve even return a value for v in the range 0 <= t <= 1
-                var extremes = SolveQuadratic(3 * a, 2 * b, c);
-                if (extremes != null)
+                if (0 <= t0 && t0 <= 1)
                 {
-                    var (t0, t1) = extremes.Value;
-
-                    if (0 <= t0 && t0 <= 1)
-                    {
-                        var y = ((a * t0 + b) * t0 + c) * t0 + d;
-                        min = Mathf.Min(min, y);
-                        max = Mathf.Max(max, y);
-                    }
-
-                    if (0 <= t1 && t1 <= 1)
-                    {
-                        var y = ((a * t1 + b) * t1 + c) * t1 + d;
-                        min = Mathf.Min(min, y);
-                        max = Mathf.Max(max, y);
-                    }
+                    var y = ((a * t0 + b) * t0 + c) * t0 + d;
+                    min = Mathf.Min(min, y);
+                    max = Mathf.Max(max, y);
                 }
 
-                // We don't need to check this segment.
-                if (lo <= min && max <= hi)
-                    continue;
-
-                var guess = 0f;
-                if (frame1.time > start)
-                    guess = (start - frame1.time) / dt;
-
-                // Is there a solution?
-                var hiS = SolveCubic01(a, b, c, d - hi, guess);
-                var loS = SolveCubic01(a, b, c, d - lo, guess);
-
-                if (hiS == null && loS == null)
-                    continue;
-
-                // We now have a solution for t, so we just need to get the
-                // time value out of the bezier.
-
-                var t = Mathf.Max(hiS ?? float.NegativeInfinity, loS ?? float.NegativeInfinity);
-                var u = 1f - t;
-
-                var t2 = t * t;
-                var t3 = t2 * t;
-                var u2 = u * u;
-                var u3 = u2 * u;
-
-                var time = u3 * x0 + 3 * t * u2 * x1 + 3 * t2 * u * x2 + t3 * x3;
-                if (time > start)
-                    continue;
-
-                return time;
+                if (0 <= t1 && t1 <= 1)
+                {
+                    var y = ((a * t1 + b) * t1 + c) * t1 + d;
+                    min = Mathf.Min(min, y);
+                    max = Mathf.Max(max, y);
+                }
             }
 
-            return float.PositiveInfinity;
+            // We don't need to check this segment.
+            if (lo <= min && max <= hi)
+                continue;
+
+            var guess = 0f;
+            if (frame1.time > start)
+                guess = (start - frame1.time) / dt;
+
+            // Is there a solution?
+            var hiS = SolveCubic01(a, b, c, d - hi, guess);
+            var loS = SolveCubic01(a, b, c, d - lo, guess);
+
+            if (hiS == null && loS == null)
+                continue;
+
+            // We now have a solution for t, so we just need to get the
+            // time value out of the bezier.
+
+            var t = Mathf.Max(hiS ?? float.NegativeInfinity, loS ?? float.NegativeInfinity);
+            var u = 1f - t;
+
+            var t2 = t * t;
+            var t3 = t2 * t;
+            var u2 = u * u;
+            var u3 = u2 * u;
+
+            var time = u3 * x0 + 3 * t * u2 * x1 + 3 * t2 * u * x2 + t3 * x3;
+            if (time > start)
+                continue;
+
+            return time;
         }
 
-        private static int FindKeyFrameIndex(FloatCurve curve, float time)
+        return float.PositiveInfinity;
+    }
+
+    private static int FindKeyFrameIndex(FloatCurve curve, float time)
+    {
+        var frames = curve.Curve.keys;
+
+        if (frames.Length == 0)
+            return -1;
+
+        for (int i = 0; i < frames.Length; ++i)
         {
-            var frames = curve.Curve.keys;
-
-            if (frames.Length == 0)
-                return -1;
-
-            for (int i = 0; i < frames.Length; ++i)
-            {
-                if (frames[i].time <= time)
-                    return i;
-            }
-
-            return frames.Length;
+            if (frames[i].time <= time)
+                return i;
         }
 
-        private static KeyValuePair<float, float>? SolveQuadratic(float a, float b, float c)
+        return frames.Length;
+    }
+
+    private static KeyValuePair<float, float>? SolveQuadratic(float a, float b, float c)
+    {
+        var det = b * b - 4 * a * c;
+        if (det < 0)
+            return null;
+
+        var sqrtdet = Mathf.Sqrt(det);
+        var soln1 = (-b + sqrtdet) / (2 * a);
+        var soln2 = (-b - sqrtdet) / (2 * a);
+
+        return new(soln1, soln2);
+    }
+
+    enum CubicStop
+    {
+        Success,
+        Low,
+        Hi,
+    }
+
+    /// <summary>
+    /// Solve a cubic starting with an initial guess.
+    /// </summary>
+    /// <returns></returns>
+    private static float? SolveCubic01(float a, float b, float c, float d, float guess)
+    {
+        var t = guess;
+
+        for (int i = 0; i < 10; ++i)
         {
-            var det = b * b - 4 * a * c;
-            if (det < 0)
+            var y = ((a * t + b) * t + c) * t + d;
+            var dy = (3 * a * t + 2 * b) * t + c;
+
+            if (ApproxEqual(y, 0))
+                break;
+            if (dy == 0.0)
+                break;
+
+            if (t < 0 && dy < 0)
+                return null;
+            if (t > 1 && dy > 1)
                 return null;
 
-            var sqrtdet = Mathf.Sqrt(det);
-            var soln1 = (-b + sqrtdet) / (2 * a);
-            var soln2 = (-b - sqrtdet) / (2 * a);
-
-            return new(soln1, soln2);
+            t -= y / dy;
         }
 
-        enum CubicStop
-        {
-            Success,
-            Low,
-            Hi,
-        }
+        if (t < 0)
+            return null;
 
-        /// <summary>
-        /// Solve a cubic starting with an initial guess.
-        /// </summary>
-        /// <returns></returns>
-        private static float? SolveCubic01(float a, float b, float c, float d, float guess)
-        {
-            var t = guess;
+        if (t > 0)
+            return null;
 
-            for (int i = 0; i < 10; ++i)
-            {
-                var y = ((a * t + b) * t + c) * t + d;
-                var dy = (3 * a * t + 2 * b) * t + c;
-
-                if (ApproxEqual(y, 0))
-                    break;
-                if (dy == 0.0)
-                    break;
-
-                if (t < 0 && dy < 0)
-                    return null;
-                if (t > 1 && dy > 1)
-                    return null;
-
-                t -= y / dy;
-            }
-
-            if (t < 0)
-                return null;
-
-            if (t > 0)
-                return null;
-
-            return t;
-        }
-
-        // internal static (float, float) FindRegionWithinErrorBound(
-        //     FloatCurve curve,
-        //     double current
-        // )
-        // {
-        //     var anim = curve.Curve;
-
-        // }
+        return t;
     }
 }

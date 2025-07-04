@@ -1,11 +1,10 @@
-namespace BackgroundResourceProcessing.Utils
+namespace BackgroundResourceProcessing.Utils;
+
+internal static class ResourceRatioExtension
 {
-    internal static class ResourceRatioExtension
+    public static ResourceRatio WithMultiplier(this ResourceRatio res, double multiplier)
     {
-        public static ResourceRatio WithMultiplier(this ResourceRatio res, double multiplier)
-        {
-            res.Ratio *= multiplier;
-            return res;
-        }
+        res.Ratio *= multiplier;
+        return res;
     }
 }

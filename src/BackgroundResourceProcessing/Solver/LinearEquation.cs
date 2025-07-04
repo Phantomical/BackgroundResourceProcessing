@@ -8,191 +8,190 @@ using BackgroundResourceProcessing.Collections;
 #pragma warning disable CS0660 // Type defines operator == or operator != but does not override Object.Equals(object o)
 #pragma warning disable CS0661 // Type defines operator == or operator != but does not override Object.GetHashCode()
 
-namespace BackgroundResourceProcessing.Solver
+namespace BackgroundResourceProcessing.Solver;
+
+internal class LinearEquation(SortedList<int, double> variables)
+    : IEnumerable<Variable>,
+        IComparable<LinearEquation>
 {
-    internal class LinearEquation(SortedList<int, double> variables)
-        : IEnumerable<Variable>,
-            IComparable<LinearEquation>
+    readonly SortedList<int, double> variables = variables;
+
+    public int Count => variables.Count;
+
+    public IEnumerable<Variable> Values =>
+        variables.Select(entry => new Variable(entry.Key, entry.Value));
+
+    public Variable this[int index]
     {
-        readonly SortedList<int, double> variables = variables;
+        get { return new(index, variables[index]); }
+    }
 
-        public int Count => variables.Count;
+    public LinearEquation()
+        : this([]) { }
 
-        public IEnumerable<Variable> Values =>
-            variables.Select(entry => new Variable(entry.Key, entry.Value));
+    public LinearEquation(int capacity)
+        : this(new SortedList<int, double>(capacity)) { }
 
-        public Variable this[int index]
-        {
-            get { return new(index, variables[index]); }
-        }
+    public LinearEquation(Variable var)
+        : this(new SortedList<int, double>(1))
+    {
+        Add(var);
+    }
 
-        public LinearEquation()
-            : this([]) { }
+    public void Add(Variable var)
+    {
+        var coef = var.Coef;
+        if (variables.TryGetValue(var.Index, out var existing))
+            coef = var.Coef + existing;
 
-        public LinearEquation(int capacity)
-            : this(new SortedList<int, double>(capacity)) { }
+        if (coef == 0.0)
+            variables.Remove(var.Index);
+        else
+            variables[var.Index] = coef;
+    }
 
-        public LinearEquation(Variable var)
-            : this(new SortedList<int, double>(1))
-        {
-            Add(var);
-        }
+    public void Sub(Variable var)
+    {
+        Add(-var);
+    }
 
-        public void Add(Variable var)
-        {
-            var coef = var.Coef;
-            if (variables.TryGetValue(var.Index, out var existing))
-                coef = var.Coef + existing;
+    public bool Remove(int index)
+    {
+        return variables.Remove(index);
+    }
 
-            if (coef == 0.0)
-                variables.Remove(var.Index);
-            else
-                variables[var.Index] = coef;
-        }
+    public bool TryGetValue(int index, out Variable var)
+    {
+        var result = variables.TryGetValue(index, out var value);
+        var = new(index, value);
+        return result;
+    }
 
-        public void Sub(Variable var)
-        {
-            Add(-var);
-        }
+    public bool Contains(int index)
+    {
+        return variables.ContainsKey(index);
+    }
 
-        public bool Remove(int index)
-        {
-            return variables.Remove(index);
-        }
+    public bool Contains(Variable var)
+    {
+        return Contains(var.Index);
+    }
 
-        public bool TryGetValue(int index, out Variable var)
-        {
-            var result = variables.TryGetValue(index, out var value);
-            var = new(index, value);
-            return result;
-        }
+    public void Substitute(int index, LinearEquation eq)
+    {
+        if (!TryGetValue(index, out var variable))
+            return;
+        if (eq.Contains(variable))
+            throw new ArgumentException(
+                $"Attempted to substitue variable {variable} with equation {eq} containing {variable}"
+            );
 
-        public bool Contains(int index)
-        {
-            return variables.ContainsKey(index);
-        }
+        variables.Remove(index);
+        foreach (var var in eq)
+            Add(var * variable.Coef);
+    }
 
-        public bool Contains(Variable var)
-        {
-            return Contains(var.Index);
-        }
+    /// <summary>
+    /// Create a copy of this <see cref="LinearEquation"/> with an
+    /// independent backing list.
+    /// </summary>
+    /// <returns></returns>
+    public LinearEquation Clone()
+    {
+        return new(new SortedList<int, double>(variables));
+    }
 
-        public void Substitute(int index, LinearEquation eq)
-        {
-            if (!TryGetValue(index, out var variable))
-                return;
-            if (eq.Contains(variable))
-                throw new ArgumentException(
-                    $"Attempted to substitue variable {variable} with equation {eq} containing {variable}"
-                );
+    public static LinearEquation operator +(LinearEquation eq, Variable var)
+    {
+        eq.Add(var);
+        return eq;
+    }
 
-            variables.Remove(index);
-            foreach (var var in eq)
-                Add(var * variable.Coef);
-        }
+    public static LinearEquation operator -(LinearEquation eq, Variable var)
+    {
+        eq.Sub(var);
+        return eq;
+    }
 
-        /// <summary>
-        /// Create a copy of this <see cref="LinearEquation"/> with an
-        /// independent backing list.
-        /// </summary>
-        /// <returns></returns>
-        public LinearEquation Clone()
-        {
-            return new(new SortedList<int, double>(variables));
-        }
+    public static LinearEquation operator +(LinearEquation a, LinearEquation b)
+    {
+        foreach (var (index, coef) in b.variables)
+            a.Add(new(index, coef));
+        return a;
+    }
 
-        public static LinearEquation operator +(LinearEquation eq, Variable var)
-        {
-            eq.Add(var);
-            return eq;
-        }
+    public static LinearEquation operator -(LinearEquation a, LinearEquation b)
+    {
+        foreach (var (index, coef) in b.variables)
+            a.Sub(new(index, coef));
+        return a;
+    }
 
-        public static LinearEquation operator -(LinearEquation eq, Variable var)
-        {
-            eq.Sub(var);
-            return eq;
-        }
+    public static LinearEquation operator *(LinearEquation eq, double value)
+    {
+        foreach (var index in eq.variables.Keys)
+            eq.variables[index] = eq.variables[index] * value;
+        return eq;
+    }
 
-        public static LinearEquation operator +(LinearEquation a, LinearEquation b)
-        {
-            foreach (var (index, coef) in b.variables)
-                a.Add(new(index, coef));
-            return a;
-        }
+    public static LinearEquation operator /(LinearEquation eq, double value)
+    {
+        foreach (var index in eq.variables.Keys)
+            eq.variables[index] = eq.variables[index] / value;
+        return eq;
+    }
 
-        public static LinearEquation operator -(LinearEquation a, LinearEquation b)
-        {
-            foreach (var (index, coef) in b.variables)
-                a.Sub(new(index, coef));
-            return a;
-        }
+    public static LinearConstraint operator ==(LinearEquation eq, double value)
+    {
+        return new LinearConstraint(eq, Relation.Equal, value);
+    }
 
-        public static LinearEquation operator *(LinearEquation eq, double value)
-        {
-            foreach (var index in eq.variables.Keys)
-                eq.variables[index] = eq.variables[index] * value;
-            return eq;
-        }
+    public static LinearConstraint operator !=(LinearEquation eq, double value)
+    {
+        throw new NotImplementedException("Cannot optimize != constraints");
+    }
 
-        public static LinearEquation operator /(LinearEquation eq, double value)
-        {
-            foreach (var index in eq.variables.Keys)
-                eq.variables[index] = eq.variables[index] / value;
-            return eq;
-        }
+    public static LinearConstraint operator <=(LinearEquation eq, double value)
+    {
+        return new LinearConstraint(eq, Relation.LEqual, value);
+    }
 
-        public static LinearConstraint operator ==(LinearEquation eq, double value)
-        {
-            return new LinearConstraint(eq, Relation.Equal, value);
-        }
+    public static LinearConstraint operator >=(LinearEquation eq, double value)
+    {
+        return new LinearConstraint(eq, Relation.GEqual, value);
+    }
 
-        public static LinearConstraint operator !=(LinearEquation eq, double value)
-        {
-            throw new NotImplementedException("Cannot optimize != constraints");
-        }
+    public LinearEquation Negated()
+    {
+        var eq = new LinearEquation(variables.Count);
+        foreach (var (index, coef) in variables)
+            eq.Sub(new(index, coef));
+        return eq;
+    }
 
-        public static LinearConstraint operator <=(LinearEquation eq, double value)
-        {
-            return new LinearConstraint(eq, Relation.LEqual, value);
-        }
+    public override string ToString()
+    {
+        StringBuilder builder = new();
 
-        public static LinearConstraint operator >=(LinearEquation eq, double value)
-        {
-            return new LinearConstraint(eq, Relation.GEqual, value);
-        }
+        bool first = true;
+        foreach (var (index, coef) in variables)
+            LinearProblem.RenderCoef(builder, coef, new Variable(index).ToString(), ref first);
 
-        public LinearEquation Negated()
-        {
-            var eq = new LinearEquation(variables.Count);
-            foreach (var (index, coef) in variables)
-                eq.Sub(new(index, coef));
-            return eq;
-        }
+        return builder.ToString();
+    }
 
-        public override string ToString()
-        {
-            StringBuilder builder = new();
+    public IEnumerator<Variable> GetEnumerator()
+    {
+        return variables.Select(entry => new Variable(entry.Key, entry.Value)).GetEnumerator();
+    }
 
-            bool first = true;
-            foreach (var (index, coef) in variables)
-                LinearProblem.RenderCoef(builder, coef, new Variable(index).ToString(), ref first);
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return GetEnumerator();
+    }
 
-            return builder.ToString();
-        }
-
-        public IEnumerator<Variable> GetEnumerator()
-        {
-            return variables.Select(entry => new Variable(entry.Key, entry.Value)).GetEnumerator();
-        }
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
-
-        public int CompareTo(LinearEquation other)
-        {
-            return EnumerableExtensions.SequenceCompareTo(this, other);
-        }
+    public int CompareTo(LinearEquation other)
+    {
+        return EnumerableExtensions.SequenceCompareTo(this, other);
     }
 }

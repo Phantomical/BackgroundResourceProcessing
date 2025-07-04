@@ -1,106 +1,103 @@
-using System;
-using System.Diagnostics;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Tracing;
 
-namespace BackgroundResourceProcessing.Solver
+namespace BackgroundResourceProcessing.Solver;
+
+internal static class Simplex
 {
-    internal static class Simplex
+    const double Epsilon = 1e-9;
+    const uint MaxIterations = 1000;
+
+    private static bool Trace => DebugSettings.Instance?.SolverTrace ?? false;
+
+    internal static void SolveTableau(Matrix tableau, BitSet selected)
     {
-        const double Epsilon = 1e-9;
-        const uint MaxIterations = 1000;
+        using var iterSpan = new TraceSpan("Simplex.SolveTableau");
 
-        private static bool Trace => DebugSettings.Instance?.SolverTrace ?? false;
-
-        internal static void SolveTableau(Matrix tableau, BitSet selected)
+        for (uint iter = 0; iter < MaxIterations; ++iter)
         {
-            using var iterSpan = new TraceSpan("Simplex.SolveTableau");
+            int col = SelectPivot(tableau);
+            if (col < 0)
+                break;
 
-            for (uint iter = 0; iter < MaxIterations; ++iter)
-            {
-                int col = SelectPivot(tableau);
-                if (col < 0)
-                    break;
-
-                int row = SelectRow(tableau, col);
-                if (row < 0)
-                    throw new UnsolvableProblemException("LP problem has unbounded solutions");
-
-                if (Trace)
-                    LogUtil.Log($"Pivoting on column {col}, row {row}:\n{tableau}");
-
-                selected[col] = true;
-                tableau.InvScaleRow(row, tableau[col, row]);
-                for (int y = 0; y < tableau.Height; ++y)
-                {
-                    if (y == row)
-                        continue;
-
-                    tableau.ScaleReduce(y, row, col);
-                }
-            }
+            int row = SelectRow(tableau, col);
+            if (row < 0)
+                throw new UnsolvableProblemException("LP problem has unbounded solutions");
 
             if (Trace)
-                LogUtil.Log($"Final:\n{tableau}");
-        }
+                LogUtil.Log($"Pivoting on column {col}, row {row}:\n{tableau}");
 
-        static int SelectPivot(Matrix tableau)
-        {
-            int pivot = -1;
-            double value = double.PositiveInfinity;
-
-            // Here we just pick the most-negative value
-            for (int x = 0; x < tableau.Width - 1; ++x)
+            selected[col] = true;
+            tableau.InvScaleRow(row, tableau[col, row]);
+            for (int y = 0; y < tableau.Height; ++y)
             {
-                var current = tableau[x, 0];
-                if (current >= -Epsilon)
+                if (y == row)
                     continue;
 
-                if (current < value)
-                {
-                    pivot = x;
-                    value = current;
-                }
+                tableau.ScaleReduce(y, row, col);
             }
-
-            return pivot;
         }
 
-        static int SelectRow(Matrix tableau, int pivot)
+        if (Trace)
+            LogUtil.Log($"Final:\n{tableau}");
+    }
+
+    static int SelectPivot(Matrix tableau)
+    {
+        int pivot = -1;
+        double value = double.PositiveInfinity;
+
+        // Here we just pick the most-negative value
+        for (int x = 0; x < tableau.Width - 1; ++x)
         {
-            int index = -1;
-            var value = double.PositiveInfinity;
+            var current = tableau[x, 0];
+            if (current >= -Epsilon)
+                continue;
 
-            for (int y = 1; y < tableau.Height; ++y)
+            if (current < value)
             {
-                var den = tableau[pivot, y];
-                var num = tableau[tableau.Width - 1, y];
-                var ratio = num / den;
-
-                // Trace(() => $"Inspecting row {y} {num:g4}/{den:g4} = {ratio:g4}");
-
-                if (den <= 0)
-                    continue;
-
-                // We ignore all negative ratios
-                if (ratio < 0.0)
-                    continue;
-
-                // // Ignore zero ratios if the denominator is negative
-                // if (ratio == 0.0 && den < 0.0)
-                //     continue;
-
-                if (Trace)
-                    LogUtil.Log($"Considering row {y} {num:g4}/{den:g4} = {ratio:g4}");
-
-                if (ratio < value)
-                {
-                    index = y;
-                    value = ratio;
-                }
+                pivot = x;
+                value = current;
             }
-
-            return index;
         }
+
+        return pivot;
+    }
+
+    static int SelectRow(Matrix tableau, int pivot)
+    {
+        int index = -1;
+        var value = double.PositiveInfinity;
+
+        for (int y = 1; y < tableau.Height; ++y)
+        {
+            var den = tableau[pivot, y];
+            var num = tableau[tableau.Width - 1, y];
+            var ratio = num / den;
+
+            // Trace(() => $"Inspecting row {y} {num:g4}/{den:g4} = {ratio:g4}");
+
+            if (den <= 0)
+                continue;
+
+            // We ignore all negative ratios
+            if (ratio < 0.0)
+                continue;
+
+            // // Ignore zero ratios if the denominator is negative
+            // if (ratio == 0.0 && den < 0.0)
+            //     continue;
+
+            if (Trace)
+                LogUtil.Log($"Considering row {y} {num:g4}/{den:g4} = {ratio:g4}");
+
+            if (ratio < value)
+            {
+                index = y;
+                value = ratio;
+            }
+        }
+
+        return index;
     }
 }

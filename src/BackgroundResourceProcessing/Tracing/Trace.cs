@@ -3,148 +3,147 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 
-namespace BackgroundResourceProcessing.Tracing
+namespace BackgroundResourceProcessing.Tracing;
+
+internal class Trace : IDisposable
 {
-    internal class Trace : IDisposable
+    public static Trace Active { get; private set; }
+
+    object mutex = new();
+    StreamWriter stream;
+    Stopwatch watch = new Stopwatch();
+
+    private Trace(StreamWriter stream)
     {
-        public static Trace Active { get; private set; }
+        this.stream = stream;
+        stream.WriteLine("[");
 
-        object mutex = new();
-        StreamWriter stream;
-        Stopwatch watch = new Stopwatch();
+        watch.Start();
+    }
 
-        private Trace(StreamWriter stream)
-        {
-            this.stream = stream;
-            stream.WriteLine("[");
+    public static Trace Start(string filename)
+    {
+        if (Active != null)
+            throw new Exception("Cannot start a new trace when one is already active");
 
-            watch.Start();
-        }
+        Trace trace = new(File.CreateText(filename));
+        Active = trace;
+        return trace;
+    }
 
-        public static Trace Start(string filename)
-        {
-            if (Active != null)
-                throw new Exception("Cannot start a new trace when one is already active");
+    public TimeSpan GetCurrentTime()
+    {
+        return watch.Elapsed;
+    }
 
-            Trace trace = new(File.CreateText(filename));
-            Active = trace;
-            return trace;
-        }
-
-        public TimeSpan GetCurrentTime()
-        {
-            return watch.Elapsed;
-        }
-
-        public void WriteEvent(string label, TimeSpan start, TimeSpan end)
-        {
-            var startUs = start.TotalMicroseconds();
-            var endUs = end.TotalMicroseconds();
+    public void WriteEvent(string label, TimeSpan start, TimeSpan end)
+    {
+        var startUs = start.TotalMicroseconds();
+        var endUs = end.TotalMicroseconds();
 #pragma warning disable CS0618 // Type or member is obsolete
-            var tid = AppDomain.GetCurrentThreadId();
+        var tid = AppDomain.GetCurrentThreadId();
 #pragma warning restore CS0618 // Type or member is obsolete
 
-            var evt = new CompleteEvent()
-            {
-                name = label,
-                ts = startUs,
-                dur = endUs - startUs,
-                pid = 0,
-                tid = tid,
-            };
-
-            if (evt.name.Contains("\""))
-                evt.name = evt.name.Replace("\"", "\\\"");
-
-            string json =
-                $"{{\"ph\":\"X\",\"name\":\"{evt.name}\",\"ts\":{evt.ts},\"dur\":{evt.dur},\"pid\":0,\"tid\":{evt.tid}}},";
-
-            lock (mutex)
-            {
-                stream.WriteLine(json);
-            }
-        }
-
-        public void Dispose()
+        var evt = new CompleteEvent()
         {
-            lock (mutex)
-            {
-                stream.Close();
-            }
-        }
+            name = label,
+            ts = startUs,
+            dur = endUs - startUs,
+            pid = 0,
+            tid = tid,
+        };
 
-        [Serializable]
-        private struct CompleteEvent
+        if (evt.name.Contains("\""))
+            evt.name = evt.name.Replace("\"", "\\\"");
+
+        string json =
+            $"{{\"ph\":\"X\",\"name\":\"{evt.name}\",\"ts\":{evt.ts},\"dur\":{evt.dur},\"pid\":0,\"tid\":{evt.tid}}},";
+
+        lock (mutex)
         {
-            public string name;
-            public long ts;
-            public long dur;
-            public int pid;
-            public int tid;
+            stream.WriteLine(json);
         }
     }
 
-    internal struct TraceSpan : IDisposable
+    public void Dispose()
     {
-        string label;
-        TimeSpan start;
-
-        public TraceSpan(string label)
+        lock (mutex)
         {
-            var trace = Trace.Active;
-            if (trace == null)
-                return;
-
-            Setup(label, trace);
-        }
-
-        public TraceSpan(Func<string> labelfn)
-        {
-            var trace = Trace.Active;
-            if (trace == null)
-                return;
-
-            Setup(labelfn, trace);
-        }
-
-        private void Setup(Func<string> labelfn, Trace trace)
-        {
-            Setup(labelfn(), trace);
-        }
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        private void Setup(string label, Trace trace)
-        {
-            this.label = label;
-            this.start = trace.GetCurrentTime();
-        }
-
-        public readonly void Dispose()
-        {
-            if (label == null)
-                return;
-
-            DoDispose();
-        }
-
-        private readonly void DoDispose()
-        {
-            var trace = Trace.Active;
-            if (trace == null)
-                return;
-
-            var end = trace.GetCurrentTime();
-            trace.WriteEvent(label, start, end);
+            stream.Close();
         }
     }
 
-    internal static class TimeSpanExt
+    [Serializable]
+    private struct CompleteEvent
     {
-        private const long TicksPerMicrosecond = TimeSpan.TicksPerMillisecond / 1000;
+        public string name;
+        public long ts;
+        public long dur;
+        public int pid;
+        public int tid;
+    }
+}
 
-        public static long TotalMicroseconds(this TimeSpan span)
-        {
-            return span.Ticks / TicksPerMicrosecond;
-        }
+internal struct TraceSpan : IDisposable
+{
+    string label;
+    TimeSpan start;
+
+    public TraceSpan(string label)
+    {
+        var trace = Trace.Active;
+        if (trace == null)
+            return;
+
+        Setup(label, trace);
+    }
+
+    public TraceSpan(Func<string> labelfn)
+    {
+        var trace = Trace.Active;
+        if (trace == null)
+            return;
+
+        Setup(labelfn, trace);
+    }
+
+    private void Setup(Func<string> labelfn, Trace trace)
+    {
+        Setup(labelfn(), trace);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private void Setup(string label, Trace trace)
+    {
+        this.label = label;
+        this.start = trace.GetCurrentTime();
+    }
+
+    public readonly void Dispose()
+    {
+        if (label == null)
+            return;
+
+        DoDispose();
+    }
+
+    private readonly void DoDispose()
+    {
+        var trace = Trace.Active;
+        if (trace == null)
+            return;
+
+        var end = trace.GetCurrentTime();
+        trace.WriteEvent(label, start, end);
+    }
+}
+
+internal static class TimeSpanExt
+{
+    private const long TicksPerMicrosecond = TimeSpan.TicksPerMillisecond / 1000;
+
+    public static long TotalMicroseconds(this TimeSpan span)
+    {
+        return span.Ticks / TicksPerMicrosecond;
     }
 }

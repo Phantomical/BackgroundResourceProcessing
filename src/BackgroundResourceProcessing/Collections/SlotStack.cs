@@ -1,61 +1,60 @@
 using System.Collections.Generic;
 
-namespace BackgroundResourceProcessing.Collections
+namespace BackgroundResourceProcessing.Collections;
+
+/// <summary>
+/// A wrapper around <c>Stack</c> which doesn't allocate unless it
+/// needs to store more than 1 element.
+/// </summary>
+/// <typeparam name="T"></typeparam>
+internal ref struct SlotStack<T>()
 {
-    /// <summary>
-    /// A wrapper around <c>Stack</c> which doesn't allocate unless it
-    /// needs to store more than 1 element.
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    internal ref struct SlotStack<T>()
+    private T slot = default;
+    private bool hasValue = false;
+
+    private Stack<T> stack = null;
+
+    public int Count
     {
-        private T slot = default;
-        private bool hasValue = false;
-
-        private Stack<T> stack = null;
-
-        public int Count
+        get
         {
-            get
-            {
-                var slotcnt = hasValue ? 1 : 0;
-                var stackcnt = stack == null ? 0 : stack.Count;
+            var slotcnt = hasValue ? 1 : 0;
+            var stackcnt = stack == null ? 0 : stack.Count;
 
-                return slotcnt + stackcnt;
-            }
+            return slotcnt + stackcnt;
         }
+    }
 
-        public void Push(T value)
+    public void Push(T value)
+    {
+        if (!hasValue)
         {
-            if (!hasValue)
-            {
-                slot = value;
-                hasValue = true;
-                return;
-            }
-
-            stack ??= new();
-            stack.Push(slot);
             slot = value;
+            hasValue = true;
+            return;
         }
 
-        public bool TryPop(out T value)
+        stack ??= new();
+        stack.Push(slot);
+        slot = value;
+    }
+
+    public bool TryPop(out T value)
+    {
+        if (hasValue)
         {
-            if (hasValue)
-            {
-                value = slot;
-                hasValue = false;
-                return true;
-            }
+            value = slot;
+            hasValue = false;
+            return true;
+        }
 
-            if (stack == null || stack.Count == 0)
-            {
-                value = default;
-                return false;
-            }
-
-            value = stack.Pop();
+        if (stack == null || stack.Count == 0)
+        {
+            value = default;
             return false;
         }
+
+        value = stack.Pop();
+        return false;
     }
 }

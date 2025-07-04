@@ -1,112 +1,111 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace BackgroundResourceProcessing.Collections
-{
-    internal class EdgeMap<C, I>
-    {
-        Dictionary<C, HashSet<I>> forward = [];
-        Dictionary<I, HashSet<C>> reverse = [];
+namespace BackgroundResourceProcessing.Collections;
 
-        public EdgeMap() { }
+internal class EdgeMap<C, I>
+{
+    Dictionary<C, HashSet<I>> forward = [];
+    Dictionary<I, HashSet<C>> reverse = [];
+
+    public EdgeMap() { }
 
 #if DEBUG
-        public Dictionary<C, HashSet<I>> Forward => forward;
-        public Dictionary<I, HashSet<C>> Reverse => reverse;
+    public Dictionary<C, HashSet<I>> Forward => forward;
+    public Dictionary<I, HashSet<C>> Reverse => reverse;
 #endif
 
-        public void Add(C converterId, I inventoryId)
-        {
-            var inventories = GetOrCreateConverterEntry(converterId);
-            var converters = GetOrCreateInventoryEntry(inventoryId);
+    public void Add(C converterId, I inventoryId)
+    {
+        var inventories = GetOrCreateConverterEntry(converterId);
+        var converters = GetOrCreateInventoryEntry(inventoryId);
 
-            converters.Add(converterId);
-            inventories.Add(inventoryId);
-        }
+        converters.Add(converterId);
+        inventories.Add(inventoryId);
+    }
 
-        public bool Remove(C converterId, I inventoryId)
-        {
-            if (!forward.TryGetValue(converterId, out var inventories))
-                return false;
-            if (!reverse.TryGetValue(inventoryId, out var converters))
-                return false;
+    public bool Remove(C converterId, I inventoryId)
+    {
+        if (!forward.TryGetValue(converterId, out var inventories))
+            return false;
+        if (!reverse.TryGetValue(inventoryId, out var converters))
+            return false;
 
-            var removed = false;
-            removed |= inventories.Remove(inventoryId);
-            removed |= converters.Remove(converterId);
-            if (!removed)
-                return false;
+        var removed = false;
+        removed |= inventories.Remove(inventoryId);
+        removed |= converters.Remove(converterId);
+        if (!removed)
+            return false;
 
-            if (inventories.Count == 0)
-                forward.Remove(converterId);
-            if (converters.Count == 0)
-                reverse.Remove(inventoryId);
-
-            return true;
-        }
-
-        public void RemoveConverter(C converterId)
-        {
-            if (!forward.TryGetValue(converterId, out var inventories))
-                return;
+        if (inventories.Count == 0)
             forward.Remove(converterId);
-
-            foreach (var inventoryId in inventories)
-                reverse[inventoryId].Remove(converterId);
-        }
-
-        public void RemoveInventory(I inventoryId)
-        {
-            if (!reverse.TryGetValue(inventoryId, out var converters))
-                return;
+        if (converters.Count == 0)
             reverse.Remove(inventoryId);
 
-            foreach (var converterId in converters)
-                forward[converterId].Remove(inventoryId);
-        }
+        return true;
+    }
 
-        public HashSet<I> GetConverterEntry(C converterId)
+    public void RemoveConverter(C converterId)
+    {
+        if (!forward.TryGetValue(converterId, out var inventories))
+            return;
+        forward.Remove(converterId);
+
+        foreach (var inventoryId in inventories)
+            reverse[inventoryId].Remove(converterId);
+    }
+
+    public void RemoveInventory(I inventoryId)
+    {
+        if (!reverse.TryGetValue(inventoryId, out var converters))
+            return;
+        reverse.Remove(inventoryId);
+
+        foreach (var converterId in converters)
+            forward[converterId].Remove(inventoryId);
+    }
+
+    public HashSet<I> GetConverterEntry(C converterId)
+    {
+        if (!forward.TryGetValue(converterId, out var set))
+            return [];
+        return set;
+    }
+
+    public HashSet<C> GetInventoryEntry(I inventoryId)
+    {
+        if (!reverse.TryGetValue(inventoryId, out var set))
+            return [];
+        return set;
+    }
+
+    public IEnumerable<KeyValuePair<C, I>> ConverterToInventoryEdges()
+    {
+        return forward.SelectMany(
+            (entry) =>
+                entry.Value.Select((inventory) => new KeyValuePair<C, I>(entry.Key, inventory))
+        );
+    }
+
+    private HashSet<I> GetOrCreateConverterEntry(C converterId)
+    {
+        if (!forward.TryGetValue(converterId, out var set))
         {
-            if (!forward.TryGetValue(converterId, out var set))
-                return [];
-            return set;
+            set = [];
+            forward.Add(converterId, set);
         }
 
-        public HashSet<C> GetInventoryEntry(I inventoryId)
+        return set;
+    }
+
+    private HashSet<C> GetOrCreateInventoryEntry(I inventoryId)
+    {
+        if (!reverse.TryGetValue(inventoryId, out var set))
         {
-            if (!reverse.TryGetValue(inventoryId, out var set))
-                return [];
-            return set;
+            set = [];
+            reverse.Add(inventoryId, set);
         }
 
-        public IEnumerable<KeyValuePair<C, I>> ConverterToInventoryEdges()
-        {
-            return forward.SelectMany(
-                (entry) =>
-                    entry.Value.Select((inventory) => new KeyValuePair<C, I>(entry.Key, inventory))
-            );
-        }
-
-        private HashSet<I> GetOrCreateConverterEntry(C converterId)
-        {
-            if (!forward.TryGetValue(converterId, out var set))
-            {
-                set = [];
-                forward.Add(converterId, set);
-            }
-
-            return set;
-        }
-
-        private HashSet<C> GetOrCreateInventoryEntry(I inventoryId)
-        {
-            if (!reverse.TryGetValue(inventoryId, out var set))
-            {
-                set = [];
-                reverse.Add(inventoryId, set);
-            }
-
-            return set;
-        }
+        return set;
     }
 }

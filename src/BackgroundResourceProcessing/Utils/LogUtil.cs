@@ -1,67 +1,66 @@
 using System.Text;
 
-namespace BackgroundResourceProcessing
+namespace BackgroundResourceProcessing;
+
+internal static class LogUtil
 {
-    internal static class LogUtil
+    public static ILogSink Sink = new UnityLogSink();
+
+    public interface ILogSink
     {
-        public static ILogSink Sink = new UnityLogSink();
+        void Log(string message);
+        void Warn(string message);
+        void Error(string message);
+    }
 
-        public interface ILogSink
+    internal struct UnityLogSink : ILogSink
+    {
+        public void Error(string message)
         {
-            void Log(string message);
-            void Warn(string message);
-            void Error(string message);
+            UnityEngine.Debug.LogError(message);
         }
 
-        internal struct UnityLogSink : ILogSink
+        public void Log(string message)
         {
-            public void Error(string message)
-            {
-                UnityEngine.Debug.LogError(message);
-            }
-
-            public void Log(string message)
-            {
-                UnityEngine.Debug.Log(message);
-            }
-
-            public void Warn(string message)
-            {
-                UnityEngine.Debug.LogWarning(message);
-            }
+            UnityEngine.Debug.Log(message);
         }
 
-        static string BuildMessage(object[] args)
+        public void Warn(string message)
         {
-            var builder = new StringBuilder("[BackgroundResourceProcessing] ");
-            foreach (var arg in args)
-            {
-                builder.Append(arg.ToString());
-            }
-            return builder.ToString();
+            UnityEngine.Debug.LogWarning(message);
         }
+    }
 
-        public delegate string DebugExpression();
-
-        internal static void Debug(DebugExpression dbgexpr)
+    static string BuildMessage(object[] args)
+    {
+        var builder = new StringBuilder("[BackgroundResourceProcessing] ");
+        foreach (var arg in args)
         {
-            if (DebugSettings.Instance.DebugLogging)
-                Log(dbgexpr());
+            builder.Append(arg.ToString());
         }
+        return builder.ToString();
+    }
 
-        public static void Log(params object[] args)
-        {
-            Sink.Log(BuildMessage(args));
-        }
+    public delegate string DebugExpression();
 
-        public static void Warn(params object[] args)
-        {
-            Sink.Warn(BuildMessage(args));
-        }
+    internal static void Debug(DebugExpression dbgexpr)
+    {
+        if (DebugSettings.Instance.DebugLogging)
+            Log(dbgexpr());
+    }
 
-        public static void Error(params object[] args)
-        {
-            Sink.Error(BuildMessage(args));
-        }
+    public static void Log(params object[] args)
+    {
+        Sink.Log(BuildMessage(args));
+    }
+
+    public static void Warn(params object[] args)
+    {
+        Sink.Warn(BuildMessage(args));
+    }
+
+    public static void Error(params object[] args)
+    {
+        Sink.Error(BuildMessage(args));
     }
 }
