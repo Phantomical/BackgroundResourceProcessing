@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using BackgroundResourceProcessing.Converter;
+using BackgroundResourceProcessing.Utils;
 using Highlighting;
 using UnityEngine;
 
@@ -158,9 +159,23 @@ internal partial class DebugUI
                         HeaderStyle,
                         GUILayout.ExpandWidth(true)
                     );
-                    rect.width = ui.window.width - rect.xMin;
+                    rect.width = ui.window.width - 2 * rect.xMin;
 
                     GUI.Label(rect, $"{index} - {name}", HeaderStyle);
+
+                    if (info.changepoint < double.PositiveInfinity)
+                    {
+                        var rect2 = GUILayoutUtility.GetRect(
+                            new GUIContent(""),
+                            HighLogic.Skin.label,
+                            GUILayout.ExpandWidth(true)
+                        );
+                        rect2.width = ui.window.width - 2 * rect2.xMin;
+                        GUI.Label(
+                            rect2,
+                            $"Changepoint at {KSPUtil.PrintTimeCompact(info.changepoint, true)}"
+                        );
+                    }
 
                     foreach (var input in info.resources.Inputs)
                         GUILayout.Label("INPUT", GUILayout.ExpandWidth(true));
@@ -181,6 +196,7 @@ internal partial class DebugUI
                 {
                     GUILayout.Space(5);
                     GUILayout.Label("");
+                    GUILayout.Label("");
 
                     foreach (var input in info.resources.Inputs)
                         GUILayout.Label(input.ResourceName, GUILayout.ExpandWidth(true));
@@ -198,6 +214,7 @@ internal partial class DebugUI
                 foreach (var info in infos)
                 {
                     GUILayout.Space(5);
+                    GUILayout.Label("");
                     GUILayout.Label("");
 
                     foreach (var input in info.resources.Inputs)
@@ -229,6 +246,7 @@ internal partial class DebugUI
                 {
                     GUILayout.Space(5);
                     GUILayout.Label("");
+                    GUILayout.Label("");
 
                     foreach (var input in info.resources.Inputs)
                         GUILayout.Label(
@@ -258,6 +276,7 @@ internal partial class DebugUI
                 foreach (var info in infos)
                 {
                     GUILayout.Space(5);
+                    GUILayout.Label("");
                     GUILayout.Label("");
 
                     foreach (var input in info.resources.Inputs)
@@ -331,7 +350,14 @@ internal partial class DebugUI
                     resources.Outputs ??= [];
                     resources.Requirements ??= [];
 
-                    infos.Add(new() { converter = converter, resources = resources });
+                    infos.Add(
+                        new()
+                        {
+                            changepoint = converter.GetNextChangepoint(state),
+                            converter = converter,
+                            resources = resources,
+                        }
+                    );
                 }
 
                 this.infos = infos;
@@ -528,6 +554,7 @@ internal partial class DebugUI
 
     private struct ConverterInfo
     {
+        public double changepoint;
         public ConverterBehaviour converter;
         public ConverterResources resources;
     }
