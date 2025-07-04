@@ -181,12 +181,11 @@ public class SolarPanelBehaviour : ConverterBehaviour
             hi = distance * Mathf.Sqrt(1f + MaxError);
             lo = distance * Mathf.Sqrt(1f - MaxError);
         }
-        if (orbit.PeR <= lo && hi <= orbit.ApR)
+
+        if (lo <= orbit.PeR && orbit.ApR <= hi)
             return double.PositiveInfinity;
 
         double? chV = null;
-        var v = orbit.TrueAnomalyAtUT(state.CurrentTime);
-
         if (lo < orbit.PeR)
         {
             var loV = orbit.TrueAnomalyAtRadius(lo);
@@ -225,7 +224,7 @@ public class SolarPanelBehaviour : ConverterBehaviour
         while (!parent.isStar)
         {
             // We somehow aren't orbiting any stars whatsoever?
-            if (parent.orbit == null || parent.orbit.referenceBody)
+            if (parent.orbit == null || parent.orbit.referenceBody == null)
                 return new();
 
             current = parent;

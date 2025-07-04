@@ -95,7 +95,6 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
                 if (GetPanelLOS(panel, sunset, landedLayerMask))
                     weightedAoA += 0.125 * GetOptimalPanelAoAFactor(panel, sunset);
 
-                LogUtil.Log($"weightedAoA: {weightedAoA}");
                 power *= weightedAoA;
 
                 // It's possible to be both LANDED and underwater, so we
