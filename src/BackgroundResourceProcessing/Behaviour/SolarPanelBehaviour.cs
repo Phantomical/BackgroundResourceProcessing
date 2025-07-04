@@ -108,7 +108,7 @@ public class SolarPanelBehaviour : ConverterBehaviour
     protected virtual double GetSolarDistance(VesselState state)
     {
         var sun = Planetarium.fetch.Sun;
-        return (sun.position - state.Vessel.vesselTransform.position).magnitude;
+        return (sun.position - Vessel.vesselTransform.position).magnitude;
     }
 
     /// <summary>
@@ -118,7 +118,7 @@ public class SolarPanelBehaviour : ConverterBehaviour
     /// <returns></returns>
     protected virtual double GetSolarFlux(VesselState state)
     {
-        return state.Vessel.solarFlux;
+        return Vessel.solarFlux;
     }
 
     /// <summary>
@@ -163,10 +163,9 @@ public class SolarPanelBehaviour : ConverterBehaviour
         // - We ignore differences due to places within the current SOI.
         //   These should generally be small enough to not matter.
 
-        var vessel = state.Vessel;
-        var bodies = GetReferenceBodies(vessel);
+        var bodies = GetReferenceBodies(Vessel);
 
-        var orbit = bodies.planet?.orbit ?? vessel.orbit;
+        var orbit = bodies.planet?.orbit ?? Vessel.orbit;
         var distance = orbit.GetRadiusAtUT(state.CurrentTime);
 
         double hi;

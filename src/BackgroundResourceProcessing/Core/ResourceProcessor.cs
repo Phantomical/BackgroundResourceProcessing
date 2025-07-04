@@ -21,7 +21,7 @@ namespace BackgroundResourceProcessing.Core;
 /// unit tested outside of KSP. Any method that needs access to a KSP
 /// entity needs to have said entity passed in as a parameter.
 /// </remarks>
-public class ResourceProcessor
+internal class ResourceProcessor
 {
     /// <summary>
     /// If the remaining time before an inventory fills up/empties out is
@@ -205,20 +205,18 @@ public class ResourceProcessor
         using var span = new TraceSpan("ResourceProcessor.RecordVesselState");
 
         ClearVesselState();
-        var state = new VesselState { Vessel = vessel, CurrentTime = currentTime };
+        var state = new VesselState(currentTime);
         lastUpdate = currentTime;
 
         LogUtil.Debug(() => $"Recording vessel state for vessel {vessel.GetDisplayName()}");
 
-        RecordPartResources(state);
-        RecordConverters(state);
+        RecordPartResources(vessel, state);
+        RecordConverters(vessel, state);
     }
 
-    private void RecordPartResources(VesselState state)
+    private void RecordPartResources(Vessel vessel, VesselState state)
     {
         using var span = new TraceSpan("ResourceProcessor.RecordPartResources");
-
-        var vessel = state.Vessel;
 
         foreach (var part in vessel.Parts)
         {
@@ -294,10 +292,9 @@ public class ResourceProcessor
         }
     }
 
-    private void RecordConverters(VesselState state)
+    private void RecordConverters(Vessel vessel, VesselState state)
     {
         using var span = new TraceSpan("ResourceProcessor.RecordConverters");
-        var vessel = state.Vessel;
 
         foreach (var part in vessel.Parts)
         {
@@ -338,6 +335,7 @@ public class ResourceProcessor
         {
             behaviour.sourceModule = partModule.GetType().Name;
             behaviour.sourcePart = part.name;
+            behaviour.Vessel = vessel;
 
             var converter = new ResourceConverter(behaviour);
             converter.Refresh(state);

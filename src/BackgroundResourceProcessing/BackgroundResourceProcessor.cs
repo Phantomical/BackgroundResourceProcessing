@@ -219,6 +219,9 @@ public sealed class BackgroundResourceProcessor : VesselModule
         bool active = false;
         if (node.TryGetValue("BackgroundProcessingActive", ref active))
             BackgroundProcessingActive = active;
+
+        foreach (var converter in processor.converters)
+            converter.Behaviour?.Vessel = vessel;
     }
 
     internal void OnChangepoint(double changepoint)
@@ -231,7 +234,7 @@ public sealed class BackgroundResourceProcessor : VesselModule
             $"Updating vessel {vessel.GetDisplayName()} at changepoint {changepoint}"
         );
 
-        var state = new VesselState { CurrentTime = changepoint, Vessel = Vessel };
+        var state = new VesselState(changepoint);
         var recompute = false;
 
         processor.RecordProtoInventories(vessel);
@@ -256,11 +259,7 @@ public sealed class BackgroundResourceProcessor : VesselModule
         if (!ReferenceEquals(vessel, evt.host))
             return;
 
-        var state = new VesselState
-        {
-            CurrentTime = Planetarium.GetUniversalTime(),
-            Vessel = Vessel,
-        };
+        var state = new VesselState(Planetarium.GetUniversalTime());
 
         processor.ForceUpdateBehaviours(state);
         processor.ComputeRates();
@@ -295,7 +294,7 @@ public sealed class BackgroundResourceProcessor : VesselModule
     private void SaveVessel()
     {
         var currentTime = Planetarium.GetUniversalTime();
-        var state = new VesselState() { CurrentTime = currentTime, Vessel = Vessel };
+        var state = new VesselState(currentTime);
 
         processor.RecordVesselState(vessel, currentTime);
         processor.ForceUpdateBehaviours(state);
@@ -339,6 +338,5 @@ public sealed class BackgroundResourceProcessor : VesselModule
     {
         processor.ClearVesselState();
     }
-
     #endregion
 }

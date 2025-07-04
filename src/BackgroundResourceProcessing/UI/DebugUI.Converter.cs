@@ -317,8 +317,7 @@ internal partial class DebugUI
 
             module = null;
             infos = null;
-            if (popup != null)
-                popup.Close();
+            popup?.Close();
         }
 
         public void SetModule(PartModule module)
@@ -341,11 +340,7 @@ internal partial class DebugUI
                     return;
                 }
 
-                var state = new VesselState()
-                {
-                    Vessel = module.vessel,
-                    CurrentTime = Planetarium.GetUniversalTime(),
-                };
+                var state = new VesselState();
 
                 foreach (var converter in behaviour.Converters)
                 {

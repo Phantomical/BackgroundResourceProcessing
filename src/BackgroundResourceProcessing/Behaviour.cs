@@ -6,30 +6,6 @@ using BackgroundResourceProcessing.Utils;
 
 namespace BackgroundResourceProcessing;
 
-public struct VesselState
-{
-    /// <summary>
-    /// The vessel that this module belongs to.
-    /// </summary>
-    ///
-    /// <remarks>
-    /// Expect this vessel to be unloaded. The only times that it will not
-    /// be are when switching to/away from a vessel.
-    /// </remarks>
-    public Vessel Vessel;
-
-    /// <summary>
-    /// The time at which we are getting the rate.
-    /// </summary>
-    ///
-    /// <remarks>
-    /// Note that this may not correspond with the current game time, though
-    /// it should usually be close enough that using other properties
-    /// associated with the vessel (e.g. orbit parameters) should be fine.
-    /// </remarks>
-    public double CurrentTime;
-}
-
 public class InvalidBehaviourException(string message) : Exception(message) { }
 
 /// <summary>
@@ -194,6 +170,16 @@ public abstract class ConverterBehaviour(int priority = 0)
 
     [KSPField]
     internal string sourcePart = null;
+
+    /// <summary>
+    /// The vessel that this behaviour belongs to.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// Expect this vessel to be unloaded. The only times that it will not be
+    /// are when the initial vessel state is recorded.
+    /// </remarks>
+    public Vessel Vessel = null;
 
     /// <summary>
     /// The priority with which this consumer will consume produced resources.
