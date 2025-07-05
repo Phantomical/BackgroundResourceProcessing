@@ -107,10 +107,6 @@ public class ResourceConverter(ConverterBehaviour behaviour)
                 changed = true;
             if (OverwriteConstraints(ref required, resources.Requirements))
                 changed = true;
-            if (Behaviour.Priority != priority)
-                changed = true;
-
-            priority = Behaviour.Priority;
 
             return changed;
         }

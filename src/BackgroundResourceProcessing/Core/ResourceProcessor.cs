@@ -322,9 +322,11 @@ internal class ResourceProcessor
         );
 
         ModuleBehaviour behaviours;
+        int priority = 0;
         try
         {
             behaviours = adapter.GetBehaviour(partModule);
+            priority = adapter.GetModulePriority(partModule);
         }
         catch (Exception e)
         {
@@ -341,7 +343,7 @@ internal class ResourceProcessor
             behaviour.sourcePart = part.name;
             behaviour.Vessel = vessel;
 
-            var converter = new ResourceConverter(behaviour);
+            var converter = new ResourceConverter(behaviour) { priority = priority };
             converter.Refresh(state);
 
             LogUtil.Debug(() =>

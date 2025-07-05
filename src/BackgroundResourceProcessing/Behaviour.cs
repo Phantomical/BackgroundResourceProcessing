@@ -163,8 +163,7 @@ public struct ConverterResources()
 ///   background solver to determine the rates at which resources are
 ///   produced.
 /// </remarks>
-public abstract class ConverterBehaviour(int priority = 0)
-    : DynamicallySerializable<ConverterBehaviour>()
+public abstract class ConverterBehaviour() : DynamicallySerializable<ConverterBehaviour>()
 {
     /// <summary>
     /// The module that constructed this behaviour.
@@ -200,20 +199,6 @@ public abstract class ConverterBehaviour(int priority = 0)
     /// are when the initial vessel state is recorded.
     /// </remarks>
     public Vessel Vessel = null;
-
-    /// <summary>
-    /// The priority with which this consumer will consume produced resources.
-    /// </summary>
-    ///
-    /// <remarks>
-    ///   This is used to determine which parts will continue to be
-    ///   supplied with resources when there are not enough being produced
-    ///   to satisfy all consumers/converters. Higher priorities will
-    ///   consume resources first. The default is 0, and generally you can
-    ///   leave the priority at that.
-    /// </remarks>
-    [KSPField(isPersistant = true)]
-    public int Priority = priority;
 
     /// <summary>
     /// Get the list of input, output, and required resources and their
@@ -300,7 +285,7 @@ public abstract class ConverterBehaviour(int priority = 0)
 /// produce resources. Semantically, it has no difference from just declaring
 /// a converter that only produces resources.
 /// </remarks>
-public abstract class ProducerBehaviour(int priority = 0) : ConverterBehaviour(priority)
+public abstract class ProducerBehaviour() : ConverterBehaviour()
 {
     /// <summary>
     /// Get the list of resources that are being produced by this part and
@@ -337,7 +322,7 @@ public abstract class ProducerBehaviour(int priority = 0) : ConverterBehaviour(p
 /// consume resources. Semantically, it has no difference from just declaring
 /// a converter that only consumes resources.
 /// </remarks>
-public abstract class ConsumerBehaviour(int priority = 0) : ConverterBehaviour(priority)
+public abstract class ConsumerBehaviour() : ConverterBehaviour()
 {
     /// <summary>
     /// Get the current list of resources that are being consumed by this

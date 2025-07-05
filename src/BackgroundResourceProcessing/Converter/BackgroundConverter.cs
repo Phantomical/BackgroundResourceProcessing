@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using BackgroundResourceProcessing.Inventory;
 using BackgroundResourceProcessing.Utils;
+using JetBrains.Annotations;
 
 namespace BackgroundResourceProcessing.Converter;
 
@@ -116,6 +117,7 @@ public abstract class BackgroundConverter : IRegistryItem
     private static readonly TypeRegistry<BackgroundConverter> registry = new(NodeName);
 
     private readonly BaseFieldList fields;
+    private readonly List<PriorityBlock> priorities = [];
 
     public BackgroundConverter()
     {
@@ -151,6 +153,24 @@ public abstract class BackgroundConverter : IRegistryItem
     protected virtual void OnLoad(ConfigNode node)
     {
         fields.Load(node);
+
+        foreach (var priority in node.GetNodes("PRIORITY"))
+            priorities.Add(PriorityBlock.Load(priority));
+    }
+
+    /// <summary>
+    /// Determine the correct priority for the given module based on the
+    /// <c>PRIORITY</c> blocks on the current converter.
+    /// </summary>
+    public virtual int GetModulePriority(PartModule module)
+    {
+        foreach (var priority in priorities)
+        {
+            if (priority.Condition.Invoke(module))
+                return priority.Value;
+        }
+
+        return 0;
     }
 
     void IRegistryItem.Load(ConfigNode node)
@@ -214,6 +234,24 @@ public abstract class BackgroundConverter : IRegistryItem
     internal static void LoadAll()
     {
         registry.LoadAll();
+    }
+
+    private struct PriorityBlock()
+    {
+        public ModuleFilter Condition = ModuleFilter.Always;
+        public int Value = 0;
+
+        public static PriorityBlock Load(ConfigNode node)
+        {
+            PriorityBlock block = new();
+            node.TryGetValue("Value", ref block.Value);
+
+            string condition = null;
+            if (node.TryGetValue("Condition", ref condition))
+                block.Condition = ModuleFilter.Compile(condition, node);
+
+            return block;
+        }
     }
 }
 
