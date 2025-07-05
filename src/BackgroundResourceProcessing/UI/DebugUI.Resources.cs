@@ -14,7 +14,9 @@ internal partial class DebugUI
     {
         List<KeyValuePair<string, InventoryState>> totals = [];
         if (processor != null)
-            totals = [.. processor.GetResourceTotals()];
+        {
+            totals = [.. processor.GetResourceStates()];
+        }
 
         totals.Sort((a, b) => a.Key.CompareTo(b.Key));
         var defs = PartResourceLibrary.Instance.resourceDefinitions;
@@ -62,7 +64,7 @@ internal partial class DebugUI
         return $"{n:N}";
     }
 
-    internal static void DumpCurrentVessel()
+    internal void DumpCurrentVessel()
     {
         var pluginDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         var exportDir = Path.Combine(pluginDir, @"..\Exports");
@@ -75,8 +77,8 @@ internal partial class DebugUI
             return;
         }
 
-        var module = vessel.GetComponent<BackgroundResourceProcessor>();
-        if (!module)
+        processor ??= GetMainVesselProcessor();
+        if (!processor)
         {
             var type = typeof(BackgroundResourceProcessor);
             ScreenMessages.PostScreenMessage(
@@ -85,13 +87,9 @@ internal partial class DebugUI
             return;
         }
 
-        module.DebugRecordVesselState();
-
         ConfigNode root = new();
         ConfigNode node = root.AddNode("BRP_SHIP");
-        module.Save(node);
-
-        module.DebugClearVesselState();
+        processor.Save(node);
 
         var name = vessel.GetDisplayName();
         var outputPath = Path.GetFullPath(Path.Combine(exportDir, $"{name}.cfg.export"));

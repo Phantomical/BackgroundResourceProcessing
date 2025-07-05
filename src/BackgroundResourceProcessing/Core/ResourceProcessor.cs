@@ -284,6 +284,10 @@ internal class ResourceProcessor
                         continue;
                     }
 
+                    LogUtil.Debug(() =>
+                        $"Found inventory with {res.amount}/{res.maxAmount} {res.resourceName}"
+                    );
+
                     var inventory = new ResourceInventory(res, module);
                     inventoryIds.Add(inventory.Id, inventories.Count);
                     inventories.Add(inventory);
@@ -513,18 +517,51 @@ internal class ResourceProcessor
 
         var changepoint = false;
         var deltaT = currentTime - lastUpdate;
+        Type moduleType = null;
+
         foreach (var inventory in inventories)
         {
             var oldState = inventory.GetInventoryState();
-            var snapshot = updateSnapshots ? inventory.Snapshot : null;
 
-            if (snapshot != null)
+            if (!updateSnapshots)
             {
+                inventory.amount += inventory.rate * deltaT;
+            }
+            else if (inventory.Snapshot != null)
+            {
+                var snapshot = inventory.Snapshot;
+
                 inventory.amount = snapshot.amount;
                 inventory.maxAmount = snapshot.maxAmount;
+                inventory.amount += inventory.rate * deltaT;
             }
+            else if (inventory.ModuleSnapshot != null)
+            {
+                var module = inventory.ModuleSnapshot;
 
-            inventory.amount += inventory.rate * deltaT;
+                if (moduleType?.Name != module.moduleName)
+                    moduleType = AssemblyLoader.GetClassByName(
+                        typeof(PartModule),
+                        module.moduleName
+                    );
+
+                SnapshotUpdate snapshot = new()
+                {
+                    LastUpdate = lastUpdate,
+                    CurrentTime = currentTime,
+                    Delta = inventory.rate * deltaT,
+                };
+
+                var adapter = BackgroundInventory.GetInventoryForType(moduleType);
+                if (adapter == null)
+                    inventory.amount += snapshot.Delta;
+                else
+                    adapter.UpdateSnapshot(module, inventory, snapshot);
+            }
+            else
+            {
+                inventory.amount += inventory.rate * deltaT;
+            }
 
             if (!MathUtil.IsFinite(inventory.amount))
             {
@@ -550,8 +587,10 @@ internal class ResourceProcessor
                     inventory.amount = inventory.maxAmount;
             }
 
-            if (snapshot != null)
+            if (updateSnapshots && inventory.Snapshot != null)
             {
+                var snapshot = inventory.Snapshot;
+
                 snapshot.amount = inventory.amount;
                 inventory.originalAmount = inventory.amount;
             }
@@ -572,6 +611,17 @@ internal class ResourceProcessor
         if (!snapshotsDirty)
             return;
 
+        Dictionary<uint, List<ResourceInventory>> inventoryByModuleId = [];
+        foreach (var inventory in inventories)
+        {
+            if (inventory.moduleId == null)
+                continue;
+
+            inventoryByModuleId //
+                .GetOrAdd((uint)inventory.moduleId, () => [])
+                .Add(inventory);
+        }
+
         foreach (var part in vessel.protoVessel.protoPartSnapshots)
         {
             var flightId = part.flightID;
@@ -585,9 +635,55 @@ internal class ResourceProcessor
 
                 inventory.Snapshot = resource;
             }
+
+            if (inventoryByModuleId.Count == 0)
+                continue;
+
+            foreach (var module in part.modules)
+            {
+                uint moduleId = 0;
+                if (!module.moduleValues.TryGetValue("persistentId", ref moduleId))
+                    continue;
+
+                if (!inventoryByModuleId.TryGetValue(moduleId, out var inventories))
+                    continue;
+
+                foreach (var inventory in inventories)
+                    inventory.ModuleSnapshot = module;
+            }
+        }
+
+        ProtoPartSnapshot current = null;
+        uint? currentFlightID = null;
+
+        foreach (var inventory in inventories)
+        {
+            if (inventory.moduleId == null)
+                continue;
+
+            if (inventory.moduleId != currentFlightID)
+            {
+                current = GetProtoPartByFlightId(vessel.protoVessel, inventory.flightId);
+                if (current == null)
+                    continue;
+                currentFlightID = inventory.flightId;
+            }
+
+            ProtoPartSnapshot part = current;
         }
 
         snapshotsDirty = false;
+    }
+
+    private static ProtoPartSnapshot GetProtoPartByFlightId(ProtoVessel vessel, uint flightID)
+    {
+        foreach (var part in vessel.protoPartSnapshots)
+        {
+            if (part.flightID == flightID)
+                return part;
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -664,7 +760,7 @@ internal class ResourceProcessor
     /// managed by this resource processor.
     /// </summary>
     /// <returns></returns>
-    public Dictionary<string, InventoryState> GetResourceTotals()
+    public Dictionary<string, InventoryState> GetResourceStates()
     {
         Dictionary<string, InventoryState> totals = [];
 

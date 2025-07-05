@@ -149,7 +149,28 @@ public class ResourceInventory
     /// It is not guaranteed that this will actually be set in all conditions.
     /// Notably, fake inventory resources will not have it set.
     /// </remarks>
-    public ProtoPartResourceSnapshot Snapshot { get; internal set; } = null;
+    public ProtoPartResourceSnapshot Snapshot
+    {
+        get => protoSnapshot as ProtoPartResourceSnapshot;
+        internal set => protoSnapshot = value;
+    }
+
+    /// <summary>
+    /// A reference to the <c><see cref="ProtoPartModuleSnapshot"/></c>
+    /// that this inventory corresponds to.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// This will only be non-null if this inventory was created from a fake
+    /// inventory.
+    /// </remarks>
+    public ProtoPartModuleSnapshot ModuleSnapshot
+    {
+        get => protoSnapshot as ProtoPartModuleSnapshot;
+        internal set => protoSnapshot = value;
+    }
+
+    private object protoSnapshot = null;
 
     /// <summary>
     /// Is this inventory full?

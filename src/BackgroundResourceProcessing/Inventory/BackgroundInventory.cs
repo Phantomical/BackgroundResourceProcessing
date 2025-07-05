@@ -34,6 +34,24 @@ public class FakePartResource
     public double maxAmount = 0.0;
 }
 
+public struct SnapshotUpdate
+{
+    /// <summary>
+    /// The last time that this inventory was updated.
+    /// </summary>
+    public double LastUpdate;
+
+    /// <summary>
+    /// The current time at which this update is being performed.
+    /// </summary>
+    public double CurrentTime;
+
+    /// <summary>
+    /// The net change to the amount of resource stored in the inventory.
+    /// </summary>
+    public double Delta;
+}
+
 /// <summary>
 /// An adapter for a part module that defines a "fake" resource inventory
 /// related to that module.s
@@ -76,6 +94,32 @@ public abstract class BackgroundInventory : IRegistryItem
     /// from <see cref="GetResources"/>.
     /// </remarks>
     public abstract void UpdateResource(PartModule module, ResourceInventory inventory);
+
+    /// <summary>
+    /// Apply the requested update to the inventory.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// <para>
+    ///   It is not necessary to implement this method at all. The only reason to
+    ///   implement this is for compatibility with other mods that modify resources
+    ///   in the background.
+    /// </para>
+    ///
+    /// <para>
+    ///   If you do implement this then make sure to update
+    ///   <c>inventory.originalAmount</c> to reflect the new amount stored in the
+    ///   inventory.
+    /// </para>
+    /// </remarks>
+    public virtual void UpdateSnapshot(
+        ProtoPartModuleSnapshot module,
+        ResourceInventory inventory,
+        SnapshotUpdate update
+    )
+    {
+        inventory.amount += update.Delta;
+    }
 
     public virtual void Load(ConfigNode node)
     {

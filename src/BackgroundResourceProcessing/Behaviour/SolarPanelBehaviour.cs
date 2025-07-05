@@ -88,7 +88,7 @@ public class SolarPanelBehaviour : ConverterBehaviour
 
         var resources = new ConverterResources
         {
-            Inputs =
+            Outputs =
             [
                 new()
                 {

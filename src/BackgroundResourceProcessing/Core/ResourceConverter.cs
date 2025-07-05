@@ -78,30 +78,53 @@ public class ResourceConverter(ConverterBehaviour behaviour)
     /// </remarks>
     public double activeTime = 0.0;
 
+    public int priority = 0;
+
     public bool Refresh(VesselState state)
     {
-        var resources = Behaviour.GetResources(state);
-        nextChangepoint = resources.NextChangepoint;
+        if (Behaviour == null)
+            return false;
 
-        if (nextChangepoint < state.CurrentTime)
+        try
         {
-            LogUtil.Error(
-                $"Behaviour {Behaviour.GetType().Name} returned changepoint in the past. ",
-                "Setting changepoint to infinity instead."
-            );
-            nextChangepoint = double.PositiveInfinity;
+            var resources = Behaviour.GetResources(state);
+            nextChangepoint = resources.NextChangepoint;
+
+            if (nextChangepoint < state.CurrentTime)
+            {
+                LogUtil.Error(
+                    $"Behaviour {Behaviour.GetType().Name} returned changepoint in the past. ",
+                    "Setting changepoint to infinity instead."
+                );
+                nextChangepoint = double.PositiveInfinity;
+            }
+
+            bool changed = false;
+
+            if (OverwriteRatios(ref inputs, resources.Inputs))
+                changed = true;
+            if (OverwriteRatios(ref outputs, resources.Outputs))
+                changed = true;
+            if (OverwriteConstraints(ref required, resources.Requirements))
+                changed = true;
+            if (Behaviour.Priority != priority)
+                changed = true;
+
+            priority = Behaviour.Priority;
+
+            return changed;
         }
+        catch (Exception e)
+        {
+            LogUtil.Error($"{Behaviour.GetType().Name}.GetResources threw an exception: {e}");
 
-        bool changed = false;
+            nextChangepoint = double.PositiveInfinity;
+            inputs = [];
+            outputs = [];
+            required = [];
 
-        if (OverwriteRatios(ref inputs, resources.Inputs))
-            changed = true;
-        if (OverwriteRatios(ref outputs, resources.Outputs))
-            changed = true;
-        if (OverwriteConstraints(ref required, resources.Requirements))
-            changed = true;
-
-        return changed;
+            return true;
+        }
     }
 
     public void Load(ConfigNode node, Vessel vessel = null)

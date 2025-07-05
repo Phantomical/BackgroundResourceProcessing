@@ -43,7 +43,7 @@ internal partial class DebugUI : MonoBehaviour
     bool showGUI = false;
 
     Submenu submenu = Submenu.Resources;
-    ResourceProcessor processor;
+    BackgroundResourceProcessor processor;
 
     Rect window = new(100, 100, DefaultWidth, DefaultWidth);
     bool resetHeight = false;
@@ -214,18 +214,17 @@ internal partial class DebugUI : MonoBehaviour
             resetHeight = true;
     }
 
-    ResourceProcessor GetMainVesselProcessor()
+    BackgroundResourceProcessor GetMainVesselProcessor()
     {
         var vessel = FlightGlobals.ActiveVessel;
         if (vessel == null)
             return null;
 
-        var now = Planetarium.GetUniversalTime();
+        if (!vessel.loaded)
+            return null;
 
-        ResourceProcessor processor = new();
-        processor.RecordVesselState(vessel, now);
-        processor.ComputeNextChangepoint(now);
-        processor.ComputeRates();
+        var processor = vessel.FindVesselModuleImplementing<BackgroundResourceProcessor>();
+        processor?.DebugRecordVesselState();
         return processor;
     }
 

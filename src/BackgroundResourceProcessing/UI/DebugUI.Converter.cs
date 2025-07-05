@@ -344,6 +344,7 @@ internal partial class DebugUI
 
                 foreach (var converter in behaviour.Converters)
                 {
+                    converter.Vessel = module.vessel;
                     var resources = converter.GetResources(state);
                     resources.Inputs ??= [];
                     resources.Outputs ??= [];

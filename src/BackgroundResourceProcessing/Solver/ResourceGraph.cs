@@ -192,7 +192,7 @@ internal class GraphConverter
     {
         ids = [id];
         converters = [converter];
-        weight = GetPriorityWeight(converter.Behaviour.Priority);
+        weight = GetPriorityWeight(converter.priority);
     }
 
     public static GraphConverter Build(int id, Core.ResourceConverter converter)

@@ -176,7 +176,7 @@ public abstract class ConverterBehaviour(int priority = 0)
     /// </remarks>
     public string SourceModule => sourceModule;
 
-    [KSPField(isPersistant = true)]
+    [KSPField]
     internal string sourceModule = null;
 
     /// <summary>
@@ -188,7 +188,7 @@ public abstract class ConverterBehaviour(int priority = 0)
     /// </remarks>
     public string SourcePart => sourcePart;
 
-    [KSPField(isPersistant = true)]
+    [KSPField]
     internal string sourcePart = null;
 
     /// <summary>
@@ -230,9 +230,32 @@ public abstract class ConverterBehaviour(int priority = 0)
     public abstract ConverterResources GetResources(VesselState state);
 
     /// <summary>
-    /// This is called when the behaviour is removed from the vessel.
+    /// Event data passed to <see cref="OnRatesComputed"/> .
     /// </summary>
-    public virtual void OnDestroy() { }
+    public struct RateCalculatedEvent
+    {
+        public double CurrentTime;
+    }
+
+    /// <summary>
+    /// Called after rate calculations are done, but before changepoint callbacks
+    /// are performed. This allows you to adjust the next changepoint time
+    /// based on vessel state.
+    /// </summary>
+    /// <param name="processor">
+    ///   The <see cref="BackgroundResourceProcessor"/> that owns this converter.
+    /// </param>
+    /// <param name="converter">
+    ///   The <see cref="Core.ResourceConverter"/> that owns this behaviour.
+    /// </param>
+    /// <param name="evt">
+    ///   A <see cref="RateCalculatedEvent"/> containing relevant event data.
+    /// </param>
+    public virtual void OnRatesComputed(
+        BackgroundResourceProcessor processor,
+        Core.ResourceConverter converter,
+        RateCalculatedEvent evt
+    ) { }
 
     public static ConverterBehaviour Load(ConfigNode node, Action<ConverterBehaviour> action = null)
     {
@@ -242,6 +265,15 @@ public abstract class ConverterBehaviour(int priority = 0)
 
         return (ConverterBehaviour)
             DynamicallySerializable<ConverterBehaviour>.Load(node, castaction);
+    }
+
+    protected override void OnSave(ConfigNode node)
+    {
+        base.OnSave(node);
+        if (sourceModule != null)
+            node.AddValue("sourceModule", sourceModule);
+        if (sourcePart != null)
+            node.AddValue("sourcePart", sourcePart);
     }
 
     internal static void RegisterAll()
@@ -362,10 +394,12 @@ public class ConstantConverter : ConverterBehaviour
 
     public override ConverterResources GetResources(VesselState state)
     {
-        ConverterResources resources = default;
-        resources.Inputs = inputs;
-        resources.Outputs = outputs;
-        resources.Requirements = required;
+        ConverterResources resources = new()
+        {
+            Inputs = inputs,
+            Outputs = outputs,
+            Requirements = required,
+        };
         return resources;
     }
 

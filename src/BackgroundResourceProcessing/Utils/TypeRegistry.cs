@@ -21,6 +21,8 @@ internal class TypeRegistry<T>(string nodeName)
 
     internal T GetEntryForType(Type type)
     {
+        if (type == null)
+            return default;
         if (!entries.TryGetValue(type, out var entry))
             entry = default;
         return entry;

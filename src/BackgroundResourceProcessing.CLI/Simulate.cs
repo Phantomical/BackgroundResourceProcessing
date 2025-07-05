@@ -61,7 +61,7 @@ namespace BackgroundResourceProcessing.CLI
                 }
 
                 LogUtil.Log("Dumping resource rates");
-                foreach (var (resource, state) in processor.GetResourceTotals())
+                foreach (var (resource, state) in processor.GetResourceStates())
                 {
                     LogUtil.Log(
                         $"  rate {state.rate} with total {state.amount}/{state.maxAmount} {resource}"

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using BackgroundResourceProcessing.Addons;
 using BackgroundResourceProcessing.Core;
@@ -123,6 +124,16 @@ public sealed class BackgroundResourceProcessor : VesselModule
         clone.UpdateNextChangepoint(currentTime);
         return new(clone);
     }
+
+    /// <summary>
+    /// Get a summary of the total resources currently stored within the
+    /// vessel.
+    /// </summary>
+    /// <returns></returns>
+    public Dictionary<string, InventoryState> GetResourceStates()
+    {
+        return processor.GetResourceStates();
+    }
     #endregion
 
     #region Overrides & Event Handlers
@@ -245,7 +256,11 @@ public sealed class BackgroundResourceProcessor : VesselModule
         if (processor.UpdateBehaviours(state))
             recompute = true;
         if (recompute)
+        {
             processor.ComputeRates();
+            DispatchOnRatesComputed(changepoint);
+        }
+
         processor.UpdateNextChangepoint(changepoint);
 
         EventDispatcher.RegisterChangepointCallback(this, processor.nextChangepoint);
@@ -265,6 +280,7 @@ public sealed class BackgroundResourceProcessor : VesselModule
 
         processor.ForceUpdateBehaviours(state);
         processor.ComputeRates();
+        DispatchOnRatesComputed(state.CurrentTime);
         processor.UpdateNextChangepoint(state.CurrentTime);
 
         EventDispatcher.UnregisterChangepointCallbacks(this);
@@ -301,9 +317,22 @@ public sealed class BackgroundResourceProcessor : VesselModule
         processor.RecordVesselState(vessel, currentTime);
         processor.ForceUpdateBehaviours(state);
         processor.ComputeRates();
+        DispatchOnRatesComputed(currentTime);
         processor.UpdateNextChangepoint(currentTime);
 
         BackgroundProcessingActive = true;
+    }
+
+    private void DispatchOnRatesComputed(double currentTime)
+    {
+        foreach (var converter in processor.converters)
+        {
+            converter.Behaviour?.OnRatesComputed(
+                this,
+                converter,
+                new() { CurrentTime = currentTime }
+            );
+        }
     }
 
     private void RegisterCallbacks()
@@ -331,9 +360,12 @@ public sealed class BackgroundResourceProcessor : VesselModule
     /// </remarks>
     internal void DebugRecordVesselState()
     {
-        processor.RecordVesselState(Vessel, Planetarium.GetUniversalTime());
+        var currentTime = Planetarium.GetUniversalTime();
+
+        processor.RecordVesselState(Vessel, currentTime);
         processor.ComputeRates();
-        processor.UpdateNextChangepoint(Planetarium.GetUniversalTime());
+        DispatchOnRatesComputed(currentTime);
+        processor.UpdateNextChangepoint(currentTime);
     }
 
     internal void DebugClearVesselState()
