@@ -1,8 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using BackgroundResourceProcessing.Behaviour;
 using BackgroundResourceProcessing.Converter;
-using BackgroundResourceProcessing.Utils;
 using Highlighting;
 using UnityEngine;
 

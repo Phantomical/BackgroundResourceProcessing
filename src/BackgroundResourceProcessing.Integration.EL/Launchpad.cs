@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Reflection;
+using BackgroundResourceProcessing.Behaviour;
 using BackgroundResourceProcessing.Converter;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Inventory;
