@@ -465,7 +465,7 @@ internal partial class DebugUI
         }
     }
 
-    private class ModuleSelectorPopup : MonoBehaviour
+    private class ModuleSelectorPopup() : MonoBehaviour
     {
         public ConverterTab ui;
         public List<PartModule> modules = [];
@@ -473,7 +473,7 @@ internal partial class DebugUI
 
         Rect window;
 
-        public ModuleSelectorPopup()
+        void Awake()
         {
             depth = GUI.depth - 1;
         }
