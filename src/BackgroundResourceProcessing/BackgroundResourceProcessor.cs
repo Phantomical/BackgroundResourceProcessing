@@ -2,8 +2,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using BackgroundResourceProcessing.Addons;
 using BackgroundResourceProcessing.Core;
-using BackgroundResourceProcessing.Utils;
-using UnityEngine.UI;
+using Shadow = BackgroundResourceProcessing.ShadowState;
 
 namespace BackgroundResourceProcessing;
 
@@ -270,9 +269,7 @@ public sealed class BackgroundResourceProcessor : VesselModule
         );
 
         var state = new VesselState(changepoint);
-        state.SetShadowState(
-            ShadowState ??= BackgroundResourceProcessing.ShadowState.GetShadowState(vessel)
-        );
+        state.SetShadowState(ShadowState ??= Shadow.GetShadowState(vessel));
 
         var recompute = false;
 
@@ -302,7 +299,7 @@ public sealed class BackgroundResourceProcessor : VesselModule
         if (!ReferenceEquals(vessel, evt.host))
             return;
 
-        // ShadowState = Utils.ShadowState.GetShadowState(vessel);
+        ShadowState = Shadow.GetShadowState(vessel);
         var state = new VesselState(Planetarium.GetUniversalTime());
         state.SetShadowState(ShadowState.Value);
 
