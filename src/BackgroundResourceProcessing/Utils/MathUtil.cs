@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Collections;
 using UnityEngine;
 
@@ -12,25 +13,46 @@ internal static class MathUtil
     /// </summary>
     /// <param name="v"></param>
     /// <returns></returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool IsFinite(double v)
     {
         long bits = BitConverter.DoubleToInt64Bits(v);
         return (bits & 0x7FFFFFFFFFFFFFFF) < 0x7FF0000000000000;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool ApproxEqual(double a, double b, double epsilon = 1e-6)
     {
         return Math.Abs(a - b) < epsilon;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double Clamp(double x, double lo, double hi)
     {
         return Math.Max(Math.Min(x, hi), lo);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int Clamp(int x, int lo, int hi)
     {
         return Math.Max(Math.Min(x, hi), lo);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static (double, double) SinCos(double x)
+    {
+        return (Math.Sin(x), Math.Cos(x));
+    }
+
+    /// <summary>
+    /// Computes <c>x - y*floor(x / y)</c>
+    /// </summary>
+    internal static double FMod(double x, double y)
+    {
+        var rem = x % y;
+        if (rem < 0)
+            rem += y;
+        return rem;
     }
 
     internal static int TrailingZeroCount(ulong v)

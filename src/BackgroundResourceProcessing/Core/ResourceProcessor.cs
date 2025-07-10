@@ -483,7 +483,6 @@ internal class ResourceProcessor
     /// Update behaviours that have indicated their next changepoint has
     /// passed.
     /// </summary>
-    /// <param name="state"></param>
     /// <returns>Whether there has been any actual update to converters</returns>
     public bool UpdateBehaviours(VesselState state)
     {

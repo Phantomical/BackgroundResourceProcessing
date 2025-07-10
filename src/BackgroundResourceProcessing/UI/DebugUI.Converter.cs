@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using BackgroundResourceProcessing.Behaviour;
 using BackgroundResourceProcessing.Converter;
+using BackgroundResourceProcessing.Utils;
 using Highlighting;
 using UnityEngine;
 
@@ -341,6 +342,7 @@ internal partial class DebugUI
                 }
 
                 var state = new VesselState();
+                state.SetShadowState(ShadowState.GetShadowState(module.vessel));
 
                 foreach (var converter in behaviour.Converters)
                 {

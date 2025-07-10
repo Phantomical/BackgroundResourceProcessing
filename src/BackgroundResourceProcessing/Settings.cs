@@ -47,3 +47,20 @@ public class DebugSettings : GameParameters.CustomParameterNode
         };
     }
 }
+
+public class Settings : GameParameters.CustomParameterNode
+{
+    public override string Title => "Settings";
+    public override string Section => "BackgroundResourceProcessing";
+    public override string DisplaySection => "Background Resource Processing";
+    public override int SectionOrder => 0;
+    public override bool HasPresets => false;
+    public override GameParameters.GameMode GameMode => GameParameters.GameMode.ANY;
+
+    [GameParameters.CustomParameterUI(
+        "Enable Experimental Orbit Shadows",
+        toolTip = "Simulate the effect of planet shadows on orbiting ships. "
+            + "This is currently quite buggy, though it won't break your game. "
+    )]
+    public bool EnableOrbitShadows = false;
+}

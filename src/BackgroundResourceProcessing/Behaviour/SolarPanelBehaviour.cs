@@ -72,7 +72,11 @@ public class SolarPanelBehaviour : ConverterBehaviour
     public override ConverterResources GetResources(VesselState state)
     {
         double rate = ChargeRate;
-        if (PowerCurve != null)
+        if (state.IsInShadow)
+        {
+            rate = 0.0;
+        }
+        else if (PowerCurve != null)
         {
             rate *= PowerCurve.Evaluate((float)GetSolarDistance(state));
             rate *= GetPowerMultiplier(state);
@@ -84,7 +88,8 @@ public class SolarPanelBehaviour : ConverterBehaviour
 
         var efficiencyCh = GetTimeEfficiencyChangepoint(state);
         var powerCh = GetPowerChangepoint(state);
-        var changepoint = Math.Min(efficiencyCh, powerCh);
+        var shadowCh = state.NextTerminatorEstimate;
+        var changepoint = Math.Min(Math.Min(efficiencyCh, powerCh), shadowCh);
 
         var resources = new ConverterResources
         {

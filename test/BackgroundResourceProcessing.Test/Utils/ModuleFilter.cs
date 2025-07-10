@@ -41,9 +41,12 @@ namespace BackgroundResourceProcessing.Test.Utils
             filter = ModuleFilter.Compile("@a != @b", node);
             Assert.IsTrue(filter.Invoke(null));
 
-            Assert.ThrowsException<ModuleFilterException>(() =>
-                ModuleFilter.Compile("@c == @a", node)
-            );
+            try
+            {
+                ModuleFilter.Compile("@c == @a", node);
+                Assert.Fail();
+            }
+            catch (ModuleFilterException) { }
         }
 
         [TestMethod]
@@ -143,9 +146,12 @@ namespace BackgroundResourceProcessing.Test.Utils
             node.AddValue("ConverterName", "LF+Ox");
             node.AddValue("moduleID", "converter1");
 
-            Assert.ThrowsException<ModuleFilterException>(() =>
-                ModuleFilter.Compile("%ConverterName = ?ConverterName", node)
-            );
+            try
+            {
+                ModuleFilter.Compile("%ConverterName = ?ConverterName", node);
+                Assert.Fail();
+            }
+            catch (ModuleFilterException) { }
 
             ModuleFilter.Compile("%moduleID == @moduleID", node);
         }

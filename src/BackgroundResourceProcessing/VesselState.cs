@@ -1,3 +1,5 @@
+using BackgroundResourceProcessing.Utils;
+
 namespace BackgroundResourceProcessing;
 
 /// <summary>
@@ -23,8 +25,24 @@ public class VesselState(double CurrentTime)
     public readonly double CurrentTime = CurrentTime;
 
     /// <summary>
+    /// An estimate of the next time this vessel will be in a planet's shadow.
+    /// </summary>
+    public double NextTerminatorEstimate { get; private set; } = double.PositiveInfinity;
+
+    /// <summary>
+    /// Is this vessel currently in a planet's shadow.
+    /// </summary>
+    public bool IsInShadow { get; private set; } = false;
+
+    /// <summary>
     /// Create a <c><see cref="VesselState"/></c> with the current time.
     /// </summary>
     public VesselState()
         : this(Planetarium.GetUniversalTime()) { }
+
+    public void SetShadowState(ShadowState state)
+    {
+        NextTerminatorEstimate = state.NextTerminatorEstimate;
+        IsInShadow = state.InShadow;
+    }
 }

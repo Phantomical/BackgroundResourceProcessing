@@ -8,6 +8,8 @@
         <TargetFramework>net481</TargetFramework>
         <LangVersion>preview</LangVersion>
 
+        <DebugType>portable</DebugType>
+
         <!-- Generate an XML documentation file so that others can see the doc comments -->
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <NoWarn>CS1591</NoWarn>

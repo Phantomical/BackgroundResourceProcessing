@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using BackgroundResourceProcessing.Addons;
 using BackgroundResourceProcessing.Core;
+using BackgroundResourceProcessing.Utils;
+using UnityEngine.UI;
 
 namespace BackgroundResourceProcessing;
 
@@ -44,6 +46,11 @@ public sealed class BackgroundResourceProcessor : VesselModule
     /// otherwise.
     /// </remarks>
     public bool BackgroundProcessingActive { get; private set; } = false;
+
+    /// <summary>
+    /// The current state of
+    /// </summary>
+    public ShadowState? ShadowState { get; private set; } = null;
 
     // This is the actual API that is meant to be used by other code for
     // interacting with this module.
@@ -222,6 +229,13 @@ public sealed class BackgroundResourceProcessor : VesselModule
         processor.Save(node);
 
         node.AddValue("BackgroundProcessingActive", BackgroundProcessingActive);
+
+        if (ShadowState != null)
+        {
+            var state = ShadowState.Value;
+            node.AddValue("NextTerminatorEstimate", state.NextTerminatorEstimate);
+            node.AddValue("InShadow", state.InShadow);
+        }
     }
 
     protected override void OnLoad(ConfigNode node)
@@ -232,6 +246,14 @@ public sealed class BackgroundResourceProcessor : VesselModule
         bool active = false;
         if (node.TryGetValue("BackgroundProcessingActive", ref active))
             BackgroundProcessingActive = active;
+
+        double NextTerminatorEstimate = 0;
+        bool InShadow = false;
+        if (
+            node.TryGetValue("NextTerminatorEstimate", ref NextTerminatorEstimate)
+            && node.TryGetValue("InShadow", ref InShadow)
+        )
+            ShadowState = new(NextTerminatorEstimate, InShadow);
 
         foreach (var converter in processor.converters)
             converter.Behaviour?.Vessel = vessel;
@@ -248,6 +270,10 @@ public sealed class BackgroundResourceProcessor : VesselModule
         );
 
         var state = new VesselState(changepoint);
+        state.SetShadowState(
+            ShadowState ??= BackgroundResourceProcessing.ShadowState.GetShadowState(vessel)
+        );
+
         var recompute = false;
 
         processor.RecordProtoInventories(vessel);
@@ -276,7 +302,9 @@ public sealed class BackgroundResourceProcessor : VesselModule
         if (!ReferenceEquals(vessel, evt.host))
             return;
 
+        // ShadowState = Utils.ShadowState.GetShadowState(vessel);
         var state = new VesselState(Planetarium.GetUniversalTime());
+        state.SetShadowState(ShadowState.Value);
 
         processor.ForceUpdateBehaviours(state);
         processor.ComputeRates();
@@ -307,6 +335,7 @@ public sealed class BackgroundResourceProcessor : VesselModule
         processor.ClearVesselState();
 
         BackgroundProcessingActive = false;
+        ShadowState = null;
     }
 
     private void SaveVessel()
