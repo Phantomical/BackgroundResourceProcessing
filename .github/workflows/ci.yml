@@ -25,7 +25,7 @@ jobs:
         with:
           build-configuration: Release
 
-      - uses: KSPModdingLibs/KSPBuildTools/.github/actions/assembly-release@main
+      - uses: KSPModdingLibs/KSPBuildTools/.github/actions/assemble-release@main
 
   test:
     runs-on: ubuntu-22.04
