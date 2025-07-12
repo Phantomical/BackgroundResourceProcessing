@@ -370,7 +370,12 @@ internal class Solver
 
         double[] converterRates = new double[converterMap.Capacity];
         foreach (var (convId, varId) in converterMap)
-            converterRates[convId] = soln[rates[varId]];
+        {
+            var rate = soln[rates[varId]];
+            var converter = graph.converters[convId];
+            foreach (var realId in converter.ids)
+                converterRates[realId] = rate;
+        }
 
         return new() { inventoryRates = inventoryRates, converterRates = converterRates };
     }
