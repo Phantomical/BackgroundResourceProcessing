@@ -75,6 +75,11 @@
         Condition=" Exists('$(SolutionDir)/$(SolutionName).props.user') "
         Project="$(SolutionDir)/$(SolutionName).props.user" />
 
+    <!-- Source KSP root from an env variable in CI -->
+    <PropertyGroup Condition=" '$(KSPRoot)' == '' And '$(KSP_ROOT) != '' ">
+        <KspRoot>$(KSP_ROOT)</KspRoot>
+    </PropertyGroup>
+
     <PropertyGroup
         Condition=" '$(KSPRoot)' == '' And Exists('$(ReferencePath)/$(KSPRootIdentifier)') ">
         <!-- Look for KSP install in ReferencePath -->
