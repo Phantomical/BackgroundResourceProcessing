@@ -76,7 +76,7 @@
         Project="$(SolutionDir)/$(SolutionName).props.user" />
 
     <!-- Source KSP root from an env variable in CI -->
-    <PropertyGroup Condition=" '$(KSPRoot)' == '' And '$(KSP_ROOT) != '' ">
+    <PropertyGroup Condition=" '$(KSPRoot)' == '' And '$(KSP_ROOT)' != '' ">
         <KspRoot>$(KSP_ROOT)</KspRoot>
     </PropertyGroup>
 
