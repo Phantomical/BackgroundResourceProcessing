@@ -19,7 +19,7 @@ jobs:
 
       - uses: KSPModdingLibs/KSPBuildTools/.github/actions/install-dependencies@main
         with:
-          dependency-identifiers: ${env.CKAN_DEPS}
+          dependency-identifiers: ${{ env.CKAN_DEPS }}
 
       - uses: KSPModdingLibs/KSPBuildTools/.github/actions/compile@main
         with:
@@ -36,7 +36,7 @@ jobs:
 
       - uses: KSPModdingLibs/KSPBuildTools/.github/actions/install-dependencies@main
         with:
-          dependency-identifiers: ${env.CKAN_DEPS}
+          dependency-identifiers: ${{ env.CKAN_DEPS }}
 
       - uses: KSPModdingLibs/KSPBuildTools/.github/actions/compile@main
         with:
