@@ -33,6 +33,10 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
             "BackgroundResourceProcessing.Integration.Kopernicus",
             [new KSPAssemblyDependency("Kopernicus", new(1, 0))]
         ),
+        new(
+            "BackgroundResourceProcessing.Integration.USILifeSupport",
+            [new DirectAssemblyDependency("USILifeSupport", new(1, 0))]
+        ),
     ];
 
     void Awake()

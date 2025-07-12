@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace BackgroundResourceProcessing;
 
-internal static class ConfigUtil
+public static class ConfigUtil
 {
     public static IEnumerable<ResourceRatio> LoadResourceRatios(ConfigNode node, string name)
     {

@@ -156,9 +156,21 @@ public class ResourceConverter(ConverterBehaviour behaviour)
             Constraint.Add(resourceName, LoadBitSet(inner));
         }
 
-        var bNode = node.GetNode("BEHAVIOUR");
-        if (bNode != null)
-            Behaviour = ConverterBehaviour.Load(bNode, behaviour => behaviour.Vessel = vessel);
+        try
+        {
+            var bNode = node.GetNode("BEHAVIOUR");
+            if (bNode != null)
+                Behaviour = ConverterBehaviour.Load(bNode, behaviour => behaviour.Vessel = vessel);
+        }
+        catch (Exception e)
+        {
+            string name = "<unknown>";
+            node.TryGetValue("name", ref name);
+
+            LogUtil.Error($"Failed to load ConverterBehaviour {name}: {e}");
+
+            nextChangepoint = double.PositiveInfinity;
+        }
 
         outputs.Clear();
         inputs.Clear();

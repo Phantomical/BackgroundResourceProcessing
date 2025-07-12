@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Linq;
+using Smooth.Collections;
 
 namespace BackgroundResourceProcessing;
 
@@ -50,4 +52,12 @@ public struct ConverterResources()
     ///   </para>
     /// </remarks>
     public double NextChangepoint = double.PositiveInfinity;
+
+    public ConverterResources(ConversionRecipe recipe)
+        : this()
+    {
+        Inputs.AddRange(recipe.Inputs);
+        Outputs.AddRange(recipe.Outputs);
+        Requirements.AddRange(recipe.Requirements.Select(req => new ResourceConstraint(req)));
+    }
 }

@@ -520,6 +520,10 @@ internal class ResourceProcessor
         var deltaT = currentTime - lastUpdate;
         Type moduleType = null;
 
+        // No need to update if no time has passed.
+        if (deltaT == 0.0)
+            return false;
+
         foreach (var inventory in inventories)
         {
             var oldState = inventory.GetInventoryState();
@@ -693,8 +697,12 @@ internal class ResourceProcessor
     /// </summary>
     public void ApplyInventories(Vessel vessel)
     {
+        if (inventories.Count == 0)
+            return;
+
         Dictionary<uint, Part> parts = [];
-        parts.AddAll(vessel.Parts.Select(part => DictUtil.CreateKeyValuePair(part.flightID, part)));
+        foreach (var part in vessel.Parts)
+            parts.TryAddExt(part.flightID, part);
 
         foreach (var inventory in inventories)
         {

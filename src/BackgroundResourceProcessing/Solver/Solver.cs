@@ -359,7 +359,7 @@ internal class Solver
                 double frac = 0.0;
                 if (!MathUtil.IsFinite(total))
                     frac = 1.0 / inventory.ids.Count;
-                else if (frac < 0.0)
+                else if (rate < 0.0)
                     frac = summary.amount / total;
                 else
                     frac = (summary.maxAmount - summary.amount) / total;

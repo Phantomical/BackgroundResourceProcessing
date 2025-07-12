@@ -1,3 +1,5 @@
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using BackgroundResourceProcessing.Core;
@@ -139,5 +141,23 @@ public class ResourceSimulator
         iteration += 1;
 
         return true;
+    }
+
+    /// <summary>
+    /// An enumerator over the steps of this simulator. It will advance the
+    /// simulator as it goes.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// <see cref="Step"/> always advances the simulator. This method will also
+    /// give you the current timestamp in the first iteration, which makes it
+    /// easier to use.
+    /// </remarks>
+    public IEnumerable<double> Steps()
+    {
+        yield return LastUpdate;
+
+        while (Step())
+            yield return LastUpdate;
     }
 }

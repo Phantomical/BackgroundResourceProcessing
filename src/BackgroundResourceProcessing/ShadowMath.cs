@@ -66,7 +66,7 @@ public struct ShadowState(double estimate, bool inShadow)
     private static ShadowState GetOrbitShadowState(Vessel vessel)
     {
         var settings = HighLogic.CurrentGame?.Parameters.CustomParams<Settings>();
-        if (settings?.EnableOrbitShadows ?? false)
+        if (!(settings?.EnableOrbitShadows ?? false))
             return AlwaysInSun;
 
         var stars = StarProvider.GetRelevantStars(vessel);

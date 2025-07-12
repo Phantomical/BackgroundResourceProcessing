@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using BackgroundResourceProcessing.Addons;
+using BackgroundResourceProcessing.Converter;
 using BackgroundResourceProcessing.Core;
 using Shadow = BackgroundResourceProcessing.ShadowState;
 
@@ -34,20 +35,29 @@ public sealed class BackgroundResourceProcessor : VesselModule
         BackgroundResourceProcessor,
         ChangepointEvent
     > onVesselChangepoint = new("onVesselChangepoint");
-    #endregion
 
     /// <summary>
-    /// Whether background processing is actively running on this module.
+    /// This event is fired just after a vessel is recorded.
     /// </summary>
     ///
     /// <remarks>
-    /// Generally, this will be true when the vessel is unloaded, and false
-    /// otherwise.
+    /// This is meant for cases where you want need to create new converters
+    /// or inventories that don't actually correspond to a part module.
     /// </remarks>
-    public bool BackgroundProcessingActive { get; private set; } = false;
+    public static readonly EventData<BackgroundResourceProcessor> onVesselRecord = new(
+        "onVesselRecord"
+    );
 
     /// <summary>
-    /// The current state of
+    /// This event is fired just after a vessel is restored.
+    /// </summary>
+    public static readonly EventData<BackgroundResourceProcessor> onVesselRestore = new(
+        "onVesselRestore"
+    );
+    #endregion
+
+    /// <summary>
+    /// The current the vessel WRT to being in the planet's shadow.
     /// </summary>
     public ShadowState? ShadowState { get; private set; } = null;
 
@@ -104,8 +114,6 @@ public sealed class BackgroundResourceProcessor : VesselModule
     {
         if (Vessel.loaded)
             return;
-        if (!BackgroundProcessingActive)
-            return;
         var now = Planetarium.GetUniversalTime();
         if (processor.lastUpdate >= now)
             return;
@@ -125,6 +133,10 @@ public sealed class BackgroundResourceProcessor : VesselModule
     public ResourceSimulator GetSimulator()
     {
         var currentTime = Planetarium.GetUniversalTime();
+
+        if (vessel.loaded)
+            SaveVessel();
+
         var clone = processor.CloneForSimulator();
         clone.UpdateState(currentTime, false);
         clone.UpdateNextChangepoint(currentTime);
@@ -139,6 +151,31 @@ public sealed class BackgroundResourceProcessor : VesselModule
     public Dictionary<string, InventoryState> GetResourceStates()
     {
         return processor.GetResourceStates();
+    }
+
+    /// <summary>
+    /// Add a new converter that doesn't correspond to any part modules on the
+    /// vessel.
+    /// </summary>
+    /// <returns>The index of the converter within <see cref="Converters"/>.</returns>
+    ///
+    /// <remarks>
+    /// <para>
+    /// This is meant to allow integrating external resource consumers/producers.
+    /// If you can tie it to a specific part module you are much better off using
+    /// a <see cref="BackgroundConverter"/> instead.
+    /// </para>
+    ///
+    /// <para>
+    /// Note that the sets of connected inventories will not be automatically
+    /// initialized for this converter. You will have to do so yourself.
+    /// </para>
+    /// </remarks>
+    public int AddConverter(Core.ResourceConverter converter)
+    {
+        var index = processor.converters.Count;
+        processor.converters.Add(converter);
+        return index;
     }
     #endregion
 
@@ -173,9 +210,6 @@ public sealed class BackgroundResourceProcessor : VesselModule
     {
         RegisterCallbacks();
 
-        if (!BackgroundProcessingActive)
-            return;
-
         if (vessel.loaded)
         {
             LoadVessel();
@@ -192,19 +226,13 @@ public sealed class BackgroundResourceProcessor : VesselModule
         if (vessel == null)
             return;
 
-        if (BackgroundProcessingActive)
-        {
-            EventDispatcher.UnregisterChangepointCallbacks(this);
-        }
+        EventDispatcher.UnregisterChangepointCallbacks(this);
 
         UnregisterCallbacks();
     }
 
     public override void OnLoadVessel()
     {
-        if (!BackgroundProcessingActive)
-            return;
-
         LoadVessel();
 
         GameEvents.onGameStateSave.Add(OnGameStateSave);
@@ -213,21 +241,12 @@ public sealed class BackgroundResourceProcessor : VesselModule
     public override void OnUnloadVessel()
     {
         GameEvents.onGameStateSave.Remove(OnGameStateSave);
-
-        if (vessel == null)
-            return;
-        if (!BackgroundProcessingActive)
-            LogUtil.Warn(
-                "BackgroundResourceProcessor being destroyed but background processing has not been activated"
-            );
     }
 
     protected override void OnSave(ConfigNode node)
     {
         base.OnSave(node);
         processor.Save(node);
-
-        node.AddValue("BackgroundProcessingActive", BackgroundProcessingActive);
 
         if (ShadowState != null)
         {
@@ -241,10 +260,6 @@ public sealed class BackgroundResourceProcessor : VesselModule
     {
         base.OnLoad(node);
         processor.Load(node, Vessel);
-
-        bool active = false;
-        if (node.TryGetValue("BackgroundProcessingActive", ref active))
-            BackgroundProcessingActive = active;
 
         double NextTerminatorEstimate = 0;
         bool InShadow = false;
@@ -261,7 +276,7 @@ public sealed class BackgroundResourceProcessor : VesselModule
     internal void OnChangepoint(double changepoint)
     {
         // We do nothing for active vessels.
-        if (!BackgroundProcessingActive)
+        if (vessel.loaded)
             return;
 
         LogUtil.Debug(() =>
@@ -294,7 +309,7 @@ public sealed class BackgroundResourceProcessor : VesselModule
     internal void OnVesselSOIChanged(GameEvents.HostedFromToAction<Vessel, CelestialBody> evt)
     {
         // We do nothing for active vessels.
-        if (!BackgroundProcessingActive)
+        if (vessel.loaded)
             return;
         if (!ReferenceEquals(vessel, evt.host))
             return;
@@ -329,24 +344,33 @@ public sealed class BackgroundResourceProcessor : VesselModule
 
         processor.UpdateState(currentTime, false);
         processor.ApplyInventories(Vessel);
+        onVesselRestore.Fire(this);
         processor.ClearVesselState();
 
-        BackgroundProcessingActive = false;
         ShadowState = null;
     }
 
     private void SaveVessel()
     {
+        // If the vessel is getting destroyed then there is no point in recording
+        // the vessel state.
+        if (vessel == null)
+            processor.ClearVesselState();
+
         var currentTime = Planetarium.GetUniversalTime();
         var state = new VesselState(currentTime);
 
+        // If we have already been saved this frame then there is nothing else
+        // we need to do here.
+        if (processor.lastUpdate == currentTime)
+            return;
+
         processor.RecordVesselState(vessel, currentTime);
+        onVesselRecord.Fire(this);
         processor.ForceUpdateBehaviours(state);
         processor.ComputeRates();
         DispatchOnRatesComputed(currentTime);
         processor.UpdateNextChangepoint(currentTime);
-
-        BackgroundProcessingActive = true;
     }
 
     private void DispatchOnRatesComputed(double currentTime)
@@ -386,17 +410,7 @@ public sealed class BackgroundResourceProcessor : VesselModule
     /// </remarks>
     internal void DebugRecordVesselState()
     {
-        var currentTime = Planetarium.GetUniversalTime();
-
-        processor.RecordVesselState(Vessel, currentTime);
-        processor.ComputeRates();
-        DispatchOnRatesComputed(currentTime);
-        processor.UpdateNextChangepoint(currentTime);
-    }
-
-    internal void DebugClearVesselState()
-    {
-        processor.ClearVesselState();
+        SaveVessel();
     }
     #endregion
 }

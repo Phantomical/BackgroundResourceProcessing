@@ -57,6 +57,9 @@ public class Settings : GameParameters.CustomParameterNode
     public override bool HasPresets => false;
     public override GameParameters.GameMode GameMode => GameParameters.GameMode.ANY;
 
+    [GameParameters.CustomParameterUI("Enable USI-LS Integration")]
+    public bool EnableUSILSIntegration = false;
+
     [GameParameters.CustomParameterUI(
         "Enable Experimental Orbit Shadows",
         toolTip = "Simulate the effect of planet shadows on orbiting ships. "
