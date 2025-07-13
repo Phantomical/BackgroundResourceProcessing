@@ -370,8 +370,8 @@ internal class ResourceProcessor
                     );
 
                     var id = new InventoryId(resource);
-                    var index = inventoryIds[id];
-                    set[index] = true;
+                    if (inventoryIds.TryGetValue(id, out var index))
+                        set[index] = true;
                 }
 
                 if (behaviours.Pull == null)
@@ -408,8 +408,8 @@ internal class ResourceProcessor
                     );
 
                     var id = new InventoryId(resource);
-                    var index = inventoryIds[id];
-                    set[index] = true;
+                    if (inventoryIds.TryGetValue(id, out var index))
+                        set[index] = true;
                 }
 
                 if (behaviours.Push == null)
@@ -448,8 +448,8 @@ internal class ResourceProcessor
                     );
 
                     var id = new InventoryId(resource);
-                    var index = inventoryIds[id];
-                    set[index] = true;
+                    if (inventoryIds.TryGetValue(id, out var index))
+                        set[index] = true;
                 }
 
                 if (behaviours.Constraint == null)
