@@ -49,7 +49,22 @@ jobs:
       - run: dotnet restore
       - run: dotnet build
 
-      - uses: KSPModdingLibs/KSPBuildTools/.github/actions/assemble-release@main
+      - name: Copy Files to Staging
+        shell: bash
+        run: |
+          shopt -s nocaseglob # so globs are case-insensitive
+          shopt -s globstar
+          shopt -s nullglob
+          mkdir -p ${{ env.RELEASE_STAGING  }}   
+          cp -r -v GameData README* LICENSE* CHANGELOG* ${{ env.RELEASE_STAGING }}
+          cd ${{ env.RELEASE_STAGING }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          path: ${{ env.RELEASE_STAGING }}
+          name: BackgroundResourceProcessing
+          if-no-files-found: error
+          include-hidden-files: 'true'
 
 
 
