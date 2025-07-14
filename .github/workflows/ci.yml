@@ -46,6 +46,8 @@ jobs:
           dotnet-version: '9.0'
 
       - run: dotnet restore
+      - uses: mxschmitt/action-tmate@v3
+
       - run: dotnet build
 
       - uses: KSPModdingLibs/KSPBuildTools/.github/actions/assemble-release@main
