@@ -38,7 +38,7 @@ jobs:
       - name: Install CKAN dependencies
         runs: ./ckan.exe install --headless --no-recommends ${{ env.CKAN_DEPS }}
 
-      - name: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0'
 
