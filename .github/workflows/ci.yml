@@ -9,6 +9,7 @@ env:
   CKAN_DEPS: |
     Harmony2 ExtraPlanetaryLaunchpads ClickThroughBlocker
     Kopernicus USI-LS
+  GH_TOKEN: ${{ github.token }}
 
 jobs:
   build:
