@@ -17,7 +17,7 @@
         </ProjectReference>
 
         <Reference Include="Launchpad.dll">
-            <HintPath>$(ReferencePath)\GameData\ExtraplanetaryLaunchpads\Plugins\Launchpad.dll</HintPath>
+            <HintPath>$(KSPRoot)\GameData\ExtraplanetaryLaunchpads\Plugins\Launchpad.dll</HintPath>
             <Private>false</Private>
             <KSPAssemblyName>Launchpad</KSPAssemblyName>
         </Reference>
