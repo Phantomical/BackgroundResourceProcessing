@@ -10,6 +10,7 @@ env:
   CKAN_DEPS: |
     Harmony2 ExtraPlanetaryLaunchpads ClickThroughBlocker Kopernicus USI-LS
   GH_TOKEN: ${{ github.token }}
+  RELEASE_STAGING: D:\\release
 
 jobs:
   build:
@@ -46,8 +47,6 @@ jobs:
           dotnet-version: '9.0'
 
       - run: dotnet restore
-      - uses: mxschmitt/action-tmate@v3
-
       - run: dotnet build
 
       - uses: KSPModdingLibs/KSPBuildTools/.github/actions/assemble-release@main
