@@ -12,21 +12,21 @@ env:
 
 jobs:
   build:
-    runs-on: windows-latest
+    run-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       
       - name: Download ckan.exe
-        runs: gh release download --repo KSP-CKAN/CKAN --pattern ckan.exe -o ckan.exe
+        run: gh release download --repo KSP-CKAN/CKAN --pattern ckan.exe -o ckan.exe
 
       - name: Download KSP Libs
-        runs: |
+        run: |
           wget --quiet https://github.com/KSPModdingLibs/KSPLibs/raw/main/KSP-1.12.5.zip -O /tmp/ksp.zip
           unzip -q /tmp/ksp.zip -d /tmp/ksp
           echo 'KSP_ROOT=/tmp/ksp' >> "$GITHUB_ENV"
           
       - name: Configure CKAN
-        runs: |
+        run: |
           ./ckan.exe instance fake --set-default KSP${{ env.KSP_ROOT }} 1.12.5 --game KSP --MakingHistory 1.9.1 --BreakingGround 1.7.1
           ./ckan.exe update
           ./ckan.exe compat add 1.12
@@ -36,14 +36,14 @@ jobs:
           ./ckan.exe compat add 1.8
 
       - name: Install CKAN dependencies
-        runs: ./ckan.exe install --headless --no-recommends ${{ env.CKAN_DEPS }}
+        run: ./ckan.exe install --headless --no-recommends ${{ env.CKAN_DEPS }}
 
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0'
 
-      - runs: dotnet restore -verbosity detailed
-      - runs: dotnet build
+      - run: dotnet restore -verbosity detailed
+      - run: dotnet build
 
       - uses: KSPModdingLibs/KSPBuildTools/.github/actions/assemble-release@main
 
@@ -51,7 +51,7 @@ jobs:
 
 
   # build:
-  #   runs-on: ubuntu-22.04
+  #   run-on: ubuntu-22.04
   #   steps:
   #     - uses: actions/checkout@v3
   #     - uses: KSPModdingLibs/KSPBuildTools/.github/actions/setup-ckan@main
