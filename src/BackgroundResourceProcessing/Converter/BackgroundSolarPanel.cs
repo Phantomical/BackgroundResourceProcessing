@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Reflection;
 using BackgroundResourceProcessing.Behaviour;
 using UnityEngine;
@@ -39,6 +40,15 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
         if (panel.part.ShieldedFromAirstream && panel.applyShielding)
             return null;
 
+        // This panel is not tracking a celestial body. We don't know how to
+        // handle this case (and neither does the base game).
+        if (panel.trackingBody == null)
+            return null;
+
+        // This panel is not tracking a star.
+        if (!panel.trackingBody.isStar)
+            return null;
+
         var vessel = panel.vessel;
         double power = panel.chargeRate * panel.flowMult * panel.efficiencyMult;
 
@@ -55,7 +65,7 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
                 //
                 // This isn't quite the same as how things behave in KSP,
                 // but it is a reasonable simplification to make here.
-                var sun = GetSunDirection(panel.panelRotationTransform.position);
+                var sun = GetTargetDirection(panel);
                 if (!GetPanelLOS(panel, sun, orbitLayerMask))
                     return null;
 
@@ -70,32 +80,43 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
             case Vessel.Situations.LANDED:
             case Vessel.Situations.PRELAUNCH:
             case Vessel.Situations.SPLASHED:
-                // So landed solar panels require some special consideration.
-                // We don't want to constantly be re-evaluating panel AoAs
-                // but at the same time we want to at least be somewhat
-                // accurate.
-                //
-                // The solution I've gone with here is to evaluate the panel's
-                // AoA at 5 different points and then used a weighted average
-                // of those points to compute the effective AoA factor.
+                if (OnTidallyLockedPlanet(panel))
+                {
+                    // If we're tracking the parent star of a tidally locked
+                    // planet then we can use our current orientation.
 
-                ComputeLandedSunVectors(panel, out var sunrise, out var noon, out var sunset);
-                var midpoint1 = (sunrise + noon).normalized;
-                var midpoint2 = (sunset + noon).normalized;
+                    sun = GetTargetDirection(panel);
+                    power *= GetOptimalPanelAoAFactor(panel, sun);
+                }
+                else
+                {
+                    // So landed solar panels require some special consideration.
+                    // We don't want to constantly be re-evaluating panel AoAs
+                    // but at the same time we want to at least be somewhat
+                    // accurate.
+                    //
+                    // The solution I've gone with here is to evaluate the panel's
+                    // AoA at 5 different points and then used a weighted average
+                    // of those points to compute the effective AoA factor.
 
-                double weightedAoA = 0.0;
-                if (GetPanelLOS(panel, sunrise, landedLayerMask))
-                    weightedAoA += 0.125 * GetOptimalPanelAoAFactor(panel, sunrise);
-                if (GetPanelLOS(panel, midpoint1, landedLayerMask))
-                    weightedAoA += 0.25 * GetOptimalPanelAoAFactor(panel, midpoint1);
-                if (GetPanelLOS(panel, noon, landedLayerMask))
-                    weightedAoA += 0.25 * GetOptimalPanelAoAFactor(panel, noon);
-                if (GetPanelLOS(panel, midpoint2, landedLayerMask))
-                    weightedAoA += 0.25 * GetOptimalPanelAoAFactor(panel, midpoint2);
-                if (GetPanelLOS(panel, sunset, landedLayerMask))
-                    weightedAoA += 0.125 * GetOptimalPanelAoAFactor(panel, sunset);
+                    ComputeLandedSunVectors(panel, out var sunrise, out var noon, out var sunset);
+                    var midpoint1 = (sunrise + noon).normalized;
+                    var midpoint2 = (sunset + noon).normalized;
 
-                power *= weightedAoA;
+                    double weightedAoA = 0.0;
+                    if (GetPanelLOS(panel, sunrise, landedLayerMask))
+                        weightedAoA += 0.125 * GetOptimalPanelAoAFactor(panel, sunrise);
+                    if (GetPanelLOS(panel, midpoint1, landedLayerMask))
+                        weightedAoA += 0.25 * GetOptimalPanelAoAFactor(panel, midpoint1);
+                    if (GetPanelLOS(panel, noon, landedLayerMask))
+                        weightedAoA += 0.25 * GetOptimalPanelAoAFactor(panel, noon);
+                    if (GetPanelLOS(panel, midpoint2, landedLayerMask))
+                        weightedAoA += 0.25 * GetOptimalPanelAoAFactor(panel, midpoint2);
+                    if (GetPanelLOS(panel, sunset, landedLayerMask))
+                        weightedAoA += 0.125 * GetOptimalPanelAoAFactor(panel, sunset);
+
+                    power *= weightedAoA;
+                }
 
                 // It's possible to be both LANDED and underwater, so we
                 // can't constrain this check to only when splashed.
@@ -134,7 +155,10 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
     public double GetOrbitAoAFactor(ModuleDeployableSolarPanel panel)
     {
         var start = panel.panelRotationTransform.position;
-        return GetOptimalPanelAoAFactor(panel, GetSunDirection(start));
+        var target = panel.trackingBody.scaledBody.transform.position;
+        var sun = (target - start).normalized;
+
+        return GetOptimalPanelAoAFactor(panel, sun);
     }
 
     /// <summary>
@@ -249,13 +273,30 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
         sunset = -sunrise;
     }
 
-    // Get the direction towards the Sun.
-    protected virtual Vector3d GetSunDirection(Vector3 start)
+    private Vector3d GetTargetDirection(ModuleDeployableSolarPanel panel)
     {
-        var scaled = ScaledSpace.LocalToScaledSpace(start);
-        var sun = Planetarium.fetch.Sun.scaledBody.transform.position;
+        var start = ScaledSpace.LocalToScaledSpace(panel.panelRotationTransform.position);
+        var target = panel.trackingBody.scaledBody.transform.position;
 
-        return (sun - scaled).normalized;
+        return (target - start).normalized;
+    }
+
+    /// <summary>
+    /// Is this vessel's parent planet tidally locked to the target star?
+    /// </summary>
+    private bool OnTidallyLockedPlanet(ModuleDeployableSolarPanel panel)
+    {
+        var vessel = panel.vessel;
+        var target = panel.trackingBody;
+        var parent = vessel.orbit.referenceBody;
+
+        if (parent == null)
+            return false;
+
+        if (!ReferenceEquals(parent.orbit.referenceBody, target))
+            return false;
+
+        return parent.tidallyLocked;
     }
 
     private static readonly FieldInfo SecondaryTransformField =
