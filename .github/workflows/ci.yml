@@ -20,30 +20,16 @@ jobs:
         with:
           dependency-identifiers: ${{ env.CKAN_DEPS }}
 
-      - uses: KSPModdingLibs/KSPBuildTools/.github/actions/compile@main
-        with:
-          build-configuration: Release
-          dotnet-version: 9.0
+      - name: Download KSP Libs
+        run: |
+          wget --quiet https://github.com/KSPModdingLibs/KSPLibs/raw/main/KSP-1.12.5.zip -O /tmp/ksp.zip
+          unzip -q /tmp/ksp.zip -d /tmp/ksp
+          echo 'KSP_ROOT=/tmp/ksp' >> "$GITHUB_ENV"
+
+      - name: nuget restore
+        run: |
+          nuget restore BackgroundResourceProcessing.sln -Verbosity detailed
+
+      - uses: lhotari/action-upterm@v1
 
       - uses: KSPModdingLibs/KSPBuildTools/.github/actions/assemble-release@main
-
-  test:
-    if: false
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: KSPModdingLibs/KSPBuildTools/.github/actions/setup-ckan@main
-
-      - uses: KSPModdingLibs/KSPBuildTools/.github/actions/install-dependencies@main
-        with:
-          dependency-identifiers: ${{ env.CKAN_DEPS }}
-
-      - uses: KSPModdingLibs/KSPBuildTools/.github/actions/compile@main
-        with:
-          build-configuration: Debug
-          dotnet-version: 9.0
-
-      - name: Run Tests
-        run: |
-          dotnet test -p:ManagedRelativePath=KSP_x64_Data/Managed
