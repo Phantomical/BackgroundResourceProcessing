@@ -45,7 +45,7 @@ jobs:
         with:
           dotnet-version: '9.0'
 
-      - run: dotnet restore -verbosity detailed
+      - run: dotnet restore
       - run: dotnet build
 
       - uses: KSPModdingLibs/KSPBuildTools/.github/actions/assemble-release@main
