@@ -2,35 +2,66 @@ name: ci
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 env:
+  KSP_ROOT: D:\\KSP
   CKAN_DEPS: |
-    Harmony2 ExtraPlanetaryLaunchpads ClickThroughBlocker
-    Kopernicus USI-LS
+    Harmony2 ExtraPlanetaryLaunchpads ClickThroughBlocker Kopernicus USI-LS
+  GH_TOKEN: ${{ github.token }}
+  RELEASE_STAGING: D:\\release
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      
+      - name: Download ckan.exe
+        run: gh release download --repo KSP-CKAN/CKAN --pattern ckan.exe -O ckan.exe
 
-      - uses: KSPModdingLibs/KSPBuildTools/.github/actions/setup-ckan@main
-
-      - uses: KSPModdingLibs/KSPBuildTools/.github/actions/install-dependencies@main
-        with:
-          dependency-identifiers: ${{ env.CKAN_DEPS }}
-
+          
+      - name: Configure CKAN
+        run: |
+          ./ckan.exe instance fake --asroot --set-default KSP ${{ env.KSP_ROOT }} 1.12.5 --game KSP --MakingHistory 1.9.1 --BreakingGround 1.7.1
+          ./ckan.exe update --asroot
+          ./ckan.exe compat add --asroot 1.12
+          ./ckan.exe compat add --asroot 1.11
+          ./ckan.exe compat add --asroot 1.10
+          ./ckan.exe compat add --asroot 1.9
+          ./ckan.exe compat add --asroot 1.8
+        shell: bash
+        
       - name: Download KSP Libs
         run: |
-          wget --quiet https://github.com/KSPModdingLibs/KSPLibs/raw/main/KSP-1.12.5.zip -O /tmp/ksp.zip
-          unzip -q /tmp/ksp.zip -d /tmp/ksp
-          echo 'KSP_ROOT=/tmp/ksp' >> "$GITHUB_ENV"
+          curl -sSL https://github.com/KSPModdingLibs/KSPLibs/raw/main/KSP-1.12.5.zip -o D:\\ksp.zip
+          unzip -q D:\\ksp.zip -d ${{ env.KSP_ROOT }}
+        shell: bash
 
-      - name: nuget restore
+      - name: Install CKAN dependencies
+        run: ./ckan.exe install --asroot --headless --no-recommends ${{ env.CKAN_DEPS }}
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0'
+
+      - run: dotnet restore
+      - run: dotnet build
+
+      - name: Copy Files to Staging
+        shell: bash
         run: |
-          nuget restore BackgroundResourceProcessing.sln -Verbosity detailed
+          shopt -s nocaseglob # so globs are case-insensitive
+          shopt -s globstar
+          shopt -s nullglob
+          mkdir -p ${{ env.RELEASE_STAGING  }}   
+          cp -r -v GameData README* LICENSE* CHANGELOG* ${{ env.RELEASE_STAGING }}
+          cd ${{ env.RELEASE_STAGING }}
 
-      - uses: lhotari/action-upterm@v1
-
-      - uses: KSPModdingLibs/KSPBuildTools/.github/actions/assemble-release@main
+      - uses: actions/upload-artifact@v4
+        with:
+          path: ${{ env.RELEASE_STAGING }}
+          name: BackgroundResourceProcessing
+          if-no-files-found: error
+          include-hidden-files: 'true'

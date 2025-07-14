@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <PackageReference Include="System.Memory" Version="4.6.3" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" />
 
     <KSPVersionFile Include=".">
       <Destination>$(GameDataOutDir)/BackgroundResourceProcessing.version</Destination>
