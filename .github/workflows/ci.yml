@@ -17,16 +17,16 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Download ckan.exe
-        run: gh release download --repo KSP-CKAN/CKAN --pattern ckan.exe -o ckan.exe
+        runs: gh release download --repo KSP-CKAN/CKAN --pattern ckan.exe -o ckan.exe
 
       - name: Download KSP Libs
-        run: |
+        runs: |
           wget --quiet https://github.com/KSPModdingLibs/KSPLibs/raw/main/KSP-1.12.5.zip -O /tmp/ksp.zip
           unzip -q /tmp/ksp.zip -d /tmp/ksp
           echo 'KSP_ROOT=/tmp/ksp' >> "$GITHUB_ENV"
           
       - name: Configure CKAN
-        run: |
+        runs: |
           ./ckan.exe instance fake --set-default KSP${{ env.KSP_ROOT }} 1.12.5 --game KSP --MakingHistory 1.9.1 --BreakingGround 1.7.1
           ./ckan.exe update
           ./ckan.exe compat add 1.12
@@ -36,14 +36,14 @@ jobs:
           ./ckan.exe compat add 1.8
 
       - name: Install CKAN dependencies
-        run: ./ckan.exe install --headless --no-recommends ${{ env.CKAN_DEPS }}
+        runs: ./ckan.exe install --headless --no-recommends ${{ env.CKAN_DEPS }}
 
       - name: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0'
 
-      - run: dotnet restore -verbosity detailed
-      - run: dotnet build
+      - runs: dotnet restore -verbosity detailed
+      - runs: dotnet build
 
       - uses: KSPModdingLibs/KSPBuildTools/.github/actions/assemble-release@main
 
