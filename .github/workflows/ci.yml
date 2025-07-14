@@ -6,6 +6,7 @@ on:
   pull_request:
 
 env:
+  KSP_ROOT: D:\\KSP
   CKAN_DEPS: |
     Harmony2 ExtraPlanetaryLaunchpads ClickThroughBlocker
     Kopernicus USI-LS
@@ -20,12 +21,6 @@ jobs:
       - name: Download ckan.exe
         run: gh release download --repo KSP-CKAN/CKAN --pattern ckan.exe -O ckan.exe
 
-      - name: Download KSP Libs
-        run: |
-          curl -sSL https://github.com/KSPModdingLibs/KSPLibs/raw/main/KSP-1.12.5.zip -o D:\\ksp.zip
-          unzip -q D:\\ksp.zip -d D:\\ksp
-          echo 'KSP_ROOT=D:\\ksp' >> "$GITHUB_ENV"
-        shell: bash
           
       - name: Configure CKAN
         run: |
@@ -36,6 +31,12 @@ jobs:
           ./ckan.exe compat add --asroot 1.10
           ./ckan.exe compat add --asroot 1.9
           ./ckan.exe compat add --asroot 1.8
+        shell: bash
+        
+      - name: Download KSP Libs
+        run: |
+          curl -sSL https://github.com/KSPModdingLibs/KSPLibs/raw/main/KSP-1.12.5.zip -o D:\\ksp.zip
+          unzip -q D:\\ksp.zip -d ${{ env.KSP_ROOT }}
         shell: bash
 
       - name: Install CKAN dependencies
