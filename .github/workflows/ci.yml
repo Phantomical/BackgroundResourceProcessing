@@ -8,8 +8,7 @@ on:
 env:
   KSP_ROOT: D:\\KSP
   CKAN_DEPS: |
-    Harmony2 ExtraPlanetaryLaunchpads ClickThroughBlocker
-    Kopernicus USI-LS
+    Harmony2 ExtraPlanetaryLaunchpads ClickThroughBlocker Kopernicus USI-LS
   GH_TOKEN: ${{ github.token }}
 
 jobs:
