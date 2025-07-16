@@ -8,6 +8,9 @@ namespace BackgroundResourceProcessing.Utils;
 
 internal static class MathUtil
 {
+    internal const double DEG2RAD = Math.PI / 180.0;
+    internal const double RAD2DEG = 180.0 / Math.PI;
+
     /// <summary>
     /// This is present in .NET standard 2.1 but KSP doesn't have that available.
     /// </summary>
@@ -376,9 +379,34 @@ internal static class MathUtil
         if (t < 0)
             return null;
 
-        if (t > 0)
+        if (t > 1)
             return null;
 
         return t;
+    }
+
+    /// <summary>
+    /// Bisects an area, returning a tighter boundary around the location where
+    /// <paramref name="isIn"/> switches from <c>false</c> to <c>true</c>.
+    /// </summary>
+    /// <returns></returns>
+    internal static (double, double) Bisect(
+        double inP,
+        double outP,
+        Func<double, bool> isIn,
+        int iterations = 8
+    )
+    {
+        for (int i = 0; i < iterations; ++i)
+        {
+            double probe = 0.5 * (inP + outP);
+
+            if (isIn(probe))
+                inP = probe;
+            else
+                outP = probe;
+        }
+
+        return (inP, outP);
     }
 }

@@ -45,12 +45,6 @@ internal struct QuaternionD(double r, Vector3d v)
     /// Computes the quaternion representing the rotation
     /// <paramref name="b"/> followed by <paramref name="a"/>.
     /// </summary>
-    ///
-    /// <remarks>
-    /// Note that this is in a different order from the mathematical
-    /// definition of quaternion rotation where you would need to write
-    /// <c>b * a</c> to represent the same thing.
-    /// </remarks>
     public static QuaternionD operator *(QuaternionD a, QuaternionD b)
     {
         return new(
@@ -103,7 +97,8 @@ internal struct QuaternionD(double r, Vector3d v)
 
     public readonly QuaternionD Normalized()
     {
-        return this * (1.0 / Norm());
+        var denom = r * r + Vector3d.Dot(v, v);
+        return new(r / denom, v / denom);
     }
 
     public static QuaternionD FromAngleAxis(double angle, Vector3d axis)

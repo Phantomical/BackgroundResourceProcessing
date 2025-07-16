@@ -7,8 +7,6 @@ namespace BackgroundResourceProcessing.Maths;
 internal ref struct OrbitShadow
 {
     const double PI = Math.PI;
-    const double DEG2RAD = Math.PI / 180.0;
-    const double RAD2DEG = 180.0 / Math.PI;
 
     internal double semiMajorAxis;
     internal double eccentricity;

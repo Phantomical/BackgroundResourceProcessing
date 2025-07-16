@@ -129,6 +129,39 @@ internal struct Dual(double x, double dx = 0.0)
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static (Dual, Dual) SinhCosh(Dual v)
+    {
+        double sinh = Math.Sinh(v.x);
+        double cosh = Math.Cosh(v.x);
+
+        return (new(sinh, cosh * v.dx), new(cosh, sinh * v.dx));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Dual Sinh(Dual v)
+    {
+        var (sinh, _) = SinhCosh(v);
+        return sinh;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Dual Cosh(Dual v)
+    {
+        var (_, cosh) = SinhCosh(v);
+        return cosh;
+    }
+
+    public static Dual Atan2(Dual y, Dual x)
+    {
+        var norm = x.x * x.x + y.x * y.x;
+
+        var v = Math.Atan2(y.x, x.x);
+        var dx = (y.x * x.dx - x.x * y.dx) / norm;
+
+        return new(v, dx);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Dual Exp(Dual v)
     {
         var exp = Math.Exp(v.x);
@@ -168,124 +201,9 @@ internal struct Dual(double x, double dx = 0.0)
     }
 }
 
-internal struct DualVector3
-{
-    public Dual x;
-    public Dual y;
-    public Dual z;
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public DualVector3(Dual x, Dual y, Dual z)
-    {
-        this.x = x;
-        this.y = y;
-        this.z = z;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public DualVector3(Vector3d p, Vector3d v)
-        : this(new(p.x, v.x), new(p.y, v.y), new(p.z, v.z)) { }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static DualVector3 operator +(DualVector3 l, DualVector3 r)
-    {
-        return new(l.x + r.x, l.y + r.y, l.z + r.z);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static DualVector3 operator -(DualVector3 l, DualVector3 r)
-    {
-        return new(l.x - r.x, l.y - r.y, l.z - r.z);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static DualVector3 operator *(DualVector3 v, Dual s)
-    {
-        return new(v.x * s, v.y * s, v.z * s);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static DualVector3 operator *(Dual s, DualVector3 v)
-    {
-        return v * s;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static DualVector3 operator /(DualVector3 v, Dual s)
-    {
-        return new(v.x / s, v.y / s, v.z / s);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static DualVector3 operator -(DualVector3 v)
-    {
-        return new(-v.x, -v.y, -v.z);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Dual Dot(DualVector3 l, DualVector3 r)
-    {
-        return l.x * r.x + l.y * r.y + l.z * r.z;
-    }
-
-    public static DualVector3 Cross(DualVector3 a, DualVector3 b)
-    {
-        return new(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
-    }
-}
-
-internal struct DualQuaternion
-{
-    public Dual r;
-    public DualVector3 v;
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public DualQuaternion(Dual r, DualVector3 v)
-    {
-        this.r = r;
-        this.v = v;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public DualQuaternion(Dual r, Dual x, Dual y, Dual z)
-        : this(r, new(x, y, z)) { }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static DualQuaternion operator +(DualQuaternion l, DualQuaternion r)
-    {
-        return new(l.r + r.r, l.v + r.v);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static DualQuaternion operator -(DualQuaternion l, DualQuaternion r)
-    {
-        return new(l.r - r.r, l.v - r.v);
-    }
-
-    public static DualQuaternion operator *(DualQuaternion l, DualQuaternion r)
-    {
-        return new(
-            l.r * r.r - DualVector3.Dot(l.v, r.v),
-            l.r * r.v + r.r * l.v + DualVector3.Cross(l.v, r.v)
-        );
-    }
-
-    public readonly DualQuaternion Inverse()
-    {
-        var denom = r * r + DualVector3.Dot(v, v);
-        return new(r / denom, v / denom);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly DualQuaternion Conjugate()
-    {
-        return new(r, -v);
-    }
-}
-
 [DebuggerDisplay("x={x}, dx={dx}, ddx={ddx}")]
 [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
-internal struct Dual2(double x, double dx, double ddx)
+internal struct Dual2(double x, double dx = 0.0, double ddx = 0.0)
 {
     public double x = x;
     public double dx = dx;
@@ -317,14 +235,18 @@ internal struct Dual2(double x, double dx, double ddx)
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Dual2 operator *(Dual2 a, Dual2 b)
     {
-        return new(a.x * b.x, b.x * a.dx + a.x * b.dx, 2 * a.dx * b.dx + b.x * a.ddx + a.x * b.ddx);
+        var x = a.x * b.x;
+        var dx = b.x * a.dx + a.x * b.dx;
+        var ddx = 2 * a.dx * b.dx + b.x * a.ddx + a.x * b.ddx;
+
+        return new(x, dx, ddx);
     }
 
     public static Dual2 operator /(Dual2 a, Dual2 b)
     {
         double x = a.x / b.x;
-        double dx = (a.x * b.dx - b.x * a.dx) / (b.x * b.x);
-        double ddx = (-2 * b.dx * dx / b.x) + (b.x * a.ddx - a.x * b.ddx) / (b.x * b.x);
+        double dx = (a.dx - x * b.dx) / b.x;
+        double ddx = (-2 * b.dx * dx + a.ddx + x * b.ddx) / b.x;
 
         return new(x, dx, ddx);
     }
@@ -395,6 +317,14 @@ internal struct Dual2(double x, double dx, double ddx)
         return new(x, dx, ddx);
     }
 
+    public static Dual2 Abs(Dual2 x)
+    {
+        if (x.x == 0.0)
+            return new(0.0, double.PositiveInfinity, double.PositiveInfinity);
+
+        return new(Math.Abs(x.x), x.dx * Math.Sign(x.x), x.ddx * Math.Sign(x.x));
+    }
+
     public static Dual2 Cos(Dual2 a)
     {
         var cosa = Math.Cos(a.x);
@@ -433,5 +363,44 @@ internal struct Dual2(double x, double dx, double ddx)
         var sddx = -sina * a.dx * a.dx + cosa * a.ddx;
 
         return (new(sx, sdx, sddx), new(cx, cdx, cddx));
+    }
+
+    public static Dual2 Atan2(Dual2 y, Dual2 x)
+    {
+        var v = Math.Atan2(y.x, x.x);
+        var invdenom = 1.0 / (x.x * x.x + y.x * y.x);
+        var ddenom = 2.0 * (x.x * x.dx + y.x * y.dx) * invdenom;
+
+        var dv = (y.x * x.dx - x.x * y.dx) * invdenom;
+        var ddv = -dv * ddenom + (y.x * x.ddx - x.x * y.ddx) * invdenom;
+
+        return new(v, dv, ddv);
+    }
+
+    public static (Dual2, Dual2) SinhCosh(Dual2 v)
+    {
+        var sinh = Math.Sinh(v.x);
+        var cosh = Math.Cosh(v.x);
+
+        var dsinh = new Dual2(sinh, cosh * v.dx, sinh * v.dx * v.dx + cosh * v.ddx);
+        var dcosh = new Dual2(cosh, sinh * v.dx, cosh * v.dx * v.dx + sinh * v.ddx);
+
+        return (dsinh, dcosh);
+    }
+
+    public static Dual2 Sinh(Dual2 v)
+    {
+        var sinh = Math.Sinh(v.x);
+        var cosh = Math.Cosh(v.x);
+
+        return new Dual2(sinh, cosh * v.dx, sinh * v.dx * v.dx + cosh * v.ddx);
+    }
+
+    public static Dual2 Cosh(Dual2 v)
+    {
+        var sinh = Math.Sinh(v.x);
+        var cosh = Math.Cosh(v.x);
+
+        return new Dual2(cosh, sinh * v.dx, cosh * v.dx * v.dx + sinh * v.ddx);
     }
 }

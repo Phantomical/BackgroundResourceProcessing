@@ -1,15 +1,27 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using BackgroundResourceProcessing.Maths;
 
 namespace BackgroundResourceProcessing;
 
-public struct ShadowState(double estimate, bool inShadow)
+public struct ShadowState(double estimate, bool inShadow, CelestialBody star = null)
 {
     public double NextTerminatorEstimate = estimate;
     public bool InShadow = inShadow;
+    public CelestialBody Star = star;
 
-    public static ShadowState AlwaysInSun => new(double.PositiveInfinity, false);
-    public static ShadowState AlwaysInShadow => new(double.PositiveInfinity, true);
+    public static ShadowState AlwaysInSun(CelestialBody star) =>
+        new(double.PositiveInfinity, false, star);
+
+    public static ShadowState AlwaysInShadow() => new(double.PositiveInfinity, true);
+
+    static ShadowState DefaultForStar(CelestialBody star)
+    {
+        if (star == null)
+            return AlwaysInShadow();
+        return AlwaysInSun(star);
+    }
 
     public interface IStarProvider
     {
@@ -36,7 +48,12 @@ public struct ShadowState(double estimate, bool inShadow)
         if (double.IsNaN(state.NextTerminatorEstimate))
         {
             LogUtil.Error("Shadow state calculations returned NaN terminator estimate");
-            return new(double.PositiveInfinity, false);
+            return DefaultForStar(Planetarium.fetch?.Sun);
+        }
+        if (state.NextTerminatorEstimate < Planetarium.GetUniversalTime())
+        {
+            LogUtil.Error("Shadow state calculations returned a terminator in the past");
+            return DefaultForStar(Planetarium.fetch?.Sun);
         }
 
         return state;
@@ -50,42 +67,64 @@ public struct ShadowState(double estimate, bool inShadow)
 
     private static ShadowState GetShadowStateImpl(Vessel vessel)
     {
-        switch (vessel.situation)
+        return vessel.situation switch
         {
-            case Vessel.Situations.ORBITING:
-            case Vessel.Situations.SUB_ORBITAL:
-            case Vessel.Situations.ESCAPING:
-            case Vessel.Situations.DOCKED:
-                return GetOrbitShadowState(vessel);
-
-            default:
-                return AlwaysInSun;
-        }
+            Vessel.Situations.ORBITING
+            or Vessel.Situations.SUB_ORBITAL
+            or Vessel.Situations.ESCAPING
+            or Vessel.Situations.DOCKED => GetOrbitShadowState(vessel),
+            Vessel.Situations.LANDED
+            or Vessel.Situations.SPLASHED
+            or Vessel.Situations.PRELAUNCH
+            or Vessel.Situations.FLYING => GetLandedShadowState(vessel),
+            _ => AlwaysInSun(Planetarium.fetch?.Sun),
+        };
     }
 
     private static ShadowState GetOrbitShadowState(Vessel vessel)
     {
+        var stars = StarProvider.GetRelevantStars(vessel) ?? [];
         var settings = HighLogic.CurrentGame?.Parameters.CustomParams<Settings>();
         if (!(settings?.EnableOrbitShadows ?? false))
-            return AlwaysInSun;
+            return DefaultForStar(stars.FirstOrDefault());
 
-        var stars = StarProvider.GetRelevantStars(vessel);
-        if (stars == null || stars.Count == 0)
-            return AlwaysInShadow;
-
-        var state = AlwaysInSun;
+        var state = AlwaysInShadow();
         foreach (var star in stars)
         {
             var bodies = GetReferenceBodies(vessel, star);
             if (ReferenceEquals(bodies.parent, star))
-                return AlwaysInSun;
+                return AlwaysInSun(star);
 
             OrbitShadow shadow = new();
             shadow.SetReferenceBodies(vessel, star, bodies.planet);
             var terminator = shadow.ComputeTerminatorUT(out var inshadow);
 
             if (!inshadow)
-                return new(terminator, inshadow);
+                return new(Math.Min(terminator, state.NextTerminatorEstimate), inshadow, star);
+
+            if (terminator < state.NextTerminatorEstimate)
+                state = new(terminator, inshadow);
+        }
+
+        return state;
+    }
+
+    private static ShadowState GetLandedShadowState(Vessel vessel)
+    {
+        var stars = StarProvider.GetRelevantStars(vessel) ?? [];
+        var settings = HighLogic.CurrentGame?.Parameters.CustomParams<Settings>();
+        if (!(settings?.EnableLandedShadows ?? false))
+            return DefaultForStar(stars.FirstOrDefault());
+
+        var state = AlwaysInShadow();
+        foreach (var star in stars)
+        {
+            LandedShadow shadow = new();
+            shadow.SetReferenceBodies(vessel, star);
+            var terminator = shadow.ComputeTerminatorUT(out var inshadow);
+
+            if (!inshadow)
+                return new(Math.Min(terminator, state.NextTerminatorEstimate), inshadow, star);
 
             if (terminator < state.NextTerminatorEstimate)
                 state = new(terminator, inshadow);

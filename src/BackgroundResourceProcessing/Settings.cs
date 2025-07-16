@@ -66,4 +66,10 @@ public class Settings : GameParameters.CustomParameterNode
             + "This is currently quite buggy, though it won't break your game. "
     )]
     public bool EnableOrbitShadows = false;
+
+    [GameParameters.CustomParameterUI(
+        "Enable Day/Night Simulation",
+        toolTip = "Simulate Day/Night for landed vessels."
+    )]
+    public bool EnableLandedShadows = true;
 }
