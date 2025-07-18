@@ -154,6 +154,19 @@ public sealed class BackgroundResourceProcessor : VesselModule
     }
 
     /// <summary>
+    /// Get a summary for a single resource.
+    /// </summary>
+    /// <param name="resourceName"></param>
+    /// <returns></returns>
+    public InventoryState GetResourceState(string resourceName)
+    {
+        InventoryState state = default;
+        foreach (var inventory in processor.inventories)
+            state = state.Merge(inventory.State);
+        return state;
+    }
+
+    /// <summary>
     /// Add a new converter that doesn't correspond to any part modules on the
     /// vessel.
     /// </summary>
@@ -173,6 +186,8 @@ public sealed class BackgroundResourceProcessor : VesselModule
     /// </remarks>
     public int AddConverter(Core.ResourceConverter converter)
     {
+        converter.Behaviour.Vessel = Vessel;
+
         var index = processor.converters.Count;
         processor.converters.Add(converter);
         return index;

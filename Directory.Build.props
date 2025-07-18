@@ -23,22 +23,26 @@
         <BinariesOutputRelativePath>GameData\BackgroundResourceProcessing\Plugins</BinariesOutputRelativePath>
     </PropertyGroup>
 
-    <Choose>
-        <When Condition=" '$(SolutionDir)' == '' ">
-            <!--
-                KSPBuildTools relies on these properties. However, they aren't
-                set when not doing a whole solution build. In that case we make
-                things work by defining them ourselves.
-            -->
-            <PropertyGroup>
-                <SolutionDir>$(ProjectRootDir)</SolutionDir>
-                <SolutionName>BackgroundResourceProcessing</SolutionName>
-                <SolutionExt>.sln</SolutionExt>
-                <SolutionFileName>$(SolutionName)$(SolutionExt)</SolutionFileName>
-                <SolutionPath>$(SolutionDir)/$(SolutionFileName)</SolutionPath>
-            </PropertyGroup>
-        </When>
-    </Choose>
+    <Import
+        Condition=" Exists('$(SolutionDir)/$(SolutionName).props.user') "
+        Project="$(SolutionDir)/$(SolutionName).props.user" />
+
+    <PropertyGroup Condition=" '$(DirectlyLoadPlugins)' == 'true' ">
+        <DefineConstants>DIRECT_PLUGIN_LOAD;$(DefineConstants)</DefineConstants>
+    </PropertyGroup>
+
+    <!--
+        KSPBuildTools relies on these properties. However, they aren't
+        set when not doing a whole solution build. In that case we make
+        things work by defining them ourselves.
+    -->
+    <PropertyGroup Condition=" '$(SolutionDir)' == '' ">
+        <SolutionDir>$(ProjectRootDir)</SolutionDir>
+        <SolutionName>BackgroundResourceProcessing</SolutionName>
+        <SolutionExt>.sln</SolutionExt>
+        <SolutionFileName>$(SolutionName)$(SolutionExt)</SolutionFileName>
+        <SolutionPath>$(SolutionDir)/$(SolutionFileName)</SolutionPath>
+    </PropertyGroup>
 
     <!--
         The rest of this here is copied from KSPBuildTools.
@@ -62,18 +66,12 @@
         <KSPExecutable Condition="$([MSBuild]::IsOsPlatform('Linux'))">KSP.x86_64</KSPExecutable>
 
         <!-- Directories to check for the default steam installation -->
-        <SteamKSPRoot Condition="($([MSBuild]::IsOsPlatform('Windows')))">C:\Program Files
-            (x86)\Steam\steamapps\common\Kerbal Space Program</SteamKSPRoot>
-        <SteamKSPRoot Condition="($([MSBuild]::IsOsPlatform('OSX')))">$(HOME)/Library/Application
-            Support/Steam/steamapps/common/Kerbal Space Program</SteamKSPRoot>
+        <SteamKSPRoot Condition="($([MSBuild]::IsOsPlatform('Windows')))">C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program</SteamKSPRoot>
+        <SteamKSPRoot Condition="($([MSBuild]::IsOsPlatform('OSX')))">$(HOME)/Library/Application Support/Steam/steamapps/common/Kerbal Space Program</SteamKSPRoot>
 
         <RepoRootPath>$(ProjectRootDir)</RepoRootPath>
         <BinariesOutputRelativePath>GameData/$(SolutionName)/Plugins</BinariesOutputRelativePath>
     </PropertyGroup>
-
-    <Import
-        Condition=" Exists('$(SolutionDir)/$(SolutionName).props.user') "
-        Project="$(SolutionDir)/$(SolutionName).props.user" />
 
     <!-- Source KSP root from an env variable in CI -->
     <PropertyGroup Condition=" '$(KSPRoot)' == '' And '$(KSP_ROOT)' != '' ">

@@ -39,6 +39,7 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
         ),
     ];
 
+#if !DIRECT_PLUGIN_LOAD
     void Awake()
     {
         string pluginDir = GetPluginDirectory();
@@ -99,6 +100,7 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
         foreach (var loaded in list)
             StartAssemblyAddons(loaded);
     }
+#endif
 
     void Start()
     {

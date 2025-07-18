@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
-using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib;
 using LifeSupport;
@@ -148,13 +147,13 @@ public static class LifeSupportMonitor_GetVesselStats_Patch
         if (module == null)
             return;
 
-        if (module.EcConverterIndex < 0 || module.SupplyConverterIndex < 0)
-            return;
-
         var original = processor.Converters;
 
         var simulator = processor.GetSimulator();
         var converters = simulator.Converters;
+
+        if (module.EcConverterIndex < 0 || module.SupplyConverterIndex < 0)
+            return;
 
         var ec = converters[module.EcConverterIndex];
         var supply = converters[module.SupplyConverterIndex];
@@ -200,5 +199,33 @@ public static class LifeSupportMonitor_GetVesselStats_Patch
             suppliesTimeLeft = supplyEffectTime - now;
             ecTimeLeft = ecEffectTime - now;
         }
+    }
+}
+
+[HarmonyPatch(typeof(LifeSupportMonitor))]
+[HarmonyPatch("GetResourceInVessel")]
+public static class LifeSupportMonitor_GetResourceInVessel_Patch
+{
+    static bool Prefix(ref double __result, Vessel vessel, string resourceName)
+    {
+        var settings = HighLogic.CurrentGame?.Parameters.CustomParams<Settings>();
+        if (!(settings?.EnableUSILSIntegration ?? false))
+            return true;
+
+        if (vessel == null)
+            return true;
+
+        if (vessel.loaded)
+            return true;
+
+        var processor = vessel.FindVesselModuleImplementing<BackgroundResourceProcessor>();
+        if (processor == null)
+            return true;
+
+        processor.UpdateBackgroundState();
+        var state = processor.GetResourceState(resourceName);
+        __result = state.amount;
+
+        return false;
     }
 }

@@ -60,14 +60,9 @@ public class ModuleBackgroundUSILifeSupport : VesselModule
     [KSPField(isPersistant = true)]
     public int SupplyConverterIndex = -1;
 
-    public ModuleLifeSupportSystem LifeSupport = null;
-
-    protected override void OnStart()
-    {
-        base.OnStart();
-
-        LifeSupport = vessel.FindVesselModuleImplementing<ModuleLifeSupportSystem>();
-    }
+    public ModuleLifeSupportSystem LifeSupport =>
+        _lifeSupport ??= vessel.FindVesselModuleImplementing<ModuleLifeSupportSystem>();
+    private ModuleLifeSupportSystem _lifeSupport = null;
 
     internal void OnRecord(BackgroundResourceProcessor processor)
     {
@@ -76,7 +71,6 @@ public class ModuleBackgroundUSILifeSupport : VesselModule
         if (!IsEnabled())
             return;
 
-        LifeSupport ??= Vessel.FindVesselModuleImplementing<ModuleLifeSupportSystem>();
         if (LifeSupport == null)
             return;
 
@@ -130,7 +124,6 @@ public class ModuleBackgroundUSILifeSupport : VesselModule
         if (!IsEnabled())
             return;
 
-        LifeSupport ??= Vessel.FindVesselModuleImplementing<ModuleLifeSupportSystem>();
         if (LifeSupport == null)
             return;
 
@@ -160,7 +153,6 @@ public class ModuleBackgroundUSILifeSupport : VesselModule
     {
         var now = Planetarium.GetUniversalTime();
         var manager = LifeSupportManager.Instance;
-        var crew = Vessel.GetVesselCrew();
 
         // We specifically update LastUpdateTime but not _lastProcessingTime so
         // that the module goes through the appropriate long-update checks.
@@ -172,7 +164,7 @@ public class ModuleBackgroundUSILifeSupport : VesselModule
         //       without ec/supplies. We likely want to apply permanent statuses
         //       (e.g. KIA, MIA, wandered back to KSC) even if the supply
         //       situation is OK now.
-        foreach (var kerbal in crew)
+        foreach (var kerbal in Vessel.GetVesselCrew())
         {
             var trackedKerbal = manager.FetchKerbal(kerbal);
 
