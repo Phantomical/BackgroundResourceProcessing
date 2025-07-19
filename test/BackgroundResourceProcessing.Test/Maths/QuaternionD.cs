@@ -82,8 +82,8 @@ public class QuaternionDTests
         var y = q.Rotate(new(0, 1, 0));
         var z = q.Rotate(new(0, 0, 1));
 
-        AssertUtils.AreEqual(new(0, 0, -1), x);
+        AssertUtils.AreEqual(new(0, 0, 1), x);
         AssertUtils.AreEqual(new(0, 1, 0), y);
-        AssertUtils.AreEqual(new(1, 0, 0), z);
+        AssertUtils.AreEqual(new(-1, 0, 0), z);
     }
 }

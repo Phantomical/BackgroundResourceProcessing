@@ -126,41 +126,12 @@ internal struct QuaternionD(double r, Vector3d v)
     /// <returns></returns>
     public static QuaternionD FromBasis(Vector3d x, Vector3d y, Vector3d z)
     {
-        return FromUnity(new UnityEngine.QuaternionD(x, y, z));
-
-        // // See: https://en.wikipedia.org/wiki/Rotation_matrix#Quaternion
-
-        // var t = x.x + y.y + z.z;
-
-        // if (t >= 0)
-        // {
-        //     var r = Math.Sqrt(1 + t);
-        //     var s = 0.5 / r;
-
-        //     return new QuaternionD(
-        //         0.5 * r,
-        //         s * (z.y - y.z),
-        //         s * (x.z - z.x),
-        //         s * (y.x - x.y)
-        //     ).Normalized();
-        // }
-        // else
-        // {
-        //     var r = Math.Sqrt(1 + x.x - y.y - z.z);
-        //     var s = 0.5 / r;
-
-        //     return new QuaternionD(
-        //         s * (z.y - y.z),
-        //         0.5 * r,
-        //         s * (x.y + y.x),
-        //         s * (z.x + x.z)
-        //     ).Normalized();
-        // }
+        return ToBasis(x, y, z).Inverse();
     }
 
     public static QuaternionD ToBasis(Vector3d x, Vector3d y, Vector3d z)
     {
-        return FromBasis(x, y, z).Inverse();
+        return FromUnity(new UnityEngine.QuaternionD(x, y, z));
     }
 
     public static QuaternionD FromUnity(UnityEngine.QuaternionD q)
