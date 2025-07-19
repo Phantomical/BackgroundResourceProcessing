@@ -59,7 +59,7 @@ public class BackgroundGenericConverter : BackgroundConverter
     [KSPField]
     public string RequirementsField = null;
 
-    private ModuleFilter activeCondition = ModuleFilter.Always;
+    private ConditionalExpression activeCondition = ConditionalExpression.Always;
     private List<ConverterMultiplier> multipliers;
     private MemberInfo lastUpdateMember;
     private MemberInfo inputsMember;
@@ -68,7 +68,7 @@ public class BackgroundGenericConverter : BackgroundConverter
 
     public override ModuleBehaviour GetBehaviour(PartModule module)
     {
-        if (!activeCondition.Invoke(module))
+        if (!activeCondition.Evaluate(module))
             return null;
 
         IEnumerable<ResourceRatio> inputs;
@@ -175,7 +175,7 @@ public class BackgroundGenericConverter : BackgroundConverter
         multipliers = ConverterMultiplier.LoadAll(target, node);
 
         if (ActiveCondition != null)
-            activeCondition = ModuleFilter.Compile(ActiveCondition, node);
+            activeCondition = ConditionalExpression.Compile(ActiveCondition, node);
         if (LastUpdateField != null)
             lastUpdateMember = GetTypedMember<double>(target, LastUpdateField, Access.Write);
         if (InputsField != null)
@@ -312,23 +312,5 @@ public class BackgroundGenericConverter : BackgroundConverter
             propertyInfo.SetValue(obj, value);
         else
             throw new NotImplementedException();
-    }
-
-    private struct Mult()
-    {
-        public ModuleFilter Condition;
-        public double Multiplier = 1.0;
-
-        static Mult Load(ConfigNode node)
-        {
-            var mult = new Mult();
-            node.TryGetValue("Multiplier", ref mult.Multiplier);
-
-            string Condition = null;
-            if (node.TryGetValue("Condition", ref Condition))
-                mult.Condition = ModuleFilter.Compile(Condition, node);
-
-            return mult;
-        }
     }
 }

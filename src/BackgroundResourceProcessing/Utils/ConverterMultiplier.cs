@@ -12,13 +12,13 @@ namespace BackgroundResourceProcessing.Utils;
 /// </remarks>
 public struct ConverterMultiplier()
 {
-    ModuleFilter condition = ModuleFilter.Always;
-    FieldExtractor<double> field;
+    ConditionalExpression condition = ConditionalExpression.Always;
+    FieldExtractor<double> field = null;
     double value = 1.0;
 
     public readonly double Evaluate(PartModule module)
     {
-        if (!condition.Invoke(module))
+        if (!condition.Evaluate(module))
             return 1.0;
 
         double mult = value;
@@ -41,7 +41,7 @@ public struct ConverterMultiplier()
         if (field != null)
             mult.field = new(target, field, 1.0);
         if (condition != null)
-            mult.condition = ModuleFilter.Compile(condition, node);
+            mult.condition = ConditionalExpression.Compile(condition, node);
 
         return mult;
     }

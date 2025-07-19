@@ -26,12 +26,12 @@ public class BackgroundConstantConverter : BackgroundConverter
     [KSPField]
     public bool PullFromLocalBackgroundInventory = false;
 
-    private ModuleFilter activeCondition;
+    private ConditionalExpression activeCondition;
     private List<ConverterMultiplier> multipliers = [];
 
     public override ModuleBehaviour GetBehaviour(PartModule module)
     {
-        if (!activeCondition.Invoke(module))
+        if (!activeCondition.Evaluate(module))
             return null;
 
         IEnumerable<ResourceRatio> inputs = this.inputs;
@@ -72,7 +72,7 @@ public class BackgroundConstantConverter : BackgroundConverter
         base.OnLoad(node);
 
         var target = GetTargetType(node);
-        activeCondition = ModuleFilter.Compile(ActiveCondition, node);
+        activeCondition = ConditionalExpression.Compile(ActiveCondition, node);
         multipliers = ConverterMultiplier.LoadAll(target, node);
 
         inputs.AddRange(ConfigUtil.LoadInputResources(node));

@@ -17,7 +17,7 @@ public sealed class BackgroundMultiConverter : BackgroundConverter
         for (int i = 0; i < options.Count; ++i)
         {
             var option = options[i];
-            if (!option.condition.Invoke(module))
+            if (!option.condition.Evaluate(module))
                 continue;
 
             LogUtil.Debug(() =>
@@ -41,10 +41,10 @@ public sealed class BackgroundMultiConverter : BackgroundConverter
             {
                 child.SetValue("name", name, createIfNotFound: true);
 
-                ModuleFilter filter = ModuleFilter.Always;
+                ConditionalExpression filter = ConditionalExpression.Always;
                 string condition = null;
                 if (child.TryGetValue("condition", ref condition))
-                    filter = ModuleFilter.Compile(condition, child);
+                    filter = ConditionalExpression.Compile(condition, child);
 
                 var converter = Load(child);
 
@@ -59,7 +59,7 @@ public sealed class BackgroundMultiConverter : BackgroundConverter
 
     private struct ConverterEntry
     {
-        public ModuleFilter condition;
+        public ConditionalExpression condition;
         public BackgroundConverter converter;
     }
 }

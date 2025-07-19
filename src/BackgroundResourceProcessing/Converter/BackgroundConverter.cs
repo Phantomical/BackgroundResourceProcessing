@@ -166,7 +166,7 @@ public abstract class BackgroundConverter : IRegistryItem
     {
         foreach (var priority in priorities)
         {
-            if (priority.Condition.Invoke(module))
+            if (priority.Condition.Evaluate(module))
                 return priority.Value;
         }
 
@@ -238,7 +238,7 @@ public abstract class BackgroundConverter : IRegistryItem
 
     private struct PriorityBlock()
     {
-        public ModuleFilter Condition = ModuleFilter.Always;
+        public ConditionalExpression Condition = ConditionalExpression.Always;
         public int Value = 0;
 
         public static PriorityBlock Load(ConfigNode node)
@@ -248,7 +248,7 @@ public abstract class BackgroundConverter : IRegistryItem
 
             string condition = null;
             if (node.TryGetValue("Condition", ref condition))
-                block.Condition = ModuleFilter.Compile(condition, node);
+                block.Condition = ConditionalExpression.Compile(condition, node);
 
             return block;
         }

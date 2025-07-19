@@ -59,7 +59,7 @@ public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
     /// Defaults to false if <c>UsePreparedRecipe</c> is true, and true
     /// otherwise.
     /// </summary>
-    private ModuleFilter? UseEfficiencyBonus = null;
+    private ConditionalExpression? UseEfficiencyBonus = null;
 
     private List<ConverterMultiplier> multipliers;
 
@@ -91,7 +91,7 @@ public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
             takeAmount = recipe.TakeAmount;
 
             useEfficiencyBonus =
-                UseEfficiencyBonus?.Invoke(module)
+                UseEfficiencyBonus?.Evaluate(module)
                 ?? (bool)PreCalculateEfficiencyField.GetValue(module);
         }
         else
@@ -103,7 +103,7 @@ public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
             fillAmount = module.FillAmount;
             takeAmount = module.TakeAmount;
 
-            useEfficiencyBonus = UseEfficiencyBonus?.Invoke(module) ?? true;
+            useEfficiencyBonus = UseEfficiencyBonus?.Evaluate(module) ?? true;
 
             if (ConvertByMass(module))
             {
@@ -284,7 +284,7 @@ public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
 
         string useEfficiencyBonus = null;
         if (node.TryGetValue("UseEfficiencyBonus", ref useEfficiencyBonus))
-            UseEfficiencyBonus = ModuleFilter.Compile(useEfficiencyBonus, node);
+            UseEfficiencyBonus = ConditionalExpression.Compile(useEfficiencyBonus, node);
 
         var target = GetTargetType(node);
         multipliers = ConverterMultiplier.LoadAll(target, node);
