@@ -6,7 +6,11 @@ namespace BackgroundResourceProcessing.Utils;
 /// <summary>
 /// A multiplier that can optionally be applied to a converter.
 /// </summary>
-internal struct ConverterMultiplier()
+///
+/// <remarks>
+/// This corresponds to the `MULTIPLIER` block in the documentation.
+/// </remarks>
+public struct ConverterMultiplier()
 {
     ModuleFilter condition = ModuleFilter.Always;
     FieldExtractor<double> field;
