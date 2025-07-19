@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Kopernicus.Components;
@@ -19,7 +18,7 @@ public class KopernicusStarProvider : ShadowState.IStarProvider
         List<KopernicusStar> stars = [.. KopernicusStar.Stars];
 
         // Remove all stars that are too weak for us to bother with.
-        stars.RemoveAll(star => ComputeStellarFlux(star, vessel) < FluxCutoff);
+        stars.RemoveAll(star => ComputeStellarFluxFactor(star, vessel) < FluxCutoff);
 
         // Sort the stars by descending order of solar flux.
         stars.Sort(new StarComparer(vessel));
@@ -27,23 +26,29 @@ public class KopernicusStarProvider : ShadowState.IStarProvider
         return [.. stars.Select(star => star.sun)];
     }
 
-    public static double ComputeStellarFlux(KopernicusStar star, Vessel vessel)
+    public static double ComputeStellarFluxFactor(KopernicusStar star, Vessel vessel)
     {
         var body = star.sun;
         var spos = body.position;
         var vpos = vessel.vesselTransform.position;
 
+        // Kopernicus' solarLuminosity is actually the equivalent for KSP's
+        // SolarLuminosityAtHome. We just need to compute the luminosity ratios
+        // and distance ratios to get the solar flux multiplication factor.
         var distance = (spos - vpos).magnitude - body.Radius;
+        var homeBodySMA = KopernicusStar.HomeBodySMA;
+        var distanceRatio = homeBodySMA / distance;
+        var luminosityRatio = star.shifter.solarLuminosity / PhysicsGlobals.SolarLuminosityAtHome;
 
-        return star.shifter.solarLuminosity / (4 * Math.PI * distance * distance);
+        return luminosityRatio * distanceRatio * distanceRatio;
     }
 
     private struct StarComparer(Vessel vessel) : IComparer<KopernicusStar>
     {
         public readonly int Compare(KopernicusStar x, KopernicusStar y)
         {
-            double xFlux = ComputeStellarFlux(x, vessel);
-            double yFlux = ComputeStellarFlux(y, vessel);
+            double xFlux = ComputeStellarFluxFactor(x, vessel);
+            double yFlux = ComputeStellarFluxFactor(y, vessel);
 
             return -xFlux.CompareTo(yFlux);
         }
