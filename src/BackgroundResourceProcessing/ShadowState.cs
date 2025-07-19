@@ -16,13 +16,7 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
 
     public static ShadowState AlwaysInShadow() => new(double.PositiveInfinity, true);
 
-    static ShadowState DefaultForStar(CelestialBody star)
-    {
-        if (star == null)
-            return AlwaysInShadow();
-        return AlwaysInSun(star);
-    }
-
+    #region StarProvider
     public interface IStarProvider
     {
         /// <summary>
@@ -38,7 +32,24 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         List<CelestialBody> GetRelevantStars(Vessel vessel);
     }
 
+    private class KSPStarProvider : IStarProvider
+    {
+        public List<CelestialBody> GetRelevantStars(Vessel vessel)
+        {
+            return [Planetarium.fetch.Sun];
+        }
+    }
+
     public static IStarProvider StarProvider = new KSPStarProvider();
+    #endregion
+
+    #region Shadow State Computations
+    static ShadowState DefaultForStar(CelestialBody star)
+    {
+        if (star == null)
+            return AlwaysInShadow();
+        return AlwaysInSun(star);
+    }
 
     public static ShadowState GetShadowState(Vessel vessel)
     {
@@ -157,13 +168,39 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
 
         return new() { parent = parent, planet = planet };
     }
+    #endregion
 
-    private class KSPStarProvider : IStarProvider
+    public static ShadowState? Load(ConfigNode node)
     {
-        public List<CelestialBody> GetRelevantStars(Vessel vessel)
+        ShadowState state = default;
+        if (!node.TryGetValue("NextTerminatorEstimate", ref state.NextTerminatorEstimate))
+            return null;
+        if (!node.TryGetValue("InShadow", ref state.InShadow))
+            return null;
+
+        if (!state.InShadow)
         {
-            return [Planetarium.fetch.Sun];
+            string star = null;
+            if (!node.TryGetValue("Star", ref star))
+                return null;
+
+            var body = PSystemManager.Instance?.localBodies?.Find(body =>
+                body.isStar && body.bodyName == star
+            );
+            if (body == null)
+                return null;
+            state.Star = body;
         }
+
+        return state;
+    }
+
+    public readonly void Save(ConfigNode node)
+    {
+        node.AddValue("NextTerminatorEstimate", NextTerminatorEstimate);
+        node.AddValue("InShadow", InShadow);
+        if (Star != null)
+            node.AddValue("Star", Star.bodyName);
     }
 
     private struct ReferenceBodies

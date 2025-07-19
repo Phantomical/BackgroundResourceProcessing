@@ -1,28 +1,34 @@
+using System;
 using BackgroundResourceProcessing.Behaviour;
 using BackgroundResourceProcessing.Converter;
 using Kopernicus.Components;
 
 namespace BackgroundResourceProcessing.Integration.Kopernicus;
 
-public class BackgroundKopernicusSolarPanel : BackgroundConverter<KopernicusSolarPanel>
+public class KopernicusSolarPanelBehaviour : SolarPanelBehaviour
 {
-    public override ModuleBehaviour GetBehaviour(KopernicusSolarPanel panel)
+    protected override double GetSolarFluxFactor(VesselState state)
     {
-        // TODO:
-        //  - Support alternating between 0 and flowRate when going into and
-        //    out of planet shadows.
-        //  - Compute a non-zero background rate when in shadow.
-        //  - Be smarter when landed on a planet.
-        if (panel.currentOutput == 0)
-            return null;
+        if (state.ShadowState.Star == null)
+            return 0;
 
-        var ratio = new ResourceRatio()
-        {
-            Ratio = panel.currentOutput,
-            ResourceName = "ElectricCharge",
-            FlowMode = ResourceFlowMode.ALL_VESSEL_BALANCE,
-        };
+        // Kopernicus' solarLuminosity is actually the equivalent for KSP's
+        // SolarLuminosityAtHome. We just need to compute the luminosity ratios
+        // and distance ratios to get the solar flux multiplication factor.
+        var distance = GetSolarDistance(state);
+        var kstar = KopernicusStar.CelestialBodies[state.ShadowState.Star];
+        var homeBodySMA = KopernicusStar.HomeBodySMA;
+        var distanceRatio = homeBodySMA / distance;
+        var luminosityRatio = kstar.shifter.solarLuminosity / PhysicsGlobals.SolarLuminosityAtHome;
 
-        return new(new ConstantProducer([ratio]));
+        return luminosityRatio * distanceRatio * distanceRatio;
+    }
+}
+
+public class BackgroundKopernicusSolarPanel : BackgroundSolarPanel
+{
+    protected override SolarPanelBehaviour ConstructBehaviour(ModuleDeployableSolarPanel panel)
+    {
+        return new KopernicusSolarPanelBehaviour();
     }
 }

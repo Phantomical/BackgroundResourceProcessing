@@ -72,7 +72,7 @@ public class SolarPanelBehaviour : ConverterBehaviour
     public override ConverterResources GetResources(VesselState state)
     {
         double rate = ChargeRate;
-        if (state.IsInShadow)
+        if (state.ShadowState.InShadow)
         {
             rate = 0.0;
         }
@@ -83,12 +83,12 @@ public class SolarPanelBehaviour : ConverterBehaviour
         }
         else
         {
-            rate *= GetSolarFlux(state) / PhysicsGlobals.SolarLuminosityAtHome;
+            rate *= GetSolarFluxFactor(state);
         }
 
         var efficiencyCh = GetTimeEfficiencyChangepoint(state);
         var powerCh = GetPowerChangepoint(state);
-        var shadowCh = state.NextTerminatorEstimate;
+        var shadowCh = state.ShadowState.NextTerminatorEstimate;
         var changepoint = Math.Min(Math.Min(efficiencyCh, powerCh), shadowCh);
 
         var resources = new ConverterResources
@@ -109,8 +109,8 @@ public class SolarPanelBehaviour : ConverterBehaviour
 
     protected virtual double GetSolarDistance(VesselState state)
     {
-        var sun = Planetarium.fetch.Sun;
-        return (sun.position - Vessel.vesselTransform.position).magnitude;
+        var star = state.ShadowState.Star;
+        return (star.position - Vessel.vesselTransform.position).magnitude - star.Radius;
     }
 
     /// <summary>
@@ -118,9 +118,11 @@ public class SolarPanelBehaviour : ConverterBehaviour
     /// </summary>
     /// <param name="state"></param>
     /// <returns></returns>
-    protected virtual double GetSolarFlux(VesselState state)
+    protected virtual double GetSolarFluxFactor(VesselState state)
     {
-        return Vessel.solarFlux;
+        var distance = GetSolarDistance(state);
+        return PhysicsGlobals.SolarLuminosity
+            / (4 * Math.PI * distance * distance * PhysicsGlobals.SolarLuminosityAtHome);
     }
 
     /// <summary>

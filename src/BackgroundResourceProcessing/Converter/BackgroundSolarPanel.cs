@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using System.Reflection;
 using BackgroundResourceProcessing.Behaviour;
 using UnityEngine;
@@ -122,6 +121,9 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
                 // can't constrain this check to only when splashed.
                 power *= GetSubmergedFactor(panel);
 
+                if (vessel.mainBody.atmosphere)
+                    power *= GetAtmosphericAttenuationFactor(panel);
+
                 break;
 
             default:
@@ -131,7 +133,7 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
         if (power == 0.0)
             return null;
 
-        var behaviour = new SolarPanelBehaviour();
+        var behaviour = ConstructBehaviour(panel);
         if (panel.useCurve)
             behaviour.PowerCurve = panel.powerCurve;
         behaviour.TimeEfficiencyCurve = panel.timeEfficCurve;
@@ -143,6 +145,11 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
         behaviour.ChargeRate = power;
 
         return new(behaviour);
+    }
+
+    protected virtual SolarPanelBehaviour ConstructBehaviour(ModuleDeployableSolarPanel panel)
+    {
+        return new SolarPanelBehaviour();
     }
 
     /// <summary>
@@ -243,6 +250,17 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
             return UtilMath.LerpUnclamped(1.0, attenuation, panel.part.submergedPortion);
         else
             return attenuation;
+    }
+
+    /// <summary>
+    /// Get the average factor by which sunlight is attenuated by the
+    /// atmosphere across the day.
+    /// </summary>
+    /// <param name="panel"></param>
+    /// <returns></returns>
+    public virtual double GetAtmosphericAttenuationFactor(ModuleDeployableSolarPanel panel)
+    {
+        return 1.0;
     }
 
     /// <summary>

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Runtime.InteropServices;
 using BackgroundResourceProcessing.Addons;
 using BackgroundResourceProcessing.Converter;
 using BackgroundResourceProcessing.Core;
@@ -262,13 +263,7 @@ public sealed class BackgroundResourceProcessor : VesselModule
     {
         base.OnSave(node);
         processor.Save(node);
-
-        if (ShadowState != null)
-        {
-            var state = ShadowState.Value;
-            node.AddValue("NextTerminatorEstimate", state.NextTerminatorEstimate);
-            node.AddValue("InShadow", state.InShadow);
-        }
+        ShadowState?.Save(node.AddNode("SHADOW_STATE"));
     }
 
     protected override void OnLoad(ConfigNode node)
@@ -276,13 +271,9 @@ public sealed class BackgroundResourceProcessor : VesselModule
         base.OnLoad(node);
         processor.Load(node, Vessel);
 
-        double NextTerminatorEstimate = 0;
-        bool InShadow = false;
-        if (
-            node.TryGetValue("NextTerminatorEstimate", ref NextTerminatorEstimate)
-            && node.TryGetValue("InShadow", ref InShadow)
-        )
-            ShadowState = new(NextTerminatorEstimate, InShadow);
+        ConfigNode shadow = null;
+        if (node.TryGetNode("SHADOW_STATE", ref shadow))
+            ShadowState = Shadow.Load(shadow);
 
         foreach (var converter in processor.converters)
             converter.Behaviour?.Vessel = vessel;
@@ -379,6 +370,9 @@ public sealed class BackgroundResourceProcessor : VesselModule
         // we need to do here.
         if (processor.lastUpdate == currentTime)
             return;
+
+        ShadowState = Shadow.GetShadowState(vessel);
+        state.SetShadowState((Shadow)ShadowState);
 
         processor.RecordVesselState(vessel, currentTime);
         onVesselRecord.Fire(this);
