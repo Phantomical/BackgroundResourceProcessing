@@ -121,7 +121,7 @@ public abstract class BackgroundInventory : IRegistryItem
         inventory.amount += update.Delta;
     }
 
-    public virtual void Load(ConfigNode node)
+    protected virtual void OnLoad(ConfigNode node)
     {
         fields.Load(node);
     }
@@ -136,9 +136,19 @@ public abstract class BackgroundInventory : IRegistryItem
         return GetInventoryForType(module.GetType());
     }
 
+    public static Type GetTargetType(ConfigNode node)
+    {
+        return Converter.BackgroundConverter.GetTargetType(node);
+    }
+
     internal static void LoadAll()
     {
         registry.LoadAll();
+    }
+
+    void IRegistryItem.OnLoad(ConfigNode node)
+    {
+        OnLoad(node);
     }
 }
 
@@ -201,6 +211,21 @@ public abstract class BackgroundInventory<T> : BackgroundInventory
     {
         LogUtil.Error(
             $"{GetType().Name}: Expected a part module derived from {typeof(T).Name} but got {module.GetType().Name} instead"
+        );
+    }
+
+    protected override void OnLoad(ConfigNode node)
+    {
+        base.OnLoad(node);
+
+        var target = GetTargetType(node);
+        if (typeof(T) == target)
+            return;
+        if (target.IsSubclassOf(typeof(T)))
+            return;
+
+        LogUtil.Error(
+            $"{GetType().Name}: Adapter expected a type derived from {typeof(T).Name} but {target.Name} is not"
         );
     }
 }

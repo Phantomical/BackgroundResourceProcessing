@@ -149,6 +149,13 @@ public readonly struct ConditionalExpression
                     .Where(prop => prop.GetIndexParameters().Length == 1);
                 var indexType = index.GetType();
 
+                var exactMatch = indexers
+                    .Where(prop => prop.GetIndexParameters()[0].ParameterType == indexType)
+                    .FirstOrDefault();
+
+                if (exactMatch != null)
+                    return exactMatch.GetGetMethod().Invoke(obj, [index]);
+
                 foreach (var indexer in indexers)
                 {
                     var param = indexer.GetIndexParameters()[0];
@@ -251,12 +258,7 @@ public readonly struct ConditionalExpression
 
         public static object DoBoolNot(object obj)
         {
-            if (obj is bool b)
-                return !b;
-
-            throw new EvaluationException(
-                $"Cannot use operator ! on a value of type {obj.GetType()}"
-            );
+            return !CoerceToBool(obj);
         }
 
         public static object DoBitNot(object obj)
@@ -318,6 +320,9 @@ public readonly struct ConditionalExpression
 
         public static object DoAdd(object a, object b)
         {
+            if (a is string sa && b is string sb)
+                return sa + sb;
+
             return PromoteToDouble(a) + PromoteToDouble(b);
         }
 
@@ -333,12 +338,7 @@ public readonly struct ConditionalExpression
 
         public static object DoXor(object a, object b)
         {
-            if (a is bool ba && b is bool bb)
-                return ba ^ bb;
-
-            throw new EvaluationException(
-                $"operator ^ is only implemented for booleans, not types {a.GetType().Name} and {b.GetType().Name}"
-            );
+            return CoerceToBool(a) ^ CoerceToBool(b);
         }
 
         public static int DoCompareTo(object a, object b)

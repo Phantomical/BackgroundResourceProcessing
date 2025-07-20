@@ -14,8 +14,7 @@ public class BackgroundConstantConverter : BackgroundConverter
     public List<ResourceRatio> outputs = [];
     public List<ResourceConstraint> required = [];
 
-    [KSPField]
-    public string ActiveCondition = "true";
+    public ConditionalExpression ActiveCondition = ConditionalExpression.Always;
 
     [KSPField]
     public bool ConvertByMass = false;
@@ -26,12 +25,11 @@ public class BackgroundConstantConverter : BackgroundConverter
     [KSPField]
     public bool PullFromLocalBackgroundInventory = false;
 
-    private ConditionalExpression activeCondition;
     private List<ConverterMultiplier> multipliers = [];
 
     public override ModuleBehaviour GetBehaviour(PartModule module)
     {
-        if (!activeCondition.Evaluate(module))
+        if (!ActiveCondition.Evaluate(module))
             return null;
 
         IEnumerable<ResourceRatio> inputs = this.inputs;
@@ -56,7 +54,7 @@ public class BackgroundConstantConverter : BackgroundConverter
         }
 
         var behaviour = new ModuleBehaviour(
-            new ConstantConverter(inputs.ToList(), outputs.ToList(), required.ToList())
+            new ConstantConverter([.. inputs], [.. outputs], [.. required])
         );
 
         if (PushToLocalBackgroundInventory)
@@ -72,7 +70,10 @@ public class BackgroundConstantConverter : BackgroundConverter
         base.OnLoad(node);
 
         var target = GetTargetType(node);
-        activeCondition = ConditionalExpression.Compile(ActiveCondition, node);
+
+        if (node.TryGetCondition2(nameof(ActiveCondition), out var activeCondition))
+            ActiveCondition = activeCondition;
+
         multipliers = ConverterMultiplier.LoadAll(target, node);
 
         inputs.AddRange(ConfigUtil.LoadInputResources(node));

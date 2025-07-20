@@ -20,8 +20,7 @@ public class BackgroundGenericConverter : BackgroundConverter
     /// A condition to evaluate to determine whether this converter should
     /// be active. This can be any target filter expression.
     /// </summary>
-    [KSPField]
-    public string ActiveCondition = null;
+    public ConditionalExpression ActiveCondition = ConditionalExpression.Always;
 
     /// <summary>
     /// The name of a field to update with <c>Planetarium.GetUniversalTime()</c>
@@ -65,7 +64,6 @@ public class BackgroundGenericConverter : BackgroundConverter
     [KSPField]
     public ResourceFlowMode? OverrideFlowMode = null;
 
-    private ConditionalExpression activeCondition = ConditionalExpression.Always;
     private List<ConverterMultiplier> multipliers;
     private MemberInfo lastUpdateMember;
     private MemberInfo inputsMember;
@@ -74,7 +72,7 @@ public class BackgroundGenericConverter : BackgroundConverter
 
     public override ModuleBehaviour GetBehaviour(PartModule module)
     {
-        if (!activeCondition.Evaluate(module))
+        if (!ActiveCondition.Evaluate(module))
             return null;
 
         IEnumerable<ResourceRatio> inputs;
@@ -165,15 +163,10 @@ public class BackgroundGenericConverter : BackgroundConverter
     {
         base.OnLoad(node);
 
-        string name = null;
-        if (!node.TryGetValue("name", ref name))
-            return;
-
         var target = GetTargetType(node);
         multipliers = ConverterMultiplier.LoadAll(target, node);
 
-        if (ActiveCondition != null)
-            activeCondition = ConditionalExpression.Compile(ActiveCondition, node);
+        node.TryGetCondition(nameof(ActiveCondition), ref ActiveCondition);
         if (LastUpdateField != null)
             lastUpdateMember = GetTypedMember<double>(target, LastUpdateField, Access.Write);
         if (InputsField != null)

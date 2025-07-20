@@ -10,7 +10,7 @@ namespace BackgroundResourceProcessing.Utils;
 
 internal interface IRegistryItem
 {
-    void Load(ConfigNode node);
+    void OnLoad(ConfigNode node);
 }
 
 internal class TypeRegistry<T>(string nodeName)
@@ -93,7 +93,7 @@ internal class TypeRegistry<T>(string nodeName)
         try
         {
             T instance = (T)Activator.CreateInstance(adapterType);
-            instance.Load(node);
+            instance.OnLoad(node);
             return new(moduleType, instance);
         }
         catch (Exception e)

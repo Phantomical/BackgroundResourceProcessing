@@ -28,9 +28,9 @@ public sealed class BackgroundEmptyInventory : BackgroundInventory
 
     public override void UpdateResource(PartModule module, ResourceInventory inventory) { }
 
-    public override void Load(ConfigNode node)
+    protected override void OnLoad(ConfigNode node)
     {
-        base.Load(node);
+        base.OnLoad(node);
 
         ResourceNames = [.. node.GetValues("ResourceName")];
         ResourceNames.Sort();

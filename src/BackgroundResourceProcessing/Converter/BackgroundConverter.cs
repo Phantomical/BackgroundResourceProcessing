@@ -173,7 +173,7 @@ public abstract class BackgroundConverter : IRegistryItem
         return 0;
     }
 
-    void IRegistryItem.Load(ConfigNode node)
+    void IRegistryItem.OnLoad(ConfigNode node)
     {
         OnLoad(node);
     }
@@ -226,7 +226,7 @@ public abstract class BackgroundConverter : IRegistryItem
         var type = AssemblyLoader.GetClassByName(typeof(PartModule), name);
         if (type == null)
             throw new NullReferenceException(
-                $"GetTargetType: No BackgroundConverter type exists with name `{name}`"
+                $"GetTargetType: No PartModule type exists with name `{name}`"
             );
         return type;
     }
@@ -293,6 +293,21 @@ public abstract class BackgroundConverter<T> : BackgroundConverter
     {
         LogUtil.Error(
             $"{GetType().Name}: Expected a part module derived from {typeof(T).Name} but got {module.GetType().Name} instead"
+        );
+    }
+
+    protected override void OnLoad(ConfigNode node)
+    {
+        base.OnLoad(node);
+
+        var target = GetTargetType(node);
+        if (typeof(T) == target)
+            return;
+        if (target.IsSubclassOf(typeof(T)))
+            return;
+
+        LogUtil.Error(
+            $"{GetType().Name}: Adapter expected a type derived from {typeof(T).Name} but {target.Name} is not"
         );
     }
 }

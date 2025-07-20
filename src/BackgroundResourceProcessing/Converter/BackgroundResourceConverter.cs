@@ -101,7 +101,7 @@ public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
 
         if (UsePreparedRecipe.Evaluate(module))
         {
-            var recipe = InvokePrepareRecipe(module, 1.0);
+            var recipe = InvokePrepareRecipe(module, 1.0) ?? new();
 
             inputs = recipe.Inputs;
             outputs = recipe.Outputs;
@@ -307,17 +307,11 @@ public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
     {
         base.OnLoad(node);
 
-        string activeCondition = null;
-        if (node.TryGetValue(nameof(ActiveCondition), ref activeCondition))
-            ActiveCondition = ConditionalExpression.Compile(activeCondition, node);
+        if (node.TryGetCondition2(nameof(ActiveCondition), out var activeCondition))
+            ActiveCondition = activeCondition;
 
-        string usePreparedRecipe = null;
-        if (node.TryGetValue(nameof(UsePreparedRecipe), ref usePreparedRecipe))
-            UsePreparedRecipe = ConditionalExpression.Compile(usePreparedRecipe, node);
-
-        string useCurrentEfficiency = null;
-        if (node.TryGetValue(nameof(UseCurrentEfficiency), ref useCurrentEfficiency))
-            UseCurrentEfficiency = ConditionalExpression.Compile(useCurrentEfficiency, node);
+        node.TryGetCondition(nameof(UsePreparedRecipe), ref UsePreparedRecipe);
+        node.TryGetCondition(nameof(UseCurrentEfficiency), ref UseCurrentEfficiency);
 
         var target = GetTargetType(node);
         multipliers = ConverterMultiplier.LoadAll(target, node);

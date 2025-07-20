@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
+using BackgroundResourceProcessing.Utils;
+using Steamworks;
 
 namespace BackgroundResourceProcessing;
 
@@ -125,5 +127,31 @@ public static class ConfigUtil
             moduleId = id;
         else
             moduleId = null;
+    }
+
+    public static bool TryGetCondition(
+        this ConfigNode node,
+        string name,
+        ref ConditionalExpression expr
+    )
+    {
+        string cond = null;
+        if (node.TryGetValue(name, ref cond))
+        {
+            expr = ConditionalExpression.Compile(cond, node);
+            return true;
+        }
+
+        return false;
+    }
+
+    public static bool TryGetCondition2(
+        this ConfigNode node,
+        string name,
+        out ConditionalExpression expr
+    )
+    {
+        expr = default;
+        return TryGetCondition(node, name, ref expr);
     }
 }
