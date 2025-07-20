@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Reflection;
+using BackgroundResourceProcessing.Behaviour;
 using KSP.Localization;
 
 namespace BackgroundResourceProcessing.Converter;
@@ -19,36 +20,20 @@ public abstract class BackgroundSpaceObjectDrill<T> : BackgroundResourceConverte
     [KSPField]
     public string MassResourceName = "BRPSpaceObjectMass";
 
-    public override ModuleBehaviour GetBehaviour(T module)
+    protected override ConstantConverter GetBaseRecipe(T module)
     {
-        var behaviour = base.GetBehaviour(module);
-        if (behaviour == null)
-            return behaviour;
+        var recipe = base.GetBaseRecipe(module);
 
         var potato = GetDrillPotato(module);
         if (potato == null)
-            return behaviour;
-
-        var info = GetInfo(module);
-        if (info != null)
-            behaviour.AddPullModule(info);
-
-        return behaviour;
-    }
-
-    protected override ConverterResources GetAdditionalRecipe(T module)
-    {
-        var potato = GetDrillPotato(module);
-        if (potato == null)
-            return default;
+            return null;
 
         var resources = potato.FindModulesImplementing<ModuleSpaceObjectResource>();
         var massRate = 0.0;
-        var outputs = new List<ResourceRatio>();
-        var inputs = new List<ResourceRatio>();
+        var usePreparedRecipe = UsePreparedRecipe.Evaluate(module);
 
-        if (!UsePreparedRecipe)
-            inputs.Add(GetPowerConsumption(module));
+        if (!usePreparedRecipe)
+            recipe.inputs.Add(GetPowerConsumption(module));
 
         foreach (var resource in resources)
         {
@@ -61,14 +46,26 @@ public abstract class BackgroundSpaceObjectDrill<T> : BackgroundResourceConverte
                 FlowMode = ResourceFlowMode.NULL,
             };
 
-            if (!UsePreparedRecipe)
-                outputs.Add(ratio);
+            if (!usePreparedRecipe)
+                recipe.outputs.Add(ratio);
             massRate += resource.abundance * definition.density;
         }
 
-        inputs.Add(new(MassResourceName, massRate, false, ResourceFlowMode.NO_FLOW));
+        recipe.inputs.Add(new(MassResourceName, massRate, false, ResourceFlowMode.NO_FLOW));
+        return recipe;
+    }
 
-        return new() { Inputs = inputs, Outputs = outputs };
+    public override ModuleBehaviour GetBehaviour(T module)
+    {
+        var behaviour = base.GetBehaviour(module);
+        if (behaviour == null)
+            return null;
+
+        var info = GetInfo(module);
+        if (info != null)
+            behaviour.AddPullModule(info);
+
+        return behaviour;
     }
 
     protected virtual Part GetDrillPotato(T module)
@@ -88,7 +85,7 @@ public abstract class BackgroundSpaceObjectDrill<T> : BackgroundResourceConverte
         if (drill.IsActivated)
             return true;
 
-        // We want the drill to be active it is shut down due to resource issues
+        // We want the drill to be active but it is shut down due to resource issues
         // but otherwise we follow along with IsActivated
         return drill.status == NoStorageSpace || drill.status == InsufficientPower;
     }

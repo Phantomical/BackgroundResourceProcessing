@@ -1,13 +1,15 @@
 using System;
+using BackgroundResourceProcessing.Behaviour;
 
 namespace BackgroundResourceProcessing.Converter;
 
 public class BackgroundResourceHarvester : BackgroundResourceConverter<ModuleResourceHarvester>
 {
-    protected override ConverterResources GetAdditionalRecipe(ModuleResourceHarvester module)
+    protected override ConstantConverter GetBaseRecipe(ModuleResourceHarvester module)
     {
-        if (UsePreparedRecipe)
-            return default;
+        var recipe = base.GetBaseRecipe(module);
+        if (UsePreparedRecipe.Evaluate(module))
+            return recipe;
 
         var vessel = module.vessel;
         var type = (HarvestTypes)module.HarvesterType;
@@ -30,17 +32,15 @@ public class BackgroundResourceHarvester : BackgroundResourceConverter<ModuleRes
         if (type == HarvestTypes.Atmospheric)
             rate *= GetIntakeMultiplier(module);
 
-        ConverterResources recipe = default;
-        recipe.Outputs =
-        [
+        recipe.outputs.Add(
             new ResourceRatio()
             {
                 ResourceName = module.ResourceName,
                 Ratio = rate,
                 DumpExcess = type == HarvestTypes.Atmospheric,
                 FlowMode = ResourceFlowMode.NULL,
-            },
-        ];
+            }
+        );
 
         return recipe;
     }

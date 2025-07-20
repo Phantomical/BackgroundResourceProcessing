@@ -1207,9 +1207,9 @@ public readonly struct ConditionalExpression
                 return new(token.text, TokenKind.NULL);
             if (token == "typeof")
                 return new(token.text, TokenKind.TYPEOF);
-            if (token == "true")
+            if (token.EqualsIgnoreCase("true"))
                 return new(token.text, TokenKind.TRUE);
-            if (token == "false")
+            if (token.EqualsIgnoreCase("false"))
                 return new(token.text, TokenKind.FALSE);
             return token;
         }

@@ -59,6 +59,12 @@ public class BackgroundGenericConverter : BackgroundConverter
     [KSPField]
     public string RequirementsField = null;
 
+    /// <summary>
+    /// Override the flow mode associated with the inputs and outputs.
+    /// </summary>
+    [KSPField]
+    public ResourceFlowMode? OverrideFlowMode = null;
+
     private ConditionalExpression activeCondition = ConditionalExpression.Always;
     private List<ConverterMultiplier> multipliers;
     private MemberInfo lastUpdateMember;
@@ -77,18 +83,7 @@ public class BackgroundGenericConverter : BackgroundConverter
 
         if (inputsMember != null)
         {
-            inputs = GetMemberValue(inputsMember, module) switch
-            {
-                IEnumerable<ResourceRatio> value => value,
-                IEnumerable<ModuleResource> value => value.Select(res => new ResourceRatio(
-                    res.resourceDef.name,
-                    res.rate,
-                    false,
-                    res.flowMode
-                )),
-                null => [],
-                _ => throw new NotImplementedException(),
-            };
+            inputs = GetRateListMemberValue(inputsMember, module);
         }
         else
         {
@@ -102,18 +97,7 @@ public class BackgroundGenericConverter : BackgroundConverter
 
         if (outputsMember != null)
         {
-            outputs = GetMemberValue(outputsMember, module) switch
-            {
-                IEnumerable<ResourceRatio> value => value,
-                IEnumerable<ModuleResource> value => value.Select(res => new ResourceRatio(
-                    res.resourceDef.name,
-                    res.rate,
-                    false,
-                    res.flowMode
-                )),
-                null => [],
-                _ => throw new NotImplementedException(),
-            };
+            outputs = GetRateListMemberValue(outputsMember, module);
         }
         else
         {
@@ -152,6 +136,20 @@ public class BackgroundGenericConverter : BackgroundConverter
         {
             inputs = inputs.Select(input => input.WithMultiplier(mult));
             outputs = outputs.Select(output => output.WithMultiplier(mult));
+        }
+
+        if (OverrideFlowMode != null)
+        {
+            inputs = inputs.Select(input =>
+            {
+                input.FlowMode = (ResourceFlowMode)OverrideFlowMode;
+                return input;
+            });
+            outputs = outputs.Select(output =>
+            {
+                output.FlowMode = (ResourceFlowMode)OverrideFlowMode;
+                return output;
+            });
         }
 
         return new(new ConstantConverter(inputs.ToList(), outputs.ToList(), required.ToList()));
@@ -226,10 +224,40 @@ public class BackgroundGenericConverter : BackgroundConverter
             return info;
         if (typeof(IEnumerable<ModuleResource>).IsAssignableFrom(memberType))
             return info;
+        if (typeof(ResourceRatio).IsAssignableFrom(memberType))
+            return info;
+        if (typeof(ModuleResource).IsAssignableFrom(memberType))
+            return info;
+        if (typeof(string).IsAssignableFrom(memberType))
+            return info;
 
         throw new MemberException(
             $"Member {type.Name}.{info.Name} is a compatible type with a input or output list"
         );
+    }
+
+    private static IEnumerable<ResourceRatio> GetRateListMemberValue(MemberInfo member, object obj)
+    {
+        return GetMemberValue(member, obj) switch
+        {
+            IEnumerable<ResourceRatio> values => values,
+            IEnumerable<ModuleResource> values => values.Select(res => new ResourceRatio(
+                res.resourceDef.name,
+                res.rate,
+                false,
+                res.flowMode
+            )),
+            ResourceRatio value => [value],
+            ModuleResource value =>
+            [
+                new(value.resourceDef.name, value.rate, false, value.flowMode),
+            ],
+            string name => [new(name, 1.0, false, ResourceFlowMode.NULL)],
+            null => [],
+            var value => throw new NotImplementedException(
+                $"Unable to get a rate list from a member of type {value.GetType().Name}"
+            ),
+        };
     }
 
     private static MemberInfo GetConstraintListMember(Type type, string field)

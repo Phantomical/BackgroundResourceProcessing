@@ -33,33 +33,33 @@ public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
     );
 
     /// <summary>
-    /// Ignore the listed elements on the converter and instead use the
-    /// recipe as it is returned from <c>PrepareRecipe</c>.
+    /// Override the condition used to determine whether this converter is active.
     /// </summary>
-    [KSPField]
-    public bool UsePreparedRecipe = false;
+    public ConditionalExpression? ActiveCondition = null;
 
     /// <summary>
-    /// Use the current efficiency bonus of the converter instead of trying
-    /// to calculate an optimal efficiency bonus.
+    /// Whether to use the recipe as returned by <c>PrepareRecipe</c> or whether
+    /// to instead attempt to compute the steady-state recipe ourselves.
+    /// Defaults to <c>true</c>.
     /// </summary>
-    [KSPField]
-    public bool UseCurrentEfficiency = false;
+    public ConditionalExpression UsePreparedRecipe = ConditionalExpression.Always;
 
     /// <summary>
-    /// Override the maximum thermal efficiency
+    /// If false, then we will attempt to calculate an optimal efficiency bonus.
+    /// Otherwise, the current efficiency bonus of the converter is used.
     /// </summary>
-    [KSPField]
-    public double? OverrideMaxThermalEfficiency = null;
+    public ConditionalExpression UseCurrentEfficiency = ConditionalExpression.Never;
 
     /// <summary>
-    /// Indicate whether the recipe should use the efficiency bonus as
-    /// calculated from the converter.
+    /// Override the computed efficiency for this converter.
+    /// </summary>
     ///
-    /// Defaults to false if <c>UsePreparedRecipe</c> is true, and true
-    /// otherwise.
-    /// </summary>
-    private ConditionalExpression? UseEfficiencyBonus = null;
+    /// <remarks>
+    /// This can be useful if you want to compute the efficiency yourself using
+    /// multipliers.
+    /// </remarks>
+    [KSPField]
+    public double? OverrideEfficiency = null;
 
     private List<ConverterMultiplier> multipliers;
 
@@ -67,9 +67,31 @@ public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
     {
         if (module == null)
             return null;
-        if (!IsConverterEnabled(module))
+        var enabled = ActiveCondition?.Evaluate(module) ?? IsConverterEnabled(module);
+        if (!enabled)
             return null;
 
+        var recipe = GetMultipliedRecipe(module);
+        if (recipe == null)
+            return null;
+
+        return new(recipe);
+    }
+
+    public override void OnRestore(T module, ResourceConverter converter)
+    {
+        LastUpdateTimeField.SetValue(module, Planetarium.GetUniversalTime());
+    }
+
+    /// <summary>
+    /// Get the recipe before any efficiency multiplier is applied.
+    /// Override this if you want to add resource rates that get multiplied by
+    /// efficiency bonuses.
+    /// </summary>
+    /// <param name="module"></param>
+    /// <returns></returns>
+    protected virtual ConstantConverter GetBaseRecipe(T module)
+    {
         IEnumerable<ResourceRatio> inputs;
         IEnumerable<ResourceRatio> outputs;
         IEnumerable<ResourceConstraint> required;
@@ -77,9 +99,7 @@ public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
         double fillAmount;
         double takeAmount;
 
-        bool useEfficiencyBonus;
-
-        if (UsePreparedRecipe)
+        if (UsePreparedRecipe.Evaluate(module))
         {
             var recipe = InvokePrepareRecipe(module, 1.0);
 
@@ -89,10 +109,6 @@ public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
 
             fillAmount = recipe.FillAmount;
             takeAmount = recipe.TakeAmount;
-
-            useEfficiencyBonus =
-                UseEfficiencyBonus?.Evaluate(module)
-                ?? (bool)PreCalculateEfficiencyField.GetValue(module);
         }
         else
         {
@@ -103,40 +119,12 @@ public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
             fillAmount = module.FillAmount;
             takeAmount = module.TakeAmount;
 
-            useEfficiencyBonus = UseEfficiencyBonus?.Evaluate(module) ?? true;
-
             if (ConvertByMass(module))
             {
                 inputs = ConvertRecipeToUnits(inputs);
                 outputs = ConvertRecipeToUnits(outputs);
                 required = ConvertConstraintToUnits(required);
             }
-        }
-
-        var additional = GetAdditionalRecipe(module);
-        if (additional.Inputs != null && additional.Inputs.Count != 0)
-            inputs = inputs.Concat(additional.Inputs);
-        if (additional.Outputs != null && additional.Outputs.Count != 0)
-            outputs = outputs.Concat(additional.Outputs);
-        if (additional.Requirements != null && additional.Requirements.Count != 0)
-            required = required.Concat(additional.Requirements);
-
-        var bonus = 1.0;
-        if (useEfficiencyBonus)
-        {
-            if (UseCurrentEfficiency)
-                bonus *= module.GetEfficiencyMultiplier();
-            else
-                bonus *= GetOptimalEfficiencyBonus(module);
-        }
-
-        foreach (var multiplier in multipliers)
-            bonus *= multiplier.Evaluate(module);
-
-        if (bonus != 1.0)
-        {
-            inputs = inputs.Select(res => res.WithMultiplier((double)bonus));
-            outputs = outputs.Select(res => res.WithMultiplier((double)bonus));
         }
 
         var inputList = inputs.ToList();
@@ -193,12 +181,80 @@ public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
             );
         }
 
-        return new(new ConstantConverter(inputList, outputList, required.ToList()));
+        return new(inputList, outputList, [.. required]);
     }
 
-    public override void OnRestore(T module, ResourceConverter converter)
+    /// <summary>
+    /// Get the recipe after efficiency multipliers are applied.
+    /// Override this if you want to add resource rates that are not effected
+    /// by efficiency bonuses (or other multipliers).
+    /// </summary>
+    /// <param name="module"></param>
+    /// <returns></returns>
+    protected virtual ConstantConverter GetMultipliedRecipe(T module)
     {
-        LastUpdateTimeField.SetValue(module, Planetarium.GetUniversalTime());
+        var recipe = GetBaseRecipe(module);
+        if (recipe == null)
+            return null;
+
+        var bonus = GetEfficiencyMultiplier(module);
+
+        if (bonus != 1.0)
+        {
+            for (int i = 0; i < recipe.inputs.Count; ++i)
+                recipe.inputs[i] = recipe.inputs[i].WithMultiplier(bonus);
+            for (int i = 0; i < recipe.outputs.Count; ++i)
+                recipe.inputs[i] = recipe.inputs[i].WithMultiplier(bonus);
+        }
+
+        return recipe;
+    }
+
+    /// <summary>
+    /// Compute the total efficiency bonus for the converter, including
+    /// multipliers and overrides.
+    /// </summary>
+    /// <param name="module"></param>
+    /// <returns></returns>
+    protected virtual double GetEfficiencyMultiplier(T module)
+    {
+        bool useEfficiencyBonus =
+            !UsePreparedRecipe.Evaluate(module)
+            && (bool)PreCalculateEfficiencyField.GetValue(module);
+
+        double bonus;
+        if (OverrideEfficiency != null)
+            bonus = (double)OverrideEfficiency;
+        else if (!useEfficiencyBonus)
+            bonus = 1.0;
+        else if (UseCurrentEfficiency.Evaluate(module))
+            bonus = module.GetEfficiencyMultiplier();
+        else
+            bonus = GetOptimalEfficiencyBonus(module);
+
+        foreach (var multiplier in multipliers)
+            bonus *= multiplier.Evaluate(module);
+
+        return bonus;
+    }
+
+    /// <summary>
+    /// Compute the optimal efficiency bonus for the converter.
+    /// </summary>
+    /// <param name="module"></param>
+    /// <returns></returns>
+    protected virtual double GetOptimalEfficiencyBonus(T module)
+    {
+        double bonus = 1.0;
+
+        foreach (var (_, modifier) in module.EfficiencyModifiers)
+            bonus *= modifier;
+
+        bonus *= module.GetCrewEfficiencyBonus();
+        bonus *= module.EfficiencyBonus;
+        bonus *= GetMaxThermalEfficiencyBonus(module);
+
+        return bonus;
     }
 
     /// <summary>
@@ -227,44 +283,13 @@ public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
     }
 
     /// <summary>
-    /// Get a set of additional inputs, outputs, and required resources
-    /// to add in addition to those listed on the base converter.
-    /// </summary>
-    ///
-    /// <returns>A conversion recipe, or null if there are no changes to be made</returns>
-    protected virtual ConverterResources GetAdditionalRecipe(T module)
-    {
-        return default;
-    }
-
-    /// <summary>
-    /// Get an additional efficiency multiplier to apply on top of the
-    /// default optimal efficiency bonus.
-    /// </summary>
-    /// <returns></returns>
-    protected virtual double GetOptimalEfficiencyBonus(T converter)
-    {
-        double bonus = 1.0;
-
-        foreach (var (_, modifier) in converter.EfficiencyModifiers)
-            bonus *= modifier;
-
-        bonus *= converter.GetCrewEfficiencyBonus();
-        bonus *= converter.EfficiencyBonus;
-        bonus *= OverrideMaxThermalEfficiency ?? GetMaxThermalEfficiencyBonus(converter);
-
-        return bonus;
-    }
-
-    /// <summary>
     /// Indicates whether the resource rates are specified in units of tons.
     /// </summary>
     protected virtual bool ConvertByMass(T converter)
     {
-        bool baseline = false;
         if (converter is ModuleResourceConverter rc)
-            baseline = rc.ConvertByMass;
-        return baseline;
+            return rc.ConvertByMass;
+        return false;
     }
 
     private double GetMaxThermalEfficiencyBonus(T converter)
@@ -282,9 +307,17 @@ public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
     {
         base.OnLoad(node);
 
-        string useEfficiencyBonus = null;
-        if (node.TryGetValue("UseEfficiencyBonus", ref useEfficiencyBonus))
-            UseEfficiencyBonus = ConditionalExpression.Compile(useEfficiencyBonus, node);
+        string activeCondition = null;
+        if (node.TryGetValue(nameof(ActiveCondition), ref activeCondition))
+            ActiveCondition = ConditionalExpression.Compile(activeCondition, node);
+
+        string usePreparedRecipe = null;
+        if (node.TryGetValue(nameof(UsePreparedRecipe), ref usePreparedRecipe))
+            UsePreparedRecipe = ConditionalExpression.Compile(usePreparedRecipe, node);
+
+        string useCurrentEfficiency = null;
+        if (node.TryGetValue(nameof(UseCurrentEfficiency), ref useCurrentEfficiency))
+            UseCurrentEfficiency = ConditionalExpression.Compile(useCurrentEfficiency, node);
 
         var target = GetTargetType(node);
         multipliers = ConverterMultiplier.LoadAll(target, node);
@@ -321,87 +354,11 @@ public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
             return resource;
         });
     }
-
-    public class RecipeOverride
-    {
-        public string name;
-
-        /// <summary>
-        /// Limits this converter to only be enabled when all its outputs have
-        /// at most this fraction of their total resources filled.
-        /// </summary>
-        public double? FillAmount = null;
-
-        /// <summary>
-        /// Limits this converter to only be enabled when all its inputs have
-        /// at least this fraction of their total resources filled.
-        /// </summary>
-        public double? TakeAmount = null;
-
-        /// <summary>
-        /// Specify an efficiency bonus to be used instead of the one on the
-        /// referenced <see cref="BaseConverter"/> module.
-        /// </summary>
-        public double? OverrideEfficiencyBonus = null;
-
-        /// <summary>
-        /// Specify the maximum thermal efficiency multiplier to be used
-        /// instead of the one on the referenced <see cref="BaseConverter"/>
-        /// module.
-        /// </summary>
-        public double? OverrideThermalEfficiency = null;
-
-        /// <summary>
-        /// Specify the default efficency to use for this recipe.
-        /// </summary>
-        public double BaseEfficiency = 1.0;
-
-        /// <summary>
-        /// The input, output, and required units are provided in terms of mass
-        /// and will be converted to KSP units on start.
-        /// </summary>
-        public bool? ConvertByMass = null;
-
-        public List<ResourceRatio> Inputs;
-        public List<ResourceRatio> Outputs;
-        public List<ResourceConstraint> Requirements;
-
-        public static RecipeOverride Load(ConfigNode node)
-        {
-            RecipeOverride recipe = new();
-
-            if (!node.TryGetValue("name", ref recipe.name))
-            {
-                LogUtil.Error("RECIPE_OVERRIDE config node does not have a name");
-                return null;
-            }
-
-            double fillAmount = 0;
-            double takeAmount = 0;
-            double efficiencyBonus = 0;
-            double thermalEfficiency = 0;
-
-            if (node.TryGetValue("FillAmount", ref fillAmount))
-                recipe.FillAmount = fillAmount;
-            if (node.TryGetValue("TakeAmount", ref takeAmount))
-                recipe.TakeAmount = takeAmount;
-            if (node.TryGetValue("OverrideEfficiencyBonus", ref efficiencyBonus))
-                recipe.OverrideEfficiencyBonus = efficiencyBonus;
-            if (node.TryGetValue("OverrideThermalEfficiency", ref thermalEfficiency))
-                recipe.OverrideThermalEfficiency = thermalEfficiency;
-            node.TryGetValue("BaseEfficiency", ref recipe.BaseEfficiency);
-
-            recipe.Inputs = [.. ConfigUtil.LoadInputResources(node)];
-            recipe.Outputs = [.. ConfigUtil.LoadOutputResources(node)];
-            recipe.Requirements = [.. ConfigUtil.LoadRequiredResources(node)];
-            return recipe;
-        }
-    }
 }
 
 /// <summary>
 /// A background converter module for types implementing <see cref="BaseConverter"/>.
 ///
-/// Don't inherit from this class, use <c>BackgroundTypedResourceConverter</c> instead.
+/// Don't inherit from this class, use the generic version instead.
 /// </summary>
 public class BackgroundResourceConverter : BackgroundResourceConverter<BaseConverter> { }
