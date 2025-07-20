@@ -1,9 +1,15 @@
 # Contributing to Background Resource Processing
 
+## Bug Reports
+If you are reporting a bug please make sure to include KSP.log and/or Player.log.
+For best results, follow the instructions at [How to Get Support][0].
+
+[0]: https://forum.kerbalspaceprogram.com/topic/163863-how-to-get-support/
+
 ## Editing MM Patches
-The MM patch files are located under `src/GameData/Patches`.
-- The convention for naming patch files is to put them in a `<ModName>`
-  subfolder so they can be easily navigated.
+The MM patch files are located under `src/GameData/Config`.
+- The convention for naming patch files is to name them after the mod that the
+  patch is for.
 - If you are creating a new compatibility patch make sure to add attribution
   on the first line as a comment, e.g. `// RemoteTech patch by Phantomical`.
 
