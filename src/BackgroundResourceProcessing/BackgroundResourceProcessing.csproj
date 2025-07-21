@@ -52,7 +52,7 @@
     <Copy SourceFiles="@(Patches)" DestinationFolder="$(GameDataOutDir)\%(RecursiveDir)" />
   </Target>
 
-  <Target Name="GenerateKSPVersionFile2" AfterTargets="Build">
+  <Target Name="GenerateKSPVersionFile" AfterTargets="Build">
     <ReadLinesFromFile File="$(ProjectDir)\$(ProjectName).version">
       <Output TaskParameter="Lines" ItemName="_JSONLines" />
     </ReadLinesFromFile>
