@@ -4,11 +4,12 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_call:
 
 env:
   KSP_ROOT: D:\\KSP
   CKAN_DEPS: |
-    Harmony2 ExtraPlanetaryLaunchpads ClickThroughBlocker Kopernicus USI-LS
+    Harmony2 ExtraPlanetaryLaunchpads ClickThroughBlocker Kopernicus USI-LS SystemHeat
   GH_TOKEN: ${{ github.token }}
   RELEASE_STAGING: D:\\release
 
@@ -40,14 +41,15 @@ jobs:
         shell: bash
 
       - name: Install CKAN dependencies
-        run: ./ckan.exe install --asroot --headless --no-recommends ${{ env.CKAN_DEPS }}
+        shell: bash
+        run: ./ckan.exe install --asroot --headless --no-recommends $CKAN_DEPS
 
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0'
 
       - run: dotnet restore
-      - run: dotnet build
+      - run: dotnet build -c Release
 
       - name: Copy Files to Staging
         shell: bash
