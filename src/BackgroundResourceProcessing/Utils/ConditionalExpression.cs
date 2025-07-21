@@ -468,6 +468,9 @@ public readonly struct ConditionalExpression
                 [module]
             );
 
+            if (Current != TokenKind.EOF)
+                throw RenderError($"unexpected token `{Current.ToString()}`");
+
             return expr.Compile();
         }
 
@@ -770,10 +773,10 @@ public readonly struct ConditionalExpression
         {
             switch (Current.kind)
             {
-                case TokenKind.RPAREN:
-                    ExpectToken(TokenKind.RPAREN);
-                    var expr = ParseExpression();
+                case TokenKind.LPAREN:
                     ExpectToken(TokenKind.LPAREN);
+                    var expr = ParseExpression();
+                    ExpectToken(TokenKind.RPAREN);
                     return expr;
 
                 case TokenKind.OP_FIELD_ACCESS:
@@ -783,12 +786,15 @@ public readonly struct ConditionalExpression
                     return ParseConfigAccess();
 
                 case TokenKind.TRUE:
+                    lexer.MoveNext();
                     return Expression.Constant(true);
 
                 case TokenKind.FALSE:
+                    lexer.MoveNext();
                     return Expression.Constant(false);
 
                 case TokenKind.NULL:
+                    lexer.MoveNext();
                     return Expression.Constant(null);
 
                 case TokenKind.NUMBER:
@@ -875,19 +881,23 @@ public readonly struct ConditionalExpression
         Expression ParseBaseFieldAccess()
         {
             ExpectToken(TokenKind.OP_FIELD_ACCESS);
-            if (Current == TokenKind.IDENT)
+            switch (Current.kind)
             {
-                var field = ExpectToken(TokenKind.IDENT);
+                // We allow true and false to be used as field names in this case
+                case TokenKind.IDENT:
+                case TokenKind.TRUE:
+                case TokenKind.FALSE:
+                    var field = Current;
+                    lexer.MoveNext();
 
-                return CallMethod(
-                    GetMethodInfo(() => Methods.DoFieldAccess(null, null)),
-                    module,
-                    Expression.Constant(field.ToString())
-                );
-            }
-            else
-            {
-                return module;
+                    return CallMethod(
+                        GetMethodInfo(() => Methods.DoFieldAccess(null, null)),
+                        module,
+                        Expression.Constant(field.ToString())
+                    );
+
+                default:
+                    return module;
             }
         }
 

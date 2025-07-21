@@ -219,13 +219,11 @@ public abstract class BackgroundInventory<T> : BackgroundInventory
         base.OnLoad(node);
 
         var target = GetTargetType(node);
-        if (typeof(T) == target)
-            return;
-        if (target.IsSubclassOf(typeof(T)))
+        if (typeof(T).IsAssignableFrom(target))
             return;
 
         LogUtil.Error(
-            $"{GetType().Name}: Adapter expected a type derived from {typeof(T).Name} but {target.Name} is not"
+            $"{GetType().Name}: Adapter expected a type assignable from {typeof(T).Name} but {target.Name} is not"
         );
     }
 }

@@ -133,4 +133,14 @@ public sealed class ConditionalExpressionTests
         expr = Compile("%[\"Field1\"] == \"TestValue1\"");
         Assert.IsTrue(expr.Evaluate(module));
     }
+
+    [TestMethod]
+    public void TestParenthesizedExpression()
+    {
+        ConditionalExpression expr;
+        DummyPartModule module = new();
+
+        expr = Compile("!%BoolPropertyFalse && (%BoolPropertyFalse || %[\"True\"])");
+        Assert.IsTrue(expr.Evaluate(module));
+    }
 }
