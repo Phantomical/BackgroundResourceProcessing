@@ -206,7 +206,7 @@ public static class LifeSupportMonitor_GetVesselStats_Patch
 [HarmonyPatch("GetResourceInVessel")]
 public static class LifeSupportMonitor_GetResourceInVessel_Patch
 {
-    static bool Prefix(ref double __result, Vessel vessel, string resourceName)
+    static bool Prefix(ref double __result, Vessel vessel, string resName)
     {
         var settings = HighLogic.CurrentGame?.Parameters.CustomParams<Settings>();
         if (!(settings?.EnableUSILSIntegration ?? false))
@@ -223,7 +223,7 @@ public static class LifeSupportMonitor_GetResourceInVessel_Patch
             return true;
 
         processor.UpdateBackgroundState();
-        var state = processor.GetResourceState(resourceName);
+        var state = processor.GetResourceState(resName);
         __result = state.amount;
 
         return false;
