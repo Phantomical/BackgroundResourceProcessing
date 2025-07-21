@@ -58,7 +58,7 @@ jobs:
           shopt -s globstar
           shopt -s nullglob
           mkdir -p ${{ env.RELEASE_STAGING  }}   
-          cp -r -v GameData README* LICENSE* CHANGELOG* ${{ env.RELEASE_STAGING }}
+          cp -r -v GameData README* LICENSE* CHANGELOG* BackgroundResourceProcessing.ckan ${{ env.RELEASE_STAGING }}
           cp -r -v  LICENSE* ${{ env.RELEASE_STAGING }}/GameData/BackgroundResourceProcessing
           cd ${{ env.RELEASE_STAGING }}
 
