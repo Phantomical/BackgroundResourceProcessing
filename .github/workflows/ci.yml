@@ -68,3 +68,8 @@ jobs:
           name: BackgroundResourceProcessing
           if-no-files-found: error
           include-hidden-files: 'true'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          path: GameData/BackgroundResourceProcessing/BackgroundResourceProcessing.version
+          name: BackgroundResourceProcessing.version
