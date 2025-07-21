@@ -14,7 +14,7 @@ your save and observe that your resource conversion chains now work properly
 in the background.
 
 If you are a modder and want to either add support to your own mod or use
-BRP directly within your mod, then see [the wiki].
+BRP directly within your mod, then see [the wiki][wiki].
 
 [wiki]: https://github.com/Phantomical/BackgroundResourceProcessing/wiki
 
