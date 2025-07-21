@@ -34,6 +34,10 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
             [new KSPAssemblyDependency("Kopernicus", new(1, 0))]
         ),
         new(
+            "BackgroundResourceProcessing.Integration.SystemHeat",
+            [new DirectAssemblyDependency("SystemHeat", new(0, 1))]
+        ),
+        new(
             "BackgroundResourceProcessing.Integration.USILifeSupport",
             [new DirectAssemblyDependency("USILifeSupport", new(1, 0))]
         ),

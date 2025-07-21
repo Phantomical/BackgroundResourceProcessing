@@ -23,12 +23,4 @@
             <KSPAssemblyVersion>2.0.0</KSPAssemblyVersion>
         </Reference>
     </ItemGroup>
-
-    <!--
-    It's really easy for old binaries to stick around in GameData and bin
-    directories. This step makes sure that doesn't happen.
-    -->
-    <Target Name="PostClean" AfterTargets="Clean">
-        <RemoveDir Directories="$(ProjectDir)\bin" />
-    </Target>
 </Project>

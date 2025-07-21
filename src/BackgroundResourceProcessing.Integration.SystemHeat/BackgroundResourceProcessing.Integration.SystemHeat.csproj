@@ -15,12 +15,10 @@
             <KSPAssemblyVersion>$(Version)</KSPAssemblyVersion>
         </ProjectReference>
 
-        <Reference Include="Kopernicus.dll">
-            <HintPath>$(KSPRoot)\GameData\Kopernicus\Plugins\Kopernicus.dll</HintPath>
+        <Reference Include="SystemHeat.dll">
+            <HintPath>$(KSPRoot)\GameData\SystemHeat\Plugin\SystemHeat.dll</HintPath>
             <Private>false</Private>
-            <CKANIdentifier>Kopernicus</CKANIdentifier>
-            <KSPAssemblyName>Kopernicus</KSPAssemblyName>
-            <KSPAssemblyVersion>1.0.0</KSPAssemblyVersion>
+            <CKANIdentifier>SystemHeat</CKANIdentifier>
         </Reference>
 
         <InternalsVisibleTo Include="BackgroundResourceProcessing.Test" />
