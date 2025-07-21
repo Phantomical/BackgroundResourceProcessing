@@ -7,7 +7,7 @@ public sealed class ConditionalExpressionTests
 {
     public static ConditionalExpression Compile(string expression, ConfigNode node = null)
     {
-        return ConditionalExpression.CompileWithExceptions(expression, node ?? new());
+        return ConditionalExpression.Compile(expression, node ?? new());
     }
 
     [TestMethod]

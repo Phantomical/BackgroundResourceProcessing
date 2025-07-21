@@ -49,7 +49,7 @@ public readonly struct ConditionalExpression
         }
         catch (Exception e)
         {
-            LogUtil.Error($"Evaluating conditional expression '{this}' threw an error: {e}");
+            LogUtil.Error($"Evaluating conditional expression `{this}` threw an error: {e}");
             return false;
         }
     }
@@ -65,26 +65,6 @@ public readonly struct ConditionalExpression
     /// </summary>
     /// <returns></returns>
     public static ConditionalExpression Compile(string expression, ConfigNode node)
-    {
-        try
-        {
-            return CompileWithExceptions(expression, node);
-        }
-        catch (CompilationException e)
-        {
-            LogUtil.Error($"Failed to compile a conditional expression:\nerror: {e}");
-        }
-        catch (Exception e)
-        {
-            LogUtil.Error(
-                $"Conditional expression compilation encountered an unexpected error: {e}"
-            );
-        }
-
-        return new(_ => false, "<error>");
-    }
-
-    public static ConditionalExpression CompileWithExceptions(string expression, ConfigNode node)
     {
         Lexer lexer = new(expression);
         lexer.MoveNext();
@@ -807,7 +787,7 @@ public readonly struct ConditionalExpression
                     return ParseTypeof();
 
                 default:
-                    throw RenderError($"unexpected token '{Current.kind}'");
+                    throw RenderError($"unexpected token `{Current.ToString()}`");
             }
         }
 
@@ -1065,7 +1045,7 @@ public readonly struct ConditionalExpression
             var token = Current;
             if (token != kind)
                 throw RenderError(
-                    $"expected {Token.TokenKindDescription(kind)}, got '{Current.ToString()}' instead"
+                    $"expected {Token.TokenKindDescription(kind)}, got `{Current.ToString()}` instead"
                 );
             lexer.MoveNext();
             return token;
@@ -1170,7 +1150,7 @@ public readonly struct ConditionalExpression
             if (char.IsLetter(c))
                 return TakeIdent();
 
-            throw RenderError($"unexpected token '{c}");
+            throw RenderError($"unexpected token `{c}`");
         }
 
         Token TakeFirst(int n, TokenKind kind)
@@ -1244,7 +1224,7 @@ public readonly struct ConditionalExpression
 
                 if (i > span.Length || (span[i] != '-' && span[i] != '+'))
                     throw RenderError(
-                        $"invalid number literal, expected '+' or '-' after '{span[i - 1]}'"
+                        $"invalid number literal, expected '+' or '-' after `{span[i - 1]}`"
                     );
 
                 while (i < span.Length && char.IsDigit(span[i]))
