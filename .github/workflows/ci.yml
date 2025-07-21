@@ -59,7 +59,7 @@ jobs:
           shopt -s nullglob
           mkdir -p ${{ env.RELEASE_STAGING  }}   
           cp -r -v GameData README* LICENSE* CHANGELOG* ${{ env.RELEASE_STAGING }}
-          cp -r -v GameData/BackgroundResourceProcessing LICENSE*
+          cp -r -v  LICENSE* ${{ env.RELEASE_STAGING }}/GameData/BackgroundResourceProcessing
           cd ${{ env.RELEASE_STAGING }}
 
       - uses: actions/upload-artifact@v4
