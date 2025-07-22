@@ -49,8 +49,8 @@ jobs:
       - name: Download Release Asset
         run: |
           gh release download ${{ github.ref_name }}  \
-            -p BackgroundResourceProcessing.zip       \
-            -o BackgroundResourceProcessing.zip
+            --pattern BackgroundResourceProcessing.zip       \
+            --output BackgroundResourceProcessing.zip
 
       - name: Get Release Description
         run: |
