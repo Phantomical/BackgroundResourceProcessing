@@ -343,7 +343,10 @@ internal class ResourceProcessor
             behaviour.sourcePart = part.name;
             behaviour.Vessel = vessel;
 
-            var converter = new ResourceConverter(behaviour) { priority = priority };
+            var converter = new ResourceConverter(behaviour)
+            {
+                priority = behaviour.Priority ?? priority,
+            };
             converter.Refresh(state);
 
             LogUtil.Debug(() =>

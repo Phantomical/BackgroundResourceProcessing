@@ -102,6 +102,23 @@ public sealed class BackgroundResourceProcessor : VesselModule
     }
 
     /// <summary>
+    /// Get an inventory from its index. This is somewhat faster than using
+    /// <see cref="Inventories" /> as it does not require an allocation.
+    /// </summary>
+    /// <param name="index"></param>
+    /// <returns>
+    /// The <see cref="ResourceInventory"/>, or <c>null</c> if the index is
+    /// out of bounds.
+    /// </returns>
+    public ResourceInventory GetInventory(int index)
+    {
+        if (index < 0 || index >= processor.inventories.Count)
+            return null;
+
+        return processor.inventories[index];
+    }
+
+    /// <summary>
     /// Update the vessel's stored inventory state to reflect the current
     /// point in time.
     /// </summary>

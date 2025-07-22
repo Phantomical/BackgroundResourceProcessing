@@ -52,6 +52,12 @@ public abstract class ConverterBehaviour() : DynamicallySerializable<ConverterBe
     public Vessel Vessel = null;
 
     /// <summary>
+    /// An optional priority for this specific converter. Overrides the default
+    /// priority for the adapter if specified.
+    /// </summary>
+    public int? Priority = null;
+
+    /// <summary>
     /// Get the list of input, output, and required resources and their
     /// rates.
     /// </summary>
@@ -110,6 +116,17 @@ public abstract class ConverterBehaviour() : DynamicallySerializable<ConverterBe
             node.AddValue("sourceModule", sourceModule);
         if (sourcePart != null)
             node.AddValue("sourcePart", sourcePart);
+        if (Priority != null)
+            node.AddValue("Priority", (int)Priority);
+    }
+
+    protected override void OnLoad(ConfigNode node)
+    {
+        base.OnLoad(node);
+
+        int priority = 0;
+        if (node.TryGetValue(nameof(Priority), ref priority))
+            Priority = priority;
     }
 
     internal static void RegisterAll()

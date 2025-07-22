@@ -7,25 +7,25 @@ namespace BackgroundResourceProcessing.Behaviour;
 /// </summary>
 public class ConstantProducer(List<ResourceRatio> outputs) : ConverterBehaviour
 {
-    private List<ResourceRatio> outputs = outputs;
+    public List<ResourceRatio> Outputs = outputs;
 
     public ConstantProducer()
         : this([]) { }
 
     public override ConverterResources GetResources(VesselState state)
     {
-        return new() { Outputs = outputs };
+        return new() { Outputs = Outputs };
     }
 
     protected override void OnLoad(ConfigNode node)
     {
         base.OnLoad(node);
-        outputs = [.. ConfigUtil.LoadOutputResources(node)];
+        Outputs = [.. ConfigUtil.LoadOutputResources(node)];
     }
 
     protected override void OnSave(ConfigNode node)
     {
         base.OnSave(node);
-        ConfigUtil.SaveOutputResources(node, outputs);
+        ConfigUtil.SaveOutputResources(node, Outputs);
     }
 }

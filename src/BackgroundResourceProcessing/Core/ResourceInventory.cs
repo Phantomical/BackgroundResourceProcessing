@@ -29,6 +29,9 @@ public struct InventoryId(uint flightId, string resourceName, uint? moduleId = n
     public InventoryId(PartModule module, string resourceName)
         : this(module.part.flightID, resourceName, module.GetPersistentId()) { }
 
+    public InventoryId(Part part, string resourceName)
+        : this(part.flightID, resourceName) { }
+
     public void Load(ConfigNode node)
     {
         node.TryGetValue("flightId", ref flightId);

@@ -26,6 +26,10 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
             [new KSPAssemblyDependency("ClickThroughBlocker", new(2, 0))]
         ),
         new(
+            "BackgroundResourceProcessing.Integration.CryoTanks",
+            [new DirectAssemblyDependency("SimpleBoiloff", new(0, 2))]
+        ),
+        new(
             "BackgroundResourceProcessing.Integration.EL",
             [new DirectAssemblyDependency("Launchpad", new(6, 99))]
         ),

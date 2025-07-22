@@ -201,10 +201,10 @@ public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
 
         if (bonus != 1.0)
         {
-            for (int i = 0; i < recipe.inputs.Count; ++i)
-                recipe.inputs[i] = recipe.inputs[i].WithMultiplier(bonus);
-            for (int i = 0; i < recipe.outputs.Count; ++i)
-                recipe.inputs[i] = recipe.inputs[i].WithMultiplier(bonus);
+            for (int i = 0; i < recipe.Inputs.Count; ++i)
+                recipe.Inputs[i] = recipe.Inputs[i].WithMultiplier(bonus);
+            for (int i = 0; i < recipe.Outputs.Count; ++i)
+                recipe.Inputs[i] = recipe.Inputs[i].WithMultiplier(bonus);
         }
 
         return recipe;

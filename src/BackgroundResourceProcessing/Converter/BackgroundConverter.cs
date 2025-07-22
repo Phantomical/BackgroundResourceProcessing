@@ -53,6 +53,12 @@ public class ModuleBehaviour()
         Converters = [behaviour];
     }
 
+    public ModuleBehaviour(List<ConverterBehaviour> behaviours)
+        : this()
+    {
+        Converters = behaviours;
+    }
+
     /// <summary>
     /// Add a new <see cref="ConverterBehaviour"/>.
     /// </summary>

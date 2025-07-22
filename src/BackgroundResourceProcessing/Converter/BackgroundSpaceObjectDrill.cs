@@ -33,7 +33,7 @@ public abstract class BackgroundSpaceObjectDrill<T> : BackgroundResourceConverte
         var usePreparedRecipe = UsePreparedRecipe.Evaluate(module);
 
         if (!usePreparedRecipe)
-            recipe.inputs.Add(GetPowerConsumption(module));
+            recipe.Inputs.Add(GetPowerConsumption(module));
 
         foreach (var resource in resources)
         {
@@ -47,11 +47,11 @@ public abstract class BackgroundSpaceObjectDrill<T> : BackgroundResourceConverte
             };
 
             if (!usePreparedRecipe)
-                recipe.outputs.Add(ratio);
+                recipe.Outputs.Add(ratio);
             massRate += resource.abundance * definition.density;
         }
 
-        recipe.inputs.Add(new(MassResourceName, massRate, false, ResourceFlowMode.NO_FLOW));
+        recipe.Inputs.Add(new(MassResourceName, massRate, false, ResourceFlowMode.NO_FLOW));
         return recipe;
     }
 

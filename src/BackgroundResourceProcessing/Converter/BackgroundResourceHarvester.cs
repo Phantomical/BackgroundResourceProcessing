@@ -32,7 +32,7 @@ public class BackgroundResourceHarvester : BackgroundResourceConverter<ModuleRes
         if (type == HarvestTypes.Atmospheric)
             rate *= GetIntakeMultiplier(module);
 
-        recipe.outputs.Add(
+        recipe.Outputs.Add(
             new ResourceRatio()
             {
                 ResourceName = module.ResourceName,
