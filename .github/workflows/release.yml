@@ -58,7 +58,8 @@ jobs:
 
       - name: Strip Leading `v` From Version Number
         run: |
-          echo "STRIPPED_VERSION=$(echo '${{ github.ref_name }}' | sed -S 's/^v//')" >> "$GITHUB_ENV"
+          set -euo pipefail
+          echo "STRIPPED_VERSION=$(echo '${{ github.ref_name }}' | sed -E 's/^v//')" >> "$GITHUB_ENV"
 
       - name: Upload to Spacedock
         uses: KSP2Community/spacedock-upload@main
