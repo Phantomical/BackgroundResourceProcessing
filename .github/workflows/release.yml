@@ -56,13 +56,17 @@ jobs:
         run: |
           gh release view ${{ github.ref_name }} --json body | jq .body > CHANGELOG.md
 
+      - name: Strip Leading `v` From Version Number
+        run: |
+          echo "STRIPPED_VERSION=$(echo '${{ github.ref_name }}' | sed -S 's/^v//')" >> "$GITHUB_ENV"
+
       - name: Upload to Spacedock
         uses: KSP2Community/spacedock-upload@main
         if: github.ref_type == 'tag' && !github.event.release.prerelease
         with:
           username: steamroller
           password: '${{ secrets.SPACEDOCK_PASSWORD }}'
-          version: ${{ github.ref_name }}
+          version: '${{ env.STRIPPED_VERSION }}'
           # KSP1 gameid. Retrieve from https://spacedock.info/api/games
           game_id: '3102'
           mod_id: '3934'
