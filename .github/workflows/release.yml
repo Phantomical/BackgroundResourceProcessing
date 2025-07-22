@@ -2,7 +2,8 @@ name: release
 
 on:
   release:
-    types: [published]
+    types: 
+      - published
 
 env:
   GITHUB_TOKEN: ${{ github.token }}
@@ -11,7 +12,7 @@ jobs:
   build:
     uses: ./.github/workflows/ci.yml
 
-  upload:
+  upload-release-assets:
     runs-on: ubuntu-latest
     needs: [build]
     permissions:
@@ -34,14 +35,24 @@ jobs:
           zip -r9 ../BackgroundResourceProcessing.zip *
 
       - name: Upload Release Assets
-        if: github.ref_type == 'tag'
         run: |
           gh release upload --clobber ${{ github.ref_name }}  \
             BackgroundResourceProcessing.zip                  \
             BackgroundResourceProcessing.version
 
+
+  upload-spacedock:
+    runs-on: ubuntu-latest
+    needs: [upload-release-assets]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download Release Asset
+        run: |
+          gh release download ${{ github.ref_name }}  \
+            -p BackgroundResourceProcessing.zip       \
+            -o BackgroundResourceProcessing.zip
+
       - name: Get Release Description
-        if: github.ref_type == 'tag'
         run: |
           gh release view ${{ github.ref_name }} --json body | jq .body > CHANGELOG.md
 
@@ -50,7 +61,7 @@ jobs:
         if: github.ref_type == 'tag' && !github.event.release.prerelease
         with:
           username: steamroller
-          password: ${{ secrets.SPACEDOCK_PASSWORD }}
+          password: '${{ secrets.SPACEDOCK_PASSWORD }}'
           version: ${{ github.ref_name }}
           # KSP1 gameid. Retrieve from https://spacedock.info/api/games
           game_id: '3102'
