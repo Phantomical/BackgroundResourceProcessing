@@ -35,8 +35,8 @@ jobs:
       - name: Upload Release Assets
         if: github.ref_type == 'tag'
         run: |
-          gh release upload ${{ github.ref_name }}  \
-            BackgroundResourceProcessing.zip        \
+          gh release upload --clobber ${{ github.ref_name }}  \
+            BackgroundResourceProcessing.zip                  \
             BackgroundResourceProcessing.version
 
       - name: Get Release Description
