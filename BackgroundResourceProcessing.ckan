@@ -10,7 +10,7 @@ depends:
   - name: Harmony2
     min_version: 2.2.1
 
-supports:
+suggests:
   - name: Kopernicus
   - name: ClickThroughBlocker
     min_version: 2.1.10
