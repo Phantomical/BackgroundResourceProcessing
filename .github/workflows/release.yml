@@ -45,7 +45,7 @@ jobs:
           gh release view ${{ github.ref_name }} --json body | jq .body > CHANGELOG.md
 
       - name: Upload to Spacedock
-        uses: KSP2Community/spacedock-upload
+        uses: KSP2Community/spacedock-upload@main
         if: github.ref_type == 'tag' && !github.event.release.prerelease
         with:
           username: steamroller
