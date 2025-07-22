@@ -14,6 +14,9 @@
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <NoWarn>CS1591</NoWarn>
 
+        <!-- Generate a nuget lockfile so that we can cache stuff in CI -->
+        <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+
         <ProjectRootDir>$(MSBuildThisFileDirectory)</ProjectRootDir>
 
         <!-- <DefineConstants>DEBUG;SOLVERTRACE</DefineConstants> -->

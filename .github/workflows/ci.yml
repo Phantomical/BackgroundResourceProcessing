@@ -22,7 +22,6 @@ jobs:
       - name: Download ckan.exe
         run: gh release download --repo KSP-CKAN/CKAN --pattern ckan.exe -O ckan.exe
 
-          
       - name: Configure CKAN
         run: |
           ./ckan.exe instance fake --asroot --set-default KSP ${{ env.KSP_ROOT }} 1.12.5 --game KSP --MakingHistory 1.9.1 --BreakingGround 1.7.1
@@ -47,6 +46,8 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0'
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
 
       - run: dotnet restore
       - run: dotnet build -c Release
