@@ -37,9 +37,13 @@ Some of the integrations can be disabled if you wish to do so (e.g. USI Life Sup
 See the difficulty settings window in-game for options to enable and/or disable them.
 
 ## Install
-This mod is currently at a very early stage. You will need to build it yourself.
-See the instructions in [CONTRIBUTING.md](./CONTRIBUTING.md) for a description
-of how to do this.
+[GitHub][releases] | [Spacedock] | CKAN
+
+[releases]: https://github.com/Phantomical/BackgroundResourceProcessing/releases/latest
+[Spacedock]: https://spacedock.info/mod/3934/Background%20Resource%20Processing
+
+Download the mod zip from one of the links above and drag the `GameData` folder
+within into your KSP installation directory.
 
 ## License
 Background Resource Processing is available under the MIT license.
