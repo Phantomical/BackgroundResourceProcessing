@@ -11,17 +11,5 @@ depends:
     min_version: 2.2.1
 
 suggests:
-  - name: Kopernicus
   - name: ClickThroughBlocker
     min_version: 2.1.10
-  - name: ExtraPlanetaryLaunchpads
-    min_version: 6.99.3
-  - name: SystemHeat
-    min_version: 0.8.1
-  - name: USI-LS
-    min_version: v112.0
-
-  - name: RemoteTech
-    min_version: v1.9.12
-  - name: SCANsat
-    min_version: v20.4
