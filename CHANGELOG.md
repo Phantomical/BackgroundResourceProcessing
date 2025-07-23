@@ -18,6 +18,8 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 ### Changed
 * Significantly improved performance when looking at the USI-LS status panel
   during timewarp.
+* The USI-LS panel now displays `indefinite` for resources instead of
+  `Infinityy (+15d)`.
 
 ## 0.1.2
 ### Changed

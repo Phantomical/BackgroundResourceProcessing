@@ -348,3 +348,19 @@ public static class LifeSupportMonitor_GetResourceInVessel_Patch
         return false;
     }
 }
+
+[HarmonyPatch(typeof(LifeSupportCrewDisplayStat))]
+[HarmonyPatch("GetRemainingTimeWithGraceLabel")]
+public static class LifeSupportMonitor_GetRemainingTimeWithGraceLabel_Patch
+{
+    static bool Prefix(ref string __result, double timeLeft)
+    {
+        if (timeLeft == double.PositiveInfinity)
+        {
+            __result = "<color=#6FFF00>indefinite</color>";
+            return false;
+        }
+
+        return true;
+    }
+}
