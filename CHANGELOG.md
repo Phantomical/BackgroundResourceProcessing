@@ -13,6 +13,11 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 ## Unreleased
 ### Added
 * Added support for `CryoTanks`.
+* Added support for `WildBlueTools`.
+
+### Changed
+* Significantly improved performance when looking at the USI-LS status panel
+  during timewarp.
 
 ## 0.1.2
 ### Changed

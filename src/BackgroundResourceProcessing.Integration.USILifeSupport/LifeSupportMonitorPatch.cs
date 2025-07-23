@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection.Emit;
+using BackgroundResourceProcessing.Core;
 using HarmonyLib;
 using LifeSupport;
 using UnityEngine;
@@ -15,6 +16,166 @@ public class Loader : MonoBehaviour
     {
         Harmony harmony = new("BackgroundResourceProcessing.Integration.USILifeSupport");
         harmony.PatchAll(typeof(Loader).Assembly);
+    }
+}
+
+[KSPAddon(KSPAddon.Startup.AllGameScenes, false)]
+public class MonitorVesselCache : MonoBehaviour
+{
+    internal static MonitorVesselCache Instance = null;
+
+    readonly Dictionary<Vessel, VesselStats> unloadedStats = [];
+    readonly Dictionary<Vessel, LoadedVesselStats> loadedStats = [];
+
+    public VesselStats? GetVesselStats(Vessel vessel)
+    {
+        var processor = vessel.FindVesselModuleImplementing<BackgroundResourceProcessor>();
+        if (processor == null)
+            return null;
+
+        if (vessel.loaded)
+            return GetLoadedVesselStats(vessel, processor);
+        else
+            return GetUnloadedVesselStats(vessel, processor);
+    }
+
+    VesselStats? GetUnloadedVesselStats(Vessel vessel, BackgroundResourceProcessor processor)
+    {
+        if (unloadedStats.TryGetValue(vessel, out var saved))
+        {
+            if (saved.LastChangepoint == processor.LastChangepoint)
+                return saved;
+        }
+
+        var stats = SimulateVessel(vessel, processor);
+        if (stats == null)
+            return null;
+
+        unloadedStats[vessel] = (VesselStats)stats;
+        return stats;
+    }
+
+    VesselStats? GetLoadedVesselStats(Vessel vessel, BackgroundResourceProcessor processor)
+    {
+        var now = DateTime.UtcNow;
+        if (loadedStats.TryGetValue(vessel, out var saved))
+        {
+            if ((now - saved.LastRecorded) < TimeSpan.FromSeconds(5))
+                return saved.Stats;
+        }
+
+        saved ??= new();
+
+        var stats = SimulateVessel(vessel, processor);
+        if (stats == null)
+            return null;
+
+        saved.Vessel = vessel;
+        saved.LastRecorded = now;
+        saved.Stats = (VesselStats)stats;
+
+        loadedStats[vessel] = saved;
+        return stats;
+    }
+
+    VesselStats? SimulateVessel(Vessel vessel, BackgroundResourceProcessor processor)
+    {
+        var module = vessel.FindVesselModuleImplementing<ModuleBackgroundUSILifeSupport>();
+        if (module == null)
+            return null;
+
+        var original = processor.Converters;
+
+        var simulator = processor.GetSimulator();
+        var converters = simulator.Converters;
+
+        if (module.EcConverterIndex < 0 || module.SupplyConverterIndex < 0)
+            return null;
+
+        var ec = converters[module.EcConverterIndex];
+        var supply = converters[module.SupplyConverterIndex];
+
+        double? ecExhausted = null;
+        double? supplyExhausted = null;
+        foreach (var changepoint in simulator.Steps())
+        {
+            if (ec.rate < 1.0)
+                ecExhausted ??= changepoint;
+            if (supply.rate < 1.0)
+                supplyExhausted ??= changepoint;
+
+            if (ecExhausted != null && supplyExhausted != null)
+                break;
+        }
+
+        var stats = new VesselStats()
+        {
+            LastChangepoint = processor.LastChangepoint,
+            EcExhaustedUT = ecExhausted ?? double.PositiveInfinity,
+            SuppliesExhaustedUT = supplyExhausted ?? double.PositiveInfinity,
+        };
+
+        if (!vessel.loaded)
+        {
+            // The simulator does not have any of the behaviours, so it is necessary
+            // to get them out of the original resource processor
+            var ecB = original[module.EcConverterIndex].Behaviour as USILifeSupportBehaviour;
+            var supplyB =
+                original[module.SupplyConverterIndex].Behaviour as USILifeSupportBehaviour;
+
+            // If the vessel is not loaded then the lastSatisfied on the behaviours
+            // will actually contain a relevant value and we can use that.
+            stats.EcExhaustedUT = ecB?.lastSatisfied ?? stats.EcExhaustedUT;
+            stats.SuppliesExhaustedUT = supplyB?.lastSatisfied ?? stats.SuppliesExhaustedUT;
+
+            stats.SupplyState = processor.GetResourceState("Supplies");
+        }
+
+        return stats;
+    }
+
+    void Start()
+    {
+        GameEvents.onVesselDestroy.Add(ResetCachedState);
+        GameEvents.onVesselUnloaded.Add(ResetCachedState);
+
+        Instance = this;
+    }
+
+    void OnDestroy()
+    {
+        Instance = null;
+
+        GameEvents.onVesselDestroy.Remove(ResetCachedState);
+        GameEvents.onVesselUnloaded.Remove(ResetCachedState);
+    }
+
+    void ResetCachedState(Vessel vessel)
+    {
+        unloadedStats.Remove(vessel);
+        loadedStats.Remove(vessel);
+    }
+
+    public struct VesselStats
+    {
+        public double LastChangepoint;
+        public double EcExhaustedUT;
+        public double SuppliesExhaustedUT;
+
+        public InventoryState SupplyState;
+
+        public readonly double GetSuppliesAtUT(double UT)
+        {
+            return SupplyState.amount + SupplyState.rate * (UT - LastChangepoint);
+        }
+    }
+
+    public class LoadedVesselStats
+    {
+        public Vessel Vessel;
+        public DateTime LastRecorded;
+
+        public VesselStats Stats;
     }
 }
 
@@ -139,65 +300,27 @@ public static class LifeSupportMonitor_GetVesselStats_Patch
         if (!(settings?.EnableUSILSIntegration ?? false))
             return;
 
-        var processor = vessel.FindVesselModuleImplementing<BackgroundResourceProcessor>();
-        if (processor == null)
+        var _stats = MonitorVesselCache.Instance?.GetVesselStats(vessel);
+        if (_stats == null)
             return;
 
-        var module = vessel.FindVesselModuleImplementing<ModuleBackgroundUSILifeSupport>();
-        if (module == null)
-            return;
-
-        var original = processor.Converters;
-
-        var simulator = processor.GetSimulator();
-        var converters = simulator.Converters;
-
-        if (module.EcConverterIndex < 0 || module.SupplyConverterIndex < 0)
-            return;
-
-        var ec = converters[module.EcConverterIndex];
-        var supply = converters[module.SupplyConverterIndex];
-
-        double? ecExhausted = null;
-        double? supplyExhausted = null;
-        foreach (var changepoint in simulator.Steps())
-        {
-            if (ec.rate < 1.0)
-                ecExhausted ??= changepoint;
-            if (supply.rate < 1.0)
-                supplyExhausted ??= changepoint;
-
-            if (ecExhausted != null && supplyExhausted != null)
-                break;
-        }
-
+        var stats = _stats.Value;
         var now = Planetarium.GetUniversalTime();
 
         if (vessel.loaded)
         {
             // If we've run out of a resource and the vessel is loaded then we
             // should just reuse the existing time left calculated by USI-LS.
-            if (ecExhausted != now)
-                ecTimeLeft = (ecExhausted ?? double.PositiveInfinity) - now;
-            if (supplyExhausted != now)
-                suppliesTimeLeft = (supplyExhausted ?? double.PositiveInfinity) - now;
+
+            if (stats.EcExhaustedUT > now)
+                ecTimeLeft = stats.EcExhaustedUT - now;
+            if (stats.SuppliesExhaustedUT > now)
+                suppliesTimeLeft = stats.SuppliesExhaustedUT - now;
         }
         else
         {
-            // The simulator does not have any of the behaviours, so it is necessary
-            // to get them out of the original resource processor
-            var ecB = original[module.EcConverterIndex].Behaviour as USILifeSupportBehaviour;
-            var supplyB =
-                original[module.SupplyConverterIndex].Behaviour as USILifeSupportBehaviour;
-
-            // If the vessel is not loaded then the lastSatisfied on the behaviours
-            // will actually contain a relevant value and we can use that.
-            var ecEffectTime = ecB?.lastSatisfied ?? ecExhausted ?? double.PositiveInfinity;
-            var supplyEffectTime =
-                supplyB?.lastSatisfied ?? supplyExhausted ?? double.PositiveInfinity;
-
-            suppliesTimeLeft = supplyEffectTime - now;
-            ecTimeLeft = ecEffectTime - now;
+            suppliesTimeLeft = stats.SuppliesExhaustedUT - now;
+            ecTimeLeft = stats.EcExhaustedUT - now;
         }
     }
 }
@@ -208,24 +331,20 @@ public static class LifeSupportMonitor_GetResourceInVessel_Patch
 {
     static bool Prefix(ref double __result, Vessel vessel, string resName)
     {
+        if (vessel == null || vessel.loaded || resName != "Supplies")
+            return true;
+
         var settings = HighLogic.CurrentGame?.Parameters.CustomParams<Settings>();
         if (!(settings?.EnableUSILSIntegration ?? false))
             return true;
 
-        if (vessel == null)
+        var _stats = MonitorVesselCache.Instance?.GetVesselStats(vessel);
+        if (_stats == null)
             return true;
+        var stats = _stats.Value;
+        var now = Planetarium.GetUniversalTime();
 
-        if (vessel.loaded)
-            return true;
-
-        var processor = vessel.FindVesselModuleImplementing<BackgroundResourceProcessor>();
-        if (processor == null)
-            return true;
-
-        processor.UpdateBackgroundState();
-        var state = processor.GetResourceState(resName);
-        __result = state.amount;
-
+        __result = stats.GetSuppliesAtUT(now);
         return false;
     }
 }

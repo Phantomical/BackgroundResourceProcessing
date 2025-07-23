@@ -87,6 +87,17 @@ public sealed class BackgroundResourceProcessor : VesselModule
         processor.converters.AsReadOnly();
 
     /// <summary>
+    /// The time at which the rates for this processor are next expected to
+    /// change.
+    /// </summary>
+    public double NextChangepoint => processor.nextChangepoint;
+
+    /// <summary>
+    /// The last time that this processor was updated.
+    /// </summary>
+    public double LastChangepoint => processor.lastUpdate;
+
+    /// <summary>
     /// Get an inventory directly from its <c><see cref="InventoryId"/></c>.
     /// </summary>
     /// <returns>
@@ -180,7 +191,10 @@ public sealed class BackgroundResourceProcessor : VesselModule
     {
         InventoryState state = default;
         foreach (var inventory in processor.inventories)
-            state = state.Merge(inventory.State);
+        {
+            if (inventory.resourceName == resourceName)
+                state = state.Merge(inventory.State);
+        }
         return state;
     }
 

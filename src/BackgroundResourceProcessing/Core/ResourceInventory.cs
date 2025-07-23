@@ -275,4 +275,9 @@ public class ResourceInventory
         clone.Snapshot = null;
         return clone;
     }
+
+    public override string ToString()
+    {
+        return $"{resourceName} {amount:G6}/{maxAmount:G6}";
+    }
 }
