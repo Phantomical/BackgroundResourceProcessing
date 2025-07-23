@@ -30,7 +30,7 @@ public class BackgroundELExtractor : BackgroundResourceConverter<ELExtractor>
 
         double rate = ResourceMap.Instance.GetAbundance(request) * module.Rate;
 
-        recipe.outputs.Add(
+        recipe.Outputs.Add(
             new ResourceRatio()
             {
                 ResourceName = module.ResourceName,
