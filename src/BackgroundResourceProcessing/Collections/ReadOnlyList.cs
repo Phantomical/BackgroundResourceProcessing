@@ -26,12 +26,11 @@ public readonly struct ReadOnlyList<T>(List<T> list) : IList<T>, ICollection<T>,
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get { return list[index]; }
-
         set { throw new NotImplementedException(); }
     }
 
     /// <summary>
-    /// Gets the number of elements contained in this list. 
+    /// Gets the number of elements contained in this list.
     /// </summary>
     public readonly int Count => list.Count;
 

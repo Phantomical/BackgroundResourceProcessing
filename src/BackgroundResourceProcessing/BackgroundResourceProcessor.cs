@@ -81,8 +81,7 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
     /// Note that you can still modify the inventories themselves. You just
     /// cannot add or remove inventories from the set.
     /// </remarks>
-    public ReadOnlyList<Core.ResourceConverter> Converters =>
-        new(processor.converters);
+    public ReadOnlyList<Core.ResourceConverter> Converters => new(processor.converters);
 
     /// <summary>
     /// The time at which the rates for this processor are next expected to
