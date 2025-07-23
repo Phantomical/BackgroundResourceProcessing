@@ -1,10 +1,8 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Runtime.InteropServices;
-using BackgroundResourceProcessing.Addons;
+using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Converter;
 using BackgroundResourceProcessing.Core;
-using Shadow = BackgroundResourceProcessing.ShadowState;
 
 namespace BackgroundResourceProcessing;
 
@@ -17,7 +15,7 @@ namespace BackgroundResourceProcessing;
 /// If you want to inspect or otherwise interact with the background state
 /// of the vessel then this module is where you should start.
 /// </remarks>
-public sealed class BackgroundResourceProcessor : VesselModule
+public sealed partial class BackgroundResourceProcessor : VesselModule
 {
     private readonly ResourceProcessor processor = new();
 
@@ -73,7 +71,7 @@ public sealed class BackgroundResourceProcessor : VesselModule
     /// Note that you can still modify the inventories themselves. You just
     /// cannot add or remove inventories from the set.
     /// </remarks>
-    public ReadOnlyCollection<ResourceInventory> Inventories => processor.inventories.AsReadOnly();
+    public ReadOnlyList<ResourceInventory> Inventories => new(processor.inventories);
 
     /// <summary>
     /// Get a read-only view of the available converters.
@@ -83,8 +81,8 @@ public sealed class BackgroundResourceProcessor : VesselModule
     /// Note that you can still modify the inventories themselves. You just
     /// cannot add or remove inventories from the set.
     /// </remarks>
-    public ReadOnlyCollection<Core.ResourceConverter> Converters =>
-        processor.converters.AsReadOnly();
+    public ReadOnlyList<Core.ResourceConverter> Converters =>
+        new(processor.converters);
 
     /// <summary>
     /// The time at which the rates for this processor are next expected to
@@ -127,6 +125,13 @@ public sealed class BackgroundResourceProcessor : VesselModule
             return null;
 
         return processor.inventories[index];
+    }
+
+    public int? GetInventoryIndex(InventoryId id)
+    {
+        if (processor.inventoryIds.TryGetValue(id, out var index))
+            return index;
+        return null;
     }
 
     /// <summary>
@@ -223,218 +228,6 @@ public sealed class BackgroundResourceProcessor : VesselModule
         var index = processor.converters.Count;
         processor.converters.Add(converter);
         return index;
-    }
-    #endregion
-
-    #region Overrides & Event Handlers
-    public override Activation GetActivation()
-    {
-        return Activation.LoadedOrUnloaded;
-    }
-
-    public override bool ShouldBeActive()
-    {
-        return HighLogic.LoadedScene switch
-        {
-            GameScenes.SPACECENTER
-            or GameScenes.TRACKSTATION
-            or GameScenes.PSYSTEM
-            or GameScenes.FLIGHT => true,
-            _ => false,
-        };
-    }
-
-    public override int GetOrder()
-    {
-        // We want this to run before most other modules.
-        //
-        // The default order is 999, so this should be early enough to still
-        // allow other modules to go first if they really want to.
-        return 100;
-    }
-
-    protected override void OnStart()
-    {
-        RegisterCallbacks();
-
-        if (vessel.loaded)
-        {
-            LoadVessel();
-        }
-        else
-        {
-            EventDispatcher.RegisterChangepointCallback(this, processor.nextChangepoint);
-        }
-    }
-
-    void OnDestroy()
-    {
-        // Prevent a nullref exception during vesselmodule enumeration.
-        if (vessel == null)
-            return;
-
-        EventDispatcher.UnregisterChangepointCallbacks(this);
-
-        UnregisterCallbacks();
-    }
-
-    public override void OnLoadVessel()
-    {
-        LoadVessel();
-
-        GameEvents.onGameStateSave.Add(OnGameStateSave);
-    }
-
-    public override void OnUnloadVessel()
-    {
-        GameEvents.onGameStateSave.Remove(OnGameStateSave);
-    }
-
-    protected override void OnSave(ConfigNode node)
-    {
-        base.OnSave(node);
-        processor.Save(node);
-        ShadowState?.Save(node.AddNode("SHADOW_STATE"));
-    }
-
-    protected override void OnLoad(ConfigNode node)
-    {
-        base.OnLoad(node);
-        processor.Load(node, Vessel);
-
-        ConfigNode shadow = null;
-        if (node.TryGetNode("SHADOW_STATE", ref shadow))
-            ShadowState = Shadow.Load(shadow);
-
-        foreach (var converter in processor.converters)
-            converter.Behaviour?.Vessel = vessel;
-    }
-
-    internal void OnChangepoint(double changepoint)
-    {
-        // We do nothing for active vessels.
-        if (vessel.loaded)
-            return;
-
-        LogUtil.Debug(() =>
-            $"Updating vessel {vessel.GetDisplayName()} at changepoint {changepoint}"
-        );
-
-        var state = new VesselState(changepoint);
-        state.SetShadowState(ShadowState ??= Shadow.GetShadowState(vessel));
-
-        var recompute = false;
-
-        processor.RecordProtoInventories(vessel);
-        if (processor.UpdateState(changepoint, true))
-            recompute = true;
-        if (processor.UpdateBehaviours(state))
-            recompute = true;
-        if (recompute)
-        {
-            processor.ComputeRates();
-            DispatchOnRatesComputed(changepoint);
-        }
-
-        processor.UpdateNextChangepoint(changepoint);
-
-        EventDispatcher.RegisterChangepointCallback(this, processor.nextChangepoint);
-    }
-
-    // The EventDispatcher module takes care of calling this for only the
-    // vessel that is actually switching.
-    internal void OnVesselSOIChanged(GameEvents.HostedFromToAction<Vessel, CelestialBody> evt)
-    {
-        // We do nothing for active vessels.
-        if (vessel.loaded)
-            return;
-        if (!ReferenceEquals(vessel, evt.host))
-            return;
-
-        ShadowState = Shadow.GetShadowState(vessel);
-        var state = new VesselState(Planetarium.GetUniversalTime());
-        state.SetShadowState(ShadowState.Value);
-
-        processor.ForceUpdateBehaviours(state);
-        processor.ComputeRates();
-        DispatchOnRatesComputed(state.CurrentTime);
-        processor.UpdateNextChangepoint(state.CurrentTime);
-
-        EventDispatcher.UnregisterChangepointCallbacks(this);
-        EventDispatcher.RegisterChangepointCallback(this, processor.nextChangepoint);
-    }
-
-    // We use this event to save the vessel state _before_ we actually get saved.
-    private void OnGameStateSave(ConfigNode _)
-    {
-        if (!vessel.loaded)
-            return;
-
-        SaveVessel();
-    }
-    #endregion
-
-    #region Implementation Details
-    private void LoadVessel()
-    {
-        var currentTime = Planetarium.GetUniversalTime();
-
-        processor.UpdateState(currentTime, false);
-        processor.ApplyInventories(Vessel);
-        onVesselRestore.Fire(this);
-        processor.ClearVesselState();
-
-        ShadowState = null;
-    }
-
-    private void SaveVessel()
-    {
-        // If the vessel is getting destroyed then there is no point in recording
-        // the vessel state.
-        if (vessel == null)
-            processor.ClearVesselState();
-
-        var currentTime = Planetarium.GetUniversalTime();
-        var state = new VesselState(currentTime);
-
-        // If we have already been saved this frame then there is nothing else
-        // we need to do here.
-        if (processor.lastUpdate == currentTime)
-            return;
-
-        ShadowState = Shadow.GetShadowState(vessel);
-        state.SetShadowState((Shadow)ShadowState);
-
-        processor.RecordVesselState(vessel, currentTime);
-        onVesselRecord.Fire(this);
-        processor.ForceUpdateBehaviours(state);
-        processor.ComputeRates();
-        DispatchOnRatesComputed(currentTime);
-        processor.UpdateNextChangepoint(currentTime);
-    }
-
-    private void DispatchOnRatesComputed(double currentTime)
-    {
-        foreach (var converter in processor.converters)
-        {
-            converter.Behaviour?.OnRatesComputed(
-                this,
-                converter,
-                new() { CurrentTime = currentTime }
-            );
-        }
-    }
-
-    private void RegisterCallbacks()
-    {
-        if (vessel.loaded)
-            GameEvents.onGameStateSave.Add(OnGameStateSave);
-    }
-
-    private void UnregisterCallbacks()
-    {
-        if (vessel.loaded)
-            GameEvents.onGameStateSave.Remove(OnGameStateSave);
     }
     #endregion
 
