@@ -8,7 +8,7 @@ namespace BackgroundResourceProcessing.Converter;
 /// A background converter which selects between multiple different
 /// converters at runtime based on their filter expressions.
 /// </summary>
-public sealed class BackgroundMultiConverter : BackgroundConverter
+public class BackgroundSelectableConverter : BackgroundConverter
 {
     readonly List<ConverterEntry> options = [];
 
@@ -63,3 +63,6 @@ public sealed class BackgroundMultiConverter : BackgroundConverter
         public BackgroundConverter converter;
     }
 }
+
+[Obsolete("BackgroundMultiConverter has been renamed to BackgroundSelectableConverter")]
+public class BackgroundMultiConverter : BackgroundSelectableConverter { }

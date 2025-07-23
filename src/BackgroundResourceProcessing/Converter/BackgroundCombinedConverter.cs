@@ -9,7 +9,7 @@ namespace BackgroundResourceProcessing.Converter;
 /// Any nested converter within whose entry condition evaluates to <c>true</c>
 /// (or is not present) will be merged together into one larger behaviour.
 /// </summary>
-public sealed class BackgroundCombinedConverter : BackgroundConverter
+public class BackgroundCombinedConverter : BackgroundConverter
 {
     readonly List<ConverterEntry> options = [];
 
