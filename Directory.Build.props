@@ -59,8 +59,7 @@
 
         <!-- The path to the managed directory from the KSP root -->
         <ManagedRelativePath Condition="$([MSBuild]::IsOsPlatform('Windows'))">KSP_x64_Data\Managed</ManagedRelativePath>
-        <ManagedRelativePath Condition="$([MSBuild]::IsOsPlatform('OSX'))">
-            KSP.app\Contents\Resources\Data\Managed</ManagedRelativePath>
+        <ManagedRelativePath Condition="$([MSBuild]::IsOsPlatform('OSX'))">KSP.app\Contents\Resources\Data\Managed</ManagedRelativePath>
         <ManagedRelativePath Condition="$([MSBuild]::IsOsPlatform('Linux'))">KSP_Data\Managed</ManagedRelativePath>
 
         <!-- The path to the KSP executable from the KSP root -->
