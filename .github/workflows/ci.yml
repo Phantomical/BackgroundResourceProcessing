@@ -10,7 +10,7 @@ env:
   KSP_ROOT: D:\\KSP
   CKAN_DEPS: |
     Harmony2 ExtraPlanetaryLaunchpads ClickThroughBlocker Kopernicus USI-LS SystemHeat
-    CryoTanksCore
+    CryoTanks-Core
   GH_TOKEN: ${{ github.token }}
   RELEASE_STAGING: D:\\release
 
