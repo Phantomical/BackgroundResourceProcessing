@@ -33,6 +33,7 @@ automatically be enabled if they are detected:
 - [SystemHeat](https://forum.kerbalspaceprogram.com/topic/193909-112x-systemheat-a-replacement-for-the-coreheat-system-november-20/)
 - [USI Life Support](https://forum.kerbalspaceprogram.com/topic/105202-112x-usi-life-support/)
 - [CryoTanks](https://forum.kerbalspaceprogram.com/topic/195042-112x-cryotanks-liquid-hydrogen-storage-and-management-july-21/)
+- [WildBlueTools](https://github.com/Angel-125/WildBlueTools)
 
 Some of the integrations can be disabled if you wish to do so (e.g. USI Life Support).
 See the difficulty settings window in-game for options to enable and/or disable them.
