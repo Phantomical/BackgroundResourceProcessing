@@ -154,4 +154,20 @@ public static class ConfigUtil
         expr = default;
         return TryGetCondition(node, name, ref expr);
     }
+
+    public static bool TryGetExpression<T>(
+        this ConfigNode node,
+        string name,
+        ref FieldExpression<T> expr
+    )
+    {
+        string cond = null;
+        if (node.TryGetValue(name, ref cond))
+        {
+            expr = FieldExpression<T>.Compile(cond, node);
+            return true;
+        }
+
+        return false;
+    }
 }

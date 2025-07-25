@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using BackgroundResourceProcessing.Behaviour;
 using BackgroundResourceProcessing.Utils;
 
@@ -10,9 +11,11 @@ namespace BackgroundResourceProcessing.Converter;
 /// </summary>
 public class BackgroundConstantConverter : BackgroundConverter
 {
-    public List<ResourceRatio> inputs = [];
-    public List<ResourceRatio> outputs = [];
-    public List<ResourceConstraint> required = [];
+    const BindingFlags Flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+
+    public List<ResourceRatioExpression> inputs = [];
+    public List<ResourceRatioExpression> outputs = [];
+    public List<ResourceConstraintExpression> required = [];
 
     public ConditionalExpression ActiveCondition = ConditionalExpression.Always;
 
@@ -25,16 +28,22 @@ public class BackgroundConstantConverter : BackgroundConverter
     [KSPField]
     public bool PullFromLocalBackgroundInventory = false;
 
+    [KSPField]
+    public string LastUpdateField = null;
+
     private List<ConverterMultiplier> multipliers = [];
+    private FieldInfo lastUpdateField = null;
 
     public override ModuleBehaviour GetBehaviour(PartModule module)
     {
         if (!ActiveCondition.Evaluate(module))
             return null;
 
-        IEnumerable<ResourceRatio> inputs = this.inputs;
-        IEnumerable<ResourceRatio> outputs = this.outputs;
-        IEnumerable<ResourceConstraint> required = this.required;
+        IEnumerable<ResourceRatio> inputs = this.inputs.Select(input => input.Evaluate(module));
+        IEnumerable<ResourceRatio> outputs = this.outputs.Select(output => output.Evaluate(module));
+        IEnumerable<ResourceConstraint> required = this.required.Select(req =>
+            req.Evaluate(module)
+        );
 
         var mult = 1.0;
         foreach (var field in multipliers)
@@ -62,6 +71,8 @@ public class BackgroundConstantConverter : BackgroundConverter
         if (PullFromLocalBackgroundInventory)
             behaviour.AddPullModule(module);
 
+        lastUpdateField?.SetValue(module, Planetarium.GetUniversalTime());
+
         return behaviour;
     }
 
@@ -71,13 +82,25 @@ public class BackgroundConstantConverter : BackgroundConverter
 
         var target = GetTargetType(node);
 
-        if (node.TryGetCondition2(nameof(ActiveCondition), out var activeCondition))
-            ActiveCondition = activeCondition;
+        node.TryGetCondition(nameof(ActiveCondition), ref ActiveCondition);
 
         multipliers = ConverterMultiplier.LoadAll(target, node);
 
-        inputs.AddRange(ConfigUtil.LoadInputResources(node));
-        outputs.AddRange(ConfigUtil.LoadOutputResources(node));
-        required.AddRange(ConfigUtil.LoadRequiredResources(node));
+        inputs.AddRange(ResourceRatioExpression.LoadInputs(target, node));
+        outputs.AddRange(ResourceRatioExpression.LoadOutputs(target, node));
+        required.AddRange(ResourceConstraintExpression.LoadRequirements(target, node));
+
+
+
+        if (LastUpdateField != null)
+        {
+            var field = target.GetField(LastUpdateField, Flags);
+            if (field.FieldType == typeof(double))
+                lastUpdateField = field;
+            else
+            {
+                LogUtil.Error($"{target.Name}.{field.Name} has unsupported type {field.FieldType.Name} (expected double instead)");
+            }
+        }
     }
 }

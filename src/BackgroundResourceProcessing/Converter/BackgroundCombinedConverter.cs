@@ -15,16 +15,22 @@ public class BackgroundCombinedConverter : BackgroundConverter
 
     public override ModuleBehaviour GetBehaviour(PartModule module)
     {
-        ModuleBehaviour behaviour = null;
+        ModuleBehaviour combined = null;
         foreach (var option in options)
         {
             if (!option.condition.Evaluate(module))
                 continue;
 
-            MergeBehaviours(ref behaviour, option.converter.GetBehaviour(module));
+            int priority = option.converter.GetModulePriority(module);
+            var behaviour = option.converter.GetBehaviour(module);
+            foreach (var converter in behaviour.Converters ?? [])
+                converter.Priority ??= priority;
+
+
+            MergeBehaviours(ref combined, behaviour);
         }
 
-        return behaviour;
+        return combined;
     }
 
     void MergeBehaviours(ref ModuleBehaviour dest, ModuleBehaviour src)

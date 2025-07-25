@@ -1,4 +1,5 @@
 using System;
+using System.CodeDom;
 using System.Collections.Generic;
 
 namespace BackgroundResourceProcessing.Utils;
@@ -13,19 +14,14 @@ namespace BackgroundResourceProcessing.Utils;
 public struct ConverterMultiplier()
 {
     ConditionalExpression condition = ConditionalExpression.Always;
-    FieldExtractor<double> field = null;
-    double value = 1.0;
+    FieldExpression<double> value = FieldExpression<double>.Constant(1.0);
 
     public readonly double Evaluate(PartModule module)
     {
         if (!condition.Evaluate(module))
             return 1.0;
 
-        double mult = value;
-        if (field != null)
-            mult *= field.GetValue(module);
-
-        return mult;
+        return value.Evaluate(module) ?? 1.0;
     }
 
     public static ConverterMultiplier Load(Type target, ConfigNode node)
@@ -33,15 +29,14 @@ public struct ConverterMultiplier()
         ConverterMultiplier mult = new();
         string condition = null;
         string field = null;
+        string value = null;
 
-        node.TryGetValue("Condition", ref condition);
-        node.TryGetValue("Field", ref field);
-        node.TryGetValue("Value", ref mult.value);
-
-        if (field != null)
-            mult.field = new(target, field, 1.0);
-        if (condition != null)
+        if (node.TryGetValue("Condition", ref condition))
             mult.condition = ConditionalExpression.Compile(condition, node);
+        if (node.TryGetValue("Field", ref field))
+            mult.value = FieldExpression<double>.Field(field, target);
+        if (node.TryGetValue("Value", ref value))
+            mult.value = FieldExpression<double>.Compile(value, node);
 
         return mult;
     }
