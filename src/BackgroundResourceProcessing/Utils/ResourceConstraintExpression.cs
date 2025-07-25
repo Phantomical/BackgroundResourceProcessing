@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using UnityEngine.UI;
 
 namespace BackgroundResourceProcessing.Utils;
 
@@ -11,7 +10,6 @@ public struct ResourceConstraintExpression()
     public Constraint Constraint = Constraint.AT_LEAST;
     public ResourceFlowMode FlowMode = ResourceFlowMode.ALL_VESSEL;
 
-    public List<ConverterMultiplier> Multipliers;
 
     public ResourceConstraint Evaluate(PartModule module)
     {
@@ -22,12 +20,6 @@ public struct ResourceConstraintExpression()
             Constraint = Constraint,
             FlowMode = FlowMode,
         };
-
-        if (Multipliers != null)
-        {
-            foreach (var mult in Multipliers)
-                constraint.Amount *= mult.Evaluate(module);
-        }
 
         return constraint;
     }
@@ -62,8 +54,6 @@ public struct ResourceConstraintExpression()
                 result.FlowMode = ResourceFlowMode.NULL;
             }
         }
-
-        result.Multipliers = ConverterMultiplier.LoadAll(target, node);
 
         return result;
     }

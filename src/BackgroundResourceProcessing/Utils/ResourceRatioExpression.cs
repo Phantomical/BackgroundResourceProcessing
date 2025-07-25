@@ -13,8 +13,6 @@ public struct ResourceRatioExpression()
 
     public FieldExpression<bool> DumpExcess = new(_ => false, "false");
 
-    public List<ConverterMultiplier> Multipliers = null;
-
     public ResourceRatio Evaluate(PartModule module)
     {
         var ratio = new ResourceRatio()
@@ -24,12 +22,6 @@ public struct ResourceRatioExpression()
             Ratio = Ratio.Evaluate(module) ?? 0.0,
             DumpExcess = DumpExcess.Evaluate(module) ?? false,
         };
-
-        if (Multipliers != null)
-        {
-            foreach (var mult in Multipliers)
-                ratio.Ratio *= mult.Evaluate(module);
-        }
 
         return ratio;
     }
@@ -53,8 +45,6 @@ public struct ResourceRatioExpression()
                 result.FlowMode = ResourceFlowMode.NULL;
             }
         }
-
-        result.Multipliers = ConverterMultiplier.LoadAll(target, node);
 
         return result;
     }
