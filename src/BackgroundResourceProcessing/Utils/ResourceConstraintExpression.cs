@@ -10,7 +10,6 @@ public struct ResourceConstraintExpression()
     public Constraint Constraint = Constraint.AT_LEAST;
     public ResourceFlowMode FlowMode = ResourceFlowMode.ALL_VESSEL;
 
-
     public ResourceConstraint Evaluate(PartModule module)
     {
         var constraint = new ResourceConstraint()

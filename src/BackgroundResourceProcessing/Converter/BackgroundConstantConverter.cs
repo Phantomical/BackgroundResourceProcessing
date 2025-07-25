@@ -90,8 +90,6 @@ public class BackgroundConstantConverter : BackgroundConverter
         outputs.AddRange(ResourceRatioExpression.LoadOutputs(target, node));
         required.AddRange(ResourceConstraintExpression.LoadRequirements(target, node));
 
-
-
         if (LastUpdateField != null)
         {
             var field = target.GetField(LastUpdateField, Flags);
@@ -99,7 +97,9 @@ public class BackgroundConstantConverter : BackgroundConverter
                 lastUpdateField = field;
             else
             {
-                LogUtil.Error($"{target.Name}.{field.Name} has unsupported type {field.FieldType.Name} (expected double instead)");
+                LogUtil.Error(
+                    $"{target.Name}.{field.Name} has unsupported type {field.FieldType.Name} (expected double instead)"
+                );
             }
         }
     }

@@ -26,7 +26,6 @@ public class BackgroundCombinedConverter : BackgroundConverter
             foreach (var converter in behaviour.Converters ?? [])
                 converter.Priority ??= priority;
 
-
             MergeBehaviours(ref combined, behaviour);
         }
 

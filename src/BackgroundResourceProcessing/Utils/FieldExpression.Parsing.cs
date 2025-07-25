@@ -1263,7 +1263,7 @@ public readonly partial struct FieldExpression<T>
                     ++i;
             }
 
-        DONE:
+            DONE:
             if (!double.TryParse(span.ToString(), out var _))
                 throw RenderError("invalid number literal");
 
