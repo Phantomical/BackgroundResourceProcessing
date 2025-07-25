@@ -27,8 +27,8 @@ public struct ResourceConstraintExpression()
     {
         ResourceConstraintExpression result = new();
 
-        node.TryGetExpression(nameof(ResourceName), ref result.ResourceName);
-        node.TryGetExpression(nameof(Amount), ref result.Amount);
+        node.TryGetExpression(nameof(ResourceName), target, ref result.ResourceName);
+        node.TryGetExpression(nameof(Amount), target, ref result.Amount);
 
         string value = null;
         if (node.TryGetValue(nameof(Constraint), ref value))

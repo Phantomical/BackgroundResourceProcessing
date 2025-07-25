@@ -34,6 +34,7 @@ public class BackgroundSelectableConverter : BackgroundConverter
         base.OnLoad(node);
 
         var name = node.GetValue("name");
+        var target = GetTargetType(node);
 
         foreach (var child in node.GetNodes(NodeName))
         {
@@ -44,7 +45,7 @@ public class BackgroundSelectableConverter : BackgroundConverter
                 ConditionalExpression filter = ConditionalExpression.Always;
                 string condition = null;
                 if (child.TryGetValue("condition", ref condition))
-                    filter = ConditionalExpression.Compile(condition, child);
+                    filter = ConditionalExpression.Compile(condition, child, target);
 
                 var converter = Load(child);
 

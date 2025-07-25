@@ -417,20 +417,26 @@ public readonly partial struct FieldExpression<T>
         }
     }
 
-    ref struct Parser(Lexer lexer, ConfigNode node)
+    ref struct Parser(Lexer lexer, ConfigNode node, Type target)
     {
         Lexer lexer = lexer;
         readonly ConfigNode node = node;
-        readonly ParameterExpression module = Expression.Parameter(typeof(PartModule), "module");
+        readonly Type target = target;
+        readonly ParameterExpression module = Expression.Parameter(target, "module");
 
         readonly Token Current => lexer.Current;
 
         public Func<PartModule, object> Parse()
         {
-            var expr = Expression.Lambda<Func<PartModule, object>>(
-                CoerceToObject(ParseExpression()),
-                [module]
+            var param = Expression.Parameter(typeof(PartModule), "moduleParam");
+            var parsed = ParseExpression();
+            var block = Expression.Block(
+                [module],
+                Expression.Assign(module, Expression.Convert(param, target)),
+                CoerceToObject(parsed)
             );
+
+            var expr = Expression.Lambda<Func<PartModule, object>>(block, [module]);
 
             if (Current != TokenKind.EOF)
                 throw RenderError($"unexpected token `{Current.ToString()}`");

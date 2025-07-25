@@ -32,11 +32,11 @@ public struct ConverterMultiplier()
         string value = null;
 
         if (node.TryGetValue("Condition", ref condition))
-            mult.condition = ConditionalExpression.Compile(condition, node);
+            mult.condition = ConditionalExpression.Compile(condition, node, target);
         if (node.TryGetValue("Field", ref field))
             mult.value = FieldExpression<double>.Field(field, target);
         if (node.TryGetValue("Value", ref value))
-            mult.value = FieldExpression<double>.Compile(value, node);
+            mult.value = FieldExpression<double>.Compile(value, node, target);
 
         return mult;
     }

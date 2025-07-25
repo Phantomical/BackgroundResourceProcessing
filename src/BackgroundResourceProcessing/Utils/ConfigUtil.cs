@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using BackgroundResourceProcessing.Utils;
@@ -132,13 +133,14 @@ public static class ConfigUtil
     public static bool TryGetCondition(
         this ConfigNode node,
         string name,
+        Type target,
         ref ConditionalExpression expr
     )
     {
         string cond = null;
         if (node.TryGetValue(name, ref cond))
         {
-            expr = ConditionalExpression.Compile(cond, node);
+            expr = ConditionalExpression.Compile(cond, node, target);
             return true;
         }
 
@@ -148,23 +150,25 @@ public static class ConfigUtil
     public static bool TryGetCondition2(
         this ConfigNode node,
         string name,
+        Type target,
         out ConditionalExpression expr
     )
     {
         expr = default;
-        return TryGetCondition(node, name, ref expr);
+        return TryGetCondition(node, name, target, ref expr);
     }
 
     public static bool TryGetExpression<T>(
         this ConfigNode node,
         string name,
+        Type target,
         ref FieldExpression<T> expr
     )
     {
         string cond = null;
         if (node.TryGetValue(name, ref cond))
         {
-            expr = FieldExpression<T>.Compile(cond, node);
+            expr = FieldExpression<T>.Compile(cond, node, target);
             return true;
         }
 

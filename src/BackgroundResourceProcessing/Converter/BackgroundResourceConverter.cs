@@ -307,13 +307,14 @@ public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
     {
         base.OnLoad(node);
 
-        if (node.TryGetCondition2(nameof(ActiveCondition), out var activeCondition))
+        var target = GetTargetType(node);
+
+        if (node.TryGetCondition2(nameof(ActiveCondition), target, out var activeCondition))
             ActiveCondition = activeCondition;
 
-        node.TryGetCondition(nameof(UsePreparedRecipe), ref UsePreparedRecipe);
-        node.TryGetCondition(nameof(UseCurrentEfficiency), ref UseCurrentEfficiency);
+        node.TryGetCondition(nameof(UsePreparedRecipe), target, ref UsePreparedRecipe);
+        node.TryGetCondition(nameof(UseCurrentEfficiency), target, ref UseCurrentEfficiency);
 
-        var target = GetTargetType(node);
         multipliers = ConverterMultiplier.LoadAll(target, node);
     }
 

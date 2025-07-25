@@ -82,7 +82,7 @@ public class BackgroundConstantConverter : BackgroundConverter
 
         var target = GetTargetType(node);
 
-        node.TryGetCondition(nameof(ActiveCondition), ref ActiveCondition);
+        node.TryGetCondition(nameof(ActiveCondition), target, ref ActiveCondition);
 
         multipliers = ConverterMultiplier.LoadAll(target, node);
 

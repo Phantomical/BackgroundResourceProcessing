@@ -30,9 +30,9 @@ public struct ResourceRatioExpression()
     {
         ResourceRatioExpression result = new();
 
-        node.TryGetExpression(nameof(ResourceName), ref result.ResourceName);
-        node.TryGetExpression(nameof(Ratio), ref result.Ratio);
-        node.TryGetExpression(nameof(DumpExcess), ref result.DumpExcess);
+        node.TryGetExpression(nameof(ResourceName), target, ref result.ResourceName);
+        node.TryGetExpression(nameof(Ratio), target, ref result.Ratio);
+        node.TryGetExpression(nameof(DumpExcess), target, ref result.DumpExcess);
 
         string flowMode = null;
         if (node.TryGetValue(nameof(FlowMode), ref flowMode))

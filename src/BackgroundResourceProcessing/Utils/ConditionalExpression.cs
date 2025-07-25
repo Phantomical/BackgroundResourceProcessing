@@ -44,8 +44,12 @@ public readonly struct ConditionalExpression(FieldExpression<bool> expr)
     /// expression and config node context.
     /// </summary>
     /// <returns></returns>
-    public static ConditionalExpression Compile(string expression, ConfigNode node)
+    public static ConditionalExpression Compile(
+        string expression,
+        ConfigNode node,
+        Type target = null
+    )
     {
-        return new(FieldExpression<bool>.Compile(expression, node));
+        return new(FieldExpression<bool>.Compile(expression, node, target));
     }
 }

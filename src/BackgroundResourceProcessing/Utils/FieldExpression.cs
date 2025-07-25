@@ -39,12 +39,14 @@ public readonly partial struct FieldExpression<T>
         return false;
     }
 
-    public static FieldExpression<T> Compile(string expression, ConfigNode node)
+    public static FieldExpression<T> Compile(string expression, ConfigNode node, Type target = null)
     {
+        target ??= typeof(PartModule);
+
         Lexer lexer = new(expression);
         lexer.MoveNext();
 
-        Parser parser = new(lexer, node);
+        Parser parser = new(lexer, node, target);
         var func = parser.Parse();
 
         return new(func, expression);

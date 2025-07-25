@@ -166,7 +166,7 @@ public class BackgroundGenericConverter : BackgroundConverter
         var target = GetTargetType(node);
         multipliers = ConverterMultiplier.LoadAll(target, node);
 
-        node.TryGetCondition(nameof(ActiveCondition), ref ActiveCondition);
+        node.TryGetCondition(nameof(ActiveCondition), target, ref ActiveCondition);
         if (LastUpdateField != null)
             lastUpdateMember = GetTypedMember<double>(target, LastUpdateField, Access.Write);
         if (InputsField != null)

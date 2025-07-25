@@ -160,8 +160,9 @@ public abstract class BackgroundConverter : IRegistryItem
     {
         fields.Load(node);
 
+        var target = GetTargetType(node);
         foreach (var priority in node.GetNodes("PRIORITY"))
-            priorities.Add(PriorityBlock.Load(priority));
+            priorities.Add(PriorityBlock.Load(priority, target));
     }
 
     /// <summary>
@@ -247,14 +248,14 @@ public abstract class BackgroundConverter : IRegistryItem
         public ConditionalExpression Condition = ConditionalExpression.Always;
         public int Value = 0;
 
-        public static PriorityBlock Load(ConfigNode node)
+        public static PriorityBlock Load(ConfigNode node, Type target)
         {
             PriorityBlock block = new();
             node.TryGetValue("Value", ref block.Value);
 
             string condition = null;
             if (node.TryGetValue("Condition", ref condition))
-                block.Condition = ConditionalExpression.Compile(condition, node);
+                block.Condition = ConditionalExpression.Compile(condition, node, target);
 
             return block;
         }
