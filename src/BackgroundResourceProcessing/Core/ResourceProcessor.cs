@@ -367,14 +367,9 @@ internal class ResourceProcessor
 
                 foreach (var resource in pull.set)
                 {
-                    var set = converter.Pull.GetOrAdd(
-                        resource.resourceName,
-                        () => new(inventories.Count)
-                    );
-
                     var id = new InventoryId(resource);
                     if (inventoryIds.TryGetValue(id, out var index))
-                        set[index] = true;
+                        converter.Pull[index] = true;
                 }
 
                 if (behaviours.Pull == null)
@@ -385,11 +380,7 @@ internal class ResourceProcessor
                     var id = new InventoryId(module, ratio.ResourceName);
                     if (!inventoryIds.TryGetValue(id, out var index))
                         continue;
-                    var set = converter.Pull.GetOrAdd(
-                        ratio.ResourceName,
-                        () => new(inventories.Count)
-                    );
-                    set[index] = true;
+                    converter.Pull[index] = true;
                 }
             }
 
@@ -405,14 +396,9 @@ internal class ResourceProcessor
 
                 foreach (var resource in push.set)
                 {
-                    var set = converter.Push.GetOrAdd(
-                        resource.resourceName,
-                        () => new(inventories.Count)
-                    );
-
                     var id = new InventoryId(resource);
                     if (inventoryIds.TryGetValue(id, out var index))
-                        set[index] = true;
+                        converter.Push[index] = true;
                 }
 
                 if (behaviours.Push == null)
@@ -423,11 +409,7 @@ internal class ResourceProcessor
                     var id = new InventoryId(module, ratio.ResourceName);
                     if (!inventoryIds.TryGetValue(id, out var index))
                         continue;
-                    var set = converter.Push.GetOrAdd(
-                        ratio.ResourceName,
-                        () => new(inventories.Count)
-                    );
-                    set[index] = true;
+                    converter.Push[index] = true;
                 }
             }
 
@@ -445,14 +427,9 @@ internal class ResourceProcessor
 
                 foreach (var resource in attached.set)
                 {
-                    var set = converter.Constraint.GetOrAdd(
-                        resource.resourceName,
-                        () => new(inventories.Count)
-                    );
-
                     var id = new InventoryId(resource);
                     if (inventoryIds.TryGetValue(id, out var index))
-                        set[index] = true;
+                        converter.Constraint[index] = true;
                 }
 
                 if (behaviours.Constraint == null)
@@ -463,11 +440,7 @@ internal class ResourceProcessor
                     var id = new InventoryId(module, req.ResourceName);
                     if (!inventoryIds.TryGetValue(id, out var index))
                         continue;
-                    var set = converter.Constraint.GetOrAdd(
-                        req.ResourceName,
-                        () => new(inventories.Count)
-                    );
-                    set[index] = true;
+                    converter.Constraint[index] = true;
                 }
             }
         }
@@ -799,7 +772,7 @@ internal class ResourceProcessor
         {
             var converter = converters[i];
 
-            foreach (var pull in converter.Pull.Values.SelectMany(vals => vals))
+            foreach (var pull in converter.Pull)
             {
                 if (pull >= inventories.Count || pull < 0)
                     throw new Exception(
@@ -807,11 +780,19 @@ internal class ResourceProcessor
                     );
             }
 
-            foreach (var push in converter.Pull.Values.SelectMany(vals => vals))
+            foreach (var push in converter.Push)
             {
                 if (push >= inventories.Count || push < 0)
                     throw new Exception(
                         $"Converter with id {i} has push reference to nonexistant inventory {push}"
+                    );
+            }
+
+            foreach (var push in converter.Constraint)
+            {
+                if (push >= inventories.Count || push < 0)
+                    throw new Exception(
+                        $"Converter with id {i} has constraint reference to nonexistant inventory {push}"
                     );
             }
         }

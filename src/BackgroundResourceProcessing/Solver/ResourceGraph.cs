@@ -350,36 +350,9 @@ internal class ResourceGraph
                 continue;
 
             converters.Add(i, conv);
-
-            foreach (var (resourceName, inventories) in converter.Pull)
-            {
-                if (!converter.inputs.ContainsKey(resourceName))
-                    continue;
-
-                var row = inputs.GetConverterEntry(i);
-                foreach (var inventoryId in inventories)
-                    row[inventoryId] = true;
-            }
-
-            foreach (var (resourceName, inventories) in converter.Push)
-            {
-                if (!converter.outputs.ContainsKey(resourceName))
-                    continue;
-
-                var row = outputs.GetConverterEntry(i);
-                foreach (var inventoryId in inventories)
-                    row[inventoryId] = true;
-            }
-
-            foreach (var resourceName in conv.constraints.Keys)
-            {
-                if (!converter.Constraint.TryGetValue(resourceName, out var constraint))
-                    continue;
-
-                var row = constraints.GetConverterEntry(i);
-                foreach (var inventoryId in constraint)
-                    row[inventoryId] = true;
-            }
+            inputs.GetConverterEntry(i).OrWith(converter.Pull.SubSlice(nInventories));
+            outputs.GetConverterEntry(i).OrWith(converter.Push.SubSlice(nInventories));
+            constraints.GetConverterEntry(i).OrWith(converter.Constraint.SubSlice(nInventories));
         }
     }
 
@@ -393,8 +366,8 @@ internal class ResourceGraph
         {
             double total = 0.0;
 
-            if (rconv.Constraint.TryGetValue(resource, out var constraint))
-                foreach (var invId in constraint)
+            foreach (var invId in rconv.Constraint)
+                if (processor.inventories[invId].resourceName == resource)
                     total += processor.inventories[invId].amount;
 
             if (MathUtil.ApproxEqual(required.Amount, total, ResourceProcessor.ResourceEpsilon))

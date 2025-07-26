@@ -110,9 +110,9 @@ public class ModuleBackgroundUSILifeSupport : VesselModule
                 ec.Add(i);
         }
 
-        supplyConverter.Pull.Add("Supplies", supplies);
-        supplyConverter.Push.Add("Mulch", mulch);
-        ecConverter.Pull.Add("ElectricCharge", ec);
+        supplyConverter.Pull.AddAll(supplies);
+        supplyConverter.Push.AddAll(mulch);
+        ecConverter.Pull.AddAll(ec);
 
         // And finally, add them to the processor and save the indices for later.
         SupplyConverterIndex = processor.AddConverter(supplyConverter);

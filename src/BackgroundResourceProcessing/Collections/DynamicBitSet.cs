@@ -101,6 +101,15 @@ public class DynamicBitSet : IEnumerable<int>
         this[key] = true;
     }
 
+    public void AddAll(DynamicBitSet bitset)
+    {
+        if (words.Length < bitset.words.Length)
+            Expand(bitset.words.Length);
+
+        for (int i = 0; i < words.Length; ++i)
+            words[i] |= bitset.words[i];
+    }
+
     private void Expand(int required)
     {
         var newCap = Math.Max(words.Length * 2, required);
@@ -110,6 +119,13 @@ public class DynamicBitSet : IEnumerable<int>
             newWords[i] = words[i];
 
         words = newWords;
+    }
+
+    internal BitSliceX SubSlice(int length)
+    {
+        length = Math.Min((length + (ULongBits - 1)) / ULongBits, words.Length);
+
+        return new BitSliceX(new Span<ulong>(words).Slice(0, length));
     }
 
     public DynamicBitSet Clone()

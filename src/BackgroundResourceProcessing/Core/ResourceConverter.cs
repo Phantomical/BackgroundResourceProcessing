@@ -19,21 +19,21 @@ public class ResourceConverter(ConverterBehaviour behaviour)
 {
     /// <summary>
     /// Bitsets indicating which inventories this converter pushes
-    /// resources to, for each resource.
+    /// resources to.
     /// </summary>
-    public Dictionary<string, DynamicBitSet> Push = [];
+    public DynamicBitSet Push = [];
 
     /// <summary>
     /// Bitsets indicating which inventories this converter pulls
-    /// resources from, for each resource.
+    /// resources from.
     /// </summary>
-    public Dictionary<string, DynamicBitSet> Pull = [];
+    public DynamicBitSet Pull = [];
 
     /// <summary>
     /// Bitsets indicating which inventories this converter uses to
     /// determine whether it is resource-constrained, for each resource.
     /// </summary>
-    public Dictionary<string, DynamicBitSet> Constraint = [];
+    public DynamicBitSet Constraint = [];
 
     /// <summary>
     /// The behaviour that indicates how this converter actually behaves.
@@ -130,31 +130,13 @@ public class ResourceConverter(ConverterBehaviour behaviour)
         node.TryGetValue("rate", ref rate);
 
         foreach (var inner in node.GetNodes("PUSH_INVENTORIES"))
-        {
-            string resourceName = null;
-            if (!inner.TryGetValue("resourceName", ref resourceName))
-                continue;
-
-            Push.Add(resourceName, LoadBitSet(inner));
-        }
+            Push.AddAll(LoadBitSet(inner));
 
         foreach (var inner in node.GetNodes("PULL_INVENTORIES"))
-        {
-            string resourceName = null;
-            if (!inner.TryGetValue("resourceName", ref resourceName))
-                continue;
-
-            Pull.Add(resourceName, LoadBitSet(inner));
-        }
+            Pull.AddAll(LoadBitSet(inner));
 
         foreach (var inner in node.GetNodes("CONSTRAINT_INVENTORIES"))
-        {
-            string resourceName = null;
-            if (!inner.TryGetValue("resourceName", ref resourceName))
-                continue;
-
-            Constraint.Add(resourceName, LoadBitSet(inner));
-        }
+            Constraint.AddAll(LoadBitSet(inner));
 
         try
         {
@@ -202,8 +184,7 @@ public class ResourceConverter(ConverterBehaviour behaviour)
 
             if (!inventoryIds.TryGetValue(id, out var index))
                 continue;
-            var set = Push.GetOrAdd(id.resourceName, () => new(inventoryIds.Count));
-            set.Add(index);
+            Push.Add(index);
         }
 
         foreach (var inner in node.GetNodes("PULL_INVENTORY"))
@@ -214,8 +195,7 @@ public class ResourceConverter(ConverterBehaviour behaviour)
             if (!inventoryIds.TryGetValue(id, out var index))
                 continue;
 
-            var set = Pull.GetOrAdd(id.resourceName, () => new(inventoryIds.Count));
-            set.Add(index);
+            Pull.Add(index);
         }
     }
 
@@ -224,26 +204,9 @@ public class ResourceConverter(ConverterBehaviour behaviour)
         node.AddValue("nextChangepoint", nextChangepoint);
         node.AddValue("rate", rate);
 
-        foreach (var (resourceName, set) in Push)
-        {
-            var inner = node.AddNode("PUSH_INVENTORIES");
-            inner.AddValue("resourceName", resourceName);
-            SaveBitSet(inner, set);
-        }
-
-        foreach (var (resourceName, set) in Pull)
-        {
-            var inner = node.AddNode("PULL_INVENTORIES");
-            inner.AddValue("resourceName", resourceName);
-            SaveBitSet(inner, set);
-        }
-
-        foreach (var (resourceName, set) in Constraint)
-        {
-            var inner = node.AddNode("CONSTRAINT_INVENTORIES");
-            inner.AddValue("resourceName", resourceName);
-            SaveBitSet(inner, set);
-        }
+        SaveBitSet(node.AddNode("PUSH_INVENTORIES"), Push);
+        SaveBitSet(node.AddNode("PULL_INVENTORIES"), Pull);
+        SaveBitSet(node.AddNode("CONSTRAINT_INVENTORIES"), Constraint);
 
         Behaviour?.Save(node.AddNode("BEHAVIOUR"));
         ConfigUtil.SaveOutputResources(node, outputs.Select(output => output.Value));
