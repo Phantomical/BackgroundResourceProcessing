@@ -4,21 +4,12 @@ using System.Reflection;
 
 namespace BackgroundResourceProcessing.Utils;
 
-public readonly partial struct FieldExpression<T>
+public readonly partial struct FieldExpression<T>(Func<PartModule, T> func, string text)
 {
     const BindingFlags Flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
 
-    readonly string text;
-    readonly Func<PartModule, object> func;
-
-    private FieldExpression(Func<PartModule, object> func, string text)
-    {
-        this.text = text;
-        this.func = func;
-    }
-
-    public FieldExpression(Expression<Func<PartModule, T>> func, string text)
-        : this(MakeLambdaGeneric(func), text) { }
+    readonly string text = text;
+    readonly Func<PartModule, T> func = func;
 
     public readonly bool TryEvaluate(PartModule module, out T value)
     {
@@ -28,7 +19,7 @@ public readonly partial struct FieldExpression<T>
 
         try
         {
-            value = (T)GetCompatibleValue(func(module));
+            value = func(module);
             return true;
         }
         catch (Exception e)
@@ -43,11 +34,11 @@ public readonly partial struct FieldExpression<T>
     {
         target ??= typeof(PartModule);
 
-        Lexer lexer = new(expression);
+        FieldExpression.Lexer lexer = new(expression);
         lexer.MoveNext();
 
-        Parser parser = new(lexer, node, target);
-        var func = parser.Parse();
+        FieldExpression.Parser parser = new(lexer, node, target);
+        var func = parser.Parse<T>();
 
         return new(func, expression);
     }
@@ -154,7 +145,7 @@ public readonly partial struct FieldExpression<T>
         }
 
         if (typeof(T) == typeof(bool))
-            return Methods.CoerceToBool(value);
+            return FieldExpression.Methods.CoerceToBool(value);
 
         if (typeof(T).IsEnum)
         {

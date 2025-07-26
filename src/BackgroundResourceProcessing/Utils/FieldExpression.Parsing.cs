@@ -3,6 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Runtime.Remoting.Messaging;
+using Contracts;
+using UnityEngine.Windows.Speech;
 
 namespace BackgroundResourceProcessing.Utils;
 
@@ -10,10 +14,12 @@ public class EvaluationException(string message) : Exception(message) { }
 
 public class CompilationException(string message) : Exception(message) { }
 
-public readonly partial struct FieldExpression<T>
+internal struct FieldExpression
 {
+    const BindingFlags Flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+
     // Static helper methods used to actually implement semantics
-    static class Methods
+    internal static class Methods
     {
         const BindingFlags Flags =
             BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
@@ -243,7 +249,7 @@ public readonly partial struct FieldExpression<T>
             );
         }
 
-        static double PromoteToDouble(object obj)
+        public static double PromoteToDouble(object obj)
         {
             double? promoted = TryPromoteToDouble(obj);
             if (promoted == null)
@@ -407,6 +413,52 @@ public readonly partial struct FieldExpression<T>
             return o != null;
         }
 
+        public static T CoerceToEnum<T>(object o)
+        {
+            if (o is string s)
+                return (T)Enum.Parse(typeof(T), s);
+
+            throw new EvaluationException(
+                $"cannot convert type `{o.GetType().Name}` to enum `{typeof(T).Name}`"
+            );
+        }
+
+        public static T CoerceToTarget<T>(object o)
+        {
+            if (typeof(T) == typeof(double))
+            {
+                double? value = TryPromoteToDouble(o);
+                if (value != null)
+                    return (T)(object)(double)value;
+
+                throw new EvaluationException(
+                    $"cannot convert a value of type `{o.GetType().Name}` to double"
+                );
+            }
+
+            if (typeof(T) == typeof(float))
+            {
+                double? value = TryPromoteToDouble(o);
+                if (value != null)
+                    return (T)(object)(float)(double)value;
+
+                throw new EvaluationException(
+                    $"cannot convert a value of type `{o.GetType().Name}` to float"
+                );
+            }
+
+            if (typeof(T) == typeof(bool))
+                return (T)(object)CoerceToBool(o);
+
+            if (typeof(T).IsEnum)
+            {
+                if (o is string s)
+                    return (T)Enum.Parse(typeof(T), s);
+            }
+
+            return (T)o;
+        }
+
         static bool EqualsIgnoreCase(string a, string b)
         {
             return MemoryExtensions.Equals(
@@ -417,7 +469,7 @@ public readonly partial struct FieldExpression<T>
         }
     }
 
-    ref struct Parser(Lexer lexer, ConfigNode node, Type target)
+    internal ref struct Parser(Lexer lexer, ConfigNode node, Type target)
     {
         Lexer lexer = lexer;
         readonly ConfigNode node = node;
@@ -426,17 +478,25 @@ public readonly partial struct FieldExpression<T>
 
         readonly Token Current => lexer.Current;
 
-        public Func<PartModule, object> Parse()
+        public Func<PartModule, T> Parse<T>()
         {
-            var param = Expression.Parameter(typeof(PartModule), "moduleParam");
-            var parsed = ParseExpression();
-            var block = Expression.Block(
-                [module],
-                Expression.Assign(module, Expression.Convert(param, target)),
-                CoerceToObject(parsed)
-            );
+            var param = module;
+            var block = ParseExpression();
+            if (target != typeof(PartModule))
+            {
+                param = Expression.Parameter(typeof(PartModule), "moduleParam");
+                block = Expression.Block(
+                    [module],
+                    Expression.Assign(module, Expression.Convert(param, target)),
+                    CoerceToTarget<T>(block)
+                );
+            }
+            else
+            {
+                block = CoerceToTarget<T>(block);
+            }
 
-            var expr = Expression.Lambda<Func<PartModule, object>>(block, [module]);
+            var expr = Expression.Lambda<Func<PartModule, T>>(block, [param]);
 
             if (Current != TokenKind.EOF)
                 throw RenderError($"unexpected token `{Current.ToString()}`");
@@ -460,19 +520,7 @@ public readonly partial struct FieldExpression<T>
                     case TokenKind.OP_NULL_COALESCE:
                         ExpectToken(TokenKind.OP_NULL_COALESCE);
                         var rhs = ParseBoolOrExpression();
-                        var lhs = Expression.Parameter(expr.Type);
-
-                        expr = Expression.Block(
-                            [lhs],
-                            [
-                                Expression.Assign(lhs, expr),
-                                Expression.Condition(
-                                    Expression.Equal(lhs, Expression.Constant(null)),
-                                    lhs,
-                                    rhs
-                                ),
-                            ]
-                        );
+                        expr = BuildNullCoalesce(expr, rhs);
 
                         break;
 
@@ -536,15 +584,13 @@ public readonly partial struct FieldExpression<T>
                     case TokenKind.OP_EQ:
                         ExpectToken(TokenKind.OP_EQ);
                         lhs = ParseRelationalExpression();
-                        expr = CallOverloadedMethod(nameof(Methods.DoEquals), expr, lhs);
+                        expr = BuildEquality(expr, lhs);
                         break;
 
                     case TokenKind.OP_NE:
                         ExpectToken(TokenKind.OP_NE);
                         lhs = ParseRelationalExpression();
-                        expr = Expression.Not(
-                            CallOverloadedMethod(nameof(Methods.DoEquals), expr, lhs)
-                        );
+                        expr = Expression.Not(BuildEquality(expr, lhs));
                         break;
 
                     default:
@@ -616,11 +662,7 @@ public readonly partial struct FieldExpression<T>
                     case TokenKind.OP_XOR:
                         ExpectToken(TokenKind.OP_XOR);
                         lhs = ParseAdditiveExpression();
-                        expr = CallMethod(
-                            GetMethodInfo(() => Methods.DoXor(null, null)),
-                            expr,
-                            lhs
-                        );
+                        expr = Expression.ExclusiveOr(CoerceToBool(expr), CoerceToBool(lhs));
                         break;
 
                     default:
@@ -641,21 +683,13 @@ public readonly partial struct FieldExpression<T>
                     case TokenKind.OP_PLUS:
                         ExpectToken(TokenKind.OP_PLUS);
                         lhs = ParseMultiplicativeExpression();
-                        expr = CallMethod(
-                            GetMethodInfo(() => Methods.DoAdd(null, null)),
-                            expr,
-                            lhs
-                        );
+                        expr = Expression.Add(CoerceToDouble(expr), CoerceToDouble(lhs));
                         break;
 
                     case TokenKind.OP_MINUS:
                         ExpectToken(TokenKind.OP_MINUS);
                         lhs = ParseMultiplicativeExpression();
-                        expr = CallMethod(
-                            GetMethodInfo(() => Methods.DoSub(null, null)),
-                            expr,
-                            lhs
-                        );
+                        expr = Expression.Subtract(CoerceToDouble(expr), CoerceToDouble(lhs));
                         break;
 
                     default:
@@ -676,31 +710,19 @@ public readonly partial struct FieldExpression<T>
                     case TokenKind.OP_MULTIPLY:
                         ExpectToken(TokenKind.OP_MULTIPLY);
                         lhs = ParseUnaryExpression();
-                        expr = CallMethod(
-                            GetMethodInfo(() => Methods.DoMultiply(null, null)),
-                            expr,
-                            lhs
-                        );
+                        expr = Expression.Multiply(CoerceToDouble(expr), CoerceToDouble(lhs));
                         break;
 
                     case TokenKind.OP_DIVIDE:
                         ExpectToken(TokenKind.OP_DIVIDE);
                         lhs = ParseUnaryExpression();
-                        expr = CallMethod(
-                            GetMethodInfo(() => Methods.DoDivide(null, null)),
-                            expr,
-                            lhs
-                        );
+                        expr = Expression.Divide(CoerceToDouble(expr), CoerceToDouble(lhs));
                         break;
 
                     case TokenKind.OP_FIELD_ACCESS:
                         ExpectToken(TokenKind.OP_FIELD_ACCESS);
                         lhs = ParseUnaryExpression();
-                        expr = CallMethod(
-                            GetMethodInfo(() => Methods.DoMod(null, null)),
-                            expr,
-                            lhs
-                        );
+                        expr = Expression.Modulo(CoerceToDouble(expr), CoerceToDouble(lhs));
                         break;
 
                     default:
@@ -715,24 +737,15 @@ public readonly partial struct FieldExpression<T>
             {
                 case TokenKind.OP_MINUS:
                     ExpectToken(TokenKind.OP_MINUS);
-                    return CallMethod(
-                        GetMethodInfo(() => Methods.DoUnaryMinus(null)),
-                        ParseUnaryExpression()
-                    );
+                    return Expression.Negate(CoerceToDouble(ParseUnaryExpression()));
 
                 case TokenKind.OP_PLUS:
                     ExpectToken(TokenKind.OP_PLUS);
-                    return CallMethod(
-                        GetMethodInfo(() => Methods.DoUnaryPlus(null)),
-                        ParseUnaryExpression()
-                    );
+                    return CoerceToDouble(ParseUnaryExpression());
 
                 case TokenKind.OP_BOOL_NOT:
                     ExpectToken(TokenKind.OP_BOOL_NOT);
-                    return CallMethod(
-                        GetMethodInfo(() => Methods.DoBoolNot(null)),
-                        ParseUnaryExpression()
-                    );
+                    return Expression.Not(CoerceToBool(ParseUnaryExpression()));
 
                 default:
                     return ParseAccessExpression();
@@ -892,11 +905,7 @@ public readonly partial struct FieldExpression<T>
                     var field = Current;
                     lexer.MoveNext();
 
-                    return CallMethod(
-                        GetMethodInfo(() => Methods.DoFieldAccess(null, null)),
-                        module,
-                        Expression.Constant(field.ToString())
-                    );
+                    return BuildFieldAccess(module, field.ToString());
 
                 default:
                     return module;
@@ -928,11 +937,7 @@ public readonly partial struct FieldExpression<T>
             }
             else
             {
-                return CallMethod(
-                    () => Methods.DoFieldAccess(null, null),
-                    obj,
-                    Expression.Constant(field.ToString())
-                );
+                return BuildFieldAccess(obj, field.ToString());
             }
         }
 
@@ -942,11 +947,7 @@ public readonly partial struct FieldExpression<T>
             var index = ParseExpression();
             ExpectToken(TokenKind.RBRACKET);
 
-            return Expression.Call(
-                GetMethodInfo(() => Methods.DoIndexAccess(null, null)),
-                obj,
-                index
-            );
+            return BuildIndexAccess(obj, index);
         }
 
         Expression ParseConfigAccess()
@@ -1022,6 +1023,189 @@ public readonly partial struct FieldExpression<T>
             return CallMethod(method, lhs, rhs);
         }
 
+        readonly Expression TryBuildFieldAccess(Expression obj, string name)
+        {
+            var type = obj.Type;
+
+            if (IsNullableT(type, out var param))
+            {
+                var variable = Expression.Variable(type);
+                var result = BuildFieldAccess(Expression.Property(variable, "Value"), name);
+                var nullty = GetNullableType(result.Type);
+
+                if (nullty != result.Type)
+                    result = Expression.Convert(result, nullty);
+
+                return Expression.Block(
+                    [variable],
+                    Expression.Assign(variable, obj),
+                    Condition(IsNotNull(variable), result, Expression.Constant(null, nullty))
+                );
+            }
+
+            var field = type.GetField(name, Flags);
+            if (field != null)
+                return NullableAccess(obj, obj => Expression.Field(obj, field));
+
+            var property = type.GetProperty(name, Flags);
+            if (property != null)
+            {
+                if (!property.CanRead)
+                    throw RenderError($"property {type.Name}.{property.Name} is not readable");
+
+                return NullableAccess(obj, obj => Expression.Property(obj, property));
+            }
+
+            return null;
+        }
+
+        readonly Expression BuildFieldAccess(Expression obj, string name)
+        {
+            var access = TryBuildFieldAccess(obj, name);
+            if (access != null)
+                return access;
+
+            return CallMethod(
+                () => Methods.DoFieldAccess(null, null),
+                obj,
+                Expression.Constant(name)
+            );
+        }
+
+        readonly Expression BuildIndexAccess(Expression obj, Expression index)
+        {
+            var indexType = index.Type;
+            var type = obj.Type;
+
+            var indexers = type.GetProperties(Flags)
+                .Where(prop => prop.GetIndexParameters().Length == 1);
+
+            foreach (var indexer in indexers)
+            {
+                var param = indexer.GetIndexParameters()[0];
+                if (param.ParameterType != indexType)
+                    continue;
+
+                return NullableAccess(obj, obj => Expression.MakeIndex(obj, indexer, [index]));
+            }
+
+            if (
+                indexType == typeof(int)
+                || indexType == typeof(double)
+                || indexType == typeof(float)
+                || indexType == typeof(uint)
+            )
+            {
+                Expression casted = null;
+                if (indexType == typeof(double))
+                    casted = Expression.Convert(index, typeof(int));
+                else if (indexType == typeof(float))
+                    casted = Expression.Convert(index, typeof(int));
+                else if (indexType == typeof(uint))
+                    casted = Expression.Convert(index, typeof(int));
+                else
+                    casted = index;
+
+                if (type.IsArray)
+                    return NullableAccess(obj, obj => Expression.ArrayIndex(obj, casted));
+
+                foreach (var indexer in indexers)
+                {
+                    var param = indexer.GetIndexParameters()[0];
+                    if (param.ParameterType != typeof(int))
+                        continue;
+
+                    return NullableAccess(
+                        obj,
+                        (obj) => Expression.MakeIndex(obj, indexer, [casted])
+                    );
+                }
+            }
+
+            if (index is ConstantExpression constant)
+            {
+                if (constant.Value is string s)
+                {
+                    var access = TryBuildFieldAccess(obj, s);
+                    if (access != null)
+                        return access;
+                }
+            }
+
+            return CallMethod(() => Methods.DoIndexAccess(null, null), obj, index);
+        }
+
+        readonly Expression BuildNullCoalesce(Expression lhs, Expression rhs)
+        {
+            var lt = lhs.Type;
+            var rt = rhs.Type;
+
+            if (lt.IsValueType)
+            {
+                if (!lt.IsGenericType)
+                    return lhs;
+
+                var def = lt.GetGenericTypeDefinition();
+                if (def != typeof(Nullable<>))
+                    return lhs;
+
+                var param = lt.GetGenericArguments()[0];
+                if (param == rt)
+                {
+                    var p = Expression.Parameter(lt);
+                    return Expression.Block(
+                        [p],
+                        Expression.Assign(p, lhs),
+                        Condition(IsNotNull(p), Expression.Convert(p, param), rhs)
+                    );
+                }
+            }
+
+            if (lt == rt)
+            {
+                var p = Expression.Parameter(lhs.Type);
+                return Expression.Block(
+                    [p],
+                    [Expression.Assign(p, lhs), Condition(IsNotNull(p), p, rhs)]
+                );
+            }
+
+            lhs = CoerceToObject(lhs);
+            rhs = CoerceToObject(rhs);
+
+            {
+                var p = Expression.Parameter(lhs.Type);
+                return Expression.Block(
+                    [p],
+                    [Expression.Assign(p, lhs), Condition(IsNotNull(lhs), p, rhs)]
+                );
+            }
+        }
+
+        readonly Expression BuildEquality(Expression lhs, Expression rhs)
+        {
+            var lt = lhs.Type;
+            var rt = rhs.Type;
+
+            if (lt == rt)
+                return Expression.Equal(lhs, rhs);
+
+            if (lt == typeof(Type) && rt == typeof(string))
+                return NullableAccess(
+                    lhs,
+                    rhs,
+                    (lhs, rhs) => Expression.Equal(Expression.Property(lhs, "Name"), rhs)
+                );
+            if (lt == typeof(string) && rt == typeof(Type))
+                return NullableAccess(
+                    lhs,
+                    rhs,
+                    (lhs, rhs) => Expression.Equal(lhs, Expression.Property(rhs, "Name"))
+                );
+
+            return CallOverloadedMethod(nameof(Methods.DoEquals), lhs, rhs);
+        }
+
         static bool ParametersCompatibleWith(ParameterInfo[] parameters, Type[] types)
         {
             if (types.Length > parameters.Length)
@@ -1059,15 +1243,271 @@ public readonly partial struct FieldExpression<T>
             if (expr.Type == typeof(bool))
                 return expr;
 
+            if (expr.Type == typeof(bool?))
+            {
+                var variable = Expression.Parameter(expr.Type);
+                return Expression.Block(
+                    [variable],
+                    Expression.Assign(variable, expr),
+                    Expression.AndAlso(
+                        Expression.Property(variable, "HasValue"),
+                        Expression.Property(variable, "Value")
+                    )
+                );
+            }
+
             return Expression.Invoke(Expression.Constant((object)Methods.CoerceToBool), expr);
         }
 
         static Expression CoerceToObject(Expression expr)
         {
-            if (expr.Type == typeof(object))
+            var et = expr.Type;
+            if (et == typeof(object))
                 return expr;
 
+            if (et.IsValueType && et.IsGenericType)
+            {
+                var def = et.GetGenericTypeDefinition();
+                if (def == typeof(Nullable<>))
+                {
+                    var param = et.GetGenericArguments()[0];
+                    var variable = Expression.Variable(et);
+
+                    return Expression.Block(
+                        [variable],
+                        Expression.Assign(variable, expr),
+                        Condition(
+                            IsNotNull(variable),
+                            Expression.Convert(Expression.Convert(variable, param), typeof(object)),
+                            Expression.Constant(null, typeof(object))
+                        )
+                    );
+                }
+            }
+
             return Expression.Convert(expr, typeof(object));
+        }
+
+        static Expression CoerceToDouble(Expression expr)
+        {
+            if (expr is ConstantExpression constant)
+            {
+                var value = constant.Value;
+                if (value is double)
+                    return expr;
+                if (value is float f)
+                    return Expression.Constant((double)f);
+                if (value is byte b)
+                    return Expression.Constant((double)b);
+                if (value is short s)
+                    return Expression.Constant((double)s);
+                if (value is ushort us)
+                    return Expression.Constant((double)us);
+                if (value is int i)
+                    return Expression.Constant((double)i);
+                if (value is uint ui)
+                    return Expression.Constant((double)ui);
+                if (value is long l)
+                    return Expression.Constant((double)l);
+                if (value is ulong ul)
+                    return Expression.Constant((double)ul);
+            }
+
+            var et = expr.Type;
+            if (et == typeof(double))
+                return expr;
+            if (
+                et == typeof(float)
+                || et == typeof(byte)
+                || et == typeof(short)
+                || et == typeof(ushort)
+                || et == typeof(int)
+                || et == typeof(uint)
+                || et == typeof(long)
+                || et == typeof(ulong)
+            )
+                return Expression.Convert(expr, typeof(double));
+
+            return CallMethod(() => Methods.PromoteToDouble(null), expr);
+        }
+
+        static Expression CoerceToTarget<T>(Expression expr)
+        {
+            if (expr.Type == typeof(T))
+                return expr;
+
+            if (typeof(T) == typeof(bool))
+                return CoerceToBool(expr);
+
+            if (typeof(T).IsEnum)
+                return CoerceToEnum<T>(expr);
+
+            if (typeof(T) == typeof(double))
+                return CoerceToDouble(expr);
+            if (typeof(T) == typeof(float))
+                return Expression.Convert(CoerceToDouble(expr), typeof(double));
+
+            return CallMethod(() => Methods.CoerceToTarget<T>(null), expr);
+        }
+
+        static Expression CoerceToEnum<T>(Expression expr)
+        {
+            if (expr.Type == typeof(string))
+                return Expression.Convert(
+                    Expression.Call(GetMethodInfo(() => Enum.Parse(null, null)), expr),
+                    typeof(T)
+                );
+
+            return CallMethod(() => Methods.CoerceToEnum<T>(null), expr);
+        }
+
+        static Type GetNullableType(Type type)
+        {
+            if (!type.IsValueType)
+                return type;
+
+            if (IsNullableT(type, out var _))
+                return type;
+
+            return typeof(Nullable<>).MakeGenericType(type);
+        }
+
+        static Expression NullableAccess(Expression obj, Func<Expression, Expression> access)
+        {
+            if (obj is ParameterExpression)
+            {
+                var result = access(obj);
+                var nullty = GetNullableType(result.Type);
+
+                if (nullty != result.Type)
+                    result = Expression.Convert(result, nullty);
+
+                return Condition(IsNotNull(obj), result, Expression.Constant(null, nullty));
+            }
+            else
+            {
+                var variable = Expression.Variable(obj.Type);
+                var result = access(variable);
+                var nullty = GetNullableType(result.Type);
+
+                if (nullty != result.Type)
+                    result = Expression.Convert(result, nullty);
+
+                return Expression.Block(
+                    [variable],
+                    Expression.Assign(variable, obj),
+                    Condition(IsNotNull(variable), result, Expression.Constant(null, nullty))
+                );
+            }
+        }
+
+        static Expression NullableAccess(
+            Expression lhs,
+            Expression rhs,
+            Func<Expression, Expression, Expression> func
+        )
+        {
+            ParameterExpression plhs = Expression.Variable(lhs.Type);
+            ParameterExpression prhs = Expression.Variable(rhs.Type);
+
+            if (lhs is ParameterExpression || lhs is ConstantExpression)
+                plhs = null;
+            if (rhs is ParameterExpression || rhs is ConstantExpression)
+                prhs = null;
+
+            var result = func(plhs ?? lhs, prhs ?? rhs);
+            var nullty = GetNullableType(result.Type);
+
+            if (nullty != result.Type)
+                result = Expression.Convert(result, nullty);
+
+            List<ParameterExpression> vars = [];
+            List<Expression> exprs = [];
+
+            if (plhs != null)
+            {
+                vars.Add(plhs);
+                exprs.Add(Expression.Assign(plhs, lhs));
+            }
+
+            if (prhs != null)
+            {
+                vars.Add(prhs);
+                exprs.Add(Expression.Assign(prhs, rhs));
+            }
+
+            exprs.Add(
+                Condition(
+                    Expression.AndAlso(IsNotNull(plhs ?? lhs), IsNotNull(prhs ?? rhs)),
+                    result,
+                    Expression.Constant(null, nullty)
+                )
+            );
+
+            if (exprs.Count == 1)
+                return exprs[0];
+            return Expression.Block(vars, exprs);
+        }
+
+        static Expression IsNull(Expression expr)
+        {
+            if (expr is ConstantExpression constant)
+                return Expression.Constant(constant.Value is null);
+
+            var et = expr.Type;
+            if (!et.IsValueType)
+                return Expression.ReferenceEqual(expr, Expression.Constant(null));
+
+            if (IsNullableT(expr.Type, out var _))
+                return Expression.Not(Expression.Property(expr, "HasValue"));
+
+            return Expression.Constant(false);
+        }
+
+        static Expression IsNotNull(Expression expr)
+        {
+            if (expr is ConstantExpression constant)
+                return Expression.Constant(constant.Value is not null);
+
+            var et = expr.Type;
+            if (!et.IsValueType)
+                return Expression.ReferenceNotEqual(expr, Expression.Constant(null));
+
+            if (IsNullableT(et, out var _))
+                return Expression.Property(expr, "HasValue");
+
+            return Expression.Constant(true);
+        }
+
+        static bool IsNullableT(Type type, out Type param)
+        {
+            param = null;
+            if (!type.IsValueType)
+                return false;
+            if (!type.IsGenericType)
+                return false;
+
+            var def = type.GetGenericTypeDefinition();
+            if (def != typeof(Nullable<>))
+                return false;
+
+            param = type.GenericTypeArguments[0];
+            return true;
+        }
+
+        static Expression Condition(Expression cond, Expression ifTrue, Expression ifFalse)
+        {
+            if (cond is ConstantExpression constant)
+            {
+                if (constant.Value is bool b)
+                {
+                    if (b)
+                        return ifTrue;
+                    return ifFalse;
+                }
+            }
+
+            return Expression.Condition(cond, ifTrue, ifFalse);
         }
 
         Token ExpectToken(TokenKind kind)
@@ -1091,9 +1531,9 @@ public readonly partial struct FieldExpression<T>
             RenderError(message, Current.text);
     }
 
-    ref struct Lexer(ReadOnlySpan<char> text)
+    internal ref struct Lexer(ReadOnlySpan<char> text)
     {
-        readonly ReadOnlySpan<char> original = text;
+        public readonly ReadOnlySpan<char> original = text;
         ReadOnlySpan<char> span = text;
 
         public Token Current = new(default, TokenKind.EOF);
@@ -1270,7 +1710,8 @@ public readonly partial struct FieldExpression<T>
             }
 
             DONE:
-            if (!double.TryParse(span.ToString(), out var _))
+            var slice = span.Slice(0, i);
+            if (!double.TryParse(slice.ToString(), out var _))
                 throw RenderError("invalid number literal");
 
             return TakeFirst(i, TokenKind.NUMBER);
@@ -1296,16 +1737,20 @@ public readonly partial struct FieldExpression<T>
         public readonly CompilationException RenderError(string message, ReadOnlySpan<char> span)
         {
             var offset = CalculateOffset(span);
-
-            if (offset < 0)
-                offset = CalculateOffset(Current.text);
-            if (offset < 0)
-                offset = 0;
-
             var s = original.ToString();
-            offset = MathUtil.Clamp(offset, 0, s.Length);
 
-            return new CompilationException($"{message}\n | {s}\n | {new string(' ', offset)}^");
+            if (offset >= 0)
+            {
+                offset = MathUtil.Clamp(offset, 0, s.Length);
+
+                return new CompilationException(
+                    $"{message}\n | {s}\n | {new string(' ', offset)}^"
+                );
+            }
+            else
+            {
+                return new CompilationException($"{message}\n | {s}");
+            }
         }
 
         public readonly CompilationException RenderError(string message, Token token) =>
@@ -1315,7 +1760,7 @@ public readonly partial struct FieldExpression<T>
             RenderError(message, Current.text);
     }
 
-    enum TokenKind
+    internal enum TokenKind
     {
         EOF = 0,
 
@@ -1419,7 +1864,7 @@ public readonly partial struct FieldExpression<T>
         STRING,
     }
 
-    ref struct Token(ReadOnlySpan<char> text, TokenKind kind)
+    internal ref struct Token(ReadOnlySpan<char> text, TokenKind kind)
     {
         public ReadOnlySpan<char> text = text;
         public TokenKind kind = kind;
@@ -1527,9 +1972,14 @@ public readonly partial struct FieldExpression<T>
         }
     }
 
-    ref struct TypedExpression(Expression expr, Type type)
+    internal ref struct TypedExpression(Expression expr, Type type)
     {
         public Expression expr = expr;
         public Type type = type;
+    }
+
+    internal interface IExpressionPrinter
+    {
+        string ExpressionToString(Expression expr);
     }
 }

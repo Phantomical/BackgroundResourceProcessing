@@ -21,7 +21,7 @@ public readonly struct ConditionalExpression(FieldExpression<bool> expr)
     public static ConditionalExpression Always => new(_ => true, "true");
     public static ConditionalExpression Never => new(_ => false, "false");
 
-    private ConditionalExpression(Expression<Func<PartModule, bool>> func, string text)
+    private ConditionalExpression(Func<PartModule, bool> func, string text)
         : this(new FieldExpression<bool>(func, text)) { }
 
     /// <summary>

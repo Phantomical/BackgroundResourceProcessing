@@ -15,4 +15,19 @@ public sealed class FieldExpressionTests
         FieldExpression<double>.Compile("1", node);
         FieldExpression<double>.Compile("-88", node);
     }
+
+    class IndexNullTest : PartModule
+    {
+        public double[] array = null;
+    }
+
+    [TestMethod]
+    public void IndexNull()
+    {
+        ConfigNode node = new();
+        IndexNullTest module = new();
+
+        var expr = FieldExpression<double>.Compile("%array[3] ?? 5", node, typeof(IndexNullTest));
+        Assert.AreEqual(expr.Evaluate(module), 5.0);
+    }
 }
