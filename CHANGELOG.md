@@ -14,6 +14,7 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 ### Added
 * Added support for `CryoTanks`.
 * Added support for `WildBlueTools`.
+* Added support for `Far Future Technologies`.
 
 ### Changed
 * Significantly improved performance when looking at the USI-LS status panel
