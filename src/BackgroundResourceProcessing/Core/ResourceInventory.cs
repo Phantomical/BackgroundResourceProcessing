@@ -280,4 +280,9 @@ public class ResourceInventory
     {
         return $"{resourceName} {amount:G6}/{maxAmount:G6}";
     }
+
+    internal void SolverHash(ref HashCode hasher)
+    {
+        hasher.Add(Id, Empty, Full);
+    }
 }

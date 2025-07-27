@@ -6,6 +6,7 @@ using System.Reflection;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Converter;
 using BackgroundResourceProcessing.Inventory;
+using BackgroundResourceProcessing.Solver;
 using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
 using Smooth.Collections;
@@ -43,6 +44,8 @@ internal class ResourceProcessor
     /// conditions hold.
     /// </summary>
     public const double ResourceEpsilon = 1e-6;
+
+    private static readonly LRUCache<int, SolverCacheEntry> SolverCache = new(1024);
 
     public List<ResourceConverter> converters = [];
     public List<ResourceInventory> inventories = [];
@@ -107,8 +110,7 @@ internal class ResourceProcessor
 
         try
         {
-            var solver = new Solver.Solver();
-            var soln = solver.ComputeInventoryRates(this);
+            var soln = ComputeRateSolution();
 
             foreach (var inventory in inventories)
                 inventory.rate = 0.0;
@@ -140,6 +142,92 @@ internal class ResourceProcessor
 
             DumpCrashReport(e);
         }
+    }
+
+    private SolverSolution ComputeRateSolution()
+    {
+        var hash = ComputeSolverCacheHash();
+        if (
+            SolverCache.TryGetValue(hash, out var entry)
+            && entry.Processor.TryGetTarget(out var target)
+            && ReferenceEquals(target, this)
+            && entry.Solution.converterRates.Length == converters.Count
+            && entry.Solution.inventoryRates.Length == inventories.Count
+        )
+        {
+            return entry.Solution;
+        }
+        else
+        {
+            var solver = new Solver.Solver();
+            var soln = solver.ComputeInventoryRates(this);
+
+            SolverCache.Add(hash, new() { Solution = soln, Processor = new(this) });
+
+            return soln;
+        }
+    }
+
+    enum ConstraintState
+    {
+        DISABLED,
+        ENABLED,
+        BOUNDARY,
+    }
+
+    private int ComputeSolverCacheHash()
+    {
+        using var span = new TraceSpan("ResourceProcessor.ComputeSolverCacheHash");
+
+        HashCode hasher = new();
+
+        hasher.Add(inventories.Count, converters.Count);
+        foreach (var inventory in inventories)
+            inventory.SolverHash(ref hasher);
+
+        foreach (var converter in converters)
+        {
+            converter.SolverHash(ref hasher);
+            hasher.Add(GetConverterConstraintState(converter));
+        }
+
+        hasher.Add(this);
+
+        return hasher.GetHashCode();
+    }
+
+    private ConstraintState GetConverterConstraintState(ResourceConverter converter)
+    {
+        ConstraintState state = ConstraintState.ENABLED;
+
+        foreach (var (resource, required) in converter.required)
+        {
+            double total = 0.0;
+
+            foreach (var id in converter.Constraint)
+                if (inventories[id].resourceName == resource)
+                    total += inventories[id].amount;
+
+            if (MathUtil.ApproxEqual(required.Amount, total, ResourceEpsilon))
+            {
+                state = ConstraintState.BOUNDARY;
+                continue;
+            }
+
+            switch (required.Constraint)
+            {
+                case Constraint.AT_LEAST:
+                    if (total < required.Amount)
+                        return ConstraintState.DISABLED;
+                    break;
+                case Constraint.AT_MOST:
+                    if (total > required.Amount)
+                        return ConstraintState.DISABLED;
+                    break;
+            }
+        }
+
+        return state;
     }
 
     public double UpdateNextChangepoint(double currentTime)
@@ -906,5 +994,11 @@ internal class ResourceProcessor
             // Avoid spamming messages if we end up with a bunch of crashes.
             HasDisplayedSolverCrashError = true;
         }
+    }
+
+    struct SolverCacheEntry
+    {
+        public SolverSolution Solution;
+        public WeakReference<ResourceProcessor> Processor;
     }
 }

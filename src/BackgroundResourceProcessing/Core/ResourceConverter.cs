@@ -283,6 +283,12 @@ public class ResourceConverter(ConverterBehaviour behaviour)
         clone.nextChangepoint = double.PositiveInfinity;
         return clone;
     }
+
+    internal void SolverHash(ref HashCode hasher)
+    {
+        hasher.AddAll(Push.Bits);
+        hasher.AddAll(Pull.Bits);
+    }
 }
 
 internal static class ResourceRatioExtensions

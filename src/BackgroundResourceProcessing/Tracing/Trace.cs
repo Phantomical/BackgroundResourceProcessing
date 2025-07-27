@@ -9,9 +9,9 @@ internal class Trace : IDisposable
 {
     public static Trace Active { get; private set; }
 
-    object mutex = new();
-    StreamWriter stream;
-    Stopwatch watch = new Stopwatch();
+    readonly object mutex = new();
+    readonly StreamWriter stream;
+    readonly Stopwatch watch = new();
 
     private Trace(StreamWriter stream)
     {

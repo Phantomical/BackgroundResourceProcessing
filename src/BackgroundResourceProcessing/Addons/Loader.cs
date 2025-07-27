@@ -119,6 +119,12 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
         // that happens at the very end.
         LoadingScreen.Instance.loaders.Add(gameObject.AddComponent<RegistryLoadingSystem>());
 
+        var path = typeof(BackgroundResourceProcessingLoader).Assembly.Location;
+        path = Path.GetDirectoryName(path);
+        path = Path.Combine(path, "../trace.json");
+
+        Tracing.Trace.Start(path);
+
         // And now we clean up after ourselves.
         Destroy(this);
     }
