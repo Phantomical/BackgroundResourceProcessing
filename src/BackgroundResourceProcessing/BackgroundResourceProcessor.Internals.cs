@@ -1,4 +1,5 @@
 using BackgroundResourceProcessing.Addons;
+using BackgroundResourceProcessing.Tracing;
 using Shadow = BackgroundResourceProcessing.ShadowState;
 
 namespace BackgroundResourceProcessing;
@@ -59,6 +60,8 @@ public sealed partial class BackgroundResourceProcessor
 
     public override void OnLoadVessel()
     {
+        using var span = new TraceSpan("BackgroundResourceProcessor.OnLoadVessel");
+
         LoadVessel();
 
         GameEvents.onGameStateSave.Add(OnGameStateSave);
@@ -66,7 +69,12 @@ public sealed partial class BackgroundResourceProcessor
 
     public override void OnUnloadVessel()
     {
+        using var span = new TraceSpan("BackgroundResourceProcessor.OnUnloadVessel");
+
         GameEvents.onGameStateSave.Remove(OnGameStateSave);
+
+        SaveVessel();
+        EventDispatcher.RegisterChangepointCallback(this, NextChangepoint);
     }
 
     protected override void OnSave(ConfigNode node)
@@ -94,6 +102,10 @@ public sealed partial class BackgroundResourceProcessor
         // We do nothing for active vessels.
         if (vessel.loaded)
             return;
+
+        using var span = new TraceSpan(() =>
+            $"BackgroundResourceProcessor.OnChangepoint({vessel.GetDisplayName()})"
+        );
 
         LogUtil.Debug(() =>
             $"Updating vessel {vessel.GetDisplayName()} at changepoint {changepoint}"
@@ -130,6 +142,10 @@ public sealed partial class BackgroundResourceProcessor
         if (!ReferenceEquals(vessel, evt.host))
             return;
 
+        using var span = new TraceSpan(() =>
+            $"BackgroundResourceProcessor.OnVesselSOIChanged({vessel.GetDisplayName()})"
+        );
+
         ShadowState = Shadow.GetShadowState(vessel);
         var state = new VesselState(Planetarium.GetUniversalTime());
         state.SetShadowState(ShadowState.Value);
@@ -148,6 +164,8 @@ public sealed partial class BackgroundResourceProcessor
     {
         if (!vessel.loaded)
             return;
+
+        using var span = new TraceSpan("BackgroundResourceProcessor.OnGameStateSave");
 
         SaveVessel();
     }
@@ -185,7 +203,8 @@ public sealed partial class BackgroundResourceProcessor
         state.SetShadowState((Shadow)ShadowState);
 
         processor.RecordVesselState(vessel, currentTime);
-        onVesselRecord.Fire(this);
+        using (var eventspan = new TraceSpan("onVesselRecord"))
+            onVesselRecord.Fire(this);
         processor.ForceUpdateBehaviours(state);
         processor.ComputeRates();
         DispatchOnRatesComputed(currentTime);
@@ -194,6 +213,8 @@ public sealed partial class BackgroundResourceProcessor
 
     private void DispatchOnRatesComputed(double currentTime)
     {
+        using var span = new TraceSpan("BackgroundResourceProcessor.DispatchOnRatesComputed");
+
         foreach (var converter in processor.converters)
         {
             converter.Behaviour?.OnRatesComputed(

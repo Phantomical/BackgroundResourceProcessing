@@ -182,14 +182,18 @@ internal class ResourceProcessor
         HashCode hasher = new();
 
         hasher.Add(inventories.Count, converters.Count);
+        var ispan = new TraceSpan("Inventory Hashes");
         foreach (var inventory in inventories)
             inventory.SolverHash(ref hasher);
+        ispan.Dispose();
 
+        var cspan = new TraceSpan("Converter Hashes");
         foreach (var converter in converters)
         {
             converter.SolverHash(ref hasher);
             hasher.Add(GetConverterConstraintState(converter));
         }
+        cspan.Dispose();
 
         hasher.Add(this);
 
@@ -567,6 +571,8 @@ internal class ResourceProcessor
 
     public void ForceUpdateBehaviours(VesselState state)
     {
+        using var span = new TraceSpan("ResourceProcessor.ForceUpdateBehaviours");
+
         foreach (var converter in converters)
             converter.Refresh(state);
     }
@@ -578,7 +584,7 @@ internal class ResourceProcessor
     /// <returns><c>true</c> if this state is currently at a changepoint</returns>
     public bool UpdateState(double currentTime, bool updateSnapshots)
     {
-        using var span = new TraceSpan("ResourceProcessor.UpdateInventories");
+        using var span = new TraceSpan("ResourceProcessor.UpdateState");
 
         var changepoint = false;
         var deltaT = currentTime - lastUpdate;

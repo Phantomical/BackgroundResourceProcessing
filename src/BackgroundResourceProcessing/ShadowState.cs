@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BackgroundResourceProcessing.Maths;
+using BackgroundResourceProcessing.Tracing;
 
 namespace BackgroundResourceProcessing;
 
@@ -53,8 +54,8 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
 
     public static ShadowState GetShadowState(Vessel vessel)
     {
-        // try
-        // {
+        using var span = new TraceSpan("ShadowState.GetShadowState");
+
         var state = GetShadowStateImpl(vessel);
         if (double.IsNaN(state.NextTerminatorEstimate))
         {
@@ -68,12 +69,6 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         }
 
         return state;
-        // }
-        // catch (Exception e)
-        // {
-        //     LogUtil.Error($"GetShadowState threw an exception: {e}");
-        //     return new(double.PositiveInfinity, false);
-        // }
     }
 
     private static ShadowState GetShadowStateImpl(Vessel vessel)

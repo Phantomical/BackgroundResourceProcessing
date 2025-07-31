@@ -84,11 +84,13 @@ internal class Trace : IDisposable
     }
 }
 
+#if TRACING
 internal struct TraceSpan : IDisposable
 {
     string label;
     TimeSpan start;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TraceSpan(string label)
     {
         var trace = Trace.Active;
@@ -98,6 +100,7 @@ internal struct TraceSpan : IDisposable
         Setup(label, trace);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TraceSpan(Func<string> labelfn)
     {
         var trace = Trace.Active;
@@ -119,6 +122,7 @@ internal struct TraceSpan : IDisposable
         this.start = trace.GetCurrentTime();
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly void Dispose()
     {
         if (label == null)
@@ -137,6 +141,19 @@ internal struct TraceSpan : IDisposable
         trace.WriteEvent(label, start, end);
     }
 }
+#else
+internal struct TraceSpan : IDisposable
+{
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public TraceSpan(string _) { }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public TraceSpan(Func<string> _) { }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Dispose() { }
+}
+#endif
 
 internal static class TimeSpanExt
 {

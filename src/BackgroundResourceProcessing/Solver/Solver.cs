@@ -44,8 +44,10 @@ internal class Solver
         var problem = new LinearProblem();
         var rates = problem.CreateVariables(converterMap.Count);
 
+        var rcspan = new TraceSpan("Add Variable Constraints");
         foreach (var rate in rates)
             problem.AddConstraint(rate <= 1.0);
+        rcspan.Dispose();
 
         var inventoryCount = processor.inventories.Count;
 
@@ -64,6 +66,7 @@ internal class Solver
         // The object function that we are optimizing.
         LinearEquation func = [];
 
+        var span2 = new TraceSpan("Converter Rates");
         foreach (var (converterId, converter) in graph.converters)
         {
             var varId = converterMap[converterId];
@@ -100,7 +103,7 @@ internal class Solver
                     // the inventory is exactly alpha*rate and we don't need
                     // to introduce any new variables.
                     var invId = connected.First();
-                    var invRate = iRates.GetOrAdd(invId, () => new());
+                    var invRate = iRates.GetOrAdd(invId, () => []);
                     invRate.Sub(rate);
 
                     if (dRates.TryGetValue(invId, out var dRate))
@@ -118,7 +121,7 @@ internal class Solver
                     for (int i = 0; i < connected.Count; ++i)
                     {
                         var invId = connected[i];
-                        var invRate = iRates.GetOrAdd(invId, () => new());
+                        var invRate = iRates.GetOrAdd(invId, () => []);
                         var rateVar = rateVars[i];
 
                         rateEq.Add(rateVar);
@@ -202,7 +205,9 @@ internal class Solver
                 }
             }
         }
+        span2.Dispose();
 
+        var span3 = new TraceSpan("Converter Constraints");
         foreach (var (converterId, converter) in graph.converters)
         {
             var varId = converterMap[converterId];
@@ -253,7 +258,9 @@ internal class Solver
                 }
             }
         }
+        span3.Dispose();
 
+        var span4 = new TraceSpan("Inventory Constraints");
         foreach (var (inventoryId, inventory) in graph.inventories)
         {
             // The inventory is unconstrained. There is nothing we need to
@@ -295,9 +302,11 @@ internal class Solver
             if ((inventory.state & InventoryState.Empty) == InventoryState.Empty)
                 problem.AddConstraint(iRate >= 0.0);
         }
+        span4.Dispose();
 
         var soln = problem.Maximize(func);
 
+        using var span5 = new TraceSpan("Rate Expansion");
         double[] inventoryRates = new double[inventoryCount];
         foreach (var (invId, iRate) in iRates)
         {

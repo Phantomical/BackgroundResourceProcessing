@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Converter;
 using BackgroundResourceProcessing.Core;
+using BackgroundResourceProcessing.Tracing;
 
 namespace BackgroundResourceProcessing;
 
@@ -165,6 +166,7 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
     /// </remarks>
     public ResourceSimulator GetSimulator()
     {
+        using var span = new TraceSpan("BackgroundResourceProcessor.GetSimulator");
         var currentTime = Planetarium.GetUniversalTime();
 
         if (vessel.loaded)

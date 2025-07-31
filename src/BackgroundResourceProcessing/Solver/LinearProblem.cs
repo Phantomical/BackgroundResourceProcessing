@@ -156,6 +156,7 @@ internal class LinearProblem
 
         do
         {
+            using var ispan = new TraceSpan("Presolve Iteration");
             equalities.Sort();
             equalities.Deduplicate();
 
@@ -170,6 +171,7 @@ internal class LinearProblem
 
             LinAlg.GaussianEliminationOrdered(matrix);
 
+            var espan = new TraceSpan("Extract Substitutions");
             for (int y = 0; y < matrix.Height; ++y)
             {
                 int index = LinAlg.FindFirstNonZeroInRow(matrix, y);
@@ -198,13 +200,17 @@ internal class LinearProblem
                     constant = matrix[matrix.Width - 1, y] / matrix[index, y],
                 };
             }
+            espan.Dispose();
 
+            var csspan = new TraceSpan("Substitute Into Constraints");
             foreach (var constraint in constraints)
             {
                 foreach (var sub in substitutions.Values)
                     constraint.Substitute(sub.variable, sub.equation, sub.constant);
             }
+            csspan.Dispose();
 
+            var dsspan = new TraceSpan("Substitute Into Disjunctions");
             foreach (var dis in disjunctions)
             {
                 foreach (var sub in substitutions.Values)
@@ -213,6 +219,7 @@ internal class LinearProblem
                     dis.rhs.Substitute(sub.variable, sub.equation, sub.constant);
                 }
             }
+            dsspan.Dispose();
         } while (InferZeros());
     }
 

@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using BackgroundResourceProcessing.Core;
+using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
 
 namespace BackgroundResourceProcessing;
@@ -133,6 +134,8 @@ public class ResourceSimulator
             return false;
         if (iteration >= IterationLimit)
             return false;
+
+        using var span = new TraceSpan("ResourceSimulator.Step");
 
         var currentTime = NextChangepoint;
         processor.UpdateState(currentTime, false);
