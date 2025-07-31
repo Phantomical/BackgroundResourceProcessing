@@ -38,7 +38,8 @@ namespace BackgroundResourceProcessing.Text.Collections
         [TestMethod]
         public void TestEnumerate()
         {
-            var slice = new BitSliceX([0xF00, 0x1]);
+            ulong[] vals = [0xF00, 0x1];
+            var slice = new BitSliceX(new(vals));
             int[] bits = [.. slice];
 
             Assert.IsTrue(

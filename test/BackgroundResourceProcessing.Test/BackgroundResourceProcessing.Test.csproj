@@ -26,6 +26,11 @@
     <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" Version="1.4.3" />
     <PackageReference Include="MSTest" Version="3.6.4" />
 
+    <Reference Include="BackgroundResourceProcessing.System.Memory">
+      <HintPath>$(SolutionDir)/deps/BackgroundResourceProcessing.System.Memory.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+
     <ProjectReference Include="$(ProjectRootDir)\src\BackgroundResourceProcessing\BackgroundResourceProcessing.csproj" />
   </ItemGroup>
 

@@ -12,7 +12,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Memory" Version="4.6.3" />
+    <!-- <PackageReference Include="System.Memory" Version="4.6.3" /> -->
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" />
     <PackageReference Include="JsonPoke" Version="1.2.0" />
 
@@ -22,6 +22,11 @@
         https://github.com/Phantomical/BackgroundResourceProcessing/releases/latest/download/BackgroundResourceProcessing.version</URL>
       <Download>https://github.com/Phantomical/BackgroundResourceProcessing/releases/latest</Download>
     </KSPVersionFile>
+
+    <Reference Include="BackgroundResourceProcessing.System.Memory">
+      <HintPath>$(SolutionDir)/deps/BackgroundResourceProcessing.System.Memory.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
 
     <InternalsVisibleTo Include="BackgroundResourceProcessing.Test" />
     <InternalsVisibleTo Include="BackgroundResourceProcessing.CLI" />
@@ -81,10 +86,6 @@
     <JsonPoke Content="$(_JSON)" Query="$.VERSION.BUILD" RawValue="$(_Build)">
       <Output TaskParameter="Content" PropertyName="_JSON" />
     </JsonPoke>
-    <WriteLinesToFile
-      File="$(GameDataOutDir)\$(ProjectName).version"
-      Lines="$(_JSON)"
-      Overwrite="true"
-    />
+    <WriteLinesToFile File="$(GameDataOutDir)\$(ProjectName).version" Lines="$(_JSON)" Overwrite="true" />
   </Target>
 </Project>

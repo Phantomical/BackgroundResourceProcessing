@@ -1,0 +1,28 @@
+<!--
+This package generates an ILMerged version of System.Memory for use by BRP.
+We have to do this because other KSP mods (KSPBurst, some others) ship very
+old versions of some of the packages we depend on and that causes errors.
+-->
+
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>System.Memory ILPacked Build for BackgroundResourceProcessing</Description>
+
+    <DebugType>portable</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ILMerge" Version="3.0.41" />
+    <PackageReference Include="System.Memory" Version="4.6.3" />
+  </ItemGroup>
+
+  <Target Name="ILPack" AfterTargets="AfterBuild">
+    <ItemGroup>
+      <BinariesToMerge Include="$(TargetDir)/*.dll" />
+    </ItemGroup>
+
+    <Exec 
+      Command="$(ILMergeConsolePath) @(BinariesToMerge, ' ') /target:library /out:$(TargetDir)..\BackgroundResourceProcessing.System.Memory.dll"
+    />
+  </Target>
+</Project>
