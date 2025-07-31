@@ -13,7 +13,7 @@ internal class LinearProblem
     const double M = 1e9;
 
     // The number of linear variables that have been created.
-    int VariableCount = 0;
+    public int VariableCount { get; private set; } = 0;
 
     // The number of slack variables that have been created.
     int SlackCount = 0;

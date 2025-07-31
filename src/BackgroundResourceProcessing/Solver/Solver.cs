@@ -64,7 +64,7 @@ internal class Solver
         List<int> connected = [];
 
         // The object function that we are optimizing.
-        LinearEquation func = [];
+        LinearEquation func = new(problem.VariableCount);
 
         var span2 = new TraceSpan("Converter Rates");
         foreach (var (converterId, converter) in graph.converters)
@@ -166,7 +166,7 @@ internal class Solver
                     // the inventory is exactly alpha*rate and we don't need
                     // to introduce any new variables.
                     var invId = connected.First();
-                    var invRate = iRates.GetOrAdd(invId, () => new());
+                    var invRate = iRates.GetOrAdd(invId, () => new(problem.VariableCount));
 
                     if (output.dumpExcess)
                         dRates.GetOrAdd(invId, () => invRate.Clone());
@@ -187,7 +187,7 @@ internal class Solver
                     for (int i = 0; i < connected.Count; ++i)
                     {
                         var invId = connected[i];
-                        var invRate = iRates.GetOrAdd(invId, () => new());
+                        var invRate = iRates.GetOrAdd(invId, () => new(problem.VariableCount));
                         var rateVar = rateVars[i];
 
                         rateEq.Add(rateVar);
@@ -210,6 +210,9 @@ internal class Solver
         var span3 = new TraceSpan("Converter Constraints");
         foreach (var (converterId, converter) in graph.converters)
         {
+            if (converter.constraints.Count == 0)
+                continue;
+
             var varId = converterMap[converterId];
             var alpha = rates[varId];
 
@@ -235,7 +238,10 @@ internal class Solver
                 if (!iRates.TryGetValue(inventoryId, out var irate))
                     continue;
 
-                var eq = constraintEqs.GetOrAdd(inventory.resourceName, () => new());
+                var eq = constraintEqs.GetOrAdd(
+                    inventory.resourceName,
+                    () => new(problem.VariableCount)
+                );
                 eq += irate;
             }
 
