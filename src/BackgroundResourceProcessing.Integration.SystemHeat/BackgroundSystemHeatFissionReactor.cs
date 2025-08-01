@@ -68,8 +68,11 @@ public class BackgroundSystemHeatFissionReactor
                 {
                     ResourceName = GeneratedResourceName,
                     Ratio = module.ElectricalGeneration.Evaluate(throttle * 100f),
-                    DumpExcess = false,
-                    FlowMode = ResourceFlowMode.NULL,
+                    // Under normal operation we want the reactor to be appropriately throttled
+                    // however under manual control we want the reactor to just run at whatever
+                    // throttle is set.
+                    DumpExcess = module.ManualControl,
+                    FlowMode = ResourceFlowMode.ALL_VESSEL,
                 }
             );
         }
