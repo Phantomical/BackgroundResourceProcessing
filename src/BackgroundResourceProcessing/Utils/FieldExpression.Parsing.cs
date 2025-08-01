@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Remoting.Messaging;
 using Contracts;
+using UnityEngine.Rendering;
 using UnityEngine.Windows.Speech;
 
 namespace BackgroundResourceProcessing.Utils;
@@ -65,6 +66,13 @@ internal struct FieldExpression
                 nodes
                     .Where(node => node.GetType().Name == name || node.Title == name)
                     .FirstOrDefault();
+        }
+
+        internal class Builtins
+        {
+            internal static readonly Builtins Instance = new();
+
+            public Settings Settings => Settings.Instance;
         }
 
         public static object DoFieldAccess(object obj, string member)
@@ -785,6 +793,9 @@ internal struct FieldExpression
                 case TokenKind.OP_CONFIG_ACCESS:
                     return ParseConfigAccess();
 
+                case TokenKind.OP_BUILTIN_ACCESS:
+                    return ParseBuiltinAccess();
+
                 case TokenKind.TRUE:
                     lexer.MoveNext();
                     return Expression.Constant(true);
@@ -807,17 +818,9 @@ internal struct FieldExpression
                     return ParseTypeof();
 
                 case TokenKind.IDENT:
-                    if (Current.EqualsIgnoreCase("Settings"))
-                    {
-                        lexer.MoveNext();
-                        return Expression.Constant(Methods.Settings.Instance);
-                    }
-                    else
-                    {
-                        var token = Current;
-                        lexer.MoveNext();
-                        return Expression.Constant(token.ToString());
-                    }
+                    var token = Current;
+                    lexer.MoveNext();
+                    return Expression.Constant(token.ToString());
 
                 default:
                     throw RenderError($"unexpected token `{Current.ToString()}`");
@@ -959,6 +962,24 @@ internal struct FieldExpression
             node.TryGetValue(field.ToString(), ref value);
 
             return Expression.Constant(value);
+        }
+
+        Expression ParseBuiltinAccess()
+        {
+            ExpectToken(TokenKind.OP_BUILTIN_ACCESS);
+
+            var builtins = Expression.Constant(Methods.Builtins.Instance);
+            switch (Current.kind)
+            {
+                case TokenKind.IDENT:
+                    var field = Current;
+                    lexer.MoveNext();
+
+                    return BuildFieldAccess(builtins, field.ToString());
+
+                default:
+                    return builtins;
+            }
         }
 
         static MethodInfo GetMethodInfo(Expression<Action> expr) =>
@@ -1597,6 +1618,8 @@ internal struct FieldExpression
                     return TakeFirst(1, TokenKind.OP_NOT);
                 case '@':
                     return TakeFirst(1, TokenKind.OP_CONFIG_ACCESS);
+                case '$':
+                    return TakeFirst(1, TokenKind.OP_BUILTIN_ACCESS);
                 case ',':
                     return TakeFirst(1, TokenKind.COMMA);
                 case '(':
@@ -1826,6 +1849,9 @@ internal struct FieldExpression
 
         // @
         OP_CONFIG_ACCESS,
+
+        // $
+        OP_BUILTIN_ACCESS,
 
         // ,
         COMMA,
