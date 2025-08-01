@@ -58,7 +58,7 @@ public class Settings : GameParameters.CustomParameterNode
     public override GameParameters.GameMode GameMode => GameParameters.GameMode.ANY;
 
     [GameParameters.CustomParameterUI("Enable USI-LS Integration")]
-    public bool EnableUSILSIntegration = false;
+    public bool EnableUSILSIntegration = true;
 
     [GameParameters.CustomParameterUI(
         "Enable Experimental Orbit Shadows",
