@@ -34,6 +34,7 @@ automatically be enabled if they are detected:
 - [USI Life Support](https://forum.kerbalspaceprogram.com/topic/105202-112x-usi-life-support/)
 - [CryoTanks](https://forum.kerbalspaceprogram.com/topic/195042-112x-cryotanks-liquid-hydrogen-storage-and-management-july-21/)
 - [WildBlueTools](https://github.com/Angel-125/WildBlueTools)
+- [Far Future Technologies](https://forum.kerbalspaceprogram.com/topic/199070-112x-far-future-technologies-october-9/)
 
 Some of the integrations can be disabled if you wish to do so (e.g. USI Life Support).
 See the difficulty settings window in-game for options to enable and/or disable them.
