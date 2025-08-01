@@ -63,7 +63,7 @@ public class BackgroundSystemHeatFissionReactor
 
         if (module.GeneratesElectricity)
         {
-            inputs.Add(
+            outputs.Add(
                 new ResourceRatio()
                 {
                     ResourceName = GeneratedResourceName,

@@ -22,6 +22,9 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 * The USI-LS panel now displays `indefinite` for resources instead of
   `Infinityy (+15d)`.
 
+### Fixed
+* SystemHeat fission reactors now generate EC as an output instead of an input.
+
 ## 0.1.2
 ### Changed
 * Changed ckan metadata to use `suggests` instead of `supports`.
