@@ -11,6 +11,8 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 -->
 
 ## Unreleased
+
+## 0.1.3
 ### Added
 * Added support for `CryoTanks`.
 * Added support for `WildBlueTools`.
