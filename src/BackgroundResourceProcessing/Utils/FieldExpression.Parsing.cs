@@ -1388,7 +1388,11 @@ internal struct FieldExpression
         {
             if (expr.Type == typeof(string))
                 return Expression.Convert(
-                    Expression.Call(GetMethodInfo(() => Enum.Parse(null, null)), expr),
+                    Expression.Call(
+                        GetMethodInfo(() => Enum.Parse(null, null)),
+                        Expression.Constant(typeof(T)),
+                        expr
+                    ),
                     typeof(T)
                 );
 

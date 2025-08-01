@@ -30,4 +30,18 @@ public sealed class FieldExpressionTests
         var expr = FieldExpression<double>.Compile("%array[3] ?? 5", node, typeof(IndexNullTest));
         Assert.AreEqual(expr.Evaluate(module), 5.0);
     }
+
+    [TestMethod]
+    public void ParseEnum()
+    {
+        ConfigNode node = new();
+        IndexNullTest module = new();
+
+        var expr = FieldExpression<ResourceFlowMode>.Compile(
+            "NO_FLOW",
+            node,
+            typeof(IndexNullTest)
+        );
+        Assert.AreEqual(expr.Evaluate(module), ResourceFlowMode.NO_FLOW);
+    }
 }
