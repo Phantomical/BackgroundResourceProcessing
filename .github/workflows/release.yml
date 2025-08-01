@@ -54,7 +54,7 @@ jobs:
 
       - name: Get Release Description
         run: |
-          gh release view ${{ github.ref_name }} --json body | jq .body > CHANGELOG.md
+          gh release view ${{ github.ref_name }} --json body | jq -r .body > CHANGELOG.md
 
       - name: Strip Leading `v` From Version Number
         run: |
