@@ -97,10 +97,4 @@ public class BackgroundSystemHeatFissionReactor
     {
         return (List<ResourceRatio>)OutputsField.GetValue(module);
     }
-
-    private static ResourceRatio MultiplyRatio(ResourceRatio ratio, double mult)
-    {
-        ratio.Ratio *= mult;
-        return ratio;
-    }
 }
