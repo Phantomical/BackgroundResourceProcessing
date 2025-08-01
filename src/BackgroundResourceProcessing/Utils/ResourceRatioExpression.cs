@@ -5,7 +5,7 @@ namespace BackgroundResourceProcessing.Utils;
 
 public struct ResourceRatioExpression()
 {
-    public ResourceFlowMode FlowMode = ResourceFlowMode.NULL;
+    public FieldExpression<ResourceFlowMode> FlowMode = new(_ => ResourceFlowMode.NULL, "NULL");
 
     public FieldExpression<string> ResourceName;
 
@@ -17,7 +17,7 @@ public struct ResourceRatioExpression()
     {
         var ratio = new ResourceRatio()
         {
-            FlowMode = FlowMode,
+            FlowMode = FlowMode.Evaluate(module) ?? ResourceFlowMode.NULL,
             ResourceName = ResourceName.Evaluate(module),
             Ratio = Ratio.Evaluate(module) ?? 0.0,
             DumpExcess = DumpExcess.Evaluate(module) ?? false,
@@ -33,18 +33,7 @@ public struct ResourceRatioExpression()
         node.TryGetExpression(nameof(ResourceName), target, ref result.ResourceName);
         node.TryGetExpression(nameof(Ratio), target, ref result.Ratio);
         node.TryGetExpression(nameof(DumpExcess), target, ref result.DumpExcess);
-
-        string flowMode = null;
-        if (node.TryGetValue(nameof(FlowMode), ref flowMode))
-        {
-            if (Enum.TryParse<ResourceFlowMode>(flowMode, out var parsed))
-                result.FlowMode = parsed;
-            else
-            {
-                LogUtil.Error($"GenericResourceRatio: Unknown flow mode `{flowMode}`");
-                result.FlowMode = ResourceFlowMode.NULL;
-            }
-        }
+        node.TryGetExpression(nameof(FlowMode), target, ref result.FlowMode);
 
         return result;
     }

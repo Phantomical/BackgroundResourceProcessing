@@ -7,8 +7,14 @@ public struct ResourceConstraintExpression()
 {
     public FieldExpression<string> ResourceName;
     public FieldExpression<double> Amount;
-    public Constraint Constraint = Constraint.AT_LEAST;
-    public ResourceFlowMode FlowMode = ResourceFlowMode.ALL_VESSEL;
+    public FieldExpression<Constraint> Constraint = new(
+        _ => BackgroundResourceProcessing.Constraint.AT_LEAST,
+        "AT_LEAST"
+    );
+    public FieldExpression<ResourceFlowMode> FlowMode = new(
+        _ => ResourceFlowMode.ALL_VESSEL,
+        "ALL_VESSEL"
+    );
 
     public ResourceConstraint Evaluate(PartModule module)
     {
@@ -16,8 +22,9 @@ public struct ResourceConstraintExpression()
         {
             ResourceName = ResourceName.Evaluate(module),
             Amount = Amount.Evaluate(module) ?? 0.0,
-            Constraint = Constraint,
-            FlowMode = FlowMode,
+            Constraint =
+                Constraint.Evaluate(module) ?? BackgroundResourceProcessing.Constraint.AT_LEAST,
+            FlowMode = FlowMode.Evaluate(module) ?? ResourceFlowMode.NULL,
         };
 
         return constraint;
@@ -29,30 +36,8 @@ public struct ResourceConstraintExpression()
 
         node.TryGetExpression(nameof(ResourceName), target, ref result.ResourceName);
         node.TryGetExpression(nameof(Amount), target, ref result.Amount);
-
-        string value = null;
-        if (node.TryGetValue(nameof(Constraint), ref value))
-        {
-            if (Enum.TryParse<Constraint>(value, out var parsed))
-                result.Constraint = parsed;
-            else
-            {
-                LogUtil.Error($"GenericResourceRatio: Unknown constraint type `{value}`");
-                result.Constraint = Constraint.AT_LEAST;
-            }
-        }
-
-        value = null;
-        if (node.TryGetValue(nameof(FlowMode), ref value))
-        {
-            if (Enum.TryParse<ResourceFlowMode>(value, out var parsed))
-                result.FlowMode = parsed;
-            else
-            {
-                LogUtil.Error($"GenericResourceRatio: Unknown flow mode `{value}`");
-                result.FlowMode = ResourceFlowMode.NULL;
-            }
-        }
+        node.TryGetExpression(nameof(Constraint), target, ref result.Constraint);
+        node.TryGetExpression(nameof(FlowMode), target, ref result.FlowMode);
 
         return result;
     }
