@@ -418,6 +418,14 @@ internal struct FieldExpression
             if (o is bool b)
                 return b;
 
+            if (o is string s)
+            {
+                if (string.Equals(s, "true", StringComparison.OrdinalIgnoreCase))
+                    return true;
+                if (string.Equals(s, "false", StringComparison.OrdinalIgnoreCase))
+                    return false;
+            }
+
             return o != null;
         }
 
@@ -1277,7 +1285,7 @@ internal struct FieldExpression
                 );
             }
 
-            return Expression.Invoke(Expression.Constant((object)Methods.CoerceToBool), expr);
+            return Expression.Call(GetMethodInfo(() => Methods.CoerceToBool(null)), expr);
         }
 
         static Expression CoerceToObject(Expression expr)
@@ -1332,6 +1340,11 @@ internal struct FieldExpression
                     return Expression.Constant((double)l);
                 if (value is ulong ul)
                     return Expression.Constant((double)ul);
+                if (value is string str)
+                {
+                    if (double.TryParse(str, out var parsed))
+                        return Expression.Constant(parsed);
+                }
             }
 
             var et = expr.Type;
