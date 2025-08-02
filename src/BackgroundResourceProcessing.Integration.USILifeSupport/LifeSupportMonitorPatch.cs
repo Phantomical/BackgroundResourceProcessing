@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection.Emit;
 using BackgroundResourceProcessing.Core;
+using BackgroundResourceProcessing.Tracing;
 using HarmonyLib;
 using LifeSupport;
 using UnityEngine;
@@ -299,6 +300,10 @@ public static class LifeSupportMonitor_GetVesselStats_Patch
         var settings = HighLogic.CurrentGame?.Parameters.CustomParams<Settings>();
         if (!(settings?.EnableUSILSIntegration ?? false))
             return;
+
+        using var span = new TraceSpan(() =>
+            $"LifeSupportMonitor.UpdateTimeLeft({vessel.GetDisplayName()})"
+        );
 
         var _stats = MonitorVesselCache.Instance?.GetVesselStats(vessel);
         if (_stats == null)

@@ -135,7 +135,7 @@ public class ResourceSimulator
         if (iteration >= IterationLimit)
             return false;
 
-        using var span = new TraceSpan("ResourceSimulator.Step");
+        using var span = new TraceSpan(() => $"ResourceSimulator.Step({NextChangepoint})");
 
         var currentTime = NextChangepoint;
         processor.UpdateState(currentTime, false);
