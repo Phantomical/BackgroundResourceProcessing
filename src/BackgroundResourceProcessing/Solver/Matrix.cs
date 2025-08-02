@@ -13,24 +13,7 @@ internal class Matrix
     public readonly int Height;
     private readonly double[] values;
 
-    // Internal accessor for debugging purposes
-    private double[][] Values
-    {
-        get
-        {
-            double[][] output = new double[Height][];
-            for (int y = 0; y < Height; ++y)
-            {
-                output[y] = new double[Width];
-                for (int x = 0; x < Width; ++x)
-                {
-                    output[y][x] = this[x, y];
-                }
-            }
-
-            return output;
-        }
-    }
+    public double[] Values => values;
 
     public Matrix(int width, int height)
     {
@@ -82,7 +65,7 @@ internal class Matrix
 
     public Span<double> GetRow(int y)
     {
-        if (y < 0 || y > Height)
+        if (y < 0 || y >= Height)
             throw new IndexOutOfRangeException($"row index {y} was out of bounds");
 
         Span<double> data = values;

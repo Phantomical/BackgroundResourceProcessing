@@ -16,6 +16,39 @@
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" />
     <PackageReference Include="JsonPoke" Version="1.2.0" />
 
+    <Reference Include="KSPBurst.dll">
+      <HintPath>$(KSPRoot)\GameData\000_KSPBurst\Plugins\KSPBurst.dll</HintPath>
+      <Private>false</Private>
+      <CKANIdentifier>KSPBurst</CKANIdentifier>
+      <KSPAssemblyName>KSPBurst</KSPAssemblyName>
+      <KSPAssemblyVersion>1.5.5</KSPAssemblyVersion>
+    </Reference>
+
+    <Reference Include="Unity.Burst.dll">
+      <HintPath>$(KSPRoot)\GameData\000_KSPBurst\Plugins\Unity.Burst.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <Reference Include="Unity.Burst.Unsafe.dll">
+      <HintPath>$(KSPRoot)\GameData\000_KSPBurst\Plugins\Unity.Burst.Unsafe.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <Reference Include="Unity.Collections.dll">
+      <HintPath>$(KSPRoot)\GameData\000_KSPBurst\Plugins\Unity.Collections.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <Reference Include="Unity.Jobs.dll">
+      <HintPath>$(KSPRoot)\GameData\000_KSPBurst\Plugins\Unity.Jobs.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <Reference Include="Unity.Mathematics.dll">
+      <HintPath>$(KSPRoot)\GameData\000_KSPBurst\Plugins\Unity.Mathematics.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
     <KSPVersionFile Include=".">
       <Destination>$(GameDataOutDir)/BackgroundResourceProcessing.version</Destination>
       <URL>

@@ -41,8 +41,10 @@
   <Target Name="CopyKSPDlls" AfterTargets="CopyFilesToOutputDirectory">
     <ItemGroup>
       <KspDlls Include="$(ManagedPath)\*.dll" />
+      <BurstDlls Include="$(KSPRoot)\GameData\000_KSPBurst\Plugins\*.dll" />
     </ItemGroup>
 
+    <Copy SourceFiles="@(BurstDlls)" DestinationFolder="$(OutDir)\%(RecursiveDir)" />
     <Copy SourceFiles="@(KspDlls)" DestinationFolder="$(OutDir)\%(RecursiveDir)" />
   </Target>
 <!-- 

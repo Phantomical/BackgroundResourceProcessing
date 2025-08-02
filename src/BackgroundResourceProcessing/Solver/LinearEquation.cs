@@ -60,6 +60,11 @@ internal class LinearEquation(SortedList<int, double> variables)
         return variables.Remove(index);
     }
 
+    public void Clear()
+    {
+        variables.Clear();
+    }
+
     public bool TryGetValue(int index, out Variable var)
     {
         var result = variables.TryGetValue(index, out var value);

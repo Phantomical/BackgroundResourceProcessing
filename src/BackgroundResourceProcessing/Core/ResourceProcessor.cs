@@ -154,26 +154,29 @@ internal class ResourceProcessor
 
     private SolverSolution ComputeRateSolution()
     {
-        var hash = ComputeSolverCacheHash();
-        if (
-            SolverCache.TryGetValue(hash, out var entry)
-            && entry.Processor.TryGetTarget(out var target)
-            && ReferenceEquals(target, this)
-            && entry.Solution.converterRates.Length == converters.Count
-            && entry.Solution.inventoryRates.Length == inventories.Count
-        )
+        int hash = 0;
+        if (DebugSettings.Instance?.EnableSolutionCache ?? true)
         {
-            return entry.Solution;
+            hash = ComputeSolverCacheHash();
+            if (
+                SolverCache.TryGetValue(hash, out var entry)
+                && entry.Processor.TryGetTarget(out var target)
+                && ReferenceEquals(target, this)
+                && entry.Solution.converterRates.Length == converters.Count
+                && entry.Solution.inventoryRates.Length == inventories.Count
+            )
+            {
+                return entry.Solution;
+            }
         }
-        else
-        {
-            var solver = new Solver.Solver();
-            var soln = solver.ComputeInventoryRates(this);
 
+        var solver = new Solver.Solver();
+        var soln = solver.ComputeInventoryRates(this);
+
+        if (DebugSettings.Instance?.EnableSolutionCache ?? true)
             SolverCache.Add(hash, new() { Solution = soln, Processor = new(this) });
 
-            return soln;
-        }
+        return soln;
     }
 
     enum ConstraintState
@@ -467,11 +470,6 @@ internal class ResourceProcessor
 
                 foreach (var resource in pull.set)
                 {
-                    // When FlowMode is NO_FLOW GetConnectedResources will return all inventories
-                    // on the same part. We don't want that.
-                    if (resource.resourceName != ratio.ResourceName)
-                        continue;
-
                     var id = new InventoryId(resource);
                     if (inventoryIds.TryGetValue(id, out var index))
                         converter.Pull[index] = true;
@@ -501,11 +499,6 @@ internal class ResourceProcessor
 
                 foreach (var resource in push.set)
                 {
-                    // When FlowMode is NO_FLOW GetConnectedResources will return all inventories
-                    // on the same part. We don't want that.
-                    if (resource.resourceName != ratio.ResourceName)
-                        continue;
-
                     var id = new InventoryId(resource);
                     if (inventoryIds.TryGetValue(id, out var index))
                         converter.Push[index] = true;
@@ -537,11 +530,6 @@ internal class ResourceProcessor
 
                 foreach (var resource in attached.set)
                 {
-                    // When FlowMode is NO_FLOW GetConnectedResources will return all inventories
-                    // on the same part. We don't want that.
-                    if (resource.resourceName != req.ResourceName)
-                        continue;
-
                     var id = new InventoryId(resource);
                     if (inventoryIds.TryGetValue(id, out var index))
                         converter.Constraint[index] = true;
@@ -950,7 +938,10 @@ internal class ResourceProcessor
                 return part.crossfeedPartSet.GetResourceList(resourceId, pulling, false);
 
             default:
-                return BuildResourcePrioritySet(GetFlowingResources(part.Resources, pulling));
+                var resources = GetFlowingResources(part.Resources, pulling);
+                resources.RemoveAll(resource => resource.resourceName != resourceName);
+
+                return BuildResourcePrioritySet(resources);
         }
     }
 

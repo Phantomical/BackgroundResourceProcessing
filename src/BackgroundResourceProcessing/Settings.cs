@@ -37,6 +37,12 @@ public class DebugSettings : GameParameters.CustomParameterNode
     )]
     public bool SolverTrace = false;
 
+    [GameParameters.CustomParameterUI("Enable Burst-Accelerated Methods")]
+    public bool EnableBurst = true;
+
+    [GameParameters.CustomParameterUI("Enable Solution Cache")]
+    public bool EnableSolutionCache = true;
+
     public override bool Enabled(MemberInfo member, GameParameters parameters)
     {
         return member.Name switch

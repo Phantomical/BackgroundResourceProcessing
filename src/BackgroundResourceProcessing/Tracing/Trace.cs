@@ -1,7 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
+using Unity.Burst;
+using Unity.Profiling;
+using UnityEngine.Profiling;
 
 namespace BackgroundResourceProcessing.Tracing;
 
@@ -84,7 +88,26 @@ internal class Trace : IDisposable
     }
 }
 
-#if TRACING
+#if ENABLE_PROFILER
+internal struct TraceSpan : IDisposable
+{
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public TraceSpan(string label)
+    {
+        Profiler.BeginSample(label);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public TraceSpan(Func<string> labelfn)
+        : this(labelfn()) { }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly void Dispose()
+    {
+        Profiler.EndSample();
+    }
+}
+#elif TRACING
 internal struct TraceSpan : IDisposable
 {
     string label;
@@ -116,6 +139,7 @@ internal struct TraceSpan : IDisposable
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
+    [BurstDiscard]
     private void Setup(string label, Trace trace)
     {
         this.label = label;
@@ -131,6 +155,7 @@ internal struct TraceSpan : IDisposable
         DoDispose();
     }
 
+    [BurstDiscard]
     private readonly void DoDispose()
     {
         var trace = Trace.Active;

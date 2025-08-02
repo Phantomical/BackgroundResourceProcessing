@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
@@ -254,6 +255,173 @@ internal class LinearProblem
 
         return count != 0;
     }
+
+    private void Presolve2(LinearEquation func)
+    {
+        using var span = new TraceSpan("LinearProblem.Presolve2");
+
+        var matrix = BuildPresolveMatrix(func);
+        var zeros = new BitSet(VariableCount);
+
+        Collections.Unsafe.LinearPresolve.Presolve(
+            matrix,
+            zeros,
+            equalities.Count,
+            constraints.Count
+        );
+
+        var nEqs = equalities.Count;
+        var nCons = constraints.Count;
+        var nDisj = disjunctions.Count;
+
+        substitutions = new(VariableCount);
+        equalities.Clear();
+        constraints.Clear();
+        substitutions.Clear();
+
+        int i = 0;
+        for (; i < nEqs; ++i)
+        {
+            var row = matrix.GetRow(i);
+            var index = row.Slice(0, row.Length - 1).IndexOfNotEqual(0.0);
+
+            // Span has no non-zero entries, we can skip it.
+            if (index < 0)
+            {
+                if (row[row.Length - 1] != 0.0)
+                    throw new UnsolvableProblemException();
+
+                continue;
+            }
+
+            var mult = row[index];
+            var eqn = new LinearEquation(VariableCount);
+
+            for (int x = index + 1; x < row.Length - 1; ++x)
+            {
+                if (row[x] != 0.0)
+                    eqn.Sub(new Variable(x, row[x] / mult));
+            }
+
+            substitutions.Add(
+                index,
+                new LinearEquality()
+                {
+                    variable = index,
+                    equation = eqn,
+                    constant = row[row.Length - 1] / mult,
+                }
+            );
+        }
+
+        for (; i < nEqs + nCons; ++i)
+        {
+            var row = matrix.GetRow(i);
+            var index = row.Slice(0, row.Length - 1).IndexOfNotEqual(0.0);
+
+            // Span has no non-zero entries, we can skip it.
+            if (index < 0)
+            {
+                if (row[row.Length - 1] < 0)
+                    throw new UnsolvableProblemException();
+                continue;
+            }
+
+            var eqn = new LinearEquation(VariableCount);
+            for (int x = index; x < row.Length - 1; ++x)
+            {
+                if (row[x] != 0.0)
+                    eqn.Add(new Variable(x, row[x]));
+            }
+
+            constraints.Add(
+                new SolverConstraint() { variables = eqn, constant = row[row.Length - 1] }
+            );
+        }
+
+        for (int j = 0; j < nDisj; ++j, i += 2)
+        {
+            var lhs = matrix.GetRow(i);
+            var rhs = matrix.GetRow(i + 1);
+            var dis = disjunctions[j];
+
+            dis.lhs.variables.Clear();
+            dis.rhs.variables.Clear();
+
+            for (int x = 0; x < lhs.Length - 1; ++x)
+            {
+                if (lhs[x] != 0.0)
+                    dis.lhs.variables.Add(new Variable(x, lhs[x]));
+            }
+
+            for (int x = 0; x < rhs.Length - 1; ++x)
+            {
+                if (rhs[x] != 0.0)
+                    dis.rhs.variables.Add(new Variable(x, rhs[x]));
+            }
+
+            dis.lhs.constant = lhs[lhs.Length - 1];
+            dis.rhs.constant = rhs[rhs.Length - 1];
+        }
+
+        func.Clear();
+        {
+            var row = matrix.GetRow(matrix.Height - 1);
+            for (int j = 0; j < row.Length - 1; ++j)
+            {
+                if (row[j] != 0.0)
+                    func.Add(new Variable(j, row[j]));
+            }
+        }
+    }
+
+    private Matrix BuildPresolveMatrix(LinearEquation func)
+    {
+        using var span = new TraceSpan("LinearProblem.BuildPresolveMatrix");
+        Matrix matrix = new(
+            VariableCount + 1,
+            equalities.Count + constraints.Count + disjunctions.Count * 2 + 1
+        );
+
+        int i = 0;
+        foreach (var equality in equalities)
+        {
+            foreach (var var in equality.variables)
+                matrix[var.Index, i] = var.Coef;
+
+            matrix[matrix.Width - 1, i] = equality.constant;
+            i += 1;
+        }
+
+        foreach (var constraint in constraints)
+        {
+            foreach (var var in constraint.variables)
+                matrix[var.Index, i] = var.Coef;
+
+            matrix[matrix.Width - 1, i] = constraint.constant;
+            i += 1;
+        }
+
+        foreach (var disjunction in disjunctions)
+        {
+            foreach (var var in disjunction.lhs.variables)
+                matrix[var.Index, i] = var.Coef;
+
+            matrix[matrix.Width - 1, i] = disjunction.lhs.constant;
+            i += 1;
+
+            foreach (var var in disjunction.rhs.variables)
+                matrix[var.Index, i] = var.Coef;
+
+            matrix[matrix.Width - 1, i] = disjunction.rhs.constant;
+            i += 1;
+        }
+
+        foreach (var var in func.Values)
+            matrix[var.Index, i] = var.Coef;
+
+        return matrix;
+    }
     #endregion
 
     #region branch & bound
@@ -267,10 +435,17 @@ internal class LinearProblem
         for (int i = 0; i < disjunctions.Count; ++i)
             binaryIndices.Add(disjunctions[i].variable.Index, i);
 
-        Presolve();
+        if (DebugSettings.Instance?.EnableBurst ?? true)
+        {
+            Presolve2(func);
+        }
+        else
+        {
+            Presolve();
 
-        foreach (var sub in substitutions.Values)
-            func.Substitute(sub.variable, sub.equation);
+            foreach (var sub in substitutions.Values)
+                func.Substitute(sub.variable, sub.equation);
+        }
 
         if (Trace)
             LogUtil.Log($"After presolve:\nMaximize Z = {func}\nsubject to\n{this}");
@@ -325,7 +500,10 @@ internal class LinearProblem
 
             try
             {
-                Simplex.SolveTableau(tableau, selected);
+                if (DebugSettings.Instance?.EnableBurst ?? true)
+                    Collections.Unsafe.Simplex.SolveTableau(tableau, selected);
+                else
+                    Simplex.SolveTableau(tableau, selected);
             }
             catch (UnsolvableProblemException)
             {
@@ -465,7 +643,7 @@ internal class LinearProblem
                     break;
                 case BinaryChoice.Unknown:
                     // In order to represent an OR constraint we use what's called
-                    // the "bit M" method. This doesn't directly give us a solution
+                    // the "big M" method. This doesn't directly give us a solution
                     // here but the relaxed problem (e.g. allow binary variables to
                     // take non-integer values) does give us an upper bound on any
                     // the solution further down in the search tree.
@@ -570,11 +748,14 @@ internal class LinearProblem
             if (x >= VariableCount)
                 break;
 
+            if (!inverse.TryGetValue(x, out var index))
+                continue;
+
             var y = FindSetColumnValue(tableau, x);
             if (y == -1)
                 continue;
 
-            values[inverse[x]] = tableau[tableau.Width - 1, y];
+            values[index] = tableau[tableau.Width - 1, y];
         }
 
         var soln = new LinearSolution(values);

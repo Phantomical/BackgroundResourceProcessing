@@ -21,6 +21,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessin
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessing.Integration.CryoTanks", "src\BackgroundResourceProcessing.Integration.CryoTanks\BackgroundResourceProcessing.Integration.CryoTanks.csproj", "{5694ACBE-531C-0240-1DC5-28C4BD40243A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessing.System.Memory", "src\BackgroundResourceProcessing.System.Memory\BackgroundResourceProcessing.System.Memory.csproj", "{AB047787-BADC-9066-1033-39BD8A03D5D0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -63,6 +65,10 @@ Global
 		{5694ACBE-531C-0240-1DC5-28C4BD40243A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5694ACBE-531C-0240-1DC5-28C4BD40243A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5694ACBE-531C-0240-1DC5-28C4BD40243A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AB047787-BADC-9066-1033-39BD8A03D5D0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AB047787-BADC-9066-1033-39BD8A03D5D0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AB047787-BADC-9066-1033-39BD8A03D5D0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AB047787-BADC-9066-1033-39BD8A03D5D0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

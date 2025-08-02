@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Collections;
+using Unity.Burst.Intrinsics;
 using UnityEngine;
 
 namespace BackgroundResourceProcessing.Utils;
@@ -59,6 +60,17 @@ internal static class MathUtil
     }
 
     internal static int TrailingZeroCount(ulong v)
+    {
+        if (!BurstUtil.IsBurstCompiled)
+            return TrailingZeroCountFallback(v);
+
+        if (X86.Bmi1.IsBmi1Supported)
+            return (int)X86.Bmi1.tzcnt_u64(v);
+
+        return TrailingZeroCountFallback(v);
+    }
+
+    private static int TrailingZeroCountFallback(ulong v)
     {
         int c = 64;
 
