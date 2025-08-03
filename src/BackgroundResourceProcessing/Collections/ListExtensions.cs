@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace BackgroundResourceProcessing.Collections;
 
@@ -13,23 +14,26 @@ internal static class ListExtensions
     /// <returns>The number of elements removed from the list.</returns>
     public static int Deduplicate<T>(this List<T> list)
     {
-        bool first = true;
-        T prev = default;
+        if (list.Count <= 1)
+            return 0;
 
-        return list.RemoveAll(
-            (elem) =>
-            {
-                if (first)
-                {
-                    first = false;
-                    return false;
-                }
+        var count = list.Count;
+        var prev = list[0];
+        int i = 1;
+        int j = 1;
+        for (; i < count; ++i)
+        {
+            var elem = list[i];
+            if (elem.Equals(prev))
+                continue;
 
-                bool remove = elem.Equals(prev);
-                if (!remove)
-                    prev = elem;
-                return remove;
-            }
-        );
+            prev = elem;
+            list[j++] = elem;
+        }
+
+        if (i != j)
+            list.RemoveRange(j, i - j);
+
+        return i - j;
     }
 }
