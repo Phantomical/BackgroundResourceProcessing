@@ -12,9 +12,10 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ## Unreleased
 
+## 0.1.4
 ### Fixed
-* Fixed a bug where vessels that reached a planet terminator would never update
-  their shadow state, resulting in the vessel being updated every frame.
+* Fixed a bug where vessels that crossed a planet day/night boundary would never
+  update their shadow state, resulting in the vessel being updated every frame.
 
 ## 0.1.3
 ### Added
