@@ -111,8 +111,12 @@ public sealed partial class BackgroundResourceProcessor
             $"Updating vessel {vessel.GetDisplayName()} at changepoint {changepoint}"
         );
 
+        ShadowState ??= Shadow.GetShadowState(vessel);
+        if (ShadowState.Value.NextTerminatorEstimate <= changepoint)
+            ShadowState = Shadow.GetShadowState(vessel);
+
         var state = new VesselState(changepoint);
-        state.SetShadowState(ShadowState ??= Shadow.GetShadowState(vessel));
+        state.SetShadowState(ShadowState.Value);
 
         var recompute = false;
 
