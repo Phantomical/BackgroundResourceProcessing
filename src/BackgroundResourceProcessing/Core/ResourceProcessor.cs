@@ -146,7 +146,10 @@ internal class ResourceProcessor
 
     public void ClearRates()
     {
-
+        foreach (var inventory in inventories)
+            inventory.rate = 0.0;
+        foreach (var converter in converters)
+            converter.rate = 0.0;
     }
 
     private SolverSolution ComputeRateSolution()
