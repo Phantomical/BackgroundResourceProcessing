@@ -137,19 +137,24 @@ internal class IntMap<V>(int capacity) : IEnumerable<KeyValuePair<int, V>>
         return values[key];
     }
 
-    public IEnumerator<KeyValuePair<int, V>> GetEnumerator()
+    public RefEnumerator GetEnumerator()
+    {
+        return new(this);
+    }
+
+    public RefEnumerator GetEnumeratorAt(int index)
+    {
+        return new(this, index);
+    }
+
+    IEnumerator<KeyValuePair<int, V>> IEnumerable<KeyValuePair<int, V>>.GetEnumerator()
     {
         return new Enumerator(this);
     }
 
-    public Enumerator GetEnumeratorAt(int index)
-    {
-        return new Enumerator(this, index);
-    }
-
     IEnumerator IEnumerable.GetEnumerator()
     {
-        return GetEnumerator();
+        return ((IEnumerable<KeyValuePair<int, V>>)this).GetEnumerator();
     }
 
     private bool TryInsertOverwrite(int key, V value)
@@ -177,6 +182,59 @@ internal class IntMap<V>(int capacity) : IEnumerable<KeyValuePair<int, V>>
         present[key] = true;
         values[key] = value;
         count += 1;
+    }
+
+    public ref struct RefEnumerator(IntMap<V> map) : IEnumerator<KeyValuePair<int, V>>
+    {
+        readonly IntMap<V> map = map;
+        int index = -1;
+
+        public readonly KeyValuePair<int, V> Current
+        {
+            get
+            {
+                if (index < 0 || index >= map.Capacity)
+                    throw new InvalidOperationException(
+                        "Enumeration has either not started yet or has already completed"
+                    );
+
+                return new(index, map.values[index]);
+            }
+        }
+
+        readonly object IEnumerator.Current => Current;
+
+        public RefEnumerator(IntMap<V> map, int offset)
+            : this(map)
+        {
+            if (offset < 0)
+                throw new ArgumentOutOfRangeException("offset", "offset may not be negative");
+
+            index = offset - 1;
+        }
+
+        public bool MoveNext()
+        {
+            while (true)
+            {
+                index += 1;
+
+                if (index >= map.Capacity)
+                    return false;
+
+                if (map.present[index])
+                    return true;
+            }
+        }
+
+        public void Reset()
+        {
+            index = -1;
+        }
+
+        public readonly void Dispose() { }
+
+        public readonly RefEnumerator GetEnumerator() => this;
     }
 
     public struct Enumerator(IntMap<V> map) : IEnumerator<KeyValuePair<int, V>>

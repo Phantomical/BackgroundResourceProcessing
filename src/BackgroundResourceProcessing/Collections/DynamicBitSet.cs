@@ -133,14 +133,19 @@ public class DynamicBitSet : IEnumerable<int>
         return new((ulong[])words.Clone());
     }
 
-    public IEnumerator<int> GetEnumerator()
+    public RefEnumerator GetEnumerator()
+    {
+        return new(this);
+    }
+
+    IEnumerator<int> IEnumerable<int>.GetEnumerator()
     {
         return new Enumerator(this);
     }
 
     IEnumerator IEnumerable.GetEnumerator()
     {
-        return GetEnumerator();
+        return ((IEnumerable<int>)this).GetEnumerator();
     }
 
     private int GetNextSetIndex(int index)
@@ -186,6 +191,31 @@ public class DynamicBitSet : IEnumerable<int>
         }
 
         public void Dispose() { }
+    }
+
+    public ref struct RefEnumerator(DynamicBitSet set) : IEnumerator<int>
+    {
+        readonly DynamicBitSet set = set;
+        int index = -1;
+
+        public readonly int Current => index;
+
+        readonly object IEnumerator.Current => Current;
+
+        public bool MoveNext()
+        {
+            index = set.GetNextSetIndex(index);
+            return index < set.Capacity;
+        }
+
+        public void Reset()
+        {
+            index = -1;
+        }
+
+        public void Dispose() { }
+
+        public readonly RefEnumerator GetEnumerator() => this;
     }
 
     private sealed class DebugView(DynamicBitSet set)
