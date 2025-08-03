@@ -132,6 +132,15 @@ public sealed partial class BackgroundResourceProcessor
         }
 
         processor.UpdateNextChangepoint(changepoint);
+        if (NextChangepoint == changepoint)
+        {
+            LogUtil.Error(
+                $"{Vessel.GetDisplayName()}: Background simulation failed to progress. This vessel's background simulation has been disabled."
+            );
+            processor.DumpVessel();
+            processor.ClearRates();
+            processor.nextChangepoint = double.PositiveInfinity;
+        }
 
         EventDispatcher.RegisterChangepointCallback(this, processor.nextChangepoint);
     }

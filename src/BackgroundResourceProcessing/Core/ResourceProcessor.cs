@@ -144,6 +144,11 @@ internal class ResourceProcessor
         }
     }
 
+    public void ClearRates()
+    {
+
+    }
+
     private SolverSolution ComputeRateSolution()
     {
         var hash = ComputeSolverCacheHash();
@@ -987,6 +992,11 @@ internal class ResourceProcessor
         // Make sure we at least print the error
         LogUtil.Error($"Solver threw an exception: {e}");
 
+        DumpVessel();
+    }
+
+    internal void DumpVessel()
+    {
         var pluginDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         var exportDir = Path.Combine(pluginDir, @"..\Crashes");
         var now = DateTime.Now;
