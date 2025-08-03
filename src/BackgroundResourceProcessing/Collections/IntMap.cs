@@ -124,7 +124,7 @@ internal class IntMap<V>(int capacity) : IEnumerable<KeyValuePair<int, V>>
 
     public V GetOrAdd(int key, Func<V> func)
     {
-        if (key < 0 || key > Capacity)
+        if (key < 0 || key >= Capacity)
             throw new ArgumentException("key was outside the bounds of the IntMap");
 
         if (!present[key])

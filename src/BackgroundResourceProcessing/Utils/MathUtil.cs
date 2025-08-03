@@ -33,13 +33,21 @@ internal static class MathUtil
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double Clamp(double x, double lo, double hi)
     {
-        return Math.Max(Math.Min(x, hi), lo);
+        if (x > hi)
+            x = hi;
+        if (x < lo)
+            x = lo;
+        return x;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int Clamp(int x, int lo, int hi)
     {
-        return Math.Max(Math.Min(x, hi), lo);
+        if (x > hi)
+            x = hi;
+        if (x < lo)
+            x = lo;
+        return x;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -59,6 +67,7 @@ internal static class MathUtil
         return rem;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static int TrailingZeroCount(ulong v)
     {
         if (!BurstUtil.IsBurstCompiled)

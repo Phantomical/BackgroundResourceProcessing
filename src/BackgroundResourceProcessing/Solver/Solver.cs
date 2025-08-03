@@ -103,7 +103,7 @@ internal class Solver
                     // the inventory is exactly alpha*rate and we don't need
                     // to introduce any new variables.
                     var invId = connected.First();
-                    var invRate = iRates.GetOrAdd(invId, () => []);
+                    var invRate = iRates.GetOrAddWithCapacity(invId, problem.VariableCount);
                     invRate.Sub(rate);
 
                     if (dRates.TryGetValue(invId, out var dRate))
@@ -121,7 +121,7 @@ internal class Solver
                     for (int i = 0; i < connected.Count; ++i)
                     {
                         var invId = connected[i];
-                        var invRate = iRates.GetOrAdd(invId, () => []);
+                        var invRate = iRates.GetOrAddWithCapacity(invId, problem.VariableCount);
                         var rateVar = rateVars[i];
 
                         rateEq.Add(rateVar);
@@ -166,10 +166,10 @@ internal class Solver
                     // the inventory is exactly alpha*rate and we don't need
                     // to introduce any new variables.
                     var invId = connected.First();
-                    var invRate = iRates.GetOrAdd(invId, () => new(problem.VariableCount));
+                    var invRate = iRates.GetOrAddWithCapacity(invId, problem.VariableCount);
 
                     if (output.dumpExcess)
-                        dRates.GetOrAdd(invId, () => invRate.Clone());
+                        dRates.GetOrAddCloned(invId, invRate);
                     else if (dRates.TryGetValue(invId, out var dRate))
                         dRate.Add(rate);
 
@@ -187,13 +187,13 @@ internal class Solver
                     for (int i = 0; i < connected.Count; ++i)
                     {
                         var invId = connected[i];
-                        var invRate = iRates.GetOrAdd(invId, () => new(problem.VariableCount));
+                        var invRate = iRates.GetOrAddWithCapacity(invId, problem.VariableCount);
                         var rateVar = rateVars[i];
 
                         rateEq.Add(rateVar);
 
                         if (output.dumpExcess)
-                            dRates.GetOrAdd(invId, () => invRate.Clone());
+                            dRates.GetOrAddCloned(invId, invRate);
                         else if (dRates.TryGetValue(invId, out var dRate))
                             dRate.Add(rateVar);
 
@@ -238,10 +238,12 @@ internal class Solver
                 if (!iRates.TryGetValue(inventoryId, out var irate))
                     continue;
 
-                var eq = constraintEqs.GetOrAdd(
-                    inventory.resourceName,
-                    () => new(problem.VariableCount)
-                );
+                if (!constraintEqs.TryGetValue(inventory.resourceName, out var eq))
+                {
+                    eq = new(problem.VariableCount);
+                    constraintEqs.Add(inventory.resourceName, eq);
+                }
+
                 eq += irate;
             }
 
@@ -390,5 +392,42 @@ internal class Solver
     {
         public double amount = inventory.amount;
         public double maxAmount = inventory.maxAmount;
+    }
+}
+
+internal static class IntMapExtensions
+{
+    public static LinearEquation GetOrAddWithCapacity(
+        this IntMap<LinearEquation> map,
+        int key,
+        int capacity
+    )
+    {
+        if (key < 0 || key >= map.Capacity)
+            throw new ArgumentException("key was outside the bounds of the IntMap");
+
+        if (map.ContainsKey(key))
+            return map[key];
+
+        var value = new LinearEquation(capacity);
+        map.Add(key, value);
+        return value;
+    }
+
+    public static LinearEquation GetOrAddCloned(
+        this IntMap<LinearEquation> map,
+        int key,
+        LinearEquation eq
+    )
+    {
+        if (key < 0 || key >= map.Capacity)
+            throw new ArgumentException("key was outside the bounds of the IntMap");
+
+        if (map.ContainsKey(key))
+            return map[key];
+
+        var value = eq.Clone();
+        map.Add(key, value);
+        return value;
     }
 }

@@ -313,6 +313,7 @@ internal readonly ref struct BitSliceX(Span<ulong> bits)
 
         readonly object IEnumerator.Current => Current;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
             while (true)
@@ -334,6 +335,7 @@ internal readonly ref struct BitSliceX(Span<ulong> bits)
             inner = default;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly void Dispose() { }
     }
 }
@@ -480,7 +482,8 @@ internal readonly ref struct BitSliceY
             index = -1;
         }
 
-        public void Dispose() { }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly void Dispose() { }
     }
 }
 
@@ -516,6 +519,7 @@ internal ref struct BitEnumerator(int start, ulong bits) : IEnumerator<int>
 
     readonly object IEnumerator.Current => Current;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool MoveNext()
     {
         if (bits == 0)

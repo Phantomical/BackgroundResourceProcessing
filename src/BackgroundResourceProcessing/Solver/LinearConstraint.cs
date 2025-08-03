@@ -1,22 +1,18 @@
 using System;
-using System.Collections.Generic;
 using System.Text;
 
 namespace BackgroundResourceProcessing.Solver;
 
-internal class LinearConstraint : IComparable<LinearConstraint>
+internal readonly struct LinearConstraint : IComparable<LinearConstraint>
 {
-    public LinearEquation variables;
-    public Relation relation;
-    public double constant;
+    public readonly LinearEquation variables;
+    public readonly Relation relation;
+    public readonly double constant;
 
     public LinearConstraint(LinearEquation variables, Relation relation, double constant)
     {
-        SortedList<int, double> copy = new(variables.Count);
-        foreach (var var in variables.Values)
+        foreach (var var in variables)
         {
-            if (var.Coef == 0.0)
-                continue;
             if (double.IsNaN(var.Coef))
                 throw new InvalidCoefficientException(
                     $"Coefficient for variable x{var.Index} was NaN"
@@ -25,11 +21,9 @@ internal class LinearConstraint : IComparable<LinearConstraint>
                 throw new InvalidCoefficientException(
                     $"Coefficient for variable x{var.Index} was infinite"
                 );
-
-            copy.Add(var.Index, var.Coef);
         }
 
-        this.variables = new(copy);
+        this.variables = variables;
         this.relation = relation;
         this.constant = constant;
     }
@@ -55,31 +49,6 @@ internal class LinearConstraint : IComparable<LinearConstraint>
         }
     }
 
-    public void Substitute(int index, double value)
-    {
-        if (!variables.TryGetValue(index, out var variable))
-            return;
-
-        variables.Remove(index);
-        constant -= variable.Coef * value;
-    }
-
-    public void Substitute(int index, LinearEquation eq, double value)
-    {
-        if (!variables.TryGetValue(index, out var variable))
-            return;
-        if (eq.Contains(variable))
-            throw new ArgumentException(
-                $"Attempted to substitue variable {variable} with equation {eq} containing {variable}"
-            );
-
-        variables.Remove(index);
-        var coef = variable.Coef;
-        foreach (var var in eq)
-            variables.Add(var * coef);
-        constant -= coef * value;
-    }
-
     public LinearConstraint Clone()
     {
         return new(variables.Clone(), relation, constant);
@@ -94,7 +63,7 @@ internal class LinearConstraint : IComparable<LinearConstraint>
     {
         StringBuilder builder = new();
 
-        if (variables.Count == 0.0)
+        if (variables.Count == 0)
             builder.Append(0.0);
         else
             builder.Append(variables);

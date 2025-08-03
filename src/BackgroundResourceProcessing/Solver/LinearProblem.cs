@@ -75,8 +75,6 @@ internal class LinearProblem
     /// </remarks>
     public void AddConstraint(LinearConstraint constraint)
     {
-        if (constraint == null)
-            throw new ArgumentNullException("constraint");
         if (constraint.KnownInconsistent)
             throw new UnsolvableProblemException();
 
@@ -108,11 +106,6 @@ internal class LinearProblem
     /// <param name="b"></param>
     public void AddOrConstraint(LinearConstraint a, LinearConstraint b)
     {
-        if (a == null)
-            throw new ArgumentNullException("a");
-        if (b == null)
-            throw new ArgumentNullException("b");
-
         if (a.KnownInconsistent && b.KnownInconsistent)
             throw new UnsolvableProblemException();
 
@@ -148,115 +141,7 @@ internal class LinearProblem
     }
 
     #region presolve
-    private void Presolve()
-    {
-        using var span = new TraceSpan("LinearProblem.Presolve");
-        substitutions = new(VariableCount);
-
-        InferZeros();
-
-        do
-        {
-            using var ispan = new TraceSpan("Presolve Iteration");
-            equalities.Sort();
-            equalities.Deduplicate();
-
-            Matrix matrix = new(VariableCount + 1, equalities.Count);
-            for (int y = 0; y < equalities.Count; ++y)
-            {
-                var eq = equalities[y];
-                foreach (var var in eq.variables)
-                    matrix[var.Index, y] = var.Coef;
-                matrix[matrix.Width - 1, y] = eq.constant;
-            }
-
-            LinAlg.GaussianEliminationOrdered(matrix);
-
-            var espan = new TraceSpan("Extract Substitutions");
-            for (int y = 0; y < matrix.Height; ++y)
-            {
-                int index = LinAlg.FindFirstNonZeroInRow(matrix, y);
-
-                // This entire row ended up being zeros, nothing to do here.
-                if (index == -1)
-                    continue;
-
-                // All variables have zero coefficients but the constant is
-                // non-zero. The LP has no solutions.
-                if (index == matrix.Width - 1)
-                    throw new UnsolvableProblemException();
-
-                Variable var = new(index);
-                LinearEquation eq = new(matrix.Width - index);
-
-                // Note: we use Sub here because we are semantically moving the
-                //       variables to the other side of the == sign.
-                for (int x = index + 1; x < matrix.Width - 1; ++x)
-                    eq.Sub(new(x, matrix[x, y] / matrix[index, y]));
-
-                substitutions[var.Index] = new()
-                {
-                    variable = var.Index,
-                    equation = eq,
-                    constant = matrix[matrix.Width - 1, y] / matrix[index, y],
-                };
-            }
-            espan.Dispose();
-
-            var csspan = new TraceSpan("Substitute Into Constraints");
-            foreach (var constraint in constraints)
-            {
-                foreach (var sub in substitutions.Values)
-                    constraint.Substitute(sub.variable, sub.equation, sub.constant);
-            }
-            csspan.Dispose();
-
-            var dsspan = new TraceSpan("Substitute Into Disjunctions");
-            foreach (var dis in disjunctions)
-            {
-                foreach (var sub in substitutions.Values)
-                {
-                    dis.lhs.Substitute(sub.variable, sub.equation, sub.constant);
-                    dis.rhs.Substitute(sub.variable, sub.equation, sub.constant);
-                }
-            }
-            dsspan.Dispose();
-        } while (InferZeros());
-    }
-
-    private bool InferZeros()
-    {
-        using var span = new TraceSpan("LinearProblem.InferZeros");
-
-        int count = constraints.RemoveAll(constraint =>
-        {
-            // If the constraint is empty then either it is trivial or the
-            // problem is unsolvable.
-            if (constraint.variables.Count == 0)
-            {
-                if (constraint.constant < 0)
-                    throw new UnsolvableProblemException();
-                return true;
-            }
-
-            if (constraint.constant > 0)
-                return false;
-            if (!constraint.variables.All(v => v.Coef >= 0.0))
-                return false;
-
-            if (constraint.constant < 0)
-                throw new UnsolvableProblemException();
-            if (double.IsNaN(constraint.constant))
-                throw new Exception("LP constraint had a NaN constant");
-
-            equalities.Add(constraint);
-            return true;
-        });
-
-        return count != 0;
-    }
-
-    private void Presolve2(LinearEquation func)
+    private void Presolve(LinearEquation func)
     {
         using var span = new TraceSpan("LinearProblem.Presolve2");
 
@@ -417,8 +302,8 @@ internal class LinearProblem
             i += 1;
         }
 
-        foreach (var var in func.Values)
-            matrix[var.Index, i] = var.Coef;
+        foreach (var (index, coef) in func)
+            matrix[index, i] = coef;
 
         return matrix;
     }
@@ -435,17 +320,7 @@ internal class LinearProblem
         for (int i = 0; i < disjunctions.Count; ++i)
             binaryIndices.Add(disjunctions[i].variable.Index, i);
 
-        if (DebugSettings.Instance?.EnableBurst ?? true)
-        {
-            Presolve2(func);
-        }
-        else
-        {
-            Presolve();
-
-            foreach (var sub in substitutions.Values)
-                func.Substitute(sub.variable, sub.equation);
-        }
+        Presolve(func);
 
         if (Trace)
             LogUtil.Log($"After presolve:\nMaximize Z = {func}\nsubject to\n{this}");
@@ -500,10 +375,7 @@ internal class LinearProblem
 
             try
             {
-                if (DebugSettings.Instance?.EnableBurst ?? true)
-                    Collections.Unsafe.Simplex.SolveTableau(tableau, selected);
-                else
-                    Simplex.SolveTableau(tableau, selected);
+                Collections.Unsafe.Simplex.SolveTableau(tableau, selected);
             }
             catch (UnsolvableProblemException)
             {

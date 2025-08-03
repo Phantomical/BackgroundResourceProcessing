@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 
 #pragma warning disable CS0660 // Type defines operator == or operator != but does not override Object.Equals(object o)
 #pragma warning disable CS0661 // Type defines operator == or operator != but does not override Object.GetHashCode()
@@ -10,29 +11,35 @@ namespace BackgroundResourceProcessing.Solver;
 /// </summary>
 /// <param name="coef"></param>
 /// <param name="index"></param>
+[method: MethodImpl(MethodImplOptions.AggressiveInlining)]
 internal readonly struct Variable(int index, double coef) : IComparable<Variable>
 {
     public readonly double Coef = coef;
     public readonly int Index = index;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Variable(int index)
         : this(index, 1.0) { }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Variable operator *(double coef, Variable var)
     {
         return new(var.Index, coef * var.Coef);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Variable operator *(Variable var, double coef)
     {
         return new(var.Index, var.Coef * coef);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Variable operator /(Variable var, double coef)
     {
         return new(var.Index, var.Coef / coef);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Variable operator -(Variable var)
     {
         return new(var.Index, -var.Coef);
@@ -40,38 +47,45 @@ internal readonly struct Variable(int index, double coef) : IComparable<Variable
 
     public static LinearEquation operator +(Variable a, Variable b)
     {
-        LinearEquation eq = new();
-        eq.Add(a);
-        eq.Add(b);
+        LinearEquation eq = new(Math.Max(a.Index, b.Index) + 1) { a, b };
         return eq;
     }
 
     public static LinearEquation operator -(Variable a, Variable b)
     {
-        LinearEquation eq = new();
-        eq.Add(a);
-        eq.Sub(b);
+        LinearEquation eq = new(Math.Max(a.Index, b.Index) + 1) { a, -b };
         return eq;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static LinearConstraint operator <=(Variable v, double c)
     {
         return new LinearEquation(v) <= c;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static LinearConstraint operator >=(Variable v, double c)
     {
         return new LinearEquation(v) >= c;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static LinearConstraint operator ==(Variable v, double c)
     {
         return new LinearEquation(v) == c;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static LinearConstraint operator !=(Variable v, double c)
     {
         throw new NotImplementedException();
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Deconstruct(out int index, out double coef)
+    {
+        index = Index;
+        coef = Coef;
     }
 
     public override string ToString()

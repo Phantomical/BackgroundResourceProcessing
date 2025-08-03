@@ -15,6 +15,7 @@ internal static class BurstUtil
             return burst;
 
             [BurstDiscard]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             static void Managed(ref bool burst) => burst = false;
         }
     }
