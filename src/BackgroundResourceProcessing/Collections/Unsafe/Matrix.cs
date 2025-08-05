@@ -1,81 +1,78 @@
 using System;
 using System.Runtime.CompilerServices;
 using System.Text;
+using BackgroundResourceProcessing.Utils;
+using KSP.UI;
 using Unity.Burst.CompilerServices;
 
 namespace BackgroundResourceProcessing.Collections.Unsafe;
 
-internal readonly unsafe struct Matrix
+internal readonly unsafe struct Matrix(double* data, uint width, uint height)
 {
-    readonly double* data;
-    readonly int width;
-    readonly int height;
+    readonly double* data = data;
+    readonly uint width = width;
+    readonly uint height = height;
 
-    public readonly int Width => width;
-    public readonly int Height => height;
+    public readonly uint Width => width;
+    public readonly uint Height => height;
 
     public MemorySpan<double> Span => new(data, Width * Height);
 
-    public readonly double this[int x, int y]
+    public readonly double this[uint x, uint y]
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [IgnoreWarning(1370)]
         get
         {
-            if (y < 0 || y >= Height)
-                throw new IndexOutOfRangeException("row index was out of bounds");
-            if (x < 0 || x >= Width)
-                throw new IndexOutOfRangeException("column index was out of bounds");
+            if (BurstUtil.ExceptionsEnabled)
+            {
+                if (y >= Height)
+                    ThrowRowOutOfRangeException();
+                if (x >= Width)
+                    ThrowColOutOfRangeException();
+            }
 
             return data[y * Width + x];
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [IgnoreWarning(1370)]
         set
         {
-            if (y < 0 || y >= Height)
-                throw new IndexOutOfRangeException("row index was out of bounds");
-            if (x < 0 || x >= Width)
-                throw new IndexOutOfRangeException("column index was out of bounds");
+            if (BurstUtil.ExceptionsEnabled)
+            {
+                if (y < 0 || y >= Height)
+                    ThrowRowOutOfRangeException();
+                if (x < 0 || x >= Width)
+                    ThrowColOutOfRangeException();
+            }
 
             data[y * Width + x] = value;
         }
     }
 
-    public unsafe Matrix(double* data, int width, int height)
+    [IgnoreWarning(1370)]
+    private static void ThrowColOutOfRangeException()
     {
-        if (width < 0)
-            ThrowWidthOutOfRangeException();
-        if (height < 0)
-            ThrowHeightOutOfRangeException();
-
-        this.data = data;
-        this.width = width;
-        this.height = height;
+        throw new IndexOutOfRangeException("column index was out of bounds");
     }
 
     [IgnoreWarning(1370)]
-    private static void ThrowWidthOutOfRangeException()
+    private static void ThrowRowOutOfRangeException()
     {
-        throw new ArgumentOutOfRangeException("width");
+        throw new IndexOutOfRangeException("row index was out of bounds");
     }
 
     [IgnoreWarning(1370)]
-    private static void ThrowHeightOutOfRangeException()
+    public MemorySpan<double> GetRow(uint row)
     {
-        throw new ArgumentOutOfRangeException("height");
-    }
-
-    [IgnoreWarning(1370)]
-    public MemorySpan<double> GetRow(int row)
-    {
-        if (row < 0 || row >= Height)
-            throw new IndexOutOfRangeException("row index was out of bounds");
+        if (BurstUtil.ExceptionsEnabled)
+        {
+            if (row >= Height)
+                ThrowRowOutOfRangeException();
+        }
 
         return Span.Slice(row * Width, Width);
     }
 
-    public void SwapRows(int r1, int r2)
+    public void SwapRows(uint r1, uint r2)
     {
         if (r1 == r2)
             return;
@@ -83,36 +80,41 @@ internal readonly unsafe struct Matrix
         var v1 = GetRow(r1);
         var v2 = GetRow(r2);
 
-        for (int i = 0; i < Width; ++i)
+        for (uint i = 0; i < Width; ++i)
             (v2[i], v1[i]) = (v1[i], v1[i]);
     }
 
-    public void ScaleRow(int row, double scale)
+    public void ScaleRow(uint row, double scale)
     {
         if (scale == 1.0)
             return;
 
         var vals = GetRow(row);
-        for (int i = 0; i < Width; ++i)
+        for (uint i = 0; i < Width; ++i)
             vals[i] *= scale;
     }
 
-    [IgnoreWarning(1370)]
-    public void ReduceRow(int dst, int src, double scale)
+    public void ReduceRow(uint dst, uint src, double scale)
     {
         if (dst == src)
-            throw new ArgumentException("cannot row-reduce a row against itself");
+            ThrowRowReduceAgainstSelfException();
         if (scale == 0.0)
             return;
 
         var vdst = GetRow(dst);
         var vsrc = GetRow(src);
 
-        for (int i = 0; i < Width; ++i)
+        for (uint i = 0; i < Width; ++i)
             vdst[i] += vsrc[i] * scale;
     }
 
-    public void InvScaleRow(int row, double scale)
+    [IgnoreWarning(1370)]
+    private static void ThrowRowReduceAgainstSelfException()
+    {
+        throw new ArgumentException("cannot row-reduce a row against itself");
+    }
+
+    public void InvScaleRow(uint row, double scale)
     {
         if (scale == 1.0)
             return;
@@ -121,17 +123,19 @@ internal readonly unsafe struct Matrix
 
         // Note: We use division instead of multiplication by inverse here
         //       for numerical accuracy reasons.
-        for (int i = 0; i < Width; ++i)
+        for (uint i = 0; i < Width; ++i)
             vals[i] /= scale;
     }
 
-    [IgnoreWarning(1370)]
-    public void ScaleReduce(int dst, int src, int pivot)
+    public void ScaleReduce(uint dst, uint src, uint pivot)
     {
-        if (dst == src)
-            throw new ArgumentException("cannot row-reduce a row against itself");
-        if (pivot >= Width || pivot < 0)
-            throw new ArgumentOutOfRangeException("Pivot index was larger than width of matrix");
+        if (BurstUtil.ExceptionsEnabled)
+        {
+            if (dst == src)
+                ThrowRowReduceAgainstSelfException();
+            if (pivot >= Width || pivot < 0)
+                ThrowPivotOutOfRangeException();
+        }
 
         var vdst = GetRow(dst);
         var vsrc = GetRow(src);
@@ -140,7 +144,7 @@ internal readonly unsafe struct Matrix
         if (scale == 0.0)
             return;
 
-        for (int i = 0; i < Width; ++i)
+        for (uint i = 0; i < Width; ++i)
         {
             var d = vdst[i];
             var s = vsrc[i] * scale;
@@ -161,12 +165,9 @@ internal readonly unsafe struct Matrix
     }
 
     [IgnoreWarning(1370)]
-    public Matrix Slice(int start, int length)
+    private void ThrowPivotOutOfRangeException()
     {
-        if (start < 0 || start + length > Height)
-            throw new IndexOutOfRangeException("slice index was out of range");
-
-        return new(data + start * Width, Width, length);
+        throw new ArgumentOutOfRangeException("Pivot index was larger than width of matrix");
     }
 
     /// <summary>
@@ -176,27 +177,27 @@ internal readonly unsafe struct Matrix
     /// </summary>
     /// <param name="stop"></param>
     [IgnoreWarning(1370)]
-    public void PartialRowReduce(int stop)
+    public void PartialRowReduce(uint stop)
     {
         if (stop >= Height)
             throw new ArgumentOutOfRangeException("stop index was larger than the matrix height");
 
-        for (int pc = 0, pr = 0; pc < Width && pr < stop; ++pc)
+        for (uint pc = 0, pr = 0; pc < Width && pr < stop; ++pc)
         {
-            int rmax = -1;
+            uint? rmax = null;
             double vmax = 0.0;
-            for (int r = pr; r < stop; ++r)
+            for (uint r = pr; r < stop; ++r)
             {
                 if (Math.Abs(this[pc, r]) > vmax)
                     (rmax, vmax) = (r, Math.Abs(this[pc, r]));
             }
 
-            if (rmax == -1)
+            if (rmax == null)
                 continue;
 
-            SwapRows(rmax, pr);
+            SwapRows((uint)rmax, pr);
 
-            for (int r = 0; r < Height; ++r)
+            for (uint r = 0; r < Height; ++r)
             {
                 if (r == pr)
                     continue;
@@ -206,12 +207,12 @@ internal readonly unsafe struct Matrix
 
                 double f = this[pc, r] / this[pc, pr];
 
-                for (int c = pc + 1; c < Width; ++c)
+                for (uint c = pc + 1; c < Width; ++c)
                     this[c, r] -= this[c, pr] * f;
                 this[pc, r] = 0;
             }
 
-            for (int c = pc; c < Width; ++c)
+            for (uint c = pc; c < Width; ++c)
                 this[c, pr] /= this[pc, pr];
 
             pr += 1;
@@ -225,24 +226,24 @@ internal readonly unsafe struct Matrix
 
     public override string ToString()
     {
-        const int Stride = 8;
+        const uint Stride = 8;
 
         StringBuilder builder = new();
 
-        for (int y = 0; y < Height; ++y)
+        for (uint y = 0; y < Height; ++y)
         {
-            int offset = 0;
-            for (int x = 0; x < Width; ++x)
+            uint offset = 0;
+            for (uint x = 0; x < Width; ++x)
             {
-                int expected = (x + 1) * Stride;
-                int room = Math.Max(expected - offset, 0);
+                uint expected = (x + 1) * Stride;
+                uint room = (uint)Math.Max((int)expected - (int)offset, 0);
 
                 string value = $"{this[x, y]:g3}";
-                string pad = new(' ', Math.Max(room - value.Length - 1, 1));
+                string pad = new(' ', (int)Math.Max(room - value.Length - 1, 1));
                 string whole = $"{pad}{value},";
 
                 builder.Append(whole);
-                offset += whole.Length;
+                offset += (uint)whole.Length;
             }
 
             builder.Append("\n");

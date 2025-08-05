@@ -14,30 +14,30 @@ internal readonly unsafe struct BitSpan(MemorySpan<ulong> bits)
 
     public readonly MemorySpan<ulong> Bits = bits;
 
-    public int Capacity => Bits.Length * ULongBits;
+    public uint Capacity => Bits.Length * ULongBits;
 
-    public bool this[int key]
+    public bool this[uint key]
     {
         [IgnoreWarning(1370)]
         get
         {
-            if (key < 0 || key / ULongBits >= Bits.Length)
+            if (key / ULongBits >= Bits.Length)
                 throw new IndexOutOfRangeException("index out of range for bitset");
 
             var word = key / ULongBits;
             var bit = key % ULongBits;
 
-            return (Bits[word] & (1ul << bit)) != 0;
+            return (Bits[word] & (1ul << (int)bit)) != 0;
         }
         [IgnoreWarning(1370)]
         set
         {
-            if (key < 0 || key / ULongBits >= Bits.Length)
+            if (key / ULongBits >= Bits.Length)
                 throw new IndexOutOfRangeException("index out of range for bitset");
 
             var word = key / ULongBits;
             var bit = key % ULongBits;
-            var mask = 1ul << bit;
+            var mask = 1ul << (int)bit;
 
             if (value)
                 Bits[word] |= mask;
@@ -46,17 +46,17 @@ internal readonly unsafe struct BitSpan(MemorySpan<ulong> bits)
         }
     }
 
-    public BitSpan(ulong* bits, int length)
+    public BitSpan(ulong* bits, uint length)
         : this(new MemorySpan<ulong>(bits, length)) { }
 
-    public bool Contains(int key)
+    public bool Contains(uint key)
     {
-        if (key < 0 || key / ULongBits >= Bits.Length)
+        if (key / ULongBits >= Bits.Length)
             return false;
         return this[key];
     }
 
-    public void Add(int key)
+    public void Add(uint key)
     {
         this[key] = true;
     }
@@ -76,21 +76,21 @@ internal readonly unsafe struct BitSpan(MemorySpan<ulong> bits)
     /// </summary>
     /// <param name="index"></param>
     [IgnoreWarning(1370)]
-    public void ClearUpFrom(int index)
+    public void ClearUpFrom(uint index)
     {
         if (index < 0)
             throw new IndexOutOfRangeException("selected bit index was negative");
 
         var word = index / ULongBits;
         var bit = index % ULongBits;
-        var mask = (1ul << bit) - 1;
+        var mask = (1ul << (int)bit) - 1;
 
         if (word >= Bits.Length)
             return;
 
         Bits[word] &= mask;
 
-        for (int i = word + 1; i < Bits.Length; ++i)
+        for (uint i = word + 1; i < Bits.Length; ++i)
             Bits[i] = 0;
     }
 
@@ -99,18 +99,18 @@ internal readonly unsafe struct BitSpan(MemorySpan<ulong> bits)
     /// </summary>
     /// <param name="index"></param>
     [IgnoreWarning(1370)]
-    public void ClearUpTo(int index)
+    public void ClearUpTo(uint index)
     {
         if (index < 0)
             throw new IndexOutOfRangeException("selected bit index was negative");
 
         var word = index / ULongBits;
         var bit = index % ULongBits;
-        var mask = ~((1ul << bit) - 1);
+        var mask = ~((1ul << (int)bit) - 1);
 
         word = Math.Min(word, Bits.Length);
 
-        for (int i = 0; i < word; ++i)
+        for (uint i = 0; i < word; ++i)
             Bits[i] = 0;
 
         if (word < Bits.Length)
@@ -123,18 +123,18 @@ internal readonly unsafe struct BitSpan(MemorySpan<ulong> bits)
     /// <param name="index"></param>
     /// <exception cref="IndexOutOfRangeException"></exception>
     [IgnoreWarning(1370)]
-    public void SetUpTo(int index)
+    public void SetUpTo(uint index)
     {
-        if (index < 0 || index > Capacity)
+        if (index > Capacity)
             throw new IndexOutOfRangeException(
                 $"selected bit index was out of range ({index} >= {Capacity})"
             );
 
         var word = index / ULongBits;
         var bit = index % ULongBits;
-        var mask = (1ul << bit) - 1;
+        var mask = (1ul << (int)bit) - 1;
 
-        for (int i = 0; i < word; ++i)
+        for (uint i = 0; i < word; ++i)
             Bits[i] = ulong.MaxValue;
 
         if (word < Bits.Length)
@@ -147,7 +147,7 @@ internal readonly unsafe struct BitSpan(MemorySpan<ulong> bits)
         if (other.Capacity != Capacity)
             throw new ArgumentException("Cannot copy from bitset with different length");
 
-        for (int i = 0; i < Bits.Length; ++i)
+        for (uint i = 0; i < Bits.Length; ++i)
             Bits[i] = other.Bits[i];
     }
 
@@ -157,7 +157,7 @@ internal readonly unsafe struct BitSpan(MemorySpan<ulong> bits)
         if (other.Capacity != Capacity)
             throw new ArgumentException("Cannot copy from bitset with different length");
 
-        for (int i = 0; i < Bits.Length; ++i)
+        for (uint i = 0; i < Bits.Length; ++i)
             Bits[i] = ~other.Bits[i];
     }
 

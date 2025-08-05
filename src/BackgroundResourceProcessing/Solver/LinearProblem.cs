@@ -325,6 +325,9 @@ internal class LinearProblem
         if (Trace)
             LogUtil.Log($"After presolve:\nMaximize Z = {func}\nsubject to\n{this}");
 
+        if (constraints.Count == 0 && disjunctions.Count == 0)
+            return ExtractEmptySolution();
+
         // Do a depth-first search but order by score in order to break depth ties.
         PriorityQueue<QueueEntry, KeyValuePair<int, double>> entries = new(
             disjunctions.Count() * 2 + 1,
@@ -648,6 +651,17 @@ internal class LinearProblem
             else if (choice == BinaryChoice.Right)
                 values[index] = 1.0;
         }
+
+        return soln;
+    }
+
+    private LinearSolution ExtractEmptySolution()
+    {
+        var values = new double[VariableCount];
+        var soln = new LinearSolution(values);
+
+        foreach (var (index, sub) in substitutions)
+            values[index] = soln.Evaluate(sub.equation) + sub.constant;
 
         return soln;
     }

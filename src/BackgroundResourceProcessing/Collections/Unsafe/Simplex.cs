@@ -1,7 +1,11 @@
+using System;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Solver;
 using BackgroundResourceProcessing.Tracing;
 using Unity.Burst;
+using Unity.Burst.Intrinsics;
+using static Unity.Burst.Intrinsics.X86;
 
 namespace BackgroundResourceProcessing.Collections.Unsafe;
 
@@ -9,7 +13,7 @@ namespace BackgroundResourceProcessing.Collections.Unsafe;
 internal static class Simplex
 {
     const double Epsilon = 1e-9;
-    const int MaxIterations = 1000;
+    const uint MaxIterations = 1000;
 
     private static bool Trace
     {
@@ -41,10 +45,10 @@ internal static class Simplex
                 {
                     var solved = SolveTableauBurst(
                         tvals,
-                        tableau.Width,
-                        tableau.Height,
+                        (uint)tableau.Width,
+                        (uint)tableau.Height,
                         bits,
-                        selected.Bits.Length
+                        (uint)selected.Bits.Length
                     );
 
                     if (!solved)
@@ -56,34 +60,46 @@ internal static class Simplex
 
     [BurstCompile]
     private static unsafe bool SolveTableauBurst(
-        [NoAlias] double* tableau,
-        int width,
-        int height,
-        [NoAlias] ulong* bits,
-        int length
+        [NoAlias] double* _tableau,
+        uint _width,
+        uint _height,
+        [NoAlias] ulong* _bits,
+        uint _length
     )
     {
-        return SolveTableau(new Matrix(tableau, width, height), new BitSpan(new(bits, length)));
+        Matrix tableau = new(_tableau, _width, _height);
+        BitSpan selected = new(_bits, _length);
+
+        return SolveTableau(tableau, selected);
     }
 
     internal static bool SolveTableau(Matrix tableau, BitSpan selected)
     {
-        for (int iter = 0; iter < MaxIterations; ++iter)
+        if (tableau.Width <= 1 || tableau.Height <= 1)
+            return false;
+
+        if (selected.Capacity < tableau.Width - 1)
+            throw new ArgumentException("selected bitset capacity too small for tableau");
+
+        for (uint iter = 0; iter < MaxIterations; ++iter)
         {
-            int col = SelectPivot(tableau);
-            if (col < 0)
+            uint? _col = SelectPivot(tableau);
+            if (_col == null)
                 break;
+            uint col = _col.Value;
 
-            int row = SelectRow(tableau, col);
-            if (row < 0)
+            uint? _row = SelectRow(tableau, col);
+            if (_row == null)
                 return false;
+            uint row = _row.Value;
 
-            TracePivot(col, row, tableau);
+            if (Trace)
+                TracePivot(col, row, tableau);
 
             selected[col] = true;
             tableau.InvScaleRow(row, tableau[col, row]);
 
-            for (int y = 0; y < tableau.Height; ++y)
+            for (uint y = 0; y < tableau.Height; ++y)
             {
                 if (y == row)
                     continue;
@@ -92,18 +108,19 @@ internal static class Simplex
             }
         }
 
-        TraceFinal(tableau);
+        if (Trace)
+            TraceFinal(tableau);
 
         return true;
     }
 
-    static int SelectPivot(Matrix tableau)
+    static uint? SelectPivot(Matrix tableau)
     {
-        int pivot = -1;
+        uint? pivot = null;
         double value = double.PositiveInfinity;
 
         // Here we just pick the most-negative value
-        for (int x = 0; x < tableau.Width - 1; ++x)
+        for (uint x = 0; x < tableau.Width - 1; ++x)
         {
             var current = tableau[x, 0];
             if (current >= -Epsilon)
@@ -119,12 +136,12 @@ internal static class Simplex
         return pivot;
     }
 
-    static int SelectRow(Matrix tableau, int pivot)
+    static uint? SelectRow(Matrix tableau, uint pivot)
     {
-        int index = -1;
+        uint? index = null;
         var value = double.PositiveInfinity;
 
-        for (int y = 1; y < tableau.Height; ++y)
+        for (uint y = 1; y < tableau.Height; ++y)
         {
             var den = tableau[pivot, y];
             var num = tableau[tableau.Width - 1, y];
@@ -137,7 +154,8 @@ internal static class Simplex
             if (ratio < 0.0)
                 continue;
 
-            TraceSelectRow(y, num, den, ratio);
+            if (Trace)
+                TraceSelectRow(y, num, den, ratio);
 
             if (ratio < value)
             {
@@ -157,7 +175,7 @@ internal static class Simplex
     }
 
     [BurstDiscard]
-    static void TracePivot(int col, int row, Matrix tableau)
+    static void TracePivot(uint col, uint row, Matrix tableau)
     {
         if (Trace)
             LogUtil.Log($"Pivoting on column {col}, row {row}:\n{tableau}");

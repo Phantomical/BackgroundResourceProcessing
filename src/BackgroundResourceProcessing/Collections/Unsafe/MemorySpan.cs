@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using BackgroundResourceProcessing.Utils;
 using Unity.Burst.CompilerServices;
 
 #pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
@@ -9,37 +10,26 @@ using Unity.Burst.CompilerServices;
 namespace BackgroundResourceProcessing.Collections.Unsafe;
 
 [DebuggerVisualizer(typeof(MemorySpan<>.DebugView))]
-internal readonly unsafe struct MemorySpan<T>
+internal readonly unsafe struct MemorySpan<T>(T* data, uint length)
     where T : struct
 {
-    public readonly T* Data;
-    public readonly int Length;
+    public readonly T* Data = data;
+    public readonly uint Length = length;
 
-    public T this[int index]
+    public T this[uint index]
     {
-        [IgnoreWarning(1370)]
         get
         {
-            if (index < 0 || index >= Length)
-                throw new IndexOutOfRangeException("MemorySpan<T> index was out of range");
+            if (index >= Length)
+                ThrowIndexOutOfRangeException();
             return Data[index];
         }
-        [IgnoreWarning(1370)]
         set
         {
-            if (index < 0 || index >= Length)
-                throw new IndexOutOfRangeException("MemorySpan<T> index was out of range");
+            if (index >= Length)
+                ThrowIndexOutOfRangeException();
             Data[index] = value;
         }
-    }
-
-    public unsafe MemorySpan(T* data, int length)
-    {
-        if (length < 0)
-            ThrowLengthNegativeException();
-
-        Data = data;
-        Length = length;
     }
 
     [IgnoreWarning(1370)]
@@ -49,10 +39,24 @@ internal readonly unsafe struct MemorySpan<T>
     }
 
     [IgnoreWarning(1370)]
-    public MemorySpan<T> Slice(int start, int length)
+    private static void ThrowIndexOutOfRangeException()
     {
-        if (start < 0 || start + length > Length)
-            throw new IndexOutOfRangeException("MemorySpan<T>.Slice arguments were out of range");
+        throw new IndexOutOfRangeException("MemorySpan<T> index was out of range");
+    }
+
+    [IgnoreWarning(1370)]
+    private static void ThrowSliceArgumentsOutOfRangeException()
+    {
+        throw new IndexOutOfRangeException("MemorySpan<T>.Slice arguments were out of range");
+    }
+
+    public MemorySpan<T> Slice(uint start, uint length)
+    {
+        if (BurstUtil.ExceptionsEnabled)
+        {
+            if (start + length > Length)
+                ThrowSliceArgumentsOutOfRangeException();
+        }
 
         return new(Data + start, length);
     }
