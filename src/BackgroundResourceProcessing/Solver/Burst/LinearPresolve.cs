@@ -16,7 +16,7 @@ internal static class LinearPresolve
     }
 
     public static void Presolve(
-        Solver.Matrix equations,
+        Collections.Matrix equations,
         Collections.BitSet zeros,
         int equalities,
         int inequalities

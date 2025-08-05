@@ -1,13 +1,10 @@
 using System;
-using System.Numerics;
 using System.Runtime.CompilerServices;
-using BackgroundResourceProcessing.Solver;
+using BackgroundResourceProcessing.Collections.Unsafe;
 using BackgroundResourceProcessing.Tracing;
 using Unity.Burst;
-using Unity.Burst.Intrinsics;
-using static Unity.Burst.Intrinsics.X86;
 
-namespace BackgroundResourceProcessing.Collections.Unsafe;
+namespace BackgroundResourceProcessing.Solver.Burst;
 
 [BurstCompile]
 internal static class Simplex
@@ -33,7 +30,7 @@ internal static class Simplex
         }
     }
 
-    internal static void SolveTableau(Solver.Matrix tableau, BitSet selected)
+    internal static void SolveTableau(Collections.Matrix tableau, Collections.BitSet selected)
     {
         using var iterSpan = new TraceSpan("Unsafe.Simplex.SolveTableau");
 

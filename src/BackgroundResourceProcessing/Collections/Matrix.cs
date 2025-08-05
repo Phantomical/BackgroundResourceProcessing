@@ -1,7 +1,7 @@
 using System;
 using System.Text;
 
-namespace BackgroundResourceProcessing.Solver;
+namespace BackgroundResourceProcessing.Collections;
 
 /// <summary>
 /// A matrix. The available helpers are mostly meant for performing

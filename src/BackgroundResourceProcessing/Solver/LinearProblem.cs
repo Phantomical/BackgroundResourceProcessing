@@ -381,7 +381,7 @@ internal class LinearProblem
 
             try
             {
-                Collections.Unsafe.Simplex.SolveTableau(tableau, selected);
+                Burst.Simplex.SolveTableau(tableau, selected);
             }
             catch (UnsolvableProblemException)
             {
