@@ -59,7 +59,7 @@ internal class Solver
         IntMap<LinearEquation> dRates = new(inventoryCount);
 
         // Scratch space used for building constraint totals.
-        Dictionary<string, LinearEquation> constraintEqs = [];
+        LinearMap<int, LinearEquation> constraintEqs = [];
 
         List<int> connected = [];
 
@@ -85,7 +85,7 @@ internal class Solver
 
                 foreach (var invId in inputInvs)
                 {
-                    if (graph.inventories[invId].resourceName != resource)
+                    if (graph.inventories[invId].resourceId != resource)
                         continue;
                     connected.Add(invId);
                 }
@@ -144,7 +144,7 @@ internal class Solver
 
                 foreach (var invId in outputInvs)
                 {
-                    if (graph.inventories[invId].resourceName != resource)
+                    if (graph.inventories[invId].resourceId != resource)
                         continue;
                     connected.Add(invId);
                 }
@@ -233,15 +233,15 @@ internal class Solver
             foreach (var inventoryId in graph.constraints.GetConverterEntry(converterId))
             {
                 var inventory = graph.inventories[inventoryId];
-                if (!converter.constraints.ContainsKey(inventory.resourceName))
+                if (!converter.constraints.ContainsKey(inventory.resourceId))
                     continue;
                 if (!iRates.TryGetValue(inventoryId, out var irate))
                     continue;
 
-                if (!constraintEqs.TryGetValue(inventory.resourceName, out var eq))
+                if (!constraintEqs.TryGetValue(inventory.resourceId, out var eq))
                 {
                     eq = new(problem.VariableCount);
-                    constraintEqs.Add(inventory.resourceName, eq);
+                    constraintEqs.Add(inventory.resourceId, eq);
                 }
 
                 eq += irate;
@@ -361,12 +361,16 @@ internal class Solver
             if (total == 0.0)
                 continue;
 
-            foreach (var realId in inventory.ids)
+            int? count = null;
+            foreach (var realId in graph.inventoryIds.GetClassEnumerator(inventory.baseId))
             {
                 var summary = summaries[realId];
                 double frac = 0.0;
                 if (!MathUtil.IsFinite(total))
-                    frac = 1.0 / inventory.ids.Count;
+                {
+                    count ??= graph.inventoryIds.GetClassEnumerator(inventory.baseId).Count();
+                    frac = 1.0 / count.Value;
+                }
                 else if (rate < 0.0)
                     frac = summary.amount / total;
                 else
@@ -381,7 +385,7 @@ internal class Solver
         {
             var rate = soln[rates[varId]];
             var converter = graph.converters[convId];
-            foreach (var realId in converter.ids)
+            foreach (var realId in graph.converterIds.GetClassEnumerator(converter.baseId))
                 converterRates[realId] = rate;
         }
 

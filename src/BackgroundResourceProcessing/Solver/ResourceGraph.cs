@@ -2,10 +2,12 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
+using Smooth.Collections;
 
 namespace BackgroundResourceProcessing.Solver;
 
@@ -85,20 +87,22 @@ internal static class AdjacencyMatrixExt
 }
 
 [DebuggerDisplay("[{state}, {resourceName}, Count = {ids.Count}]")]
-internal class GraphInventory
+internal struct GraphInventory
 {
     public InventoryState state;
     public string resourceName;
+    public int resourceId;
 
     public double amount;
     public double maxAmount;
 
-    public HashSet<int> ids;
+    public int baseId;
 
     public GraphInventory(ResourceInventory inventory, int id)
     {
         resourceName = inventory.resourceName;
-        ids = [id];
+        resourceId = resourceName.GetHashCode();
+        baseId = id;
         amount = inventory.amount;
         maxAmount = inventory.maxAmount;
 
@@ -111,32 +115,38 @@ internal class GraphInventory
 
     public void Merge(GraphInventory other)
     {
-        if (resourceName != other.resourceName)
-            throw new InvalidMergeException(
-                $"Attempted to merge two inventories with different resources ('{resourceName}' != '{other.resourceName}')"
-            );
-
+        if (resourceId != other.resourceId)
+            ThrowInvalidMergeException(other.resourceName);
         state &= other.state;
         amount += other.amount;
         maxAmount += other.maxAmount;
-        ids.UnionWith(other.ids);
+        if (baseId > other.baseId)
+            baseId = other.baseId;
     }
 
-    public override string ToString()
+    public override readonly string ToString()
     {
-        return $"[{state}, {resourceName}, Count={ids.Count}]";
+        return $"[{state}, {resourceName}]";
+    }
+
+    private void ThrowInvalidMergeException(string otherResourceName)
+    {
+        throw new InvalidMergeException(
+            $"Attempted to merge two inventories with different resources ('{resourceName}' != '{otherResourceName}')"
+        );
     }
 }
 
 internal class GraphConverter
 {
-    public struct Input(double rate)
+    public struct Input(string resourceName, double rate)
     {
+        public string resourceName = resourceName;
         public double rate = rate;
 
         public Input Merge(Input other)
         {
-            return new() { rate = rate + other.rate };
+            return this with { rate = rate + other.rate };
         }
 
         public override readonly string ToString()
@@ -145,8 +155,9 @@ internal class GraphConverter
         }
     }
 
-    public struct Output(double rate, bool dumpExcess)
+    public struct Output(string resourceName, double rate, bool dumpExcess)
     {
+        public string resourceName = resourceName;
         public double rate = rate;
 
         public bool dumpExcess = dumpExcess;
@@ -154,13 +165,19 @@ internal class GraphConverter
         public Output Merge(Output other)
         {
             if (dumpExcess != other.dumpExcess)
-            {
-                throw new InvalidMergeException(
-                    "attempted to merge two outputs that had different dumpExcess values"
-                );
-            }
+                ThrowInvalidMergeException_DumpExcess();
 
-            return new() { rate = rate + other.rate, dumpExcess = dumpExcess };
+            return this with
+            {
+                rate = rate + other.rate,
+            };
+        }
+
+        private static void ThrowInvalidMergeException_DumpExcess()
+        {
+            throw new InvalidMergeException(
+                "attempted to merge two outputs that had different dumpExcess values"
+            );
         }
 
         public override readonly string ToString()
@@ -169,73 +186,98 @@ internal class GraphConverter
         }
     }
 
-    public List<int> ids;
-    public List<Core.ResourceConverter> converters;
+    public int baseId;
     public double weight = 0.0;
 
     /// <summary>
     /// The input resources for this converter and their rates.
     /// </summary>
-    public Dictionary<string, Input> inputs = [];
+    public SortedMap<int, Input> inputs;
 
     /// <summary>
     /// The output resources for this converter and their rates.
     /// </summary>
-    public Dictionary<string, Output> outputs = [];
+    public SortedMap<int, Output> outputs;
 
     /// <summary>
     /// Resources for which this converter is at capacity.
     /// </summary>
-    public Dictionary<string, Constraint> constraints = [];
+    public SortedMap<int, Constraint> constraints;
 
-    private GraphConverter(int id, Core.ResourceConverter converter)
+    public GraphConverter(int id, Core.ResourceConverter converter)
     {
-        ids = [id];
-        converters = [converter];
+        // using var span = new TraceSpan("new GraphConverter");
+
+        baseId = id;
         weight = GetPriorityWeight(converter.priority);
-    }
 
-    public static GraphConverter Build(int id, Core.ResourceConverter converter)
-    {
-        using var span = new TraceSpan("GraphConverter.Build");
+        inputs = new(converter.inputs.Count);
+        outputs = new(converter.outputs.Count);
+        constraints = new(converter.required.Count);
 
-        var conv = new GraphConverter(id, converter);
-
+        using var ibuilder = inputs.CreateBuilder();
         foreach (var (resource, input) in converter.inputs)
-            conv.inputs.Add(resource, new Input(input.Ratio));
+            ibuilder.AddUnchecked(resource, new Input(input.ResourceName, input.Ratio));
 
+        using var obuilder = outputs.CreateBuilder();
         foreach (var (resource, output) in converter.outputs)
-            conv.outputs.Add(resource, new Output(output.Ratio, output.DumpExcess));
-
-        return conv;
+            obuilder.AddUnchecked(
+                resource,
+                new Output(output.ResourceName, output.Ratio, output.DumpExcess)
+            );
     }
 
     public void Merge(GraphConverter other)
     {
-        foreach (var (resource, input) in other.inputs)
-            if (!inputs.TryAddExt(resource, input))
-                inputs[resource] = inputs[resource].Merge(input);
+        if (inputs.Count != other.inputs.Count)
+            throw new InvalidMergeException(
+                "Attempted to merge converters with different input resources"
+            );
+        if (outputs.Count != other.outputs.Count)
+            throw new InvalidMergeException(
+                "Attempted to merge converters with different output resources"
+            );
 
-        foreach (var (resource, output) in other.outputs)
-            if (!outputs.TryAddExt(resource, output))
-                outputs[resource] = outputs[resource].Merge(output);
+        for (int i = 0; i < inputs.Count; ++i)
+        {
+            var (key1, value1) = inputs.Entries[i];
+            var (key2, value2) = other.inputs.Entries[i];
 
-        ids.AddRange(other.ids);
-        converters.AddRange(other.converters);
+            if (key1 != key2)
+                throw new InvalidMergeException(
+                    "Attempted to merge converters with different input resources"
+                );
+
+            inputs.Entries[i] = new(key1, value1.Merge(value2));
+        }
+
+        for (int i = 0; i < outputs.Count; ++i)
+        {
+            var (key1, value1) = outputs.Entries[i];
+            var (key2, value2) = other.outputs.Entries[i];
+
+            if (key1 != key2)
+                throw new InvalidMergeException(
+                    "Attempted to merge converters with different input resources"
+                );
+
+            outputs.Entries[i] = new(key1, value1.Merge(value2));
+        }
+
         weight += other.weight;
+        if (baseId > other.baseId)
+            baseId = other.baseId;
 
+#if DEBUG
         foreach (var (resource, constraint) in other.constraints)
         {
-#if DEBUG
             if (constraints.TryGetValue(resource, out var existing))
                 Debug.Assert(
                     existing == constraint,
                     $"Merged GraphConverters with different constraints for resource {resource}"
                 );
-#endif
-
-            constraints[resource] = constraint;
         }
+#endif
     }
 
     public bool CanMergeWith(GraphConverter other)
@@ -245,42 +287,7 @@ internal class GraphConverter
         if (!outputs.KeysEqual(other.outputs))
             return false;
 
-        return DictionaryExtensions.DictEqual(constraints, other.constraints);
-    }
-
-    /// <summary>
-    /// Combine resources that are present in both inputs and outputs into
-    /// a net input or net output.
-    /// </summary>
-    public void CombineDuplicates()
-    {
-        List<string> removed = [];
-
-        foreach (var (name, _input) in inputs)
-        {
-            var input = _input;
-            if (!outputs.TryGetValue(name, out var output))
-                continue;
-
-            if (output.rate < input.rate)
-            {
-                input.rate -= output.rate;
-                outputs.Remove(name);
-            }
-            else if (output.rate > input.rate)
-            {
-                output.rate -= input.rate;
-                removed.Add(name);
-            }
-            else
-            {
-                outputs.Remove(name);
-                inputs.Remove(name);
-            }
-        }
-
-        foreach (var name in removed)
-            inputs.Remove(name);
+        return constraints.Equals(other.constraints);
     }
 
     private static double GetPriorityWeight(int priority)
@@ -296,7 +303,10 @@ internal class GraphConverter
 
     public override string ToString()
     {
-        return $"{string.Join(",", inputs.Keys)} => {string.Join(",", outputs.Keys)}";
+        var inputs = this.inputs.Select((entry) => entry.Value.resourceName);
+        var outputs = this.outputs.Select((entry) => entry.Value.resourceName);
+
+        return $"{string.Join(",", inputs)} => {string.Join(",", outputs)}";
     }
 }
 
@@ -333,16 +343,19 @@ internal class ResourceGraph
         outputs = AdjacencyMatrixExt.Create(nInventories, nConverters);
         constraints = AdjacencyMatrixExt.Create(nInventories, nConverters);
 
+        var ispan = new TraceSpan("Inventories");
         for (int i = 0; i < nInventories; ++i)
         {
             var inventory = processor.inventories[i];
             inventories.Add(i, new(inventory, i));
         }
+        ispan.Dispose();
 
+        var cspan = new TraceSpan("Converters");
         for (int i = 0; i < nConverters; ++i)
         {
             var converter = processor.converters[i];
-            var conv = GraphConverter.Build(i, converter);
+            var conv = new GraphConverter(i, converter);
             if (conv == null)
                 continue;
 
@@ -354,6 +367,7 @@ internal class ResourceGraph
             outputs.GetConverterEntry(i).OrWith(converter.Push.SubSlice(nInventories));
             constraints.GetConverterEntry(i).OrWith(converter.Constraint.SubSlice(nInventories));
         }
+        cspan.Dispose();
     }
 
     private bool SatisfiesConstraints(
@@ -362,17 +376,22 @@ internal class ResourceGraph
         GraphConverter gconv
     )
     {
+        using var cbuilder = gconv.constraints.CreateBuilder();
+
         foreach (var (resource, required) in rconv.required)
         {
             double total = 0.0;
 
             foreach (var invId in rconv.Constraint)
-                if (processor.inventories[invId].resourceName == resource)
-                    total += processor.inventories[invId].amount;
+            {
+                var inventory = processor.inventories[invId];
+                if (inventory.resourceName == required.ResourceName)
+                    total += inventory.amount;
+            }
 
             if (MathUtil.ApproxEqual(required.Amount, total, ResourceProcessor.ResourceEpsilon))
             {
-                gconv.constraints.Add(resource, required.Constraint);
+                cbuilder.AddUnchecked(resource, required.Constraint);
                 continue;
             }
 
@@ -439,7 +458,7 @@ internal class ResourceGraph
             {
                 if (!inventories.TryGetValue(otherId, out var otherInv))
                     continue;
-                if (inventory.resourceName != otherInv.resourceName)
+                if (inventory.resourceId != otherInv.resourceId)
                     continue;
 
                 removed[otherId] = true;
@@ -448,6 +467,8 @@ internal class ResourceGraph
                 inventoryIds.Union(inventoryId, otherId);
                 inventories.Remove(otherId);
             }
+
+            inventories[inventoryId] = inventory;
         }
 
         var src = removed.Bits;

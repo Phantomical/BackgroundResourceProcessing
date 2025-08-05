@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Utils;
 
 namespace BackgroundResourceProcessing.Collections;
@@ -200,7 +201,7 @@ public class BitSet : IEnumerable<int>
         return new((ulong[])Bits.Clone());
     }
 
-    RefEnumerator GetEnumerator()
+    public Enumerator GetEnumerator()
     {
         return new(this);
     }
@@ -237,7 +238,7 @@ public class BitSet : IEnumerable<int>
         return Capacity;
     }
 
-    private struct Enumerator(BitSet set) : IEnumerator<int>
+    public struct Enumerator(BitSet set) : IEnumerator<int>
     {
         readonly BitSet set = set;
         int index = -1;
@@ -257,32 +258,8 @@ public class BitSet : IEnumerable<int>
             index = -1;
         }
 
-        public void Dispose() { }
-    }
-
-    private ref struct RefEnumerator(BitSet set) : IEnumerator<int>
-    {
-        readonly BitSet set = set;
-        int index = -1;
-
-        public readonly int Current => index;
-
-        readonly object IEnumerator.Current => Current;
-
-        public bool MoveNext()
-        {
-            index = set.GetNextSetIndex(index);
-            return index < set.Capacity;
-        }
-
-        public void Reset()
-        {
-            index = -1;
-        }
-
-        public void Dispose() { }
-
-        public readonly RefEnumerator GetEnumerator() => this;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly void Dispose() { }
     }
 
     private sealed class DebugView(BitSet set)

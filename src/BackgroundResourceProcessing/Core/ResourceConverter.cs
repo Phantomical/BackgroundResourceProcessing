@@ -4,7 +4,6 @@ using System.Linq;
 using BackgroundResourceProcessing.Behaviour;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Utils;
-using Smooth.Collections;
 
 namespace BackgroundResourceProcessing.Core;
 
@@ -43,17 +42,17 @@ public class ResourceConverter(ConverterBehaviour behaviour)
     /// <summary>
     /// The resource inputs returned from the behaviour.
     /// </summary>
-    public Dictionary<string, ResourceRatio> inputs = [];
+    public SortedMap<int, ResourceRatio> inputs = [];
 
     /// <summary>
     /// The resource outputs returned from the behaviour.
     /// </summary>
-    public Dictionary<string, ResourceRatio> outputs = [];
+    public SortedMap<int, ResourceRatio> outputs = [];
 
     /// <summary>
     /// The resource requirements returned from the behaviour.
     /// </summary>
-    public Dictionary<string, ResourceConstraint> required = [];
+    public SortedMap<int, ResourceConstraint> required = [];
 
     /// <summary>
     /// The time at which the behaviour has said that its behaviour might
@@ -161,17 +160,26 @@ public class ResourceConverter(ConverterBehaviour behaviour)
         outputs.AddAll(
             ConfigUtil
                 .LoadOutputResources(node)
-                .Select(ratio => DictUtil.CreateKeyValuePair(ratio.ResourceName, ratio))
+                .Select(ratio => new KeyValuePair<int, ResourceRatio>(
+                    ratio.ResourceName.GetHashCode(),
+                    ratio
+                ))
         );
         inputs.AddAll(
             ConfigUtil
                 .LoadInputResources(node)
-                .Select(ratio => DictUtil.CreateKeyValuePair(ratio.ResourceName, ratio))
+                .Select(ratio => new KeyValuePair<int, ResourceRatio>(
+                    ratio.ResourceName.GetHashCode(),
+                    ratio
+                ))
         );
         required.AddAll(
             ConfigUtil
                 .LoadRequiredResources(node)
-                .Select(ratio => DictUtil.CreateKeyValuePair(ratio.ResourceName, ratio))
+                .Select(ratio => new KeyValuePair<int, ResourceConstraint>(
+                    ratio.ResourceName.GetHashCode(),
+                    ratio
+                ))
         );
     }
 
@@ -245,33 +253,40 @@ public class ResourceConverter(ConverterBehaviour behaviour)
 
     public override string ToString()
     {
-        return $"{string.Join(",", inputs.Keys)} => {string.Join(",", outputs.Keys)}";
+        var inputs = this.inputs.Select(entry => entry.Value.ResourceName);
+        var outputs = this.outputs.Select(entry => entry.Value.ResourceName);
+
+        return $"{string.Join(",", inputs)} => {string.Join(",", outputs)}";
     }
 
     private static bool OverwriteRatios(
-        ref Dictionary<string, ResourceRatio> ratios,
+        ref SortedMap<int, ResourceRatio> ratios,
         List<ResourceRatio> inputs
     )
     {
         var old = ratios;
         ratios = new(inputs.Count);
-
-        foreach (var ratio in inputs)
-            ratios.Add(ratio.ResourceName, ratio.WithDefaultedFlowMode());
+        using (var builder = ratios.CreateBuilder())
+        {
+            foreach (var ratio in inputs)
+                builder.Add(ratio.ResourceName.GetHashCode(), ratio.WithDefaultedFlowMode());
+        }
 
         return old == ratios;
     }
 
     private static bool OverwriteConstraints(
-        ref Dictionary<string, ResourceConstraint> ratios,
+        ref SortedMap<int, ResourceConstraint> ratios,
         List<ResourceConstraint> inputs
     )
     {
         var old = ratios;
         ratios = new(inputs.Count);
-
-        foreach (var ratio in inputs)
-            ratios.Add(ratio.ResourceName, ratio.WithDefaultedFlowMode());
+        using (var builder = ratios.CreateBuilder())
+        {
+            foreach (var ratio in inputs)
+                builder.Add(ratio.ResourceName.GetHashCode(), ratio.WithDefaultedFlowMode());
+        }
 
         return old == ratios;
     }

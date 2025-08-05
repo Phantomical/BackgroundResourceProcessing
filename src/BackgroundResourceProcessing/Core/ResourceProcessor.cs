@@ -220,7 +220,7 @@ internal class ResourceProcessor
             double total = 0.0;
 
             foreach (var id in converter.Constraint)
-                if (inventories[id].resourceName == resource)
+                if (inventories[id].resourceName == required.ResourceName)
                     total += inventories[id].amount;
 
             if (MathUtil.ApproxEqual(required.Amount, total, ResourceEpsilon))
@@ -703,9 +703,10 @@ internal class ResourceProcessor
             if (inventory.moduleId == null)
                 continue;
 
-            inventoryByModuleId //
-                .GetOrAdd((uint)inventory.moduleId, () => [])
-                .Add(inventory);
+            if (!inventoryByModuleId.TryGetValue((uint)inventory.moduleId, out var list))
+                inventoryByModuleId.Add((uint)inventory.moduleId, list = []);
+
+            list.Add(inventory);
         }
 
         foreach (var part in vessel.protoVessel.protoPartSnapshots)

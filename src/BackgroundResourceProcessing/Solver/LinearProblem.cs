@@ -326,7 +326,10 @@ internal class LinearProblem
             LogUtil.Log($"After presolve:\nMaximize Z = {func}\nsubject to\n{this}");
 
         // Do a depth-first search but order by score in order to break depth ties.
-        PriorityQueue<QueueEntry, KeyValuePair<int, double>> entries = new(new InverseComparer());
+        PriorityQueue<QueueEntry, KeyValuePair<int, double>> entries = new(
+            disjunctions.Count() * 2 + 1,
+            new InverseComparer()
+        );
         entries.Enqueue(
             new()
             {

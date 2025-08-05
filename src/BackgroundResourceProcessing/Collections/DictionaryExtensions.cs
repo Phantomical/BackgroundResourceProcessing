@@ -38,57 +38,9 @@ internal static class DictionaryExtensions
         return defaultValue;
     }
 
-    public static V GetOrAdd<K, V>(this Dictionary<K, V> dict, K key, V insert)
-    {
-        if (dict.TryGetValue(key, out var value))
-            return value;
-
-        dict.Add(key, insert);
-        return insert;
-    }
-
-    public static V GetOrAdd<K, V>(this Dictionary<K, V> dict, K key, Func<V> func)
-    {
-        if (dict.TryGetValue(key, out var value))
-            return value;
-
-        value = func();
-        dict.Add(key, value);
-        return value;
-    }
-
     public static void Add<K, V>(this Dictionary<K, V> dict, KeyValuePair<K, V> pair)
     {
         dict.Add(pair.Key, pair.Value);
-    }
-
-    public static bool KeysEqual<K, V1, V2>(this Dictionary<K, V1> dict, Dictionary<K, V2> other)
-    {
-        if (dict.Count != other.Count)
-            return false;
-
-        foreach (var key in dict.Keys)
-            if (!other.ContainsKey(key))
-                return false;
-
-        return true;
-    }
-
-    public static bool DictEqual<K, V>(Dictionary<K, V> a, Dictionary<K, V> b)
-    {
-        if (a.Count != b.Count)
-            return false;
-
-        foreach (var (key, aVal) in a)
-        {
-            if (!b.TryGetValue(key, out var bVal))
-                return false;
-
-            if (!aVal.Equals(bVal))
-                return false;
-        }
-
-        return true;
     }
 }
 

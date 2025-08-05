@@ -220,12 +220,7 @@ internal class LinearEquation(double[] values) : IEnumerable<Variable>, ICompara
             return;
 
         var newcap = Math.Max(values.Length * 2, needed + 1);
-        var newvals = new double[newcap];
-
-        for (int i = 0; i < values.Length; ++i)
-            newvals[i] = values[i];
-
-        values = newvals;
+        Array.Resize(ref values, newcap);
     }
 
     public Enumerator GetEnumerator()

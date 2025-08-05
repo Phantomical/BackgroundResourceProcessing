@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Utils;
 
 namespace BackgroundResourceProcessing.Collections;
@@ -133,19 +134,19 @@ public class DynamicBitSet : IEnumerable<int>
         return new((ulong[])words.Clone());
     }
 
-    public RefEnumerator GetEnumerator()
+    public Enumerator GetEnumerator()
     {
         return new(this);
     }
 
     IEnumerator<int> IEnumerable<int>.GetEnumerator()
     {
-        return new Enumerator(this);
+        return GetEnumerator();
     }
 
     IEnumerator IEnumerable.GetEnumerator()
     {
-        return ((IEnumerable<int>)this).GetEnumerator();
+        return GetEnumerator();
     }
 
     private int GetNextSetIndex(int index)
@@ -170,7 +171,7 @@ public class DynamicBitSet : IEnumerable<int>
         return Capacity;
     }
 
-    private struct Enumerator(DynamicBitSet set) : IEnumerator<int>
+    public struct Enumerator(DynamicBitSet set) : IEnumerator<int>
     {
         readonly DynamicBitSet set = set;
         int index = -1;
@@ -179,6 +180,7 @@ public class DynamicBitSet : IEnumerable<int>
 
         readonly object IEnumerator.Current => Current;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
             index = set.GetNextSetIndex(index);
@@ -190,32 +192,8 @@ public class DynamicBitSet : IEnumerable<int>
             index = -1;
         }
 
-        public void Dispose() { }
-    }
-
-    public ref struct RefEnumerator(DynamicBitSet set) : IEnumerator<int>
-    {
-        readonly DynamicBitSet set = set;
-        int index = -1;
-
-        public readonly int Current => index;
-
-        readonly object IEnumerator.Current => Current;
-
-        public bool MoveNext()
-        {
-            index = set.GetNextSetIndex(index);
-            return index < set.Capacity;
-        }
-
-        public void Reset()
-        {
-            index = -1;
-        }
-
-        public void Dispose() { }
-
-        public readonly RefEnumerator GetEnumerator() => this;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly void Dispose() { }
     }
 
     private sealed class DebugView(DynamicBitSet set)

@@ -11,17 +11,28 @@ public struct InventoryId(uint flightId, string resourceName, uint? moduleId = n
     /// <summary>
     /// The persistent ID of the part this inventory came from.
     /// </summary>
-    public uint flightId = flightId;
+    public uint FlightId = flightId;
 
     /// <summary>
     /// If non-null, this indicates the module that stores this inventory.
     /// </summary>
-    public uint? moduleId = moduleId;
+    public uint? ModuleId = moduleId;
 
     /// <summary>
     /// The name of the resource stored in this inventory.
     /// </summary>
-    public string resourceName = resourceName;
+    public string ResourceName
+    {
+        readonly get { return resourceName; }
+        set
+        {
+            ResourceId = value.GetHashCode();
+            resourceName = value;
+        }
+    }
+    private string resourceName = resourceName;
+
+    public int ResourceId { get; private set; } = resourceName.GetHashCode();
 
     public InventoryId(PartResource resource, uint? moduleId = null)
         : this(resource.part.flightID, resource.resourceName, moduleId) { }
@@ -34,28 +45,31 @@ public struct InventoryId(uint flightId, string resourceName, uint? moduleId = n
 
     public void Load(ConfigNode node)
     {
-        node.TryGetValue("flightId", ref flightId);
-        node.TryGetValue("resourceName", ref resourceName);
+        node.TryGetValue("flightId", ref FlightId);
+
+        string resourceName = null;
+        if (node.TryGetValue("resourceName", ref resourceName))
+            ResourceName = resourceName;
 
         uint moduleId = 0;
         if (node.TryGetValue("moduleId", ref moduleId))
-            this.moduleId = moduleId;
+            ModuleId = moduleId;
     }
 
-    public void Save(ConfigNode node)
+    public readonly void Save(ConfigNode node)
     {
-        node.AddValue("flightId", flightId);
-        node.AddValue("resourceName", resourceName);
+        node.AddValue("flightId", FlightId);
+        node.AddValue("resourceName", ResourceName);
 
-        if (moduleId != null)
-            node.AddValue("moduleId", (uint)moduleId);
+        if (ModuleId != null)
+            node.AddValue("moduleId", (uint)ModuleId);
     }
 
     public override readonly string ToString()
     {
-        if (moduleId == null)
-            return $"{{resourceName={resourceName},flightId={flightId}}}";
-        return $"{{resourceName={resourceName},flightId={flightId},moduleId={moduleId}}}";
+        if (ModuleId == null)
+            return $"{{resourceName={ResourceName},flightId={FlightId}}}";
+        return $"{{resourceName={ResourceName},flightId={FlightId},moduleId={ModuleId}}}";
     }
 }
 
