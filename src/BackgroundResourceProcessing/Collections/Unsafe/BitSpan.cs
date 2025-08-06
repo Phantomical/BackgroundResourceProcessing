@@ -142,7 +142,7 @@ internal readonly unsafe struct BitSpan(MemorySpan<ulong> bits)
     }
 
     [IgnoreWarning(1370)]
-    public void CopyFrom(BitSet other)
+    public void CopyFrom(BitSpan other)
     {
         if (other.Capacity != Capacity)
             throw new ArgumentException("Cannot copy from bitset with different length");

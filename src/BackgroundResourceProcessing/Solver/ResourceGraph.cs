@@ -3,11 +3,11 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
-using Smooth.Collections;
 
 namespace BackgroundResourceProcessing.Solver;
 
@@ -20,11 +20,13 @@ internal static class AdjacencyMatrixExt
         return new(converterCount, inventoryCount);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static BitSliceX GetConverterEntry(this AdjacencyMatrix matrix, int converter)
     {
         return matrix.GetRow(converter);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static BitSliceY GetInventoryEntry(this AdjacencyMatrix matrix, int inventory)
     {
         return matrix.GetColumn(inventory);
@@ -319,8 +321,8 @@ internal class GraphConverter
 
 internal class ResourceGraph
 {
-    public IntMap<GraphInventory> inventories;
-    public IntMap<GraphConverter> converters;
+    public RefIntMap<GraphInventory> inventories;
+    public RefIntMap<GraphConverter> converters;
 
     // - X-axis is inventory ID
     // - Y-axis is converter ID
@@ -328,8 +330,8 @@ internal class ResourceGraph
     public AdjacencyMatrix outputs;
     public AdjacencyMatrix constraints;
 
-    public UnionFind inventoryIds;
-    public UnionFind converterIds;
+    public int[] inventoryIds;
+    public int[] converterIds;
 
     public ResourceGraph(ResourceProcessor processor)
     {
@@ -338,8 +340,13 @@ internal class ResourceGraph
         var nInventories = processor.inventories.Count;
         var nConverters = processor.converters.Count;
 
-        inventoryIds = new UnionFind(nInventories);
-        converterIds = new UnionFind(nConverters);
+        inventoryIds = new int[nInventories];
+        for (int i = 0; i < nInventories; ++i)
+            inventoryIds[i] = i;
+
+        converterIds = new int[nConverters];
+        for (int i = 0; i < nConverters; ++i)
+            converterIds[i] = i;
 
         inventories = new(nInventories);
         converters = new(nConverters);
@@ -443,16 +450,19 @@ internal class ResourceGraph
 
         // We need to save this at the start as we'll be removing
         // inventories as we go.
-        var inventoryCount = inventories.Count;
+        var inventoryCount = inventoryIds.Length;
 
-        foreach (var (inventoryId, inventory) in inventories)
+        foreach (var inventoryId in inventories.Keys)
         {
+            if (!inventories.ContainsKey(inventoryId))
+                continue;
+            ref var inventory = ref inventories[inventoryId];
+
             // This ensures that the only bits are set are those that:
             // - Are in the range (inventoryId, inventoryCount), and,
             // - Have not already been marked for removal
             equal.CopyInverseFrom(removed);
-            equal.ClearUpTo(inventoryId + 1);
-            equal.ClearUpFrom(inventoryCount);
+            equal.ClearOutsideRange(inventoryId + 1, inventoryCount);
 
             // We then unset any indices whose connections (both inputs and
             // outputs) are not exactly the same as the column we are
@@ -463,19 +473,19 @@ internal class ResourceGraph
 
             foreach (var otherId in equal)
             {
-                if (!inventories.TryGetValue(otherId, out var otherInv))
-                    continue;
+                var otherInv = inventories[otherId];
                 if (inventory.resourceId != otherInv.resourceId)
+                {
+                    equal[otherId] = false;
                     continue;
+                }
 
                 removed[otherId] = true;
 
                 inventory.Merge(otherInv);
-                inventoryIds.Union(inventoryId, otherId);
+                inventoryIds[otherId] = inventoryId;
                 inventories.Remove(otherId);
             }
-
-            inventories[inventoryId] = inventory;
         }
 
         var src = removed.Bits;
@@ -518,6 +528,9 @@ internal class ResourceGraph
 
         foreach (var (converterId, converter) in converters)
         {
+            if (!converters.ContainsKey(converterId))
+                continue;
+
             var inputEdges = inputs.GetConverterEntry(converterId);
             var outputEdges = outputs.GetConverterEntry(converterId);
             var constraintEdges = constraints.GetConverterEntry(converterId);
@@ -543,7 +556,7 @@ internal class ResourceGraph
                 otherConstraints.Zero();
 
                 converter.Merge(otherConverter);
-                converterIds.Union(converterId, otherId);
+                converterIds[otherId] = converterId;
                 converters.Remove(otherId);
             }
         }

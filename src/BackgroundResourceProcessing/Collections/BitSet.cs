@@ -3,11 +3,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using BackgroundResourceProcessing.Utils;
 
 namespace BackgroundResourceProcessing.Collections;
 
-public class BitSet : IEnumerable<int>
+internal readonly struct BitSet : IEnumerable<int>
 {
     const int ULongBits = 64;
 
@@ -95,7 +94,7 @@ public class BitSet : IEnumerable<int>
 
     public void Clear()
     {
-        new Span<ulong>(Bits).Fill(0);
+        Array.Clear(Bits, 0, Bits.Length);
     }
 
     /// <summary>
@@ -103,7 +102,8 @@ public class BitSet : IEnumerable<int>
     /// </summary>
     public void Fill()
     {
-        new Span<ulong>(Bits).Fill(ulong.MaxValue);
+        for (int i = 0; i < Bits.Length; ++i)
+            Bits[i] = ulong.MaxValue;
     }
 
     /// <summary>
@@ -150,6 +150,55 @@ public class BitSet : IEnumerable<int>
             Bits[word] &= mask;
     }
 
+    public void ClearOutsideRange(int start, int end)
+    {
+        static void ThrowStartOutOfRange(int start) =>
+            throw new ArgumentOutOfRangeException(
+                nameof(start),
+                $"start was negative (got {start})"
+            );
+
+        static void ThrowEndOutOfRange(int start, int end) =>
+            throw new ArgumentOutOfRangeException(
+                nameof(end),
+                $"end was smaller than start ({end} < {start})"
+            );
+
+        static void ThrowIndexOutOfRange() =>
+            throw new IndexOutOfRangeException("range went outside of the bounds of this bitset");
+
+        if (start < 0)
+            ThrowStartOutOfRange(start);
+        if (end < start)
+            ThrowEndOutOfRange(start, end);
+        if (end > Capacity)
+            ThrowIndexOutOfRange();
+
+        uint sword = (uint)start / ULongBits;
+        uint eword = (uint)end / ULongBits;
+        uint sbit = (uint)start % ULongBits;
+        uint ebit = (uint)end % ULongBits;
+
+        for (uint i = 0; i < sword; ++i)
+            Bits[i] = 0;
+
+        if (sword >= Bits.Length)
+            return;
+
+        ulong smask = ulong.MaxValue << (int)sbit;
+        ulong emask = (1ul << (int)ebit) - 1;
+
+        Bits[sword] &= smask;
+
+        if (eword >= Bits.Length)
+            return;
+
+        Bits[eword] &= emask;
+
+        for (uint i = eword + 1; i < Bits.Length; ++i)
+            Bits[i] = 0;
+    }
+
     /// <summary>
     /// Set all bits up to <paramref name="index"/> (not inclusive).
     /// </summary>
@@ -182,6 +231,22 @@ public class BitSet : IEnumerable<int>
             Bits[i] = other.Bits[i];
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void RemoveAll(BitSet other)
+    {
+        static void ThrowMismatchedSetCapacity() =>
+            throw new ArgumentException(
+                nameof(other),
+                "bitset capacity did not match other bitset capacity"
+            );
+
+        if (Bits.Length != other.Bits.Length)
+            ThrowMismatchedSetCapacity();
+
+        for (int i = 0; i < Bits.Length; ++i)
+            Bits[i] &= ~other.Bits[i];
+    }
+
     public void CopyInverseFrom(BitSet other)
     {
         if (other.Capacity != Capacity)
@@ -206,6 +271,11 @@ public class BitSet : IEnumerable<int>
         return new(this);
     }
 
+    public Enumerator GetEnumeratorAt(int offset)
+    {
+        return new(this, offset);
+    }
+
     IEnumerator<int> IEnumerable<int>.GetEnumerator()
     {
         return new Enumerator(this);
@@ -216,41 +286,45 @@ public class BitSet : IEnumerable<int>
         return ((IEnumerable<int>)this).GetEnumerator();
     }
 
-    private int GetNextSetIndex(int index)
-    {
-        index += 1;
-        while (index < Capacity)
-        {
-            var word = index / ULongBits;
-            var bit = index % ULongBits;
-
-            var mask = ~((1ul << bit) - 1);
-            var value = Bits[word] & mask;
-            if (value == 0)
-            {
-                index = (word + 1) * ULongBits;
-                continue;
-            }
-
-            return word * ULongBits + MathUtil.TrailingZeroCount(value);
-        }
-
-        return Capacity;
-    }
-
     public struct Enumerator(BitSet set) : IEnumerator<int>
     {
-        readonly BitSet set = set;
+        readonly ulong[] bits = set.Bits;
+        BitEnumerator inner = default;
         int index = -1;
 
-        public readonly int Current => index;
+        public readonly int Current => inner.Current;
 
         readonly object IEnumerator.Current => Current;
 
+        public Enumerator(BitSet set, int offset)
+            : this(set)
+        {
+            if (offset < 0)
+                throw new ArgumentOutOfRangeException(nameof(offset));
+
+            int word = offset / ULongBits;
+            int bit = offset % ULongBits;
+
+            index = word;
+            if (word >= bits.Length)
+                return;
+
+            inner = new(offset, bits[word] >> bit);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
-            index = set.GetNextSetIndex(index);
-            return index < set.Capacity;
+            while (true)
+            {
+                if (inner.MoveNext())
+                    return true;
+
+                index += 1;
+                if (index >= bits.Length)
+                    return false;
+                inner = new(index * ULongBits, bits[index]);
+            }
         }
 
         public void Reset()

@@ -14,24 +14,24 @@ namespace BackgroundResourceProcessing.Test.Solver
             graph.MergeEquivalentInventories();
 
             // All inventories containing ElectricCharge get merged together
-            Assert.AreEqual(0, graph.inventoryIds.Find(2));
-            Assert.AreEqual(0, graph.inventoryIds.Find(10));
-            Assert.AreEqual(0, graph.inventoryIds.Find(11));
-            Assert.AreEqual(0, graph.inventoryIds.Find(12));
-            Assert.AreEqual(0, graph.inventoryIds.Find(13));
-            Assert.AreEqual(0, graph.inventoryIds.Find(14));
-            Assert.AreEqual(0, graph.inventoryIds.Find(15));
+            Assert.AreEqual(0, graph.inventoryIds[2]);
+            Assert.AreEqual(0, graph.inventoryIds[10]);
+            Assert.AreEqual(0, graph.inventoryIds[11]);
+            Assert.AreEqual(0, graph.inventoryIds[12]);
+            Assert.AreEqual(0, graph.inventoryIds[13]);
+            Assert.AreEqual(0, graph.inventoryIds[14]);
+            Assert.AreEqual(0, graph.inventoryIds[15]);
 
             // All inventories containing MonoPropellant get merged together
-            Assert.AreEqual(1, graph.inventoryIds.Find(3));
+            Assert.AreEqual(1, graph.inventoryIds[3]);
 
             // Same with LiquidFuel
-            Assert.AreEqual(4, graph.inventoryIds.Find(6));
-            Assert.AreEqual(4, graph.inventoryIds.Find(8));
+            Assert.AreEqual(4, graph.inventoryIds[6]);
+            Assert.AreEqual(4, graph.inventoryIds[8]);
 
             // .. and Oxidizer
-            Assert.AreEqual(5, graph.inventoryIds.Find(7));
-            Assert.AreEqual(5, graph.inventoryIds.Find(9));
+            Assert.AreEqual(5, graph.inventoryIds[7]);
+            Assert.AreEqual(5, graph.inventoryIds[9]);
 
             // Also all the resources involved should be unconstrained except
             // for BRPSpaceObjectMass

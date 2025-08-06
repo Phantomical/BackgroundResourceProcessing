@@ -48,6 +48,39 @@ namespace BackgroundResourceProcessing.Test.Collections
             AssertSequenceEqual([56], copy);
         }
 
+        [TestMethod]
+        public void TestClearOutsideRange()
+        {
+            BitSet set = new(256)
+            {
+                [1] = true,
+                [2] = true,
+                [45] = true,
+                [56] = true,
+                [89] = true,
+                [129] = true,
+                [130] = true,
+                [245] = true,
+            };
+
+            BitSet copy;
+            copy = set.Clone();
+            copy.ClearOutsideRange(64, 128);
+            AssertUtils.SequenceEqual([89], copy);
+
+            copy = set.Clone();
+            copy.ClearOutsideRange(13, 97);
+            AssertUtils.SequenceEqual([45, 56, 89], copy);
+
+            copy = set.Clone();
+            copy.ClearOutsideRange(44, 48);
+            AssertUtils.SequenceEqual([45], copy);
+
+            copy = set.Clone();
+            copy.ClearOutsideRange(128, 130);
+            AssertUtils.SequenceEqual([129], copy);
+        }
+
         static void AssertSequenceEqual<T>(IEnumerable<T> expected, IEnumerable<T> actual)
         {
             List<T> e = [.. expected];

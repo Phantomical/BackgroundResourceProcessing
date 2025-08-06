@@ -246,5 +246,13 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
     {
         SaveVessel();
     }
+
+    internal void StressTest(int count)
+    {
+        using var span = new TraceSpan("BackgroundResourceProcessor.StressTest");
+
+        for (int i = 0; i < count; ++i)
+            processor.ComputeRates();
+    }
     #endregion
 }

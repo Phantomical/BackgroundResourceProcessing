@@ -27,7 +27,7 @@ internal class LinearProblem
 
     List<OrConstraint> disjunctions = [];
 
-    IntMap<LinearEquality> substitutions = null;
+    RefIntMap<LinearEquality> substitutions = default;
 
     private static bool Trace => DebugSettings.Instance?.SolverTrace ?? false;
 
@@ -314,11 +314,11 @@ internal class LinearProblem
     {
         using var span = new TraceSpan("LinearProblem.SolveBranchAndBound");
 
-        IntMap<int> varMap = new(VariableCount);
-        IntMap<int> binaryIndices = new(VariableCount);
+        VariableMap varMap = new(VariableCount);
+        VariableMap binaryIndices = new(VariableCount);
 
         for (int i = 0; i < disjunctions.Count; ++i)
-            binaryIndices.Add(disjunctions[i].variable.Index, i);
+            binaryIndices[disjunctions[i].variable.Index] = i;
 
         Presolve(func);
 
@@ -375,8 +375,8 @@ internal class LinearProblem
                     $"Solving relaxation with choice variables: {RenderChoices(entry.choices)}"
                 );
 
-            BuildVarMap(varMap, entry.choices, binaryIndices);
-            var tableau = BuildSimplexTableau(func, entry.choices, varMap);
+            BuildVarMap(ref varMap, entry.choices, binaryIndices);
+            var tableau = BuildSimplexTableau(func, entry.choices, ref varMap);
             BitSet selected = new(tableau.Width);
 
             try
@@ -489,7 +489,7 @@ internal class LinearProblem
     private Matrix BuildSimplexTableau(
         LinearEquation func,
         BinaryChoice[] choices,
-        IntMap<int> varMap
+        ref VariableMap varMap
     )
     {
         using var span = new TraceSpan("LinearProblem.BuildSimplexTableau");
@@ -504,7 +504,7 @@ internal class LinearProblem
 
         int y = 1;
         foreach (var constraint in constraints)
-            WriteConstraintToTableau(tableau, constraint, varMap, ref y);
+            WriteConstraintToTableau(tableau, constraint, ref varMap, ref y);
 
         for (int i = 0; i < disjunctions.Count; ++i)
         {
@@ -514,10 +514,10 @@ internal class LinearProblem
             switch (choice)
             {
                 case BinaryChoice.Left:
-                    WriteConstraintToTableau(tableau, constraint.lhs, varMap, ref y);
+                    WriteConstraintToTableau(tableau, constraint.lhs, ref varMap, ref y);
                     break;
                 case BinaryChoice.Right:
-                    WriteConstraintToTableau(tableau, constraint.rhs, varMap, ref y);
+                    WriteConstraintToTableau(tableau, constraint.rhs, ref varMap, ref y);
                     break;
                 case BinaryChoice.Unknown:
                     // In order to represent an OR constraint we use what's called
@@ -542,10 +542,10 @@ internal class LinearProblem
                     var z = constraint.variable;
 
                     // We arbitrarily pick lhs to be active when z is 0.
-                    WriteConstraintToTableau(tableau, constraint.lhs, varMap, ref y);
+                    WriteConstraintToTableau(tableau, constraint.lhs, ref varMap, ref y);
                     tableau[varMap[z.Index], y - 1] = -M * z.Coef;
 
-                    WriteConstraintToTableau(tableau, constraint.rhs, varMap, ref y);
+                    WriteConstraintToTableau(tableau, constraint.rhs, ref varMap, ref y);
                     tableau[varMap[z.Index], y - 1] = M * z.Coef;
                     tableau[tableau.Width - 1, y - 1] += M;
 
@@ -556,7 +556,7 @@ internal class LinearProblem
                             constant = 1.0,
                             variables = new LinearEquation(z),
                         },
-                        varMap,
+                        ref varMap,
                         ref y
                     );
 
@@ -572,7 +572,7 @@ internal class LinearProblem
     private void WriteConstraintToTableau(
         Matrix tableau,
         SolverConstraint constraint,
-        IntMap<int> varMap,
+        ref VariableMap varMap,
         ref int y
     )
     {
@@ -584,7 +584,11 @@ internal class LinearProblem
         y += 1;
     }
 
-    private void BuildVarMap(IntMap<int> varMap, BinaryChoice[] choices, IntMap<int> binaryIndices)
+    private void BuildVarMap(
+        ref VariableMap varMap,
+        BinaryChoice[] choices,
+        VariableMap binaryIndices
+    )
     {
         varMap.Clear();
         Debug.Assert(varMap.Capacity == VariableCount);
@@ -607,15 +611,15 @@ internal class LinearProblem
     private LinearSolution ExtractTableauSolution(
         Matrix tableau,
         BinaryChoice[] choices,
-        IntMap<int> varMap,
+        VariableMap varMap,
         BitSet selected
     )
     {
         using var span = new TraceSpan("LinearProblem.ExtractTableauSolution");
 
-        IntMap<int> inverse = new(tableau.Width);
+        RefIntMap<int> inverse = new(tableau.Width);
         foreach (var (src, tgt) in varMap)
-            inverse[tgt] = src;
+            inverse.Add(tgt, src);
 
         double[] values = new double[VariableCount];
 
@@ -728,14 +732,11 @@ internal class LinearProblem
             builder.Append(")\n");
         }
 
-        if (substitutions != null)
+        foreach (var sub in substitutions.Values)
         {
-            foreach (var sub in substitutions.Values)
-            {
-                builder.Append("sub ");
-                builder.Append(sub);
-                builder.AppendLine();
-            }
+            builder.Append("sub ");
+            builder.Append(sub);
+            builder.AppendLine();
         }
 
         return builder.ToString();

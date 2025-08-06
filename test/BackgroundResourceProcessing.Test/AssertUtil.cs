@@ -19,4 +19,27 @@ public static class AssertUtils
             throw new NotImplementedException();
         }
     }
+
+    public static void SequenceEqual<T>(IEnumerable<T> expected, IEnumerable<T> actual)
+    {
+        Assert.AreEqual(
+            expected,
+            actual,
+            new SequenceEqualityComparer<T>(),
+            $"[{string.Join(", ", expected)}] != [{string.Join(", ", actual)}]"
+        );
+    }
+
+    private class SequenceEqualityComparer<T> : IEqualityComparer<IEnumerable<T>>
+    {
+        public bool Equals(IEnumerable<T> x, IEnumerable<T> y)
+        {
+            return Enumerable.SequenceEqual(x, y);
+        }
+
+        public int GetHashCode(IEnumerable<T> obj)
+        {
+            throw new NotImplementedException();
+        }
+    }
 }

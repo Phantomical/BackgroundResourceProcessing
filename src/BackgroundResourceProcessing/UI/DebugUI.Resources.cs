@@ -44,6 +44,8 @@ internal partial class DebugUI
             processor = GetMainVesselProcessor();
         if (GUILayout.Button("Export Ship"))
             DumpCurrentVessel();
+        if (GUILayout.Button("Stress Test"))
+            processor.StressTest(1000);
         GUILayout.EndHorizontal();
     }
 
@@ -97,4 +99,6 @@ internal partial class DebugUI
 
         ScreenMessages.PostScreenMessage($"Ship resource graph exported to {outputPath}");
     }
+
+    internal void StressTest() { }
 }

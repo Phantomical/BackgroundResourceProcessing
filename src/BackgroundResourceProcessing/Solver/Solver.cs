@@ -1,6 +1,8 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
@@ -25,6 +27,9 @@ internal class Solver
         for (int i = 0; i < summaries.Length; ++i)
             summaries[i] = new(processor.inventories[i]);
 
+        int converterCount = processor.converters.Count;
+        int inventoryCount = processor.inventories.Count;
+
         // Pre-processing: We can make final problem smaller (and thus
         // cheaper to solve) by combining together converters and
         // inventories that share the same connections.
@@ -36,27 +41,25 @@ internal class Solver
         graph.MergeEquivalentInventories();
         graph.MergeEquivalentConverters();
 
-        IntMap<int> converterMap = new(processor.converters.Count);
+        RefIntMap<int> converterMap = new(converterCount);
         int index = 0;
         foreach (var converterId in graph.converters.Keys)
-            converterMap[converterId] = index++;
+            converterMap.Add(converterId, index++);
 
         var problem = new LinearProblem();
-        var rates = problem.CreateVariables(converterMap.Count);
+        var rates = problem.CreateVariables(converterCount);
 
         var rcspan = new TraceSpan("Add Variable Constraints");
         foreach (var rate in rates)
             problem.AddConstraint(rate <= 1.0);
         rcspan.Dispose();
 
-        var inventoryCount = processor.inventories.Count;
-
         // The equation for the actual rates of the inventory
-        IntMap<LinearEquation> iRates = new(inventoryCount);
+        RefIntMap<LinearEquation> iRates = new(inventoryCount);
 
         // The equation for the inventory rate, but not including any
         // outputs with dumpExcess = true
-        IntMap<LinearEquation> dRates = new(inventoryCount);
+        RefIntMap<LinearEquation> dRates = new(inventoryCount);
 
         // Scratch space used for building constraint totals.
         LinearMap<int, LinearEquation> constraintEqs = [];
@@ -362,13 +365,13 @@ internal class Solver
                 continue;
 
             int? count = null;
-            foreach (var realId in graph.inventoryIds.GetClassEnumerator(inventory.baseId))
+            foreach (var realId in new ClassEnumerator(graph.inventoryIds, inventory.baseId))
             {
                 var summary = summaries[realId];
                 double frac = 0.0;
                 if (!MathUtil.IsFinite(total))
                 {
-                    count ??= graph.inventoryIds.GetClassEnumerator(inventory.baseId).Count();
+                    count ??= new ClassEnumerator(graph.inventoryIds, inventory.baseId).Count();
                     frac = 1.0 / count.Value;
                 }
                 else if (rate < 0.0)
@@ -385,7 +388,7 @@ internal class Solver
         {
             var rate = soln[rates[varId]];
             var converter = graph.converters[convId];
-            foreach (var realId in graph.converterIds.GetClassEnumerator(converter.baseId))
+            foreach (var realId in new ClassEnumerator(graph.converterIds, converter.baseId))
                 converterRates[realId] = rate;
         }
 
@@ -402,7 +405,7 @@ internal class Solver
 internal static class IntMapExtensions
 {
     public static LinearEquation GetOrAddWithCapacity(
-        this IntMap<LinearEquation> map,
+        ref this RefIntMap<LinearEquation> map,
         int key,
         int capacity
     )
@@ -419,7 +422,7 @@ internal static class IntMapExtensions
     }
 
     public static LinearEquation GetOrAddCloned(
-        this IntMap<LinearEquation> map,
+        ref this RefIntMap<LinearEquation> map,
         int key,
         LinearEquation eq
     )
@@ -433,5 +436,51 @@ internal static class IntMapExtensions
         var value = eq.Clone();
         map.Add(key, value);
         return value;
+    }
+}
+
+[method: MethodImpl(MethodImplOptions.AggressiveInlining)]
+internal struct ClassEnumerator(int[] classes, int cls) : IEnumerator<int>
+{
+    readonly int[] classes = classes;
+    readonly int cls = cls;
+    int index = -1;
+
+    public readonly int Current => index;
+    readonly object IEnumerator.Current => Current;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool MoveNext()
+    {
+        while (true)
+        {
+            index += 1;
+            if (index >= classes.Length)
+                return false;
+            if (classes[index] == cls)
+                return true;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly void Dispose() { }
+
+    public void Reset()
+    {
+        index = -1;
+    }
+
+    public readonly ClassEnumerator GetEnumerator()
+    {
+        return this;
+    }
+
+    public readonly int Count()
+    {
+        int count = 0;
+        for (int i = index + 1; i < classes.Length; ++i)
+            if (classes[i] == cls)
+                count += 1;
+        return count;
     }
 }

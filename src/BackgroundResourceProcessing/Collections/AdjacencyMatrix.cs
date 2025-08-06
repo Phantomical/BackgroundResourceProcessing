@@ -90,28 +90,37 @@ internal class AdjacencyMatrix
     public void RemoveUnequalColumns(BitSet set, int column)
     {
         if (set.Capacity != Columns)
-            throw new ArgumentException(
-                "set",
-                "Set capacity did not match the adjacency matrix column count"
-            );
+            ThrowMismatchedSetCapacity();
         if (column < 0 || column >= Columns)
             ThrowColumnOutOfRangeException(column);
 
-        Span<ulong> swords = set.Bits;
+        int word = column / ULongBits;
+        int bit = column % ULongBits;
+
+        ulong[] swords = set.Bits;
+        ulong[] mwords = Bits;
         for (int r = 0; r < Rows; ++r)
         {
-            var row = GetRow(r);
-            var rwords = row.Bits;
-            var mask = row[column] ? ulong.MaxValue : 0;
+            int offset = r * ColumnWords;
+
+            // This sets mask to all 1s if the bit is 1 and 0 otherwise
+            ulong mask = ~(((mwords[offset + word] >> bit) & 1) - 1);
 
             for (int c = 0; c < ColumnWords; ++c)
             {
                 // a ^ b gives us the bits that are different so ~(a ^ b)
                 // gives us the bits that are equal.
-                var equal = ~(rwords[c] ^ mask);
-                swords[c] &= equal;
+                swords[c] &= ~(mwords[offset + c] ^ mask);
             }
         }
+    }
+
+    private static void ThrowMismatchedSetCapacity()
+    {
+        throw new ArgumentException(
+            "set",
+            "set capacity did not match the adjacency matrix column count"
+        );
     }
 
     /// <summary>
@@ -126,7 +135,7 @@ internal class AdjacencyMatrix
         RemoveUnequalColumns(set, column);
     }
 
-    public ref struct RowEnumerator(AdjacencyMatrix matrix)
+    public struct RowEnumerator(AdjacencyMatrix matrix)
     {
         readonly AdjacencyMatrix matrix = matrix;
         int row = -1;
@@ -284,20 +293,13 @@ internal readonly ref struct BitSliceX(Span<ulong> bits)
         return new(this);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator ==(BitSliceX a, BitSliceX b)
     {
-        if (a.Capacity != b.Capacity)
-            return false;
-
-        for (int i = 0; i < a.bits.Length; ++i)
-        {
-            if (a.bits[i] != b.bits[i])
-                return false;
-        }
-
-        return true;
+        return MemoryExtensions.SequenceEqual(a.bits, b.bits);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator !=(BitSliceX a, BitSliceX b)
     {
         return !(a == b);
@@ -510,7 +512,7 @@ internal class BitSliceDebugView
     }
 }
 
-internal ref struct BitEnumerator(int start, ulong bits) : IEnumerator<int>
+internal struct BitEnumerator(int start, ulong bits) : IEnumerator<int>
 {
     int index = start - 1;
     ulong bits = bits;
