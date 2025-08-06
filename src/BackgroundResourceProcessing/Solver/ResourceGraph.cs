@@ -192,17 +192,19 @@ internal class GraphConverter
     /// <summary>
     /// The input resources for this converter and their rates.
     /// </summary>
-    public SortedMap<int, Input> inputs;
+    public SortedMap<int, ResourceRatio> inputs;
 
     /// <summary>
     /// The output resources for this converter and their rates.
     /// </summary>
-    public SortedMap<int, Output> outputs;
+    public SortedMap<int, ResourceRatio> outputs;
 
     /// <summary>
     /// Resources for which this converter is at capacity.
     /// </summary>
     public SortedMap<int, Constraint> constraints;
+
+    private bool owned = false;
 
     public GraphConverter(int id, Core.ResourceConverter converter)
     {
@@ -215,16 +217,8 @@ internal class GraphConverter
         outputs = new(converter.outputs.Count);
         constraints = new(converter.required.Count);
 
-        using var ibuilder = inputs.CreateBuilder();
-        foreach (var (resource, input) in converter.inputs)
-            ibuilder.AddUnchecked(resource, new Input(input.ResourceName, input.Ratio));
-
-        using var obuilder = outputs.CreateBuilder();
-        foreach (var (resource, output) in converter.outputs)
-            obuilder.AddUnchecked(
-                resource,
-                new Output(output.ResourceName, output.Ratio, output.DumpExcess)
-            );
+        inputs = converter.inputs;
+        outputs = converter.outputs;
     }
 
     public void Merge(GraphConverter other)
@@ -238,6 +232,13 @@ internal class GraphConverter
                 "Attempted to merge converters with different output resources"
             );
 
+        if (!owned)
+        {
+            inputs = inputs.Clone();
+            outputs = outputs.Clone();
+            owned = true;
+        }
+
         for (int i = 0; i < inputs.Count; ++i)
         {
             var (key1, value1) = inputs.Entries[i];
@@ -248,7 +249,7 @@ internal class GraphConverter
                     "Attempted to merge converters with different input resources"
                 );
 
-            inputs.Entries[i] = new(key1, value1.Merge(value2));
+            inputs.Entries[i] = new(key1, Merge(value1, value2));
         }
 
         for (int i = 0; i < outputs.Count; ++i)
@@ -261,7 +262,7 @@ internal class GraphConverter
                     "Attempted to merge converters with different input resources"
                 );
 
-            outputs.Entries[i] = new(key1, value1.Merge(value2));
+            outputs.Entries[i] = new(key1, Merge(value1, value2));
         }
 
         weight += other.weight;
@@ -303,10 +304,16 @@ internal class GraphConverter
 
     public override string ToString()
     {
-        var inputs = this.inputs.Select((entry) => entry.Value.resourceName);
-        var outputs = this.outputs.Select((entry) => entry.Value.resourceName);
+        var inputs = this.inputs.Select((entry) => entry.Value.ResourceName);
+        var outputs = this.outputs.Select((entry) => entry.Value.ResourceName);
 
         return $"{string.Join(",", inputs)} => {string.Join(",", outputs)}";
+    }
+
+    public static ResourceRatio Merge(ResourceRatio a, ResourceRatio b)
+    {
+        a.Ratio += b.Ratio;
+        return a;
     }
 }
 

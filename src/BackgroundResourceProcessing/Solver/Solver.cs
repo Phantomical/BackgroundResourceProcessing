@@ -79,7 +79,7 @@ internal class Solver
 
             foreach (var (resource, input) in converter.inputs)
             {
-                var rate = input.rate * alpha;
+                var rate = input.Ratio * alpha;
 
                 connected.Clear();
 
@@ -138,7 +138,7 @@ internal class Solver
 
             foreach (var (resource, output) in converter.outputs)
             {
-                var rate = output.rate * alpha;
+                var rate = output.Ratio * alpha;
 
                 connected.Clear();
 
@@ -151,7 +151,7 @@ internal class Solver
 
                 if (connected.Count == 0)
                 {
-                    if (!output.dumpExcess)
+                    if (!output.DumpExcess)
                     {
                         // The converter has no inventories attached to this
                         // output. This means its rate must be 0 unless
@@ -168,7 +168,7 @@ internal class Solver
                     var invId = connected.First();
                     var invRate = iRates.GetOrAddWithCapacity(invId, problem.VariableCount);
 
-                    if (output.dumpExcess)
+                    if (output.DumpExcess)
                         dRates.GetOrAddCloned(invId, invRate);
                     else if (dRates.TryGetValue(invId, out var dRate))
                         dRate.Add(rate);
@@ -192,7 +192,7 @@ internal class Solver
 
                         rateEq.Add(rateVar);
 
-                        if (output.dumpExcess)
+                        if (output.DumpExcess)
                             dRates.GetOrAddCloned(invId, invRate);
                         else if (dRates.TryGetValue(invId, out var dRate))
                             dRate.Add(rateVar);

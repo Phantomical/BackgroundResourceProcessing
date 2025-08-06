@@ -103,6 +103,11 @@ public class SortedMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Sorte
         count = 0;
     }
 
+    public SortedMap<K, V> Clone()
+    {
+        return new((KeyValuePair<K, V>[])entries.Clone(), count);
+    }
+
     private void Expand(int additional)
     {
         var newcap = Math.Max(entries.Length * 2, entries.Length + additional);
