@@ -27,7 +27,7 @@ internal class LinearProblem
 
     List<OrConstraint> disjunctions = [];
 
-    RefIntMap<LinearEquality> substitutions = default;
+    RefIntMap<LinearEquality> substitutions = new(0);
 
     private static bool Trace => DebugSettings.Instance?.SolverTrace ?? false;
 
