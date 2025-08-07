@@ -148,12 +148,7 @@ internal class LinearProblem
         var matrix = BuildPresolveMatrix(func);
         var zeros = new BitSet(VariableCount);
 
-        Collections.Unsafe.LinearPresolve.Presolve(
-            matrix,
-            zeros,
-            equalities.Count,
-            constraints.Count
-        );
+        LinearPresolve.Presolve(matrix, zeros, equalities.Count, constraints.Count);
 
         var nEqs = equalities.Count;
         var nCons = constraints.Count;
