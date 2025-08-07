@@ -1,10 +1,13 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace BackgroundResourceProcessing.Collections;
 
+[DebuggerTypeProxy(typeof(RefIntMap<>.DebugView))]
+[DebuggerDisplay("Capacity = {Capacity}")]
 internal readonly struct RefIntMap<V>(int capacity) : IEnumerable<KeyValuePair<int, V>>
 {
     readonly BitSet present = new(capacity);
@@ -147,6 +150,9 @@ internal readonly struct RefIntMap<V>(int capacity) : IEnumerable<KeyValuePair<i
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public KeyEnumerator GetEnumerator() => new(map);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public KeyEnumerator GetEnumeratorAt(int offset) => new(map, offset);
+
         IEnumerator<int> IEnumerable<int>.GetEnumerator() => GetEnumerator();
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -162,13 +168,24 @@ internal readonly struct RefIntMap<V>(int capacity) : IEnumerable<KeyValuePair<i
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
-    [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public struct KeyEnumerator(RefIntMap<V> map) : IEnumerator<int>
+    public struct KeyEnumerator : IEnumerator<int>
     {
-        BitSet.Enumerator enumerator = map.present.GetEnumerator();
+        BitSet.Enumerator enumerator;
 
         public readonly int Current => enumerator.Current;
         readonly object IEnumerator.Current => Current;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public KeyEnumerator(RefIntMap<V> map)
+        {
+            enumerator = map.present.GetEnumerator();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public KeyEnumerator(RefIntMap<V> map, int offset)
+        {
+            enumerator = map.present.GetEnumeratorAt(offset);
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext() => enumerator.MoveNext();
@@ -177,6 +194,9 @@ internal readonly struct RefIntMap<V>(int capacity) : IEnumerable<KeyValuePair<i
         public readonly void Dispose() => enumerator.Dispose();
 
         public void Reset() => enumerator.Reset();
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly KeyEnumerator GetEnumerator() => this;
     }
 
     [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -195,5 +215,11 @@ internal readonly struct RefIntMap<V>(int capacity) : IEnumerable<KeyValuePair<i
         public readonly void Dispose() => enumerator.Dispose();
 
         public void Reset() => enumerator.Reset();
+    }
+
+    private sealed class DebugView(RefIntMap<V> map)
+    {
+        [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
+        public KeyValuePair<int, V>[] Items { get; } = [.. map];
     }
 }

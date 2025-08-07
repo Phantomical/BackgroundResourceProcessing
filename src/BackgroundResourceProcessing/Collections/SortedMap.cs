@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Utils;
 
@@ -13,11 +14,26 @@ namespace BackgroundResourceProcessing.Collections;
 /// </summary>
 /// <typeparam name="K"></typeparam>
 /// <typeparam name="V"></typeparam>
-[DebuggerVisualizer(typeof(SortedMap<,>.DebugView))]
+[DebuggerTypeProxy(typeof(SortedMap<,>.DebugView))]
+[DebuggerDisplay("Count = {Count}")]
 public class SortedMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<SortedMap<K, V>>
     where K : IEquatable<K>, IComparable<K>
 {
-    KeyValuePair<K, V>[] entries;
+    [DebuggerDisplay("[{Key}, {Value}]")]
+    public struct Entry(K key, V value)
+    {
+        public readonly K Key = key;
+        public V Value = value;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly void Deconstruct(out K key, out V value)
+        {
+            key = Key;
+            value = Value;
+        }
+    }
+
+    Entry[] entries;
     int count;
 
     public int Count => count;
@@ -26,21 +42,21 @@ public class SortedMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Sorte
     public KeyEnumerator Keys => new(this);
     public ValueEnumerator Values => new(this);
 
-    public KeyValuePair<K, V>[] Entries => entries;
+    public Entry[] Entries => entries;
 
-    public V this[K key]
+    public ref V this[K key]
     {
         get
         {
             if (!TryGetIndex(key, out var index))
                 throw new KeyNotFoundException($"Key not found in the map. Key: {key}");
 
-            return entries[index].Value;
+            return ref entries[index].Value;
         }
     }
 
     #region Constructors
-    private SortedMap(KeyValuePair<K, V>[] entries, int count)
+    private SortedMap(Entry[] entries, int count)
     {
         this.entries = entries;
         this.count = count;
@@ -53,13 +69,16 @@ public class SortedMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Sorte
         : this(16) { }
 
     public SortedMap(int capacity)
-        : this(new KeyValuePair<K, V>[capacity], 0) { }
+        : this(new Entry[capacity], 0) { }
 
-    public SortedMap(KeyValuePair<K, V>[] entries)
+    public SortedMap(Entry[] entries)
         : this(entries, entries.Length) { }
 
-    public SortedMap(IEnumerable<KeyValuePair<K, V>> enumerable)
+    public SortedMap(IEnumerable<Entry> enumerable)
         : this([.. enumerable]) { }
+
+    public SortedMap(IEnumerable<KeyValuePair<K, V>> enumerable)
+        : this(enumerable.Select(entry => new Entry(entry.Key, entry.Value))) { }
     #endregion
 
     public bool ContainsKey(K key)
@@ -105,7 +124,7 @@ public class SortedMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Sorte
 
     public SortedMap<K, V> Clone()
     {
-        return new((KeyValuePair<K, V>[])entries.Clone(), count);
+        return new((Entry[])entries.Clone(), count);
     }
 
     private void Expand(int additional)
@@ -250,11 +269,11 @@ public class SortedMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Sorte
         }
     }
 
-    private class KeyComparer : IComparer<KeyValuePair<K, V>>
+    private class KeyComparer : IComparer<Entry>
     {
         public static readonly KeyComparer Instance = new();
 
-        public int Compare(KeyValuePair<K, V> x, KeyValuePair<K, V> y)
+        public int Compare(Entry x, Entry y)
         {
             return x.Key.CompareTo(y.Key);
         }
@@ -269,7 +288,11 @@ public class SortedMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Sorte
         public readonly KeyValuePair<K, V> Current
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return map.entries[index]; }
+            get
+            {
+                var (key, value) = map.entries[index];
+                return new(key, value);
+            }
         }
 
         readonly object IEnumerator.Current => Current;
@@ -362,17 +385,9 @@ public class SortedMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Sorte
         }
     }
 
-    private class DebugView
+    private class DebugView(SortedMap<K, V> map)
     {
-        readonly KeyValuePair<K, V>[] items;
-
         [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
-        public KeyValuePair<K, V>[] Items => items;
-
-        public DebugView(SortedMap<K, V> map)
-        {
-            items = new KeyValuePair<K, V>[map.Count];
-            Array.Copy(map.entries, items, map.Count);
-        }
+        public KeyValuePair<K, V>[] Items { get; } = [.. map];
     }
 }

@@ -139,54 +139,9 @@ internal struct GraphInventory
     }
 }
 
-internal class GraphConverter
+internal struct GraphConverter
 {
-    public struct Input(string resourceName, double rate)
-    {
-        public string resourceName = resourceName;
-        public double rate = rate;
-
-        public Input Merge(Input other)
-        {
-            return this with { rate = rate + other.rate };
-        }
-
-        public override readonly string ToString()
-        {
-            return $"{{rate={rate}}}";
-        }
-    }
-
-    public struct Output(string resourceName, double rate, bool dumpExcess)
-    {
-        public string resourceName = resourceName;
-        public double rate = rate;
-
-        public bool dumpExcess = dumpExcess;
-
-        public Output Merge(Output other)
-        {
-            if (dumpExcess != other.dumpExcess)
-                ThrowInvalidMergeException_DumpExcess();
-
-            return this with
-            {
-                rate = rate + other.rate,
-            };
-        }
-
-        private static void ThrowInvalidMergeException_DumpExcess()
-        {
-            throw new InvalidMergeException(
-                "attempted to merge two outputs that had different dumpExcess values"
-            );
-        }
-
-        public override readonly string ToString()
-        {
-            return $"{{rate={rate},dumpExcess={dumpExcess}}}";
-        }
-    }
+    private static readonly SortedMap<int, Constraint> Empty = new(0);
 
     public int baseId;
     public double weight = 0.0;
@@ -215,9 +170,12 @@ internal class GraphConverter
         baseId = id;
         weight = GetPriorityWeight(converter.priority);
 
-        inputs = new(converter.inputs.Count);
-        outputs = new(converter.outputs.Count);
-        constraints = new(converter.required.Count);
+        // inputs = new(converter.inputs.Count);
+        // outputs = new(converter.outputs.Count);
+        if (converter.required.Count == 0)
+            constraints = Empty;
+        else
+            constraints = new(converter.required.Count);
 
         inputs = converter.inputs;
         outputs = converter.outputs;
@@ -243,28 +201,28 @@ internal class GraphConverter
 
         for (int i = 0; i < inputs.Count; ++i)
         {
-            var (key1, value1) = inputs.Entries[i];
-            var (key2, value2) = other.inputs.Entries[i];
+            ref var entry1 = ref inputs.Entries[i];
+            ref var entry2 = ref other.inputs.Entries[i];
 
-            if (key1 != key2)
+            if (entry1.Key != entry2.Key)
                 throw new InvalidMergeException(
                     "Attempted to merge converters with different input resources"
                 );
 
-            inputs.Entries[i] = new(key1, Merge(value1, value2));
+            Merge(ref entry1.Value, entry2.Value);
         }
 
         for (int i = 0; i < outputs.Count; ++i)
         {
-            var (key1, value1) = outputs.Entries[i];
-            var (key2, value2) = other.outputs.Entries[i];
+            ref var entry1 = ref outputs.Entries[i];
+            ref var entry2 = ref other.outputs.Entries[i];
 
-            if (key1 != key2)
+            if (entry1.Key != entry2.Key)
                 throw new InvalidMergeException(
-                    "Attempted to merge converters with different input resources"
+                    "Attempted to merge converters with different output resources"
                 );
 
-            outputs.Entries[i] = new(key1, Merge(value1, value2));
+            Merge(ref entry1.Value, entry2.Value);
         }
 
         weight += other.weight;
@@ -312,10 +270,9 @@ internal class GraphConverter
         return $"{string.Join(",", inputs)} => {string.Join(",", outputs)}";
     }
 
-    public static ResourceRatio Merge(ResourceRatio a, ResourceRatio b)
+    internal static void Merge(ref ResourceRatio a, ResourceRatio b)
     {
         a.Ratio += b.Ratio;
-        return a;
     }
 }
 
@@ -370,10 +327,8 @@ internal class ResourceGraph
         {
             var converter = processor.converters[i];
             var conv = new GraphConverter(i, converter);
-            if (conv == null)
-                continue;
 
-            if (!SatisfiesConstraints(processor, converter, conv))
+            if (!SatisfiesConstraints(processor, converter, ref conv))
                 continue;
 
             converters.Add(i, conv);
@@ -387,7 +342,7 @@ internal class ResourceGraph
     private bool SatisfiesConstraints(
         ResourceProcessor processor,
         Core.ResourceConverter rconv,
-        GraphConverter gconv
+        ref GraphConverter gconv
     )
     {
         using var cbuilder = gconv.constraints.CreateBuilder();
@@ -526,10 +481,11 @@ internal class ResourceGraph
     {
         using var span = new TraceSpan("ResourceGraph.MergeEquivalentConverters");
 
-        foreach (var (converterId, converter) in converters)
+        foreach (var converterId in converters.Keys)
         {
             if (!converters.ContainsKey(converterId))
                 continue;
+            ref var converter = ref converters[converterId];
 
             var inputEdges = inputs.GetConverterEntry(converterId);
             var outputEdges = outputs.GetConverterEntry(converterId);
@@ -537,9 +493,6 @@ internal class ResourceGraph
 
             foreach (var (otherId, otherConverter) in converters.GetEnumeratorAt(converterId + 1))
             {
-                if (!converter.CanMergeWith(otherConverter))
-                    continue;
-
                 var otherInputs = inputs.GetConverterEntry(otherId);
                 var otherOutputs = outputs.GetConverterEntry(otherId);
                 var otherConstraints = constraints.GetConverterEntry(otherId);
@@ -549,6 +502,9 @@ internal class ResourceGraph
                 if (outputEdges != otherOutputs)
                     continue;
                 if (constraintEdges != otherConstraints)
+                    continue;
+
+                if (!converter.CanMergeWith(otherConverter))
                     continue;
 
                 otherInputs.Zero();

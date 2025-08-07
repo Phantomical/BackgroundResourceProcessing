@@ -20,12 +20,12 @@ internal class LinearProblem
     int SlackCount = 0;
 
     // Constraints in standard form (Ax <= b)
-    List<SolverConstraint> constraints = [];
+    readonly List<SolverConstraint> constraints = [];
 
     // Equalities in equation form.
-    List<SolverConstraint> equalities = [];
+    readonly List<SolverConstraint> equalities = [];
 
-    List<OrConstraint> disjunctions = [];
+    readonly List<OrConstraint> disjunctions = [];
 
     RefIntMap<LinearEquality> substitutions = new(0);
 

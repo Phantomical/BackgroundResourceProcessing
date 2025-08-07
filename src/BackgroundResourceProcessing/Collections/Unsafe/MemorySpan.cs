@@ -9,7 +9,7 @@ using Unity.Burst.CompilerServices;
 
 namespace BackgroundResourceProcessing.Collections.Unsafe;
 
-[DebuggerVisualizer(typeof(MemorySpan<>.DebugView))]
+[DebuggerTypeProxy(typeof(MemorySpan<>.DebugView))]
 internal readonly unsafe struct MemorySpan<T>(T* data, uint length)
     where T : struct
 {

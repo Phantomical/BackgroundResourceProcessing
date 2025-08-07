@@ -7,7 +7,8 @@ using BackgroundResourceProcessing.Utils;
 
 namespace BackgroundResourceProcessing.Collections;
 
-[DebuggerVisualizer(typeof(LinearMap<,>.DebugView))]
+[DebuggerTypeProxy(typeof(LinearMap<,>.DebugView))]
+[DebuggerDisplay("Count = {Count}")]
 internal class LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<LinearMap<K, V>>
     where K : IEquatable<K>
 {

@@ -7,7 +7,8 @@ using Unity.Burst.CompilerServices;
 
 namespace BackgroundResourceProcessing.Collections.Unsafe;
 
-[DebuggerVisualizer(typeof(DebugView))]
+[DebuggerTypeProxy(typeof(DebugView))]
+[DebuggerDisplay("Capacity = {Capacity}")]
 internal readonly unsafe struct BitSpan(MemorySpan<ulong> bits)
 {
     const int ULongBits = 64;

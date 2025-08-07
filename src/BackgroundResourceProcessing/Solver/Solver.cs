@@ -70,8 +70,9 @@ internal class Solver
         LinearEquation func = new(problem.VariableCount);
 
         var span2 = new TraceSpan("Converter Rates");
-        foreach (var (converterId, converter) in graph.converters)
+        foreach (var converterId in graph.converters.Keys)
         {
+            ref var converter = ref graph.converters[converterId];
             var varId = converterMap[converterId];
             var alpha = rates[varId];
 
@@ -211,8 +212,9 @@ internal class Solver
         span2.Dispose();
 
         var span3 = new TraceSpan("Converter Constraints");
-        foreach (var (converterId, converter) in graph.converters)
+        foreach (var converterId in graph.converters.Keys)
         {
+            ref var converter = ref graph.converters[converterId];
             if (converter.constraints.Count == 0)
                 continue;
 
@@ -272,8 +274,10 @@ internal class Solver
         span3.Dispose();
 
         var span4 = new TraceSpan("Inventory Constraints");
-        foreach (var (inventoryId, inventory) in graph.inventories)
+        foreach (var inventoryId in graph.inventories.Keys)
         {
+            ref var inventory = ref graph.inventories[inventoryId];
+
             // The inventory is unconstrained. There is nothing we need to
             // do here, any rate is acceptable.
             if (inventory.state == InventoryState.Unconstrained)
@@ -402,7 +406,7 @@ internal class Solver
     }
 }
 
-internal static class IntMapExtensions
+internal static class RefIntMapExtensions
 {
     public static LinearEquation GetOrAddWithCapacity(
         ref this RefIntMap<LinearEquation> map,
