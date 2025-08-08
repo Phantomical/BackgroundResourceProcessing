@@ -8,17 +8,20 @@ namespace BackgroundResourceProcessing.Collections;
 
 [DebuggerTypeProxy(typeof(RefIntMap<>.DebugView))]
 [DebuggerDisplay("Capacity = {Capacity}")]
-internal readonly struct RefIntMap<V>(int capacity) : IEnumerable<KeyValuePair<int, V>>
+internal struct RefIntMap<V> : IEnumerable<KeyValuePair<int, V>>
 {
-    readonly BitSet present = new(capacity);
-    readonly V[] values = new V[capacity];
+    private static readonly BitSet EmptyPresent = [];
+    private static readonly V[] EmptyValues = [];
 
-    public int Capacity => values.Length;
+    BitSet present;
+    V[] values;
 
-    public KeyEnumerable Keys => new(this);
-    public ValueEnumerable Values => new(this);
+    public readonly int Capacity => values.Length;
 
-    public ref V this[int key]
+    public readonly KeyEnumerable Keys => new(this);
+    public readonly ValueEnumerable Values => new(this);
+
+    public readonly ref V this[int key]
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
@@ -32,7 +35,19 @@ internal readonly struct RefIntMap<V>(int capacity) : IEnumerable<KeyValuePair<i
         }
     }
 
-    public bool TryGetValue(int key, out V value)
+    public RefIntMap(int capacity)
+    {
+        present = new(capacity);
+        values = new V[capacity];
+    }
+
+    public RefIntMap()
+    {
+        present = EmptyPresent;
+        values = EmptyValues;
+    }
+
+    public readonly bool TryGetValue(int key, out V value)
     {
         if (key < 0 || key >= Capacity)
             ThrowKeyOutOfBoundsException(key);
@@ -42,12 +57,12 @@ internal readonly struct RefIntMap<V>(int capacity) : IEnumerable<KeyValuePair<i
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool ContainsKey(int key)
+    public readonly bool ContainsKey(int key)
     {
         return present.Contains(key);
     }
 
-    public void Add(int key, V value)
+    public readonly void Add(int key, V value)
     {
         if (key < 0 || key >= Capacity)
             ThrowKeyOutOfBoundsException(key);
@@ -58,7 +73,7 @@ internal readonly struct RefIntMap<V>(int capacity) : IEnumerable<KeyValuePair<i
         values[key] = value;
     }
 
-    public void Set(int key, V value)
+    public readonly void Set(int key, V value)
     {
         if (key < 0 || key >= Capacity)
             ThrowKeyOutOfBoundsException(key);
@@ -67,7 +82,7 @@ internal readonly struct RefIntMap<V>(int capacity) : IEnumerable<KeyValuePair<i
         values[key] = value;
     }
 
-    public bool Remove(int key)
+    public readonly bool Remove(int key)
     {
         if (key < 0 || key >= Capacity)
             ThrowKeyOutOfBoundsException(key);
@@ -78,10 +93,22 @@ internal readonly struct RefIntMap<V>(int capacity) : IEnumerable<KeyValuePair<i
         return prev;
     }
 
-    public void Clear()
+    public void Resize(int newSize)
+    {
+        present.Resize(newSize);
+        present.ClearUpFrom(newSize);
+        Array.Resize(ref values, newSize);
+    }
+
+    public readonly void Clear()
     {
         present.Clear();
         Array.Clear(values, 0, values.Length);
+    }
+
+    public readonly int GetCount()
+    {
+        return present.GetCount();
     }
 
     static void ThrowKeyNotFoundException(int key) =>
@@ -94,7 +121,7 @@ internal readonly struct RefIntMap<V>(int capacity) : IEnumerable<KeyValuePair<i
         throw new ArgumentException($"key {key} already exists in the map");
 
     #region Entry
-    public Entry GetEntry(int key)
+    public readonly Entry GetEntry(int key)
     {
         if (key < 0 || key >= Capacity)
             ThrowKeyOutOfBoundsException(key);
@@ -251,7 +278,8 @@ internal readonly struct RefIntMap<V>(int capacity) : IEnumerable<KeyValuePair<i
         BitSet.Enumerator enumerator = map.present.GetEnumerator();
         readonly V[] values = map.values;
 
-        public readonly V Current => values[enumerator.Current];
+        public readonly ref V Current => ref values[enumerator.Current];
+        readonly V IEnumerator<V>.Current => Current;
         readonly object IEnumerator.Current => Current;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

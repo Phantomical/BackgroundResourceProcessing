@@ -102,6 +102,15 @@ internal static class MathUtil
         return c;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static int PopCount(ulong x)
+    {
+        x -= (x >> 1) & 0x5555555555555555;
+        x = (x & 0x3333333333333333) + ((x >> 2) & 0x3333333333333333);
+        x = (x + (x >> 4)) & 0xF0F0F0F0F0F0F0F;
+        return (int)((x * 0x101010101010101) >> 56);
+    }
+
     /// <summary>
     /// Find the previous time at which the curve will have had value
     /// <paramref name="epsilon"/>.

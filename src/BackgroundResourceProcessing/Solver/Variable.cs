@@ -46,25 +46,25 @@ internal readonly struct Variable(int index, double coef) : IComparable<Variable
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static LinearConstraint operator <=(Variable v, double c)
+    public static SimpleConstraint operator <=(Variable v, double c)
     {
-        return new LinearEquation(v.Index + 1) { v } <= c;
+        return new SimpleConstraint(v, Relation.LEqual, c);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static LinearConstraint operator >=(Variable v, double c)
+    public static SimpleConstraint operator >=(Variable v, double c)
     {
-        return new LinearEquation(v.Index + 1) { v } >= c;
+        return new SimpleConstraint(v, Relation.GEqual, c);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static LinearConstraint operator ==(Variable v, double c)
+    public static SimpleConstraint operator ==(Variable v, double c)
     {
-        return new LinearEquation(v.Index + 1) { v } == c;
+        return new SimpleConstraint(v, Relation.Equal, c);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static LinearConstraint operator !=(Variable v, double c)
+    public static SimpleConstraint operator !=(Variable v, double c)
     {
         throw new NotImplementedException();
     }

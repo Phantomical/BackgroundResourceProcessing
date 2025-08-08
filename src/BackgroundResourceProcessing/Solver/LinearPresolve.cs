@@ -6,7 +6,7 @@ namespace BackgroundResourceProcessing.Solver;
 
 internal static class LinearPresolve
 {
-    public static void Presolve(Matrix equations, BitSet zeros, int equalities, int inequalities)
+    public static bool Presolve(Matrix equations, BitSet zeros, int equalities, int inequalities)
     {
         using var span = new TraceSpan("LinearPresolve.Presolve");
 
@@ -15,12 +15,15 @@ internal static class LinearPresolve
         if (inequalities < 0)
             throw new ArgumentOutOfRangeException(nameof(inequalities));
 
-        InferZeros(equations, zeros, equalities, inequalities);
+        if (!InferZeros(equations, zeros, equalities, inequalities) && equalities == 0)
+            return false;
 
         do
         {
             PartialRowReduce(equations, equalities);
         } while (InferZeros(equations, zeros, equalities, inequalities));
+
+        return true;
     }
 
     private static bool InferZeros(Matrix equations, BitSet zeros, int equalities, int inequalities)

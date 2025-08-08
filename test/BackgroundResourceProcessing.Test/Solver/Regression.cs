@@ -66,5 +66,15 @@ namespace BackgroundResourceProcessing.Test.Solver
             for (int i = 0; i < rates.inventoryRates.Length; ++i)
                 Assert.AreEqual(0.0, rates.inventoryRates[i], 0.0);
         }
+
+        [TestMethod]
+        public void TestZeroRates()
+        {
+            var processor = TestUtil.LoadVessel("regression/zero-rates.cfg");
+            var solver = new BackgroundResourceProcessing.Solver.Solver();
+            var rates = solver.ComputeInventoryRates(processor);
+
+            Assert.AreNotEqual(0.0, rates.inventoryRates[2]);
+        }
     }
 }

@@ -48,7 +48,7 @@ internal class Solver
             converterMap.Add(converterId, index++);
 
         var problem = new LinearProblem();
-        var rates = problem.CreateVariables(converterCount);
+        var rates = problem.CreateVariables(graph.converters.GetCount());
 
         var rcspan = new TraceSpan("Add Variable Constraints");
         foreach (var rate in rates)

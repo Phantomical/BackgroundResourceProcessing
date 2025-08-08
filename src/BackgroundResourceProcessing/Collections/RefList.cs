@@ -256,7 +256,8 @@ internal struct RefList<T> : IList<T>, ICollection<T>, IEnumerable<T>
         readonly RefList<T> list = list;
         int index = -1;
 
-        public readonly T Current => list.data[index];
+        public readonly ref T Current => ref list.data[index];
+        readonly T IEnumerator<T>.Current => Current;
         readonly object IEnumerator.Current => Current;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -28,6 +28,22 @@ internal struct LinearConstraint : IComparable<LinearConstraint>
         this.constant = constant;
     }
 
+    public LinearConstraint(SimpleConstraint constraint)
+    {
+        var var = constraint.variable;
+
+        if (double.IsNaN(var.Coef))
+            throw new InvalidCoefficientException($"Coefficient for variable x{var.Index} was NaN");
+        if (double.IsPositiveInfinity(var.Coef) || double.IsNegativeInfinity(var.Coef))
+            throw new InvalidCoefficientException(
+                $"Coefficient for variable x{var.Index} was infinite"
+            );
+
+        constant = constraint.constant;
+        relation = constraint.relation;
+        variables = new(var.Index + 1) { var };
+    }
+
     public readonly bool KnownInconsistent
     {
         get

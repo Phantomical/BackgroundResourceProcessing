@@ -3,16 +3,19 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using BackgroundResourceProcessing.Utils;
 
 namespace BackgroundResourceProcessing.Collections;
 
-internal readonly struct BitSet : IEnumerable<int>
+internal struct BitSet : IEnumerable<int>
 {
+    private static readonly ulong[] Empty = [];
+
     const int ULongBits = 64;
 
-    public readonly ulong[] Bits;
+    public ulong[] Bits;
 
-    public bool this[uint key]
+    public readonly bool this[uint key]
     {
         get
         {
@@ -40,7 +43,7 @@ internal readonly struct BitSet : IEnumerable<int>
         }
     }
 
-    public bool this[int key]
+    public readonly bool this[int key]
     {
         get
         {
@@ -58,7 +61,10 @@ internal readonly struct BitSet : IEnumerable<int>
         }
     }
 
-    public int Capacity => Bits.Length * ULongBits;
+    public readonly int Capacity => Bits.Length * ULongBits;
+
+    public BitSet()
+        : this(Empty) { }
 
     public BitSet(int capacity)
         : this(new ulong[(capacity + ULongBits - 1) / ULongBits]) { }
@@ -68,14 +74,14 @@ internal readonly struct BitSet : IEnumerable<int>
         Bits = words;
     }
 
-    public bool Contains(uint key)
+    public readonly bool Contains(uint key)
     {
         if (key / ULongBits >= Bits.Length)
             return false;
         return this[key];
     }
 
-    public bool Contains(int key)
+    public readonly bool Contains(int key)
     {
         if (key < 0)
             return false;
@@ -92,15 +98,23 @@ internal readonly struct BitSet : IEnumerable<int>
         this[key] = true;
     }
 
-    public void Clear()
+    public readonly void Clear()
     {
         Array.Clear(Bits, 0, Bits.Length);
+    }
+
+    public readonly int GetCount()
+    {
+        int count = 0;
+        for (int i = 0; i < Bits.Length; ++i)
+            count += MathUtil.PopCount(Bits[i]);
+        return count;
     }
 
     /// <summary>
     /// Set all bits in this <see cref="BitSet"/>.
     /// </summary>
-    public void Fill()
+    public readonly void Fill()
     {
         for (int i = 0; i < Bits.Length; ++i)
             Bits[i] = ulong.MaxValue;
@@ -110,7 +124,7 @@ internal readonly struct BitSet : IEnumerable<int>
     /// Unset all bits with index &gt;= <c><paramref name="index"/></c>.
     /// </summary>
     /// <param name="index"></param>
-    public void ClearUpFrom(int index)
+    public readonly void ClearUpFrom(int index)
     {
         if (index < 0)
             throw new IndexOutOfRangeException("selected bit index was negative");
@@ -132,7 +146,7 @@ internal readonly struct BitSet : IEnumerable<int>
     /// Unset all bits with index &lt;= <c><paramref name="index"/></c>.
     /// </summary>
     /// <param name="index"></param>
-    public void ClearUpTo(int index)
+    public readonly void ClearUpTo(int index)
     {
         if (index < 0)
             throw new IndexOutOfRangeException("selected bit index was negative");
@@ -150,7 +164,7 @@ internal readonly struct BitSet : IEnumerable<int>
             Bits[word] &= mask;
     }
 
-    public void ClearOutsideRange(int start, int end)
+    public readonly void ClearOutsideRange(int start, int end)
     {
         static void ThrowStartOutOfRange(int start) =>
             throw new ArgumentOutOfRangeException(
@@ -204,7 +218,7 @@ internal readonly struct BitSet : IEnumerable<int>
     /// </summary>
     /// <param name="index"></param>
     /// <exception cref="IndexOutOfRangeException"></exception>
-    public void SetUpTo(int index)
+    public readonly void SetUpTo(int index)
     {
         if (index < 0 || index > Capacity)
             throw new IndexOutOfRangeException(
@@ -222,7 +236,7 @@ internal readonly struct BitSet : IEnumerable<int>
             Bits[word] |= mask;
     }
 
-    public void CopyFrom(BitSet other)
+    public readonly void CopyFrom(BitSet other)
     {
         if (other.Capacity != Capacity)
             throw new ArgumentException("Cannot copy from bitset with different length");
@@ -232,7 +246,7 @@ internal readonly struct BitSet : IEnumerable<int>
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void RemoveAll(BitSet other)
+    public readonly void RemoveAll(BitSet other)
     {
         static void ThrowMismatchedSetCapacity() =>
             throw new ArgumentException(
@@ -247,7 +261,7 @@ internal readonly struct BitSet : IEnumerable<int>
             Bits[i] &= ~other.Bits[i];
     }
 
-    public void CopyInverseFrom(BitSet other)
+    public readonly void CopyInverseFrom(BitSet other)
     {
         if (other.Capacity != Capacity)
             throw new ArgumentException("Cannot copy from bitset with different length");
@@ -256,32 +270,44 @@ internal readonly struct BitSet : IEnumerable<int>
             Bits[i] = ~other.Bits[i];
     }
 
-    internal BitSliceX AsSlice()
+    internal readonly BitSliceX AsSlice()
     {
         return new BitSliceX(Bits);
     }
 
-    public BitSet Clone()
+    public readonly BitSet Clone()
     {
         return new((ulong[])Bits.Clone());
     }
 
-    public Enumerator GetEnumerator()
+    public void Resize(int newSize)
+    {
+        if (newSize < 0)
+            throw new ArgumentOutOfRangeException(nameof(newSize));
+
+        int newWords = (newSize + (ULongBits - 1)) / ULongBits;
+        if (newWords == Bits.Length)
+            return;
+
+        Array.Resize(ref Bits, newWords);
+    }
+
+    public readonly Enumerator GetEnumerator()
     {
         return new(this);
     }
 
-    public Enumerator GetEnumeratorAt(int offset)
+    public readonly Enumerator GetEnumeratorAt(int offset)
     {
         return new(this, offset);
     }
 
-    IEnumerator<int> IEnumerable<int>.GetEnumerator()
+    readonly IEnumerator<int> IEnumerable<int>.GetEnumerator()
     {
         return new Enumerator(this);
     }
 
-    IEnumerator IEnumerable.GetEnumerator()
+    readonly IEnumerator IEnumerable.GetEnumerator()
     {
         return ((IEnumerable<int>)this).GetEnumerator();
     }

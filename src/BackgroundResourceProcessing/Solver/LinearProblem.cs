@@ -5,7 +5,10 @@ using System.Linq;
 using System.Text;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Tracing;
+using BackgroundResourceProcessing.Utils;
+using LibNoise.Modifiers;
 using Smooth.Collections;
+using UnityEngine.Analytics;
 
 namespace BackgroundResourceProcessing.Solver;
 
@@ -20,14 +23,17 @@ internal class LinearProblem
     int SlackCount = 0;
 
     // Constraints in standard form (Ax <= b)
-    RefList<SolverConstraint> constraints = [];
+    RefList<SolverConstraint> constraints = new(32);
+
+    // Constraints that are known to only involve 1 variable.
+    RefList<SimpleSolverConstraint> simple = new(32);
 
     // Equalities in equation form.
-    RefList<SolverConstraint> equalities = [];
+    RefList<SolverConstraint> equalities = new(32);
 
-    RefList<OrConstraint> disjunctions = [];
+    RefList<OrConstraint> disjunctions = new(32);
 
-    RefIntMap<LinearEquality> substitutions = new(0);
+    RefIntMap<LinearEquality> substitutions = [];
 
     private static bool Trace => DebugSettings.Instance?.SolverTrace ?? false;
 
@@ -81,6 +87,24 @@ internal class LinearProblem
             constraints.Add(StandardizeConstraint(constraint));
     }
 
+    public void AddConstraint(SimpleConstraint constraint)
+    {
+        if (constraint.relation == Relation.Equal)
+        {
+            equalities.Add(
+                new SolverConstraint()
+                {
+                    variables = [constraint.variable],
+                    constant = constraint.constant,
+                }
+            );
+        }
+        else
+        {
+            simple.Add(StandardizeConstraint(constraint));
+        }
+    }
+
     private static SolverConstraint StandardizeConstraint(LinearConstraint constraint)
     {
         switch (constraint.relation)
@@ -99,6 +123,25 @@ internal class LinearProblem
             default:
                 throw new ArgumentException($"Unknown constraint relation {constraint.relation}");
         }
+    }
+
+    private static SimpleSolverConstraint StandardizeConstraint(SimpleConstraint constraint)
+    {
+        return constraint.relation switch
+        {
+            Relation.Equal => throw new ArgumentException("Cannot standardize an == constraint"),
+            Relation.LEqual => new()
+            {
+                variable = constraint.variable,
+                constant = constraint.constant,
+            },
+            Relation.GEqual => new()
+            {
+                variable = -constraint.variable,
+                constant = -constraint.constant,
+            },
+            _ => throw new ArgumentException($"Unknown constraint relation {constraint.relation}"),
+        };
     }
 
     /// <summary>
@@ -125,6 +168,10 @@ internal class LinearProblem
             }
         );
     }
+
+    public void AddOrConstraint(SimpleConstraint a, LinearConstraint b) =>
+        AddOrConstraint(new LinearConstraint(a), b);
+
     #endregion
 
     public LinearSolution Maximize(LinearEquation func)
@@ -151,10 +198,11 @@ internal class LinearProblem
         var matrix = BuildPresolveMatrix(func);
         var zeros = new BitSet(VariableCount);
 
-        LinearPresolve.Presolve(matrix, zeros, equalities.Count, constraints.Count);
+        if (!LinearPresolve.Presolve(matrix, zeros, equalities.Count, constraints.Count))
+            return;
 
         var nEqs = equalities.Count;
-        var nCons = constraints.Count;
+        var nCons = constraints.Count + simple.Count;
         var nDisj = disjunctions.Count;
 
         RefList<LinearEquation> saved = new(equalities.Count + constraints.Count);
@@ -165,13 +213,15 @@ internal class LinearProblem
 
         substitutions = new(VariableCount);
         equalities.Clear();
+        simple.Clear();
         constraints.Clear();
 
         int i = 0;
         for (; i < nEqs; ++i)
         {
             var row = matrix.GetRow(i);
-            var index = row.Slice(0, row.Length - 1).IndexOfNotEqual(0.0);
+            var coefs = row.Slice(0, row.Length - 1);
+            var index = coefs.IndexOfNotEqual(0.0);
 
             // Span has no non-zero entries, we can skip it.
             if (index < 0)
@@ -179,6 +229,18 @@ internal class LinearProblem
                 if (row[row.Length - 1] != 0.0)
                     throw new UnsolvableProblemException();
 
+                continue;
+            }
+
+            if (coefs.Slice(index + 1).IndexOfNotEqual(0.0) < 0)
+            {
+                simple.Add(
+                    new SimpleSolverConstraint()
+                    {
+                        variable = new(index, coefs[index]),
+                        constant = row[row.Length - 1],
+                    }
+                );
                 continue;
             }
 
@@ -268,7 +330,7 @@ internal class LinearProblem
         using var span = new TraceSpan("LinearProblem.BuildPresolveMatrix");
         Matrix matrix = new(
             VariableCount + 1,
-            equalities.Count + constraints.Count + disjunctions.Count * 2 + 1
+            equalities.Count + simple.Count + constraints.Count + disjunctions.Count * 2 + 1
         );
 
         int i = 0;
@@ -278,6 +340,13 @@ internal class LinearProblem
                 matrix[var.Index, i] = var.Coef;
 
             matrix[matrix.Width - 1, i] = equality.constant;
+            i += 1;
+        }
+
+        foreach (var simple in simple)
+        {
+            matrix[simple.variable.Index, i] = simple.variable.Coef;
+            matrix[matrix.Width - 1, i] = simple.constant;
             i += 1;
         }
 
@@ -328,13 +397,13 @@ internal class LinearProblem
         if (Trace)
             LogUtil.Log($"After presolve:\nMaximize Z = {func}\nsubject to\n{this}");
 
-        if (constraints.Count == 0 && disjunctions.Count == 0)
+        if (simple.Count == 0 && constraints.Count == 0 && disjunctions.Count == 0)
             return ExtractEmptySolution();
 
         // Do a depth-first search but order by score in order to break depth ties.
         PriorityQueue<QueueEntry, KeyValuePair<int, double>> entries = new(
             disjunctions.Count() * 2 + 1,
-            new InverseComparer()
+            InverseComparer.Instance
         );
         entries.Enqueue(
             new()
@@ -497,7 +566,7 @@ internal class LinearProblem
     {
         using var span = new TraceSpan("LinearProblem.BuildSimplexTableau");
 
-        int constraintCount = constraints.Count;
+        int constraintCount = constraints.Count + simple.Count;
         constraintCount += choices.Select(choice => choice == BinaryChoice.Unknown ? 3 : 1).Sum();
 
         var tableau = new Matrix(varMap.Count + constraintCount + 1, constraintCount + 1);
@@ -506,6 +575,15 @@ internal class LinearProblem
             tableau[varMap[var.Index], 0] = -var.Coef;
 
         int y = 1;
+        foreach (var constraint in simple)
+            WriteConstraintToTableau(
+                tableau,
+                constraint.variable,
+                constraint.constant,
+                ref varMap,
+                ref y
+            );
+
         foreach (var constraint in constraints)
             WriteConstraintToTableau(tableau, constraint, ref varMap, ref y);
 
@@ -725,6 +803,12 @@ internal class LinearProblem
             builder.Append("\n");
         }
 
+        foreach (var simple in simple)
+        {
+            builder.Append(simple);
+            builder.Append("\n");
+        }
+
         foreach (var constraint in constraints)
         {
             builder.Append(constraint.ToRelationString("<="));
@@ -851,6 +935,24 @@ internal class LinearProblem
         }
     }
 
+    private struct SimpleSolverConstraint()
+    {
+        public Variable variable;
+        public double constant;
+
+        public SimpleSolverConstraint(SimpleConstraint constraint)
+            : this()
+        {
+            variable = constraint.variable;
+            constant = constraint.constant;
+        }
+
+        public override readonly string ToString()
+        {
+            return $"{variable} <= {constant}";
+        }
+    }
+
     // var == equation + constant
     private struct LinearEquality
     {
@@ -886,6 +988,8 @@ internal class LinearProblem
 
     private class InverseComparer : IComparer<KeyValuePair<int, double>>
     {
+        public static readonly InverseComparer Instance = new();
+
         public int Compare(KeyValuePair<int, double> x, KeyValuePair<int, double> y)
         {
             int cmp = y.Key.CompareTo(x.Key);
