@@ -112,12 +112,39 @@ internal struct LinearEquation(double[] values)
         return new((double[])values.Clone());
     }
 
-    private void Reserve(int newcap)
+    public void Reserve(int newcap)
     {
         if (newcap < Capacity)
             return;
 
         Array.Resize(ref values, Math.Max(Capacity * 2, newcap));
+    }
+
+    public void Set(Span<double> values)
+    {
+        int min = Math.Min(Capacity, values.Length);
+        int i = 0;
+        for (; i < min; ++i)
+            this.values[i] = values[i];
+        if (Capacity < values.Length)
+        {
+            for (; i < values.Length; ++i)
+            {
+                if (values[i] == 0.0)
+                    continue;
+
+                Reserve(values.Length);
+
+                for (; i < values.Length; ++i)
+                    this.values[i] = values[i];
+                break;
+            }
+        }
+        else
+        {
+            for (; i < Capacity; ++i)
+                this.values[i] = 0.0;
+        }
     }
 
     #region Operators
