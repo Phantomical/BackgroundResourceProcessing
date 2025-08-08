@@ -84,15 +84,6 @@ internal readonly struct RefIntMap<V>(int capacity) : IEnumerable<KeyValuePair<i
         Array.Clear(values, 0, values.Length);
     }
 
-    public readonly Enumerator GetEnumerator() => new(this);
-
-    public readonly Enumerator GetEnumeratorAt(int key) => new(this, key);
-
-    readonly IEnumerator<KeyValuePair<int, V>> IEnumerable<KeyValuePair<int, V>>.GetEnumerator() =>
-        GetEnumerator();
-
-    readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
     static void ThrowKeyNotFoundException(int key) =>
         throw new KeyNotFoundException($"key {key} not found in the map");
 
@@ -101,6 +92,61 @@ internal readonly struct RefIntMap<V>(int capacity) : IEnumerable<KeyValuePair<i
 
     static void ThrowKeyExistsException(int key) =>
         throw new ArgumentException($"key {key} already exists in the map");
+
+    #region Entry
+    public Entry GetEntry(int key)
+    {
+        if (key < 0 || key >= Capacity)
+            ThrowKeyOutOfBoundsException(key);
+
+        return new(this, key);
+    }
+
+    public readonly struct Entry
+    {
+        readonly BitSet present;
+        readonly V[] values;
+        readonly int key;
+
+        public bool HasValue => present[key];
+        public ref V Value
+        {
+            get
+            {
+                if (!HasValue)
+                    ThrowKeyNotFoundException(key);
+                return ref values[key];
+            }
+        }
+
+        public Entry(RefIntMap<V> map, int key)
+        {
+            if (key < 0 || key >= map.Capacity)
+                ThrowKeyOutOfBoundsException(key);
+
+            present = map.present;
+            values = map.values;
+            this.key = key;
+        }
+
+        public ref V Insert(V value)
+        {
+            present[key] = true;
+            values[key] = value;
+            return ref values[key];
+        }
+    }
+    #endregion
+
+    #region Enumerators
+    public readonly Enumerator GetEnumerator() => new(this);
+
+    public readonly Enumerator GetEnumeratorAt(int key) => new(this, key);
+
+    readonly IEnumerator<KeyValuePair<int, V>> IEnumerable<KeyValuePair<int, V>>.GetEnumerator() =>
+        GetEnumerator();
+
+    readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     public struct Enumerator : IEnumerator<KeyValuePair<int, V>>
     {
@@ -216,6 +262,7 @@ internal readonly struct RefIntMap<V>(int capacity) : IEnumerable<KeyValuePair<i
 
         public void Reset() => enumerator.Reset();
     }
+    #endregion
 
     private sealed class DebugView(RefIntMap<V> map)
     {

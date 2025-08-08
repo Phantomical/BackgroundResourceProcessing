@@ -1,276 +1,239 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Windows.Markup;
-using BackgroundResourceProcessing.Collections;
-
-#pragma warning disable CS0660 // Type defines operator == or operator != but does not override Object.Equals(object o)
-#pragma warning disable CS0661 // Type defines operator == or operator != but does not override Object.GetHashCode()
+using BackgroundResourceProcessing.Utils;
 
 namespace BackgroundResourceProcessing.Solver;
 
-internal class LinearEquation(double[] values) : IEnumerable<Variable>, IComparable<LinearEquation>
+internal struct LinearEquation(double[] values)
+    : IEnumerable<Variable>,
+        IEquatable<LinearEquation>,
+        IComparable<LinearEquation>
 {
+    private static readonly double[] Empty = [];
+
     double[] values = values;
 
-    public int Capacity => values.Length;
-
-    public int Count
+    public readonly int Capacity => values.Length;
+    public readonly int Count
     {
         get
         {
             int count = 0;
-            for (int i = 0; i < values.Length; ++i)
+            int cap = Capacity;
+            for (int i = 0; i < cap; ++i)
                 if (values[i] != 0.0)
                     count += 1;
             return count;
         }
     }
 
-    public KeyList Keys => new(this);
-    public Enumerator Values => GetEnumerator();
-
-    public Variable this[int index]
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get { return new(index, values[index]); }
-    }
-
     public LinearEquation()
-        : this([]) { }
+        : this(Empty) { }
 
     public LinearEquation(int capacity)
         : this(new double[capacity]) { }
 
-    public LinearEquation(Variable var)
-        : this(var.Index + 1)
-    {
-        values[var.Index] = var.Coef;
-    }
+    public LinearEquation(Span<double> values)
+        : this(values.ToArray()) { }
 
     public void Add(Variable var)
     {
-        if (var.Index >= values.Length)
-            Expand(var.Index);
+        if (var.Index >= Capacity)
+        {
+            if (var.Coef == 0.0)
+                return;
+            Reserve(var.Index + 1);
+        }
 
         values[var.Index] += var.Coef;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Add(LinearEquation eq)
+    {
+        int mincap = Math.Min(eq.Capacity, Capacity);
+        int i = 0;
+
+        for (; i < mincap; ++i)
+            values[i] += eq.values[i];
+
+        for (; i < eq.Capacity; ++i)
+        {
+            if (eq.values[i] == 0.0)
+                continue;
+
+            Reserve(eq.Capacity);
+            for (; i < eq.Capacity; ++i)
+                values[i] += eq.values[i];
+            break;
+        }
+    }
+
     public void Sub(Variable var)
     {
         Add(-var);
     }
 
-    public void Remove(int index)
+    public void Sub(LinearEquation eq)
     {
-        if (index >= values.Length)
+        int mincap = Math.Min(eq.Capacity, Capacity);
+        int i = 0;
+
+        for (; i < mincap; ++i)
+            values[i] -= eq.values[i];
+
+        for (; i < eq.Capacity; ++i)
+        {
+            if (eq.values[i] == 0.0)
+                continue;
+
+            Reserve(eq.Capacity);
+            for (; i < eq.Capacity; ++i)
+                values[i] -= eq.values[i];
+            break;
+        }
+    }
+
+    public readonly void Negate()
+    {
+        for (int i = 0; i < Capacity; ++i)
+            values[i] = -values[i];
+    }
+
+    public readonly void Clear()
+    {
+        Array.Clear(values, 0, values.Length);
+    }
+
+    public readonly LinearEquation Clone()
+    {
+        return new((double[])values.Clone());
+    }
+
+    private void Reserve(int newcap)
+    {
+        if (newcap < Capacity)
             return;
 
-        values[index] = 0.0;
+        Array.Resize(ref values, Math.Max(Capacity * 2, newcap));
     }
 
-    public void Clear()
-    {
-        for (int i = 0; i < values.Length; ++i)
-            values[i] = 0.0;
-    }
+    #region Operators
+    public static LinearConstraint operator <=(LinearEquation eq, double constant) =>
+        new(eq, Relation.LEqual, constant);
 
-    public bool TryGetValue(int index, out Variable var)
+    public static LinearConstraint operator >=(LinearEquation eq, double constant) =>
+        new(eq, Relation.GEqual, constant);
+
+    public static LinearConstraint operator ==(LinearEquation eq, double constant) =>
+        new(eq, Relation.Equal, constant);
+
+    public static LinearConstraint operator !=(LinearEquation eq, double constant) =>
+        throw new NotImplementedException();
+    #endregion
+
+    #region IComparable
+    public readonly int CompareTo(LinearEquation other)
     {
-        if (index < 0 || index >= values.Length)
+        int mincap = Math.Min(Capacity, other.Capacity);
+        int i = 0;
+
+        for (; i < mincap; ++i)
         {
-            var = default;
-            return false;
+            int comp = values[i].CompareTo(other.values[i]);
+            if (comp != 0)
+                return comp;
         }
 
-        var = new(index, values[index]);
-        return var.Coef != 0.0;
-    }
-
-    public bool Contains(int index)
-    {
-        if (index < 0 || index >= values.Length)
-            return false;
-
-        return values[index] != 0.0;
-    }
-
-    public bool Contains(Variable var)
-    {
-        return Contains(var.Index);
-    }
-
-    /// <summary>
-    /// Create a copy of this <see cref="LinearEquation"/> with an
-    /// independent backing list.
-    /// </summary>
-    /// <returns></returns>
-    public LinearEquation Clone()
-    {
-        LinearEquation copy = new(Capacity);
-        for (int i = 0; i < values.Length; ++i)
-            copy.values[i] = values[i];
-        return copy;
-    }
-
-    public static LinearEquation operator +(LinearEquation eq, Variable var)
-    {
-        eq.Add(var);
-        return eq;
-    }
-
-    public static LinearEquation operator -(LinearEquation eq, Variable var)
-    {
-        eq.Sub(var);
-        return eq;
-    }
-
-    public static LinearEquation operator +(LinearEquation a, LinearEquation b)
-    {
-        if (a.Capacity < b.Capacity)
-            (a, b) = (b, a);
-
-        for (int i = 0; i < b.values.Length; ++i)
-            a.values[i] += b.values[i];
-
-        return a;
-    }
-
-    public static LinearEquation operator -(LinearEquation a, LinearEquation b)
-    {
-        if (a.Capacity >= b.Capacity)
+        if (Capacity > other.Capacity)
         {
-            for (int i = 0; i < b.values.Length; ++i)
-                a.values[i] -= b.values[i];
-
-            return a;
+            for (; i < Capacity; ++i)
+            {
+                int comp = values[i].CompareTo(0.0);
+                if (comp != 0)
+                    return comp;
+            }
         }
         else
         {
-            for (int i = 0; i < a.values.Length; ++i)
-                b.values[i] = -b.values[i] + a.values[i];
-            for (int i = a.values.Length; i < b.values.Length; ++i)
-                b.values[i] = -b.values[i];
-
-            return b;
+            for (; i < other.Capacity; ++i)
+            {
+                int comp = 0.0.CompareTo(other.values[i]);
+                if (comp != 0)
+                    return comp;
+            }
         }
+
+        return 0;
     }
 
-    public static LinearEquation operator *(LinearEquation eq, double value)
+    #endregion
+
+    #region IEquatable
+    public readonly bool Equals(LinearEquation other)
     {
-        for (int i = 0; i < eq.values.Length; ++i)
-            eq.values[i] *= value;
-        return eq;
-    }
+        int mincap = Math.Min(Capacity, other.Capacity);
+        int i = 0;
 
-    public static LinearEquation operator /(LinearEquation eq, double value)
-    {
-        for (int i = 0; i < eq.values.Length; ++i)
-            eq.values[i] /= value;
-        return eq;
-    }
-
-    public static LinearConstraint operator ==(LinearEquation eq, double value)
-    {
-        return new LinearConstraint(eq, Relation.Equal, value);
-    }
-
-    public static LinearConstraint operator !=(LinearEquation eq, double value)
-    {
-        throw new NotImplementedException("Cannot optimize != constraints");
-    }
-
-    public static LinearConstraint operator <=(LinearEquation eq, double value)
-    {
-        return new LinearConstraint(eq, Relation.LEqual, value);
-    }
-
-    public static LinearConstraint operator >=(LinearEquation eq, double value)
-    {
-        return new LinearConstraint(eq, Relation.GEqual, value);
-    }
-
-    public LinearEquation Negated()
-    {
-        var eq = new LinearEquation(Capacity);
-        for (int i = 0; i < values.Length; ++i)
-            eq.values[i] = -values[i];
-        return eq;
-    }
-
-    public override string ToString()
-    {
-        StringBuilder builder = new();
-
-        bool first = true;
-        foreach (var (index, coef) in this)
-            LinearProblem.RenderCoef(builder, coef, new Variable(index).ToString(), ref first);
-
-        return builder.ToString();
-    }
-
-    private void Expand(int needed)
-    {
-        if (needed < values.Length)
-            return;
-
-        var newcap = Math.Max(values.Length * 2, needed + 1);
-        Array.Resize(ref values, newcap);
-    }
-
-    public Enumerator GetEnumerator()
-    {
-        return new Enumerator(this);
-    }
-
-    IEnumerator<Variable> IEnumerable<Variable>.GetEnumerator()
-    {
-        return new BoxedEnumerator(values);
-    }
-
-    IEnumerator IEnumerable.GetEnumerator()
-    {
-        return ((IEnumerable<Variable>)this).GetEnumerator();
-    }
-
-    public int CompareTo(LinearEquation other)
-    {
-        var it1 = GetEnumerator();
-        var it2 = other.GetEnumerator();
-
-        while (true)
+        for (; i < mincap; ++i)
         {
-            var next1 = it1.MoveNext();
-            var next2 = it2.MoveNext();
-
-            if (next1 && !next2)
-                return 1;
-            if (!next1 && next2)
-                return -1;
-            if (!next1 && !next2)
-                return 0;
-
-            var cmp = it1.Current.CompareTo(it2.Current);
-            if (cmp != 0)
-                return cmp;
+            if (values[i] != other.values[i])
+                return false;
         }
+
+        if (Capacity > other.Capacity)
+        {
+            for (; i < Capacity; ++i)
+            {
+                if (values[i] != 0.0)
+                    return false;
+            }
+        }
+        else
+        {
+            for (; i < other.Capacity; ++i)
+            {
+                if (values[i] != 0.0)
+                    return false;
+            }
+        }
+
+        return true;
+    }
+    #endregion
+
+    public override readonly bool Equals(object obj)
+    {
+        if (obj is LinearEquation eq)
+            return Equals(eq);
+
+        return false;
     }
 
-    public ref struct Enumerator(LinearEquation eq) : IEnumerator<Variable>
+    public override readonly int GetHashCode()
     {
-        readonly double[] values = eq.values;
+        HashCode hasher = new();
+        hasher.AddAll(values);
+        return hasher.GetHashCode();
+    }
+
+    #region IEnumerable
+    public readonly Enumerator GetEnumerator() => new(this);
+
+    readonly IEnumerator<Variable> IEnumerable<Variable>.GetEnumerator() => GetEnumerator();
+
+    readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+    public struct Enumerator(LinearEquation variables)
+        : IEnumerator<Variable>,
+            IEnumerable<Variable>
+    {
+        readonly double[] values = variables.values;
         int index = -1;
 
-        public readonly Variable Current
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return new(index, values[index]); }
-        }
+        public readonly Variable Current => new(index, values[index]);
 
         readonly object IEnumerator.Current => Current;
 
@@ -280,7 +243,6 @@ internal class LinearEquation(double[] values) : IEnumerable<Variable>, ICompara
             while (true)
             {
                 index += 1;
-
                 if (index >= values.Length)
                     return false;
                 if (values[index] != 0.0)
@@ -288,134 +250,30 @@ internal class LinearEquation(double[] values) : IEnumerable<Variable>, ICompara
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly void Dispose() { }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Reset()
         {
             index = -1;
         }
-    }
 
-    class BoxedEnumerator(double[] values) : IEnumerator<Variable>
+        public readonly Enumerator GetEnumerator() => this;
+
+        readonly IEnumerator<Variable> IEnumerable<Variable>.GetEnumerator() => GetEnumerator();
+
+        readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+    #endregion
+
+    #region ToString
+    public override readonly string ToString()
     {
-        readonly double[] values = values;
-        int index = -1;
+        StringBuilder builder = new();
+        bool first = true;
+        foreach (var (index, coef) in this)
+            LinearProblem.RenderCoef(builder, coef, new Variable(index).ToString(), ref first);
 
-        public Variable Current
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return new(index, values[index]); }
-        }
-
-        object IEnumerator.Current => Current;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool MoveNext()
-        {
-            while (true)
-            {
-                index += 1;
-
-                if (index >= values.Length)
-                    return false;
-                if (values[index] != 0.0)
-                    return true;
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Dispose() { }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Reset()
-        {
-            index = -1;
-        }
+        return builder.ToString();
     }
-
-    public readonly struct KeyList(LinearEquation eq) : IEnumerable<int>
-    {
-        readonly double[] values = eq.values;
-
-        public Enumerator GetEnumerator()
-        {
-            return new(this);
-        }
-
-        IEnumerator<int> IEnumerable<int>.GetEnumerator()
-        {
-            return new BoxedEnumerator(this);
-        }
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return new BoxedEnumerator(this);
-        }
-
-        public ref struct Enumerator(KeyList keys) : IEnumerator<int>
-        {
-            readonly double[] values = keys.values;
-            int index = -1;
-
-            public readonly int Current => index;
-            readonly object IEnumerator.Current => Current;
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public bool MoveNext()
-            {
-                while (true)
-                {
-                    index += 1;
-
-                    if (index >= values.Length)
-                        return false;
-                    if (values[index] != 0.0)
-                        return true;
-                }
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public readonly void Dispose() { }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Reset()
-            {
-                index = -1;
-            }
-        }
-
-        struct BoxedEnumerator(KeyList keys) : IEnumerator<int>
-        {
-            readonly double[] values = keys.values;
-            int index = -1;
-
-            public readonly int Current => index;
-            readonly object IEnumerator.Current => Current;
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public bool MoveNext()
-            {
-                while (true)
-                {
-                    index += 1;
-
-                    if (index >= values.Length)
-                        return false;
-                    if (values[index] != 0.0)
-                        return true;
-                }
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public readonly void Dispose() { }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void Reset()
-            {
-                index = -1;
-            }
-        }
-    }
+    #endregion
 }

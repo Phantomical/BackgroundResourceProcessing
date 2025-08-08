@@ -8,6 +8,8 @@ namespace BackgroundResourceProcessing.Collections;
 
 internal struct RefList<T> : IList<T>, ICollection<T>, IEnumerable<T>
 {
+    private static readonly T[] Empty = [];
+
     T[] data;
     int count = 0;
 
@@ -39,6 +41,11 @@ internal struct RefList<T> : IList<T>, ICollection<T>, IEnumerable<T>
 
         this.data = data;
         this.count = count;
+    }
+
+    public RefList()
+    {
+        data = Empty;
     }
 
     public RefList(int capacity)
@@ -102,6 +109,39 @@ internal struct RefList<T> : IList<T>, ICollection<T>, IEnumerable<T>
         count = newcount;
     }
 
+    public void Resize(int length)
+    {
+        if (length < 0)
+            ThrowArgumentOutOfRangeException(nameof(length));
+
+        if (length < count)
+        {
+            Array.Clear(data, length, count - length);
+            count = length;
+        }
+        else if (length > count)
+        {
+            if (length > Capacity)
+                Reserve(length);
+
+            count = length;
+        }
+    }
+
+    public bool TryPop(out T value)
+    {
+        if (count == 0)
+        {
+            value = default;
+            return false;
+        }
+
+        count -= 1;
+        value = data[count];
+        data[count] = default;
+        return true;
+    }
+
     public readonly RefList<T> Clone()
     {
         return new((T[])data.Clone(), count);
@@ -160,9 +200,8 @@ internal struct RefList<T> : IList<T>, ICollection<T>, IEnumerable<T>
 
     public void Clear()
     {
-        if (!UnsafeUtility.IsUnmanaged<T>())
-            Array.Clear(data, 0, count);
         count = 0;
+        Array.Clear(data, 0, count);
     }
 
     public readonly bool Contains(T item)

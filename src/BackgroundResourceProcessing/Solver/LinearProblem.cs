@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
@@ -20,12 +19,12 @@ internal class LinearProblem
     int SlackCount = 0;
 
     // Constraints in standard form (Ax <= b)
-    readonly List<SolverConstraint> constraints = [];
+    RefList<SolverConstraint> constraints = [];
 
     // Equalities in equation form.
-    readonly List<SolverConstraint> equalities = [];
+    RefList<SolverConstraint> equalities = [];
 
-    readonly List<OrConstraint> disjunctions = [];
+    RefList<OrConstraint> disjunctions = [];
 
     RefIntMap<LinearEquality> substitutions = new(0);
 
@@ -70,14 +69,11 @@ internal class LinearProblem
     /// </summary>
     ///
     /// <remarks>
-    /// This method will do some pre-processing in case the added constraint
-    /// gives a known value for a variable.
+    /// Note that this method takes ownership of the constraint. If you don't
+    /// want that then make sure to clone the constraint first.
     /// </remarks>
     public void AddConstraint(LinearConstraint constraint)
     {
-        if (constraint.KnownInconsistent)
-            throw new UnsolvableProblemException();
-
         if (constraint.relation == Relation.Equal)
             equalities.Add(new SolverConstraint(constraint));
         else
@@ -86,16 +82,22 @@ internal class LinearProblem
 
     private static SolverConstraint StandardizeConstraint(LinearConstraint constraint)
     {
-        if (constraint.relation == Relation.Equal)
-            throw new ArgumentException("Cannot standardize an == constraint");
-
-        if (constraint.relation == Relation.GEqual)
+        switch (constraint.relation)
         {
-            var eq = constraint.variables.Negated();
-            return new() { variables = eq, constant = -constraint.constant };
-        }
+            case Relation.Equal:
+                throw new ArgumentException("Cannot standardize an == constraint");
 
-        return new() { variables = constraint.variables, constant = constraint.constant };
+            case Relation.LEqual:
+                return new(constraint);
+
+            case Relation.GEqual:
+                constraint.variables.Negate();
+                constraint.constant *= -1;
+                return new(constraint);
+
+            default:
+                throw new ArgumentException($"Unknown constraint relation {constraint.relation}");
+        }
     }
 
     /// <summary>
@@ -174,13 +176,12 @@ internal class LinearProblem
                 continue;
             }
 
-            var mult = row[index];
             var eqn = new LinearEquation(VariableCount);
 
             for (int x = index + 1; x < row.Length - 1; ++x)
             {
                 if (row[x] != 0.0)
-                    eqn.Sub(new Variable(x, row[x] / mult));
+                    eqn.Sub(new Variable(x, row[x] / row[index]));
             }
 
             substitutions.Add(
@@ -189,7 +190,7 @@ internal class LinearProblem
                 {
                     variable = index,
                     equation = eqn,
-                    constant = row[row.Length - 1] / mult,
+                    constant = row[row.Length - 1] / row[index],
                 }
             );
         }
@@ -207,12 +208,7 @@ internal class LinearProblem
                 continue;
             }
 
-            var eqn = new LinearEquation(VariableCount);
-            for (int x = index; x < row.Length - 1; ++x)
-            {
-                if (row[x] != 0.0)
-                    eqn.Add(new Variable(x, row[x]));
-            }
+            var eqn = new LinearEquation(row.Slice(0, row.Length - 1));
 
             constraints.Add(
                 new SolverConstraint() { variables = eqn, constant = row[row.Length - 1] }
@@ -223,7 +219,7 @@ internal class LinearProblem
         {
             var lhs = matrix.GetRow(i);
             var rhs = matrix.GetRow(i + 1);
-            var dis = disjunctions[j];
+            ref var dis = ref disjunctions[j];
 
             dis.lhs.variables.Clear();
             dis.rhs.variables.Clear();
@@ -544,16 +540,7 @@ internal class LinearProblem
                     tableau[varMap[z.Index], y - 1] = M * z.Coef;
                     tableau[tableau.Width - 1, y - 1] += M;
 
-                    WriteConstraintToTableau(
-                        tableau,
-                        new SolverConstraint()
-                        {
-                            constant = 1.0,
-                            variables = new LinearEquation(z),
-                        },
-                        ref varMap,
-                        ref y
-                    );
+                    WriteConstraintToTableau(tableau, z, 1.0, ref varMap, ref y);
 
                     break;
                 default:
@@ -576,6 +563,20 @@ internal class LinearProblem
 
         tableau[varMap.Count + y - 1, y] = 1.0;
         tableau[tableau.Width - 1, y] = constraint.constant;
+        y += 1;
+    }
+
+    private void WriteConstraintToTableau(
+        Matrix tableau,
+        Variable var,
+        double constant,
+        ref VariableMap varMap,
+        ref int y
+    )
+    {
+        tableau[varMap[var.Index], y] = var.Coef;
+        tableau[varMap.Count + y - 1, y] = 1.0;
+        tableau[tableau.Width - 1, y] = constant;
         y += 1;
     }
 
@@ -807,7 +808,7 @@ internal class LinearProblem
         public SolverConstraint rhs;
     }
 
-    private class SolverConstraint() : IComparable<SolverConstraint>
+    private struct SolverConstraint() : IComparable<SolverConstraint>
     {
         public LinearEquation variables;
         public double constant;
@@ -819,22 +820,6 @@ internal class LinearProblem
             constant = constraint.constant;
         }
 
-        public void Substitute(int index, LinearEquation eq, double value)
-        {
-            if (!variables.TryGetValue(index, out var variable))
-                return;
-            if (eq.Contains(variable))
-                throw new ArgumentException(
-                    $"Attempted to substitue variable {variable} with equation {eq} containing {variable}"
-                );
-
-            variables.Remove(index);
-            var coef = variable.Coef;
-            foreach (var var in eq)
-                variables.Add(var * coef);
-            constant -= coef * value;
-        }
-
         public int CompareTo(SolverConstraint other)
         {
             int cmp = variables.CompareTo(other.variables);
@@ -843,7 +828,12 @@ internal class LinearProblem
             return constant.CompareTo(other.constant);
         }
 
-        public string ToRelationString(string relation)
+        public override readonly string ToString()
+        {
+            return $"{variables} <= {constant}";
+        }
+
+        public readonly string ToRelationString(string relation)
         {
             return $"{variables} {relation} {constant}";
         }

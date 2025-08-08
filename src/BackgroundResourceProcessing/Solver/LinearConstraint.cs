@@ -3,11 +3,11 @@ using System.Text;
 
 namespace BackgroundResourceProcessing.Solver;
 
-internal readonly struct LinearConstraint : IComparable<LinearConstraint>
+internal struct LinearConstraint : IComparable<LinearConstraint>
 {
-    public readonly LinearEquation variables;
-    public readonly Relation relation;
-    public readonly double constant;
+    public LinearEquation variables;
+    public Relation relation;
+    public double constant;
 
     public LinearConstraint(LinearEquation variables, Relation relation, double constant)
     {
@@ -28,7 +28,7 @@ internal readonly struct LinearConstraint : IComparable<LinearConstraint>
         this.constant = constant;
     }
 
-    public bool KnownInconsistent
+    public readonly bool KnownInconsistent
     {
         get
         {
@@ -49,7 +49,7 @@ internal readonly struct LinearConstraint : IComparable<LinearConstraint>
         }
     }
 
-    public LinearConstraint Clone()
+    public readonly LinearConstraint Clone()
     {
         return new(variables.Clone(), relation, constant);
     }

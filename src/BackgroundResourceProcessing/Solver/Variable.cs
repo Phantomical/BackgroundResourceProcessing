@@ -45,34 +45,22 @@ internal readonly struct Variable(int index, double coef) : IComparable<Variable
         return new(var.Index, -var.Coef);
     }
 
-    public static LinearEquation operator +(Variable a, Variable b)
-    {
-        LinearEquation eq = new(Math.Max(a.Index, b.Index) + 1) { a, b };
-        return eq;
-    }
-
-    public static LinearEquation operator -(Variable a, Variable b)
-    {
-        LinearEquation eq = new(Math.Max(a.Index, b.Index) + 1) { a, -b };
-        return eq;
-    }
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static LinearConstraint operator <=(Variable v, double c)
     {
-        return new LinearEquation(v) <= c;
+        return new LinearEquation(v.Index + 1) { v } <= c;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static LinearConstraint operator >=(Variable v, double c)
     {
-        return new LinearEquation(v) >= c;
+        return new LinearEquation(v.Index + 1) { v } >= c;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static LinearConstraint operator ==(Variable v, double c)
     {
-        return new LinearEquation(v) == c;
+        return new LinearEquation(v.Index + 1) { v } == c;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

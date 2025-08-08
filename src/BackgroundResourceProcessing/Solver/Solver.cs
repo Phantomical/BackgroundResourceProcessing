@@ -7,6 +7,7 @@ using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
+using UnityEngine.VR;
 
 namespace BackgroundResourceProcessing.Solver;
 
@@ -120,7 +121,8 @@ internal class Solver
                     // inventory and allow the solver to determine where they
                     // should flow.
                     var rateVars = problem.CreateVariables(connected.Count);
-                    var rateEq = new LinearEquation(-rate);
+                    var rateEq = new LinearEquation(problem.VariableCount);
+                    rateEq.Sub(rate);
 
                     for (int i = 0; i < connected.Count; ++i)
                     {
@@ -131,8 +133,8 @@ internal class Solver
                         rateEq.Add(rateVar);
                         invRate.Sub(rateVar);
 
-                        if (dRates.TryGetValue(invId, out var dRate))
-                            dRate.Sub(rateVar);
+                        if (dRates.ContainsKey(invId))
+                            dRates[invId].Sub(rateVar);
                     }
 
                     // sum(rateVars) == rate
@@ -172,10 +174,14 @@ internal class Solver
                     var invId = connected.First();
                     var invRate = iRates.GetOrAddWithCapacity(invId, problem.VariableCount);
 
+                    var entry = dRates.GetEntry(invId);
                     if (output.DumpExcess)
-                        dRates.GetOrAddCloned(invId, invRate);
-                    else if (dRates.TryGetValue(invId, out var dRate))
-                        dRate.Add(rate);
+                    {
+                        if (!entry.HasValue)
+                            entry.Insert(invRate.Clone());
+                    }
+                    else if (entry.HasValue)
+                        entry.Value.Add(rate);
 
                     invRate.Add(rate);
                 }
@@ -186,7 +192,8 @@ internal class Solver
                     // inventory and allow the solver to determine where they
                     // should flow.
                     var rateVars = problem.CreateVariables(connected.Count);
-                    var rateEq = new LinearEquation(-rate);
+                    var rateEq = new LinearEquation(problem.VariableCount);
+                    rateEq.Sub(rate);
 
                     for (int i = 0; i < connected.Count; ++i)
                     {
@@ -196,10 +203,14 @@ internal class Solver
 
                         rateEq.Add(rateVar);
 
+                        var entry = dRates.GetEntry(invId);
                         if (output.DumpExcess)
-                            dRates.GetOrAddCloned(invId, invRate);
-                        else if (dRates.TryGetValue(invId, out var dRate))
-                            dRate.Add(rateVar);
+                        {
+                            if (!entry.HasValue)
+                                entry.Insert(invRate.Clone());
+                        }
+                        else if (entry.HasValue)
+                            entry.Value.Add(rateVar);
 
                         invRate.Add(rateVar);
                     }
@@ -243,13 +254,12 @@ internal class Solver
                 if (!iRates.TryGetValue(inventoryId, out var irate))
                     continue;
 
-                if (!constraintEqs.TryGetValue(inventory.resourceId, out var eq))
-                {
-                    eq = new(problem.VariableCount);
-                    constraintEqs.Add(inventory.resourceId, eq);
-                }
+                var entry = constraintEqs.GetEntry(inventory.resourceId);
+                if (!entry.HasValue)
+                    entry.Insert(new(problem.VariableCount));
+                ref var eq = ref entry.Value;
 
-                eq += irate;
+                eq.Add(irate);
             }
 
             foreach (var (resource, constraint) in converter.constraints)
@@ -288,8 +298,9 @@ internal class Solver
             if (!iRates.TryGetValue(inventoryId, out var iRate))
                 continue;
 
-            if (!dRates.TryGetValue(inventoryId, out var dRate))
-                dRate = null;
+            LinearEquation? dRate = null;
+            if (dRates.TryGetValue(inventoryId, out var _dRate))
+                dRate = _dRate;
 
             if (dRate == null && inventory.state == InventoryState.Zero)
             {
@@ -408,7 +419,7 @@ internal class Solver
 
 internal static class RefIntMapExtensions
 {
-    public static LinearEquation GetOrAddWithCapacity(
+    public static ref LinearEquation GetOrAddWithCapacity(
         ref this RefIntMap<LinearEquation> map,
         int key,
         int capacity
@@ -417,15 +428,14 @@ internal static class RefIntMapExtensions
         if (key < 0 || key >= map.Capacity)
             throw new ArgumentException("key was outside the bounds of the IntMap");
 
-        if (map.ContainsKey(key))
-            return map[key];
+        var entry = map.GetEntry(key);
+        if (entry.HasValue)
+            return ref entry.Value;
 
-        var value = new LinearEquation(capacity);
-        map.Add(key, value);
-        return value;
+        return ref entry.Insert(new(capacity));
     }
 
-    public static LinearEquation GetOrAddCloned(
+    public static ref LinearEquation GetOrAddCloned(
         ref this RefIntMap<LinearEquation> map,
         int key,
         LinearEquation eq
@@ -434,12 +444,11 @@ internal static class RefIntMapExtensions
         if (key < 0 || key >= map.Capacity)
             throw new ArgumentException("key was outside the bounds of the IntMap");
 
-        if (map.ContainsKey(key))
-            return map[key];
+        var entry = map.GetEntry(key);
+        if (entry.HasValue)
+            return ref entry.Value;
 
-        var value = eq.Clone();
-        map.Add(key, value);
-        return value;
+        return ref entry.Insert(eq.Clone());
     }
 }
 

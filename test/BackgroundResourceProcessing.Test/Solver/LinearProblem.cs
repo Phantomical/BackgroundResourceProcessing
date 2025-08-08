@@ -17,10 +17,10 @@ namespace BackgroundResourceProcessing.Test.Solver
             var x1 = problem.CreateVariable();
             var x2 = problem.CreateVariable();
 
-            problem.AddConstraint(x1 + x2 <= 12.0);
-            problem.AddConstraint(2.0 * x1 + x2 <= 16.0);
+            problem.AddConstraint(new LinearEquation() { x1, x2 } <= 12.0);
+            problem.AddConstraint(new LinearEquation() { 2.0 * x1, x2 } <= 16.0);
 
-            var soln = problem.Maximize(40.0 * x1 + 30.0 * x2);
+            var soln = problem.Maximize([40.0 * x1, 30.0 * x2]);
 
             Assert.AreEqual(4.0, soln[x1]);
             Assert.AreEqual(8.0, soln[x2]);
@@ -36,11 +36,11 @@ namespace BackgroundResourceProcessing.Test.Solver
             var x2 = problem.CreateVariable();
             var x3 = problem.CreateVariable();
 
-            problem.AddConstraint(2.0 * x1 + x2 + x3 <= 2.0);
-            problem.AddConstraint(x1 + 2.0 * x2 + 3.0 * x3 <= 4.0);
-            problem.AddConstraint(2.0 * x1 + 2.0 * x2 + x3 <= 8.0);
+            problem.AddConstraint(new LinearEquation() { 2.0 * x1, x2, x3 } <= 2.0);
+            problem.AddConstraint(new LinearEquation() { x1, 2.0 * x2, 3.0 * x3 } <= 4.0);
+            problem.AddConstraint(new LinearEquation() { 2.0 * x1, 2.0 * x2, x3 } <= 8.0);
 
-            var soln = problem.Maximize(4.0 * x1 + x2 + 4.0 * x3);
+            var soln = problem.Maximize([4.0 * x1, x2, 4.0 * x3]);
 
             Assert.AreEqual(0.4, soln[x1], 1e-6);
             Assert.AreEqual(0.0, soln[x2], 1e-6);
@@ -60,10 +60,10 @@ namespace BackgroundResourceProcessing.Test.Solver
             var y = problem.CreateVariable();
             var z = problem.CreateVariable();
 
-            problem.AddConstraint(3 * x + 2 * y + 1 * z <= 10);
-            problem.AddConstraint(2 * x + 5 * y + 3 * z <= 15);
+            problem.AddConstraint(new LinearEquation() { 3 * x, 2 * y, 1 * z } <= 10);
+            problem.AddConstraint(new LinearEquation() { 2 * x, 5 * y, 3 * z } <= 15);
 
-            var soln = problem.Maximize(2 * x + 3 * y + 4 * z);
+            var soln = problem.Maximize([2 * x, 3 * y, 4 * z]);
 
             Assert.AreEqual(0.0, soln[x]);
             Assert.AreEqual(0.0, soln[y]);
@@ -86,9 +86,11 @@ namespace BackgroundResourceProcessing.Test.Solver
             problem.AddConstraint(x3 <= 1);
             problem.AddConstraint(x4 <= 1);
 
-            problem.AddConstraint(-37.46 * x1 + 54 * x3 - 9.375 * x4 <= 0.0);
+            problem.AddConstraint(
+                new LinearEquation() { -37.46 * x1, 54 * x3, -9.375 * x4 } <= 0.0
+            );
 
-            var soln = problem.Maximize(x1 + 7.96 * x2 + 3 * x3 + x4);
+            var soln = problem.Maximize([x1, 7.96 * x2, 3 * x3, x4]);
 
             Assert.AreEqual(1, soln[x1], 1e-6);
             Assert.AreEqual(1, soln[x2], 1e-6);
@@ -108,9 +110,12 @@ namespace BackgroundResourceProcessing.Test.Solver
             problem.AddConstraint(x1 <= 1);
             problem.AddConstraint(x2 <= 1);
 
-            problem.AddOrConstraint(x2 + x0 <= 0.2, x2 + x1 >= 0.8);
+            problem.AddOrConstraint(
+                new LinearEquation() { x2, x0 } <= 0.2,
+                new LinearEquation() { x2, x1 } >= 0.8
+            );
 
-            var soln = problem.Maximize(x0 + x1 - x2);
+            var soln = problem.Maximize([x0, x1, -x2]);
 
             LogUtil.Log($"{soln}");
         }

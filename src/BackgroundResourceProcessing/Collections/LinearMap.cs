@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Utils;
 
@@ -12,7 +13,19 @@ namespace BackgroundResourceProcessing.Collections;
 internal class LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<LinearMap<K, V>>
     where K : IEquatable<K>
 {
-    KeyValuePair<K, V>[] entries;
+    public struct Pair(K key, V value)
+    {
+        public readonly K Key = key;
+        public V Value = value;
+
+        public readonly void Deconstruct(out K key, out V value)
+        {
+            key = Key;
+            value = Value;
+        }
+    }
+
+    Pair[] entries;
     int count;
 
     public int Count => count;
@@ -21,43 +34,39 @@ internal class LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Lin
     public KeyEnumerator Keys => new(this);
     public ValueEnumerator Values => new(this);
 
-    public KeyValuePair<K, V>[] Entries => entries;
+    public Pair[] Entries => entries;
 
-    public V this[K key]
+    public ref V this[K key]
     {
         get
         {
             if (!TryGetIndex(key, out var index))
                 throw new KeyNotFoundException($"Key not found in the map. Key: {key}");
 
-            return entries[index].Value;
-        }
-        set
-        {
-            if (TryGetIndex(key, out var index))
-                entries[index] = new(key, value);
-            else
-                AddUnchecked(key, value);
+            return ref entries[index].Value;
         }
     }
 
-    private LinearMap(KeyValuePair<K, V>[] entries, int count)
+    private LinearMap(Pair[] entries, int count)
     {
         this.entries = entries;
         this.count = count;
     }
 
-    private LinearMap(KeyValuePair<K, V>[] entries)
+    private LinearMap(Pair[] entries)
         : this(entries, entries.Length) { }
 
     public LinearMap()
         : this(16) { }
 
     public LinearMap(int capacity)
-        : this(new KeyValuePair<K, V>[capacity], 0) { }
+        : this(new Pair[capacity], 0) { }
+
+    public LinearMap(IEnumerable<Pair> enumerable)
+        : this([.. enumerable]) { }
 
     public LinearMap(IEnumerable<KeyValuePair<K, V>> enumerable)
-        : this([.. enumerable]) { }
+        : this(enumerable.Select(pair => new Pair(pair.Key, pair.Value))) { }
 
     public bool ContainsKey(K key)
     {
@@ -190,14 +199,11 @@ internal class LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Lin
         return hasher.GetHashCode();
     }
 
-    public Enumerator GetEnumerator()
-    {
-        return new(this);
-    }
+    public Enumerator GetEnumerator() => new(this);
 
     IEnumerator<KeyValuePair<K, V>> IEnumerable<KeyValuePair<K, V>>.GetEnumerator()
     {
-        return ((IEnumerable<KeyValuePair<K, V>>)entries).GetEnumerator();
+        return GetEnumerator();
     }
 
     IEnumerator IEnumerable.GetEnumerator()
@@ -223,20 +229,18 @@ internal class LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Lin
         readonly LinearMap<K, V> map;
         readonly int index;
 
-        public readonly bool HasValue => index >= map.Count;
+        public readonly bool HasValue => index < map.Count;
 
-        public readonly KeyValuePair<K, V> Pair => map.entries[index];
+        public readonly ref Pair Pair => ref map.entries[index];
         public readonly K Key
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get { return map.entries[index].Key; }
         }
-        public readonly V Value
+        public readonly ref V Value
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return map.entries[index].Value; }
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            set { map.entries[index] = new(map.entries[index].Key, value); }
+            get { return ref map.entries[index].Value; }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -256,7 +260,7 @@ internal class LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Lin
     }
 
     [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ref struct Enumerator(LinearMap<K, V> map) : IEnumerator<KeyValuePair<K, V>>
+    public struct Enumerator(LinearMap<K, V> map) : IEnumerator<KeyValuePair<K, V>>
     {
         readonly LinearMap<K, V> map = map;
         int index = -1;
@@ -264,7 +268,11 @@ internal class LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Lin
         public readonly KeyValuePair<K, V> Current
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return map.entries[index]; }
+            get
+            {
+                var pair = map.entries[index];
+                return new(pair.Key, pair.Value);
+            }
         }
 
         readonly object IEnumerator.Current => Current;
@@ -292,7 +300,7 @@ internal class LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Lin
     }
 
     [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ref struct KeyEnumerator(LinearMap<K, V> map) : IEnumerator<K>
+    public struct KeyEnumerator(LinearMap<K, V> map) : IEnumerator<K>
     {
         Enumerator enumerator = new(map);
 
@@ -325,7 +333,7 @@ internal class LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Lin
     }
 
     [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ref struct ValueEnumerator(LinearMap<K, V> map) : IEnumerator<V>
+    public struct ValueEnumerator(LinearMap<K, V> map) : IEnumerator<V>
     {
         Enumerator enumerator = new(map);
 
@@ -357,11 +365,11 @@ internal class LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Lin
         }
     }
 
-    private class KeyComparer : IComparer<KeyValuePair<K, V>>
+    private class KeyComparer : IComparer<Pair>
     {
         public static readonly KeyComparer Instance = new();
 
-        public int Compare(KeyValuePair<K, V> x, KeyValuePair<K, V> y)
+        public int Compare(Pair x, Pair y)
         {
             return Comparer<K>.Default.Compare(x.Key, y.Key);
         }
