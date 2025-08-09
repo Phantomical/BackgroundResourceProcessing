@@ -150,7 +150,11 @@ public class BackgroundGenericConverter : BackgroundConverter
             });
         }
 
-        return new(new ConstantConverter(inputs.ToList(), outputs.ToList(), required.ToList()));
+        var behaviour = new ConstantConverter([.. inputs], [.. outputs], [.. required]);
+        if (behaviour.Inputs.Count == 0 && behaviour.Outputs.Count == 0)
+            return null;
+
+        return new(behaviour);
     }
 
     public override void OnRestore(PartModule module, ResourceConverter converter)
