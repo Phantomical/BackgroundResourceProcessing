@@ -92,7 +92,7 @@ internal static class Simplex
         return pivot;
     }
 
-    private static unsafe int SelectRow(double* tableau, int width, int height, int pivot)
+    internal static unsafe int SelectRow(double* tableau, int width, int height, int pivot)
     {
         int index = -1;
         double value = double.PositiveInfinity;
