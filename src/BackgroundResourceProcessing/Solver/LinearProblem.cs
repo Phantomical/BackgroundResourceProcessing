@@ -198,7 +198,14 @@ internal class LinearProblem
         var matrix = BuildPresolveMatrix(func);
         var zeros = new BitSet(VariableCount);
 
-        if (!LinearPresolve.Presolve(matrix, zeros, equalities.Count, constraints.Count))
+        if (
+            !LinearPresolve.Presolve(
+                matrix,
+                zeros,
+                equalities.Count,
+                constraints.Count + simple.Count
+            )
+        )
             return;
 
         var nEqs = equalities.Count;

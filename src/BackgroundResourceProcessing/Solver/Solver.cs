@@ -1,13 +1,13 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
-using UnityEngine.VR;
 
 namespace BackgroundResourceProcessing.Solver;
 
@@ -24,12 +24,10 @@ internal class Solver
         using var span = new TraceSpan("ResourceProcessor.ComputeInventoryRates");
         var graph = new ResourceGraph(processor);
 
-        var summaries = new InventorySummary[processor.inventories.Count];
-        for (int i = 0; i < summaries.Length; ++i)
-            summaries[i] = new(processor.inventories[i]);
-
         int converterCount = processor.converters.Count;
         int inventoryCount = processor.inventories.Count;
+
+        var summaries = Summarize(processor);
 
         // Pre-processing: We can make final problem smaller (and thus
         // cheaper to solve) by combining together converters and
@@ -410,6 +408,15 @@ internal class Solver
         return new() { inventoryRates = inventoryRates, converterRates = converterRates };
     }
 
+    private static InventorySummary[] Summarize(ResourceProcessor processor)
+    {
+        var summaries = new InventorySummary[processor.inventories.Count];
+        for (int i = 0; i < summaries.Length; ++i)
+            summaries[i] = new(processor.inventories[i]);
+        return summaries;
+    }
+
+    [DebuggerDisplay("{amount}/{maxAmount}")]
     private struct InventorySummary(ResourceInventory inventory)
     {
         public double amount = inventory.amount;

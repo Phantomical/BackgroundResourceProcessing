@@ -76,5 +76,21 @@ namespace BackgroundResourceProcessing.Test.Solver
 
             Assert.AreNotEqual(0.0, rates.inventoryRates[2]);
         }
+
+        [TestMethod]
+        public void TestFertilizerOutOfThinAir()
+        {
+            var processor = TestUtil.LoadVessel("regression/fertilizer-out-of-thin-air.cfg");
+            var solver = new BackgroundResourceProcessing.Solver.Solver();
+            var rates = solver.ComputeInventoryRates(processor);
+
+            for (int i = 0; i < processor.inventories.Count; ++i)
+            {
+                if (processor.inventories[i].resourceName != "Fertilizer")
+                    continue;
+
+                Assert.AreEqual(0.0, rates.inventoryRates[i]);
+            }
+        }
     }
 }

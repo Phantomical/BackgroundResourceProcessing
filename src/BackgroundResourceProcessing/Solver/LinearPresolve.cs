@@ -43,7 +43,8 @@ internal static class LinearPresolve
                     equations.Height,
                     zeros,
                     equalities,
-                    inequalities
+                    inequalities,
+                    equations
                 );
             }
         }
@@ -55,7 +56,8 @@ internal static class LinearPresolve
         int height,
         BitSet zeros,
         int equalities,
-        int inequalities
+        int inequalities,
+        Matrix tableau
     )
     {
         int ineqStop = equalities + inequalities;
@@ -80,6 +82,9 @@ internal static class LinearPresolve
             {
                 if ((y < equalities && constant != 0) || constant < 0.0)
                     throw new UnsolvableProblemException();
+
+                if (y >= equalities && constant > 0)
+                    continue;
             }
             else if (negative)
             {
