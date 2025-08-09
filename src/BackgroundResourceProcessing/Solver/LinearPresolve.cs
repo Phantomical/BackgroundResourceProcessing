@@ -1,6 +1,7 @@
 using System;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Tracing;
+using Steamworks;
 
 namespace BackgroundResourceProcessing.Solver;
 
@@ -78,31 +79,54 @@ internal static class LinearPresolve
                 negative &= row[x] <= 0.0;
             }
 
-            if (positive && negative)
-            {
-                if ((y < equalities && constant != 0) || constant < 0.0)
-                    throw new UnsolvableProblemException();
+            bool zero = positive && negative;
 
-                if (y >= equalities && constant > 0)
-                    continue;
-            }
-            else if (negative)
+            if (y < equalities)
             {
-                if (constant < 0.0)
+                if (zero)
+                {
+                    if (constant != 0.0)
+                        throw new UnsolvableProblemException();
                     continue;
-                if (constant > 0.0)
-                    throw new UnsolvableProblemException();
-            }
-            else if (positive)
-            {
-                if (constant > 0.0)
+                }
+                else if (negative)
+                {
+                    if (constant > 0.0)
+                        throw new UnsolvableProblemException();
+                    if (constant < 0.0)
+                        continue;
+                }
+                else if (positive)
+                {
+                    if (constant < 0.0)
+                        throw new UnsolvableProblemException();
+                    if (constant > 0.0)
+                        continue;
+                }
+                else
+                {
                     continue;
-                if (constant < 0.0)
-                    throw new UnsolvableProblemException();
+                }
             }
             else
             {
-                continue;
+                if (zero)
+                {
+                    if (constant < 0.0)
+                        throw new UnsolvableProblemException();
+                    continue;
+                }
+                else if (positive)
+                {
+                    if (constant < 0.0)
+                        throw new UnsolvableProblemException();
+                    if (constant > 0.0)
+                        continue;
+                }
+                else
+                {
+                    continue;
+                }
             }
 
             for (int x = 0; x < width - 1; ++x)

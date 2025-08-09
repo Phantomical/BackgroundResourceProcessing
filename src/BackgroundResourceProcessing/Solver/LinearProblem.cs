@@ -116,6 +116,7 @@ internal class LinearProblem
                 return new(constraint);
 
             case Relation.GEqual:
+                constraint.variables = constraint.variables.Clone();
                 constraint.variables.Negate();
                 constraint.constant *= -1;
                 return new(constraint);
@@ -222,6 +223,9 @@ internal class LinearProblem
         equalities.Clear();
         simple.Clear();
         constraints.Clear();
+
+        foreach (var index in zeros)
+            substitutions.Add(index, new LinearEquality() { variable = index, constant = 0.0 });
 
         int i = 0;
         for (; i < nEqs; ++i)
@@ -961,11 +965,11 @@ internal class LinearProblem
     }
 
     // var == equation + constant
-    private struct LinearEquality
+    private struct LinearEquality()
     {
-        public int variable;
-        public LinearEquation equation;
-        public double constant;
+        public int variable = -1;
+        public LinearEquation equation = [];
+        public double constant = double.NaN;
 
         public override readonly string ToString()
         {

@@ -92,5 +92,25 @@ namespace BackgroundResourceProcessing.Test.Solver
                 Assert.AreEqual(0.0, rates.inventoryRates[i]);
             }
         }
+
+        [TestMethod]
+        public void TestBoiloffIgnored()
+        {
+            var processor = TestUtil.LoadVessel("regression/boiloff-ignored.cfg");
+            var solver = new BackgroundResourceProcessing.Solver.Solver();
+            var rates = solver.ComputeInventoryRates(processor);
+
+            for (int i = 0; i < processor.converters.Count; ++i)
+            {
+                var converter = processor.converters[i];
+
+                if (!converter.inputs.ContainsKey("ElectricCharge".GetHashCode()))
+                    continue;
+                if (!converter.inputs.ContainsKey("BRPCryoTankBoiloff".GetHashCode()))
+                    continue;
+
+                Assert.AreNotEqual(0.0, rates.converterRates[i]);
+            }
+        }
     }
 }
