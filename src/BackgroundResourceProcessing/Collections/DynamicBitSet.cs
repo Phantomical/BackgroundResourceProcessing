@@ -67,6 +67,17 @@ public class DynamicBitSet : IEnumerable<int>
     public int Capacity => words.Length * ULongBits;
     public ulong[] Bits => words;
 
+    public bool IsEmpty
+    {
+        get
+        {
+            for (int i = 0; i < words.Length; ++i)
+                if (words[i] != 0)
+                    return false;
+            return true;
+        }
+    }
+
     public DynamicBitSet()
         : this(0) { }
 

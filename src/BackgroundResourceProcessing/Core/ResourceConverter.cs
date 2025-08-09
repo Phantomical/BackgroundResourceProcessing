@@ -127,6 +127,7 @@ public class ResourceConverter(ConverterBehaviour behaviour)
     {
         node.TryGetDouble("nextChangepoint", ref nextChangepoint);
         node.TryGetValue("rate", ref rate);
+        node.TryGetValue("priority", ref priority);
 
         foreach (var inner in node.GetNodes("PUSH_INVENTORIES"))
             Push.AddAll(LoadBitSet(inner));
@@ -211,10 +212,14 @@ public class ResourceConverter(ConverterBehaviour behaviour)
     {
         node.AddValue("nextChangepoint", nextChangepoint);
         node.AddValue("rate", rate);
+        node.AddValue("priority", priority);
 
-        SaveBitSet(node.AddNode("PUSH_INVENTORIES"), Push);
-        SaveBitSet(node.AddNode("PULL_INVENTORIES"), Pull);
-        SaveBitSet(node.AddNode("CONSTRAINT_INVENTORIES"), Constraint);
+        if (!Push.IsEmpty)
+            SaveBitSet(node.AddNode("PUSH_INVENTORIES"), Push);
+        if (!Pull.IsEmpty)
+            SaveBitSet(node.AddNode("PULL_INVENTORIES"), Pull);
+        if (!Constraint.IsEmpty)
+            SaveBitSet(node.AddNode("CONSTRAINT_INVENTORIES"), Constraint);
 
         Behaviour?.Save(node.AddNode("BEHAVIOUR"));
         ConfigUtil.SaveOutputResources(node, outputs.Select(output => output.Value));
