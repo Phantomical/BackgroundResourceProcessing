@@ -6,17 +6,17 @@ namespace BackgroundResourceProcessing.Core;
 /// <summary>
 /// An ID that uniquely identifies where a resource inventory came from.
 /// </summary>
-public struct InventoryId(uint flightId, string resourceName, uint? moduleId = null)
+public struct InventoryId
 {
     /// <summary>
     /// The persistent ID of the part this inventory came from.
     /// </summary>
-    public uint FlightId = flightId;
+    public uint FlightId;
 
     /// <summary>
     /// If non-null, this indicates the module that stores this inventory.
     /// </summary>
-    public uint? ModuleId = moduleId;
+    public uint? ModuleId;
 
     /// <summary>
     /// The name of the resource stored in this inventory.
@@ -30,9 +30,24 @@ public struct InventoryId(uint flightId, string resourceName, uint? moduleId = n
             resourceName = value;
         }
     }
-    private string resourceName = resourceName;
+    private string resourceName;
 
-    public int ResourceId { get; private set; } = resourceName.GetHashCode();
+    public int ResourceId { get; private set; }
+
+    public InventoryId(uint flightId, string resourceName, uint? moduleId = null)
+    {
+        FlightId = flightId;
+        ModuleId = moduleId;
+        ResourceName = resourceName;
+    }
+
+    public InventoryId(ResourceInventory inventory)
+    {
+        FlightId = inventory.flightId;
+        ModuleId = inventory.moduleId;
+        resourceName = inventory.resourceName;
+        ResourceId = inventory.resourceId;
+    }
 
     public InventoryId(PartResource resource, uint? moduleId = null)
         : this(resource.part.flightID, resource.resourceName, moduleId) { }
@@ -70,6 +85,18 @@ public struct InventoryId(uint flightId, string resourceName, uint? moduleId = n
         if (ModuleId == null)
             return $"{{resourceName={ResourceName},flightId={FlightId}}}";
         return $"{{resourceName={ResourceName},flightId={FlightId},moduleId={ModuleId}}}";
+    }
+
+    public override readonly int GetHashCode()
+    {
+        HashCode hasher = new();
+        SolverHash(ref hasher);
+        return hasher.GetHashCode();
+    }
+
+    internal readonly void SolverHash(ref HashCode hasher)
+    {
+        hasher.Add(FlightId, ModuleId, ResourceId);
     }
 }
 
@@ -127,7 +154,21 @@ public class ResourceInventory
     /// <summary>
     /// The name of the resource stored in this inventory.
     /// </summary>
-    public string resourceName;
+    public string resourceName
+    {
+        get => _resourceName;
+        set
+        {
+            resourceId = value.GetHashCode();
+            _resourceName = value;
+        }
+    }
+    private string _resourceName;
+
+    /// <summary>
+    /// The hash code of <see cref="resourceName"/>.
+    /// </summary>
+    public int resourceId { get; private set; }
 
     /// <summary>
     /// How many units of resource are stored in this inventory.
@@ -216,7 +257,7 @@ public class ResourceInventory
         }
     }
 
-    public InventoryId Id => new(flightId, resourceName, moduleId);
+    public InventoryId Id => new(this);
     public InventoryState State => new(amount, maxAmount, rate);
 
     public ResourceInventory() { }
@@ -264,7 +305,9 @@ public class ResourceInventory
         if (node.TryGetValue("moduleId", ref moduleId))
             this.moduleId = moduleId;
 
-        node.TryGetValue("resourceName", ref resourceName);
+        string resourceName = null;
+        if (node.TryGetValue("resourceName", ref resourceName))
+            this.resourceName = resourceName;
         node.TryGetValue("amount", ref amount);
         node.TryGetDouble("maxAmount", ref maxAmount);
         node.TryGetValue("rate", ref rate);
@@ -297,6 +340,6 @@ public class ResourceInventory
 
     internal void SolverHash(ref HashCode hasher)
     {
-        hasher.Add(Id, Empty, Full);
+        hasher.Add(flightId, moduleId, resourceId, GetInventoryState());
     }
 }

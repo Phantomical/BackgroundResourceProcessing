@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using Steamworks;
 
 namespace BackgroundResourceProcessing.Utils;
 
 /// <summary>
-/// .NET Core has a similar type available. This is a
+/// A hash-code combiner, based off a similar type within .NET Core.
 /// </summary>
+[method: MethodImpl(MethodImplOptions.AggressiveInlining)]
 internal ref struct HashCode(uint seed)
 {
     private static readonly uint GlobalSeed = GenerateSeed();

@@ -194,15 +194,17 @@ internal class ResourceProcessor
 
         hasher.Add(inventories.Count, converters.Count);
         var ispan = new TraceSpan("Inventory Hashes");
-        foreach (var inventory in inventories)
-            inventory.SolverHash(ref hasher);
+        int count = inventories.Count;
+        for (int i = 0; i < count; ++i)
+            inventories[i].SolverHash(ref hasher);
         ispan.Dispose();
 
         var cspan = new TraceSpan("Converter Hashes");
-        foreach (var converter in converters)
+        count = converters.Count;
+        for (int i = 0; i < count; ++i)
         {
-            converter.SolverHash(ref hasher);
-            hasher.Add(GetConverterConstraintState(converter));
+            converters[i].SolverHash(ref hasher);
+            hasher.Add(GetConverterConstraintState(converters[i]));
         }
         cspan.Dispose();
 
