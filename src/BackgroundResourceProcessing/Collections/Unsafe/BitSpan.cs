@@ -19,22 +19,20 @@ internal readonly unsafe struct BitSpan(MemorySpan<ulong> bits)
 
     public bool this[uint key]
     {
-        [IgnoreWarning(1370)]
         get
         {
             if (key / ULongBits >= Bits.Length)
-                throw new IndexOutOfRangeException("index out of range for bitset");
+                ThrowIndexOutOfRangeException();
 
             var word = key / ULongBits;
             var bit = key % ULongBits;
 
             return (Bits[word] & (1ul << (int)bit)) != 0;
         }
-        [IgnoreWarning(1370)]
         set
         {
             if (key / ULongBits >= Bits.Length)
-                throw new IndexOutOfRangeException("index out of range for bitset");
+                ThrowIndexOutOfRangeException();
 
             var word = key / ULongBits;
             var bit = key % ULongBits;
@@ -47,8 +45,28 @@ internal readonly unsafe struct BitSpan(MemorySpan<ulong> bits)
         }
     }
 
+    public bool this[int key]
+    {
+        get
+        {
+            if (key < 0)
+                ThrowIndexOutOfRangeException();
+            return this[(uint)key];
+        }
+        set
+        {
+            if (key < 0)
+                ThrowIndexOutOfRangeException();
+            this[(uint)key] = value;
+        }
+    }
+
     public BitSpan(ulong* bits, uint length)
         : this(new MemorySpan<ulong>(bits, length)) { }
+
+    [IgnoreWarning(1370)]
+    static void ThrowIndexOutOfRangeException() =>
+        throw new IndexOutOfRangeException("index out of range for bitset");
 
     public bool Contains(uint key)
     {
