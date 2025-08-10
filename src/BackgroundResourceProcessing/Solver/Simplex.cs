@@ -39,7 +39,7 @@ internal static class Simplex
     {
         for (uint iter = 0; iter < MaxIterations; ++iter)
         {
-            int pivot = SelectPivot(tableau, width, height);
+            int pivot = SelectPivot(tableau, width);
             if (pivot < 0)
                 break;
 
@@ -74,7 +74,7 @@ internal static class Simplex
             TraceFinal(matrix);
     }
 
-    private static unsafe int SelectPivot(double* tableau, int width, int height)
+    private static unsafe int SelectPivot(double* tableau, int width)
     {
         int pivot = -1;
         double value = 0.0;
@@ -124,7 +124,7 @@ internal static class Simplex
         return index;
     }
 
-    private static unsafe void InvScaleRow(double* row, double length, double scale)
+    private static unsafe void InvScaleRow(double* row, int length, double scale)
     {
         if (scale == 1.0)
             return;

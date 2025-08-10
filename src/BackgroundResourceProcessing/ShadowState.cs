@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using BackgroundResourceProcessing.Behaviour;
 using BackgroundResourceProcessing.Maths;
 using BackgroundResourceProcessing.Tracing;
 
@@ -17,8 +18,19 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
 
     public static ShadowState AlwaysInShadow() => new(double.PositiveInfinity, true);
 
+    #region Solar Flux
+    /// <summary>
+    /// Get the relative solar flux available for the specified vessel as
+    /// compared to the solar flux at home.
+    /// </summary>
+    public readonly double GetSolarFluxFactor(Vessel vessel)
+    {
+        return StarProvider.GetSolarFluxFactor(Star, vessel);
+    }
+    #endregion
+
     #region StarProvider
-    public interface IStarProvider
+    public abstract class IStarProvider
     {
         /// <summary>
         /// Get a list of relevant stars, ordered by the amount of energy they
@@ -30,16 +42,26 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         /// minimum. If one star is 1000x less powerful than others on the list
         /// then it should not be returned.
         /// </remarks>
-        List<CelestialBody> GetRelevantStars(Vessel vessel);
-    }
-
-    private class KSPStarProvider : IStarProvider
-    {
-        public List<CelestialBody> GetRelevantStars(Vessel vessel)
+        public virtual List<CelestialBody> GetRelevantStars(Vessel vessel)
         {
             return [Planetarium.fetch.Sun];
         }
+
+        /// <summary>
+        /// Get a power multiplier for the solar flux due to <paramref name="star"/>
+        /// on the provided vessel. A multiplier of 1.0 should be equivalent to the
+        /// solar flux at kerbin in a stock game.
+        /// </summary>
+        public virtual double GetSolarFluxFactor(CelestialBody star, Vessel vessel)
+        {
+            var distance =
+                (star.position - vessel.vesselTransform.position).magnitude - star.Radius;
+            return PhysicsGlobals.SolarLuminosity
+                / (4 * Math.PI * distance * distance * PhysicsGlobals.SolarLuminosityAtHome);
+        }
     }
+
+    private class KSPStarProvider : IStarProvider { }
 
     public static IStarProvider StarProvider = new KSPStarProvider();
     #endregion

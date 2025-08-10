@@ -120,9 +120,7 @@ public class SolarPanelBehaviour : ConverterBehaviour
     /// <returns></returns>
     protected virtual double GetSolarFluxFactor(VesselState state)
     {
-        var distance = GetSolarDistance(state);
-        return PhysicsGlobals.SolarLuminosity
-            / (4 * Math.PI * distance * distance * PhysicsGlobals.SolarLuminosityAtHome);
+        return state.ShadowState.GetSolarFluxFactor(Vessel);
     }
 
     /// <summary>

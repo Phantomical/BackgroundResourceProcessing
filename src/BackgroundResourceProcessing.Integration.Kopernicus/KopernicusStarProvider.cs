@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using BackgroundResourceProcessing.Behaviour;
 using Kopernicus.Components;
 
 namespace BackgroundResourceProcessing.Integration.Kopernicus;
@@ -13,7 +14,7 @@ public class KopernicusStarProvider : ShadowState.IStarProvider
     [KSPField]
     public double FluxCutoff = 1e-6;
 
-    public List<CelestialBody> GetRelevantStars(Vessel vessel)
+    public override List<CelestialBody> GetRelevantStars(Vessel vessel)
     {
         List<KopernicusStar> stars = [.. KopernicusStar.Stars];
 
@@ -24,6 +25,14 @@ public class KopernicusStarProvider : ShadowState.IStarProvider
         stars.Sort(new StarComparer(vessel));
 
         return [.. stars.Select(star => star.sun)];
+    }
+
+    public override double GetSolarFluxFactor(CelestialBody body, Vessel vessel)
+    {
+        if (!KopernicusStar.CelestialBodies.TryGetValue(body, out var star))
+            return 0.0;
+
+        return ComputeStellarFluxFactor(star, vessel);
     }
 
     public static double ComputeStellarFluxFactor(KopernicusStar star, Vessel vessel)

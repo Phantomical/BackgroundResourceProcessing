@@ -38,6 +38,10 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
             [new KSPAssemblyDependency("Kopernicus", new(1, 0))]
         ),
         new(
+            "BackgroundResourceProcessing.Integration.NearFutureSolar",
+            [new DirectAssemblyDependency("NearFutureSolar", new(0, 4))]
+        ),
+        new(
             "BackgroundResourceProcessing.Integration.SystemHeat",
             [new DirectAssemblyDependency("SystemHeat", new(0, 1))]
         ),
