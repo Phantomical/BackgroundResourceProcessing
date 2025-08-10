@@ -241,7 +241,7 @@ internal struct GraphConverter
 #endif
     }
 
-    public bool CanMergeWith(GraphConverter other)
+    public readonly bool CanMergeWith(GraphConverter other)
     {
         if (!inputs.KeysEqual(other.inputs))
             return false;
@@ -481,40 +481,108 @@ internal class ResourceGraph
     {
         using var span = new TraceSpan("ResourceGraph.MergeEquivalentConverters");
 
+        unsafe
+        {
+            fixed (
+                ulong* inputs = this.inputs.Bits,
+                    outputs = this.outputs.Bits,
+                    constraints = this.constraints.Bits
+            )
+            {
+                MergeEquivalentConverters(inputs, outputs, constraints);
+            }
+        }
+
+        // foreach (var converterId in converters.Keys)
+        // {
+        //     if (!converters.ContainsKey(converterId))
+        //         continue;
+        //     ref var converter = ref converters[converterId];
+
+        //     var inputEdges = inputs.GetConverterEntry(converterId);
+        //     var outputEdges = outputs.GetConverterEntry(converterId);
+        //     var constraintEdges = constraints.GetConverterEntry(converterId);
+
+        //     foreach (var (otherId, otherConverter) in converters.GetEnumeratorAt(converterId + 1))
+        //     {
+        //         var otherInputs = inputs.GetConverterEntry(otherId);
+        //         var otherOutputs = outputs.GetConverterEntry(otherId);
+        //         var otherConstraints = constraints.GetConverterEntry(otherId);
+
+        //         if (inputEdges != otherInputs)
+        //             continue;
+        //         if (outputEdges != otherOutputs)
+        //             continue;
+        //         if (constraintEdges != otherConstraints)
+        //             continue;
+
+        //         if (!converter.CanMergeWith(otherConverter))
+        //             continue;
+
+        //         otherInputs.Zero();
+        //         otherOutputs.Zero();
+        //         otherConstraints.Zero();
+
+        //         converter.Merge(otherConverter);
+        //         converterIds[otherId] = converterId;
+        //         converters.Remove(otherId);
+        //     }
+        // }
+    }
+
+    private unsafe void MergeEquivalentConverters(ulong* inputs, ulong* outputs, ulong* constraints)
+    {
+        int columnWords = this.inputs.ColumnWords;
+
         foreach (var converterId in converters.Keys)
         {
             if (!converters.ContainsKey(converterId))
                 continue;
             ref var converter = ref converters[converterId];
 
-            var inputEdges = inputs.GetConverterEntry(converterId);
-            var outputEdges = outputs.GetConverterEntry(converterId);
-            var constraintEdges = constraints.GetConverterEntry(converterId);
+            ulong* inputEdges = &inputs[converterId * columnWords];
+            ulong* outputEdges = &outputs[converterId * columnWords];
+            ulong* constraintEdges = &outputs[converterId * columnWords];
 
             foreach (var (otherId, otherConverter) in converters.GetEnumeratorAt(converterId + 1))
             {
-                var otherInputs = inputs.GetConverterEntry(otherId);
-                var otherOutputs = outputs.GetConverterEntry(otherId);
-                var otherConstraints = constraints.GetConverterEntry(otherId);
+                ulong* otherInputs = &inputs[otherId * columnWords];
+                ulong* otherOutputs = &outputs[otherId * columnWords];
+                ulong* otherConstraints = &outputs[otherId * columnWords];
 
-                if (inputEdges != otherInputs)
+                if (!SpansEqual(inputEdges, otherInputs, columnWords))
                     continue;
-                if (outputEdges != otherOutputs)
+                if (!SpansEqual(outputEdges, otherOutputs, columnWords))
                     continue;
-                if (constraintEdges != otherConstraints)
+                if (!SpansEqual(constraintEdges, otherConstraints, columnWords))
                     continue;
 
                 if (!converter.CanMergeWith(otherConverter))
                     continue;
 
-                otherInputs.Zero();
-                otherOutputs.Zero();
-                otherConstraints.Zero();
+                for (int i = 0; i < columnWords; ++i)
+                {
+                    otherInputs[i] = 0;
+                    otherOutputs[i] = 0;
+                    otherConstraints[i] = 0;
+                }
 
                 converter.Merge(otherConverter);
                 converterIds[otherId] = converterId;
                 converters.Remove(otherId);
             }
         }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static unsafe bool SpansEqual(ulong* a, ulong* b, int length)
+    {
+        for (int i = length - 1; i >= 0; --i)
+        {
+            if (a[i] != b[i])
+                return false;
+        }
+
+        return true;
     }
 }
