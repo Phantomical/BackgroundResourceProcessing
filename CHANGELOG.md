@@ -12,6 +12,12 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ## Unreleased
 
+### Added
+* Added support for `Near Future Solar` - specifically: `ModuleCurvedSolarPanel`.
+
+### Changed
+* Significantly optimized the background simulation.
+
 ## 0.1.4
 ### Fixed
 * Fixed a bug where vessels that crossed a planet day/night boundary would never
