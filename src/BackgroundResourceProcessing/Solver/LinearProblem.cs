@@ -213,12 +213,6 @@ internal class LinearProblem
         var nCons = constraints.Count + simple.Count;
         var nDisj = disjunctions.Count;
 
-        RefList<LinearEquation> saved = new(equalities.Count + constraints.Count);
-        foreach (var eq in equalities)
-            saved.Add(eq.variables);
-        foreach (var constraint in constraints)
-            saved.Add(constraint.variables);
-
         substitutions = new(VariableCount);
         equalities.Clear();
         simple.Clear();
@@ -255,10 +249,7 @@ internal class LinearProblem
                 continue;
             }
 
-            if (!saved.TryPop(out var eqn))
-                eqn = new LinearEquation(VariableCount);
-            else
-                eqn.Clear();
+            var eqn = new LinearEquation(VariableCount);
 
             for (int x = index + 1; x < row.Length - 1; ++x)
             {
@@ -290,13 +281,12 @@ internal class LinearProblem
                 continue;
             }
 
-            if (!saved.TryPop(out var eqn))
-                eqn = new LinearEquation(VariableCount);
-
-            eqn.Set(row.Slice(0, row.Length - 1));
-
             constraints.Add(
-                new SolverConstraint() { variables = eqn, constant = row[row.Length - 1] }
+                new SolverConstraint()
+                {
+                    variables = new LinearEquation(row.Slice(0, row.Length - 1)),
+                    constant = row[row.Length - 1],
+                }
             );
         }
 

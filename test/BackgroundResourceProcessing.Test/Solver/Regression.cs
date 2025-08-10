@@ -112,5 +112,22 @@ namespace BackgroundResourceProcessing.Test.Solver
                 Assert.AreNotEqual(0.0, rates.converterRates[i]);
             }
         }
+
+        [TestMethod]
+        public void TestBoiloffEcIgnored()
+        {
+            var processor = TestUtil.LoadVessel("regression/boiloff-ec-ignored.cfg");
+            var solver = new BackgroundResourceProcessing.Solver.Solver();
+            var rates = solver.ComputeInventoryRates(processor);
+
+            for (int i = 0; i < processor.inventories.Count; ++i)
+            {
+                var inventory = processor.inventories[i];
+                if (inventory.resourceName != "ElectricCharge")
+                    continue;
+
+                Assert.AreNotEqual(0.0, rates.inventoryRates[i]);
+            }
+        }
     }
 }
