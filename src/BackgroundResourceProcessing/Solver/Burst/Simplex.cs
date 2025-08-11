@@ -398,11 +398,11 @@ internal static partial class Simplex
             // Some hacks to attempt to truncate numerical errors down to
             // 0 without breaking the simplex algorithm when working with
             // big-M constants.
-            if (Math.Abs(r) >= 1e-9)
+            if (Math.Abs(r) >= Epsilon)
                 continue;
 
             // If d and s almost perfectly cancel out then just truncate to 0.
-            if (Math.Abs(r) / (Math.Abs(d) + Math.Abs(s)) < 1e-9)
+            if (Math.Abs(r) / (Math.Abs(d) + Math.Abs(s)) < Epsilon)
                 dst[i] = 0.0;
         }
     }
