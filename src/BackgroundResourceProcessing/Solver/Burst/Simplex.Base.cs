@@ -7,7 +7,7 @@ internal static partial class Simplex
 {
     internal static class Base
     {
-        internal static unsafe void SolveTableau(
+        internal static unsafe bool SolveTableau(
             double* tableau,
             int width,
             int height,
@@ -22,7 +22,10 @@ internal static partial class Simplex
 
                 int index = SelectRow(tableau, width, height, pivot);
                 if (index < 0)
-                    break;
+                    return false;
+
+                if (Trace)
+                    TracePivot(pivot, index, tableau, width, height);
 
                 selected[(uint)pivot] = true;
 
@@ -43,6 +46,11 @@ internal static partial class Simplex
                     ScaleReduce(src, dst, scale, width);
                 }
             }
+
+            if (Trace)
+                TraceFinal(tableau, width, height);
+
+            return true;
         }
 
         internal static unsafe int SelectPivot(double* tableau, int width)
@@ -81,6 +89,9 @@ internal static partial class Simplex
                 // We ignore all negative ratios
                 if (ratio < 0.0)
                     continue;
+
+                if (Trace)
+                    TraceSelectRow(y, num, den, ratio);
 
                 if (ratio < value)
                 {

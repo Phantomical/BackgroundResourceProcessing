@@ -505,7 +505,7 @@ internal class LinearProblem
 
             try
             {
-                Simplex.SolveTableau(tableau, selected);
+                Burst.Simplex.SolveTableau(tableau, selected);
             }
             catch (UnsolvableProblemException)
             {
