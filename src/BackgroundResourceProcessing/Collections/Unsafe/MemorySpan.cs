@@ -33,30 +33,21 @@ internal readonly unsafe struct MemorySpan<T>(T* data, uint length)
     }
 
     [IgnoreWarning(1370)]
-    private static void ThrowLengthNegativeException()
-    {
+    private static void ThrowLengthNegativeException() =>
         throw new ArgumentOutOfRangeException("length was negative");
-    }
 
     [IgnoreWarning(1370)]
-    private static void ThrowIndexOutOfRangeException()
-    {
+    private static void ThrowIndexOutOfRangeException() =>
         throw new IndexOutOfRangeException("MemorySpan<T> index was out of range");
-    }
 
     [IgnoreWarning(1370)]
-    private static void ThrowSliceArgumentsOutOfRangeException()
-    {
+    private static void ThrowSliceArgumentsOutOfRangeException() =>
         throw new IndexOutOfRangeException("MemorySpan<T>.Slice arguments were out of range");
-    }
 
     public MemorySpan<T> Slice(uint start, uint length)
     {
-        if (BurstUtil.ExceptionsEnabled)
-        {
-            if (start + length > Length)
-                ThrowSliceArgumentsOutOfRangeException();
-        }
+        if (start + length > Length)
+            ThrowSliceArgumentsOutOfRangeException();
 
         return new(Data + start, length);
     }
