@@ -36,7 +36,9 @@ namespace BackgroundResourceProcessing.CLI
             Directory.CreateDirectory(options.Output);
             foreach (var file in Directory.EnumerateFiles(options.Output))
             {
-                if (file.EndsWith(".cfg") && file.StartsWith("ship-"))
+                var basename = Path.GetFileName(file);
+
+                if (basename.EndsWith(".cfg") && basename.StartsWith("ship-"))
                     File.Delete(file);
             }
 

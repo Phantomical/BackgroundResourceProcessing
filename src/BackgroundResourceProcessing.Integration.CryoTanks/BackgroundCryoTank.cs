@@ -69,7 +69,7 @@ public class BackgroundCryoTank : BackgroundConverter<ModuleCryoTank>
                         {
                             ResourceName = boiloffResource,
                             Ratio = 1.0,
-                            DumpExcess = true,
+                            DumpExcess = false,
                             FlowMode = ResourceFlowMode.NO_FLOW,
                         },
                     ],

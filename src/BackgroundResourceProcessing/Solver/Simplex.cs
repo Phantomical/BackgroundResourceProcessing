@@ -74,7 +74,7 @@ internal static class Simplex
             TraceFinal(matrix);
     }
 
-    internal static unsafe int SelectPivot(double* tableau, int width)
+    private static unsafe int SelectPivot(double* tableau, int width)
     {
         int pivot = -1;
         double value = 0.0;

@@ -1,5 +1,6 @@
 using System;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Behaviour;
 using UnityEngine;
 
@@ -133,7 +134,7 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
         if (power == 0.0)
             return null;
 
-        var behaviour = ConstructBehaviour(panel);
+        var behaviour = new SolarPanelBehaviour();
         if (panel.useCurve)
             behaviour.PowerCurve = panel.powerCurve;
         behaviour.TimeEfficiencyCurve = panel.timeEfficCurve;
@@ -145,11 +146,6 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
         behaviour.ChargeRate = power;
 
         return new(behaviour);
-    }
-
-    protected virtual SolarPanelBehaviour ConstructBehaviour(ModuleDeployableSolarPanel panel)
-    {
-        return new SolarPanelBehaviour();
     }
 
     /// <summary>
@@ -325,7 +321,7 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
         return (Transform)SecondaryTransformField.GetValue(panel);
     }
 
-    private readonly ref struct DisablePartCollider : IDisposable
+    private readonly struct DisablePartCollider : IDisposable
     {
         readonly Part part;
         readonly bool enabled;

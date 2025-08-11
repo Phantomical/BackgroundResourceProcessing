@@ -6,6 +6,13 @@ namespace BackgroundResourceProcessing.Solver;
 
 internal static class LinearPresolve
 {
+    internal enum ConstraintState : byte
+    {
+        VALID = 0,
+        UNSOLVABLE,
+        VACUOUS,
+    }
+
     public static bool Presolve(Matrix equations, BitSet zeros, int equalities, int inequalities)
     {
         using var span = new TraceSpan("LinearPresolve.Presolve");
@@ -43,7 +50,8 @@ internal static class LinearPresolve
                     equations.Height,
                     zeros,
                     equalities,
-                    inequalities
+                    inequalities,
+                    equations
                 );
             }
         }
@@ -55,7 +63,8 @@ internal static class LinearPresolve
         int height,
         BitSet zeros,
         int equalities,
-        int inequalities
+        int inequalities,
+        Matrix tableau
     )
     {
         int ineqStop = equalities + inequalities;
@@ -76,28 +85,54 @@ internal static class LinearPresolve
                 negative &= row[x] <= 0.0;
             }
 
-            if (positive && negative)
+            bool zero = positive && negative;
+
+            if (y < equalities)
             {
-                if ((y < equalities && constant != 0) || constant < 0.0)
-                    throw new UnsolvableProblemException();
-            }
-            else if (negative)
-            {
-                if (constant < 0.0)
+                if (zero)
+                {
+                    if (constant != 0.0)
+                        throw new UnsolvableProblemException();
                     continue;
-                if (constant > 0.0)
-                    throw new UnsolvableProblemException();
-            }
-            else if (positive)
-            {
-                if (constant > 0.0)
+                }
+                else if (negative)
+                {
+                    if (constant > 0.0)
+                        throw new UnsolvableProblemException();
+                    if (constant < 0.0)
+                        continue;
+                }
+                else if (positive)
+                {
+                    if (constant < 0.0)
+                        throw new UnsolvableProblemException();
+                    if (constant > 0.0)
+                        continue;
+                }
+                else
+                {
                     continue;
-                if (constant < 0.0)
-                    throw new UnsolvableProblemException();
+                }
             }
             else
             {
-                continue;
+                if (zero)
+                {
+                    if (constant < 0.0)
+                        throw new UnsolvableProblemException();
+                    continue;
+                }
+                else if (positive)
+                {
+                    if (constant < 0.0)
+                        throw new UnsolvableProblemException();
+                    if (constant > 0.0)
+                        continue;
+                }
+                else
+                {
+                    continue;
+                }
             }
 
             for (int x = 0; x < width - 1; ++x)
@@ -182,6 +217,89 @@ internal static class LinearPresolve
                 selected[c] /= coef;
 
             pr += 1;
+        }
+    }
+
+    public static ConstraintState[] InferStates(Matrix matrix, int equalities)
+    {
+        if (equalities < 0 || equalities > matrix.Height)
+            throw new ArgumentOutOfRangeException(nameof(equalities));
+
+        var states = new ConstraintState[matrix.Height];
+
+        unsafe
+        {
+            fixed (double* _matrix = matrix.Values)
+            {
+                fixed (ConstraintState* _states = states)
+                {
+                    InferStates(_matrix, matrix.Width, matrix.Height, _states, equalities);
+                }
+            }
+        }
+
+        return states;
+    }
+
+    private static unsafe void InferStates(
+        double* matrix,
+        int width,
+        int height,
+        ConstraintState* states,
+        int equalities
+    )
+    {
+        int y = 0;
+        for (; y < height; ++y)
+        {
+            double* row = &matrix[y * width];
+            double constant = row[width - 1];
+            bool positive = true;
+            bool negative = true;
+
+            for (int i = 0; i < width - 1; ++i)
+            {
+                positive &= row[i] >= 0.0;
+                negative &= row[i] <= 0;
+            }
+
+            bool zero = positive && negative;
+
+            if (zero)
+            {
+                if (y < equalities)
+                {
+                    if (constant == 0.0)
+                        states[y] = ConstraintState.VACUOUS;
+                    else
+                        states[y] = ConstraintState.UNSOLVABLE;
+                }
+                else
+                {
+                    if (constant >= 0.0)
+                        states[y] = ConstraintState.VACUOUS;
+                    else
+                        states[y] = ConstraintState.UNSOLVABLE;
+                }
+            }
+            else if (negative)
+            {
+                if (constant >= 0.0)
+                    states[y] = ConstraintState.VACUOUS;
+                else
+                    states[y] = ConstraintState.VALID;
+            }
+            else if (positive)
+            {
+                if (constant < 0.0)
+                    states[y] = ConstraintState.UNSOLVABLE;
+                else
+                    states[y] = ConstraintState.VALID;
+            }
+            else
+            {
+                states[y] = ConstraintState.VALID;
+            }
         }
     }
 }

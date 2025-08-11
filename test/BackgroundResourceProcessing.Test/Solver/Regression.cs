@@ -11,7 +11,9 @@ namespace BackgroundResourceProcessing.Test.Solver
             var processor = TestUtil.LoadVessel("regression/crash-split-output.cfg");
             var solver = new BackgroundResourceProcessing.Solver.Solver();
 
-            solver.ComputeInventoryRates(processor);
+            var rates = solver.ComputeInventoryRates(processor);
+
+            Assert.AreNotEqual(0.0, rates.converterRates[12]);
         }
 
         [TestMethod]
@@ -75,6 +77,59 @@ namespace BackgroundResourceProcessing.Test.Solver
             var rates = solver.ComputeInventoryRates(processor);
 
             Assert.AreNotEqual(0.0, rates.inventoryRates[2]);
+        }
+
+        [TestMethod]
+        public void TestFertilizerOutOfThinAir()
+        {
+            var processor = TestUtil.LoadVessel("regression/fertilizer-out-of-thin-air.cfg");
+            var solver = new BackgroundResourceProcessing.Solver.Solver();
+            var rates = solver.ComputeInventoryRates(processor);
+
+            for (int i = 0; i < processor.inventories.Count; ++i)
+            {
+                if (processor.inventories[i].resourceName != "Fertilizer")
+                    continue;
+
+                Assert.AreEqual(0.0, rates.inventoryRates[i]);
+            }
+        }
+
+        [TestMethod]
+        public void TestBoiloffIgnored()
+        {
+            var processor = TestUtil.LoadVessel("regression/boiloff-ignored.cfg");
+            var solver = new BackgroundResourceProcessing.Solver.Solver();
+            var rates = solver.ComputeInventoryRates(processor);
+
+            for (int i = 0; i < processor.converters.Count; ++i)
+            {
+                var converter = processor.converters[i];
+
+                if (!converter.inputs.ContainsKey("ElectricCharge".GetHashCode()))
+                    continue;
+                if (!converter.inputs.ContainsKey("BRPCryoTankBoiloff".GetHashCode()))
+                    continue;
+
+                Assert.AreNotEqual(0.0, rates.converterRates[i]);
+            }
+        }
+
+        [TestMethod]
+        public void TestBoiloffEcIgnored()
+        {
+            var processor = TestUtil.LoadVessel("regression/boiloff-ec-ignored.cfg");
+            var solver = new BackgroundResourceProcessing.Solver.Solver();
+            var rates = solver.ComputeInventoryRates(processor);
+
+            for (int i = 0; i < processor.inventories.Count; ++i)
+            {
+                var inventory = processor.inventories[i];
+                if (inventory.resourceName != "ElectricCharge")
+                    continue;
+
+                Assert.AreNotEqual(0.0, rates.inventoryRates[i]);
+            }
         }
     }
 }
