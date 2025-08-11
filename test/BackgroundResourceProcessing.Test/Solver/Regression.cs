@@ -11,7 +11,9 @@ namespace BackgroundResourceProcessing.Test.Solver
             var processor = TestUtil.LoadVessel("regression/crash-split-output.cfg");
             var solver = new BackgroundResourceProcessing.Solver.Solver();
 
-            solver.ComputeInventoryRates(processor);
+            var rates = solver.ComputeInventoryRates(processor);
+
+            Assert.AreNotEqual(0.0, rates.converterRates[12]);
         }
 
         [TestMethod]

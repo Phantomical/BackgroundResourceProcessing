@@ -300,6 +300,9 @@ internal struct LinearEquation(double[] values)
         foreach (var (index, coef) in this)
             LinearProblem.RenderCoef(builder, coef, new Variable(index).ToString(), ref first);
 
+        if (first)
+            builder.Append("0");
+
         return builder.ToString();
     }
     #endregion

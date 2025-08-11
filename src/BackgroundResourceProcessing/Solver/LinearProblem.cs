@@ -5,10 +5,7 @@ using System.Linq;
 using System.Text;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Tracing;
-using BackgroundResourceProcessing.Utils;
-using LibNoise.Modifiers;
-using Smooth.Collections;
-using UnityEngine.Analytics;
+using ConstraintState = BackgroundResourceProcessing.Solver.LinearPresolve.ConstraintState;
 
 namespace BackgroundResourceProcessing.Solver;
 
@@ -192,9 +189,9 @@ internal class LinearProblem
     }
 
     #region presolve
-    private void Presolve(LinearEquation func)
+    private void Presolve(ref LinearEquation func)
     {
-        using var span = new TraceSpan("LinearProblem.Presolve2");
+        using var span = new TraceSpan("LinearProblem.Presolve");
 
         var matrix = BuildPresolveMatrix(func);
         var zeros = new BitSet(VariableCount);
@@ -208,6 +205,8 @@ internal class LinearProblem
             )
         )
             return;
+
+        var states = LinearPresolve.InferStates(matrix, equalities.Count);
 
         var nEqs = equalities.Count;
         var nCons = constraints.Count + simple.Count;
@@ -224,106 +223,158 @@ internal class LinearProblem
         int i = 0;
         for (; i < nEqs; ++i)
         {
-            var row = matrix.GetRow(i);
-            var coefs = row.Slice(0, row.Length - 1);
-            var index = coefs.IndexOfNotEqual(0.0);
-
-            // Span has no non-zero entries, we can skip it.
-            if (index < 0)
-            {
-                if (row[row.Length - 1] != 0.0)
-                    throw new UnsolvableProblemException();
-
+            if (states[i] == ConstraintState.UNSOLVABLE)
+                throw new UnsolvableProblemException();
+            if (states[i] == ConstraintState.VACUOUS)
                 continue;
-            }
 
-            if (coefs.Slice(index + 1).IndexOfNotEqual(0.0) < 0)
-            {
-                simple.Add(
-                    new SimpleSolverConstraint()
-                    {
-                        variable = new(index, coefs[index]),
-                        constant = row[row.Length - 1],
-                    }
-                );
-                continue;
-            }
-
-            var eqn = new LinearEquation(VariableCount);
-
-            for (int x = index + 1; x < row.Length - 1; ++x)
-            {
-                if (row[x] != 0.0)
-                    eqn.Sub(new Variable(x, row[x] / row[index]));
-            }
-
-            substitutions.Add(
-                index,
-                new LinearEquality()
-                {
-                    variable = index,
-                    equation = eqn,
-                    constant = row[row.Length - 1] / row[index],
-                }
-            );
+            AddEquality(matrix.GetRow(i));
         }
 
         for (; i < nEqs + nCons; ++i)
         {
-            var row = matrix.GetRow(i);
-            var index = row.Slice(0, row.Length - 1).IndexOfNotEqual(0.0);
-
-            // Span has no non-zero entries, we can skip it.
-            if (index < 0)
-            {
-                if (row[row.Length - 1] < 0)
-                    throw new UnsolvableProblemException();
+            if (states[i] == ConstraintState.UNSOLVABLE)
+                throw new UnsolvableProblemException();
+            if (states[i] == ConstraintState.VACUOUS)
                 continue;
-            }
 
-            constraints.Add(
-                new SolverConstraint()
-                {
-                    variables = new LinearEquation(row.Slice(0, row.Length - 1)),
-                    constant = row[row.Length - 1],
-                }
-            );
+            AddConstraint(matrix.GetRow(i));
         }
 
+        var oldD = disjunctions;
+        disjunctions = new(disjunctions.Count);
         for (int j = 0; j < nDisj; ++j, i += 2)
         {
             var lhs = matrix.GetRow(i);
             var rhs = matrix.GetRow(i + 1);
-            ref var dis = ref disjunctions[j];
+            var dis = oldD[j];
 
-            dis.lhs.variables.Clear();
-            dis.rhs.variables.Clear();
+            var lstate = states[i];
+            var rstate = states[i + 1];
 
-            for (int x = 0; x < lhs.Length - 1; ++x)
+            if (lstate == ConstraintState.UNSOLVABLE && rstate == ConstraintState.UNSOLVABLE)
+                throw new UnsolvableProblemException();
+            // If any of them are vacuous then the whole constraint is unconditionally
+            // satisfiable and we don't need to worry about it.
+            if (lstate == ConstraintState.VACUOUS || rstate == ConstraintState.VACUOUS)
+                continue;
+
+            if (lstate == ConstraintState.UNSOLVABLE)
             {
-                if (lhs[x] != 0.0)
-                    dis.lhs.variables.Add(new Variable(x, lhs[x]));
+                AddConstraint(rhs);
+                continue;
+            }
+            if (rstate == ConstraintState.UNSOLVABLE)
+            {
+                AddConstraint(lhs);
+                continue;
             }
 
-            for (int x = 0; x < rhs.Length - 1; ++x)
-            {
-                if (rhs[x] != 0.0)
-                    dis.rhs.variables.Add(new Variable(x, rhs[x]));
-            }
-
+            dis.lhs.variables.Set(lhs.Slice(0, lhs.Length - 1));
+            dis.rhs.variables.Set(rhs.Slice(0, rhs.Length - 1));
             dis.lhs.constant = lhs[lhs.Length - 1];
             dis.rhs.constant = rhs[rhs.Length - 1];
+
+            disjunctions.Add(dis);
         }
 
-        func.Clear();
+        func.Set(matrix.GetRow(matrix.Height - 1).Slice(0, matrix.Width - 1));
+    }
+
+    private void AddConstraint(Span<double> row)
+    {
+        var coefs = row.Slice(0, row.Length - 1);
+        var constant = row[row.Length - 1];
+        int i = 0;
+        for (; i < coefs.Length; ++i)
         {
-            var row = matrix.GetRow(matrix.Height - 1);
-            for (int j = 0; j < row.Length - 1; ++j)
-            {
-                if (row[j] != 0.0)
-                    func.Add(new Variable(j, row[j]));
-            }
+            if (coefs[i] != 0.0)
+                goto FOUND_FIRST;
         }
+
+        if (constant < 0.0)
+            throw new UnsolvableProblemException("presolve added unsolvable constraint");
+        return;
+
+        FOUND_FIRST:
+        int index = i;
+
+        for (; i < coefs.Length; ++i)
+        {
+            if (coefs[i] != 0.0)
+                goto FOUND_SECOND;
+        }
+
+        // Only 1 variable, so we can add a simple constraint.
+        simple.Add(
+            new SimpleSolverConstraint()
+            {
+                variable = new Variable(index),
+                constant = constant / coefs[index],
+            }
+        );
+        return;
+
+        FOUND_SECOND:
+        constraints.Add(
+            new SolverConstraint() { variables = new LinearEquation(coefs), constant = constant }
+        );
+    }
+
+    private void AddEquality(Span<double> row)
+    {
+        var coefs = row.Slice(0, row.Length - 1);
+        var constant = row[row.Length - 1];
+        int i = 0;
+        for (; i < coefs.Length; ++i)
+        {
+            if (coefs[i] != 0.0)
+                goto FOUND_FIRST;
+        }
+
+        if (constant != 0.0)
+            throw new UnsolvableProblemException("presolve added unsolvable constraint");
+        return;
+
+        FOUND_FIRST:
+        int index = i;
+        i += 1;
+
+        for (; i < coefs.Length; ++i)
+        {
+            if (coefs[i] != 0.0)
+                goto FOUND_SECOND;
+        }
+
+        // Only 1 variable, so we can add a simple constraint.
+        substitutions.Add(
+            index,
+            new LinearEquality()
+            {
+                variable = index,
+                equation = [],
+                constant = constant / coefs[index],
+            }
+        );
+        return;
+
+        FOUND_SECOND:
+
+        var eqn = new LinearEquation(VariableCount);
+        for (int x = i; x < coefs.Length; ++x)
+        {
+            if (row[x] != 0.0)
+                eqn.Sub(new Variable(x, row[x] / row[index]));
+        }
+        substitutions.Add(
+            index,
+            new LinearEquality()
+            {
+                variable = index,
+                equation = eqn,
+                constant = constant / row[index],
+            }
+        );
     }
 
     private Matrix BuildPresolveMatrix(LinearEquation func)
@@ -393,7 +444,7 @@ internal class LinearProblem
         for (int i = 0; i < disjunctions.Count; ++i)
             binaryIndices[disjunctions[i].variable.Index] = i;
 
-        Presolve(func);
+        Presolve(ref func);
 
         if (Trace)
             LogUtil.Log($"After presolve:\nMaximize Z = {func}\nsubject to\n{this}");
