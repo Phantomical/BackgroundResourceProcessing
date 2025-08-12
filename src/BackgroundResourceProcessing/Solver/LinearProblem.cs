@@ -197,7 +197,7 @@ internal class LinearProblem
         var zeros = new BitSet(VariableCount);
 
         if (
-            !LinearPresolve.Presolve(
+            !Burst.LinearPresolve.Presolve(
                 matrix,
                 zeros,
                 equalities.Count,
@@ -206,7 +206,7 @@ internal class LinearProblem
         )
             return;
 
-        var states = LinearPresolve.InferStates(matrix, equalities.Count);
+        var states = Burst.LinearPresolve.InferStates(matrix, equalities.Count);
 
         var nEqs = equalities.Count;
         var nCons = constraints.Count + simple.Count;
