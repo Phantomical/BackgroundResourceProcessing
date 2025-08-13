@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using UnityEngine;
 
 namespace BackgroundResourceProcessing.Collections;
 
@@ -35,5 +34,25 @@ internal static class ListExtensions
             list.RemoveRange(j, i - j);
 
         return i - j;
+    }
+
+    /// <summary>
+    /// Attempt to remove the last element in the list.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="list"></param>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    public static bool TryPopBack<T>(this List<T> list, out T value)
+    {
+        if (list.Count == 0)
+        {
+            value = default;
+            return false;
+        }
+
+        value = list[list.Count - 1];
+        list.RemoveAt(list.Count - 1);
+        return true;
     }
 }

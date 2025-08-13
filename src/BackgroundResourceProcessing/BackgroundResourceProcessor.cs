@@ -1,13 +1,11 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Converter;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
-using BackgroundResourceProcessing.Utils;
 
 namespace BackgroundResourceProcessing;
 
@@ -23,6 +21,8 @@ namespace BackgroundResourceProcessing;
 public sealed partial class BackgroundResourceProcessor : VesselModule
 {
     private readonly ResourceProcessor processor = new();
+
+    private bool IsDirty = false;
 
     #region Events
     /// <summary>
@@ -290,8 +290,6 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
                     total += inventory.Available;
                     inventory.Amount = inventory.MaxAmount;
                 }
-
-                return total;
             }
             else
             {
@@ -300,9 +298,10 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
                     total -= inventory.Amount;
                     inventory.Amount = 0.0;
                 }
-
-                return total;
             }
+
+            MarkDirty();
+            return total;
         }
 
         double available = 0.0;
@@ -319,6 +318,8 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
 
         if (double.IsNaN(amount))
             throw new Exception($"total stored amount for resource `{resourceName}` was NaN");
+
+        MarkDirty();
 
         if (Math.Abs(amount) >= available)
         {

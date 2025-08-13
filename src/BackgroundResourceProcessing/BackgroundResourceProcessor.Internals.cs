@@ -1,5 +1,7 @@
+using System.Collections;
 using BackgroundResourceProcessing.Addons;
 using BackgroundResourceProcessing.Tracing;
+using UnityEngine;
 using Shadow = BackgroundResourceProcessing.ShadowState;
 
 namespace BackgroundResourceProcessing;
@@ -82,12 +84,14 @@ public sealed partial class BackgroundResourceProcessor
         base.OnSave(node);
         processor.Save(node);
         ShadowState?.Save(node.AddNode("SHADOW_STATE"));
+        node.AddValue("IsDirty", IsDirty);
     }
 
     protected override void OnLoad(ConfigNode node)
     {
         base.OnLoad(node);
         processor.Load(node, Vessel);
+        node.TryGetValue("IsDirty", ref IsDirty);
 
         ConfigNode shadow = null;
         if (node.TryGetNode("SHADOW_STATE", ref shadow))
@@ -131,7 +135,8 @@ public sealed partial class BackgroundResourceProcessor
             DispatchOnRatesComputed(changepoint);
         }
 
-        processor.UpdateNextChangepoint(changepoint);
+        IsDirty = false;
+        UpdateNextChangepoint(changepoint);
         if (NextChangepoint == changepoint)
         {
             LogUtil.Error(
@@ -166,10 +171,26 @@ public sealed partial class BackgroundResourceProcessor
         processor.ForceUpdateBehaviours(state);
         processor.ComputeRates();
         DispatchOnRatesComputed(state.CurrentTime);
-        processor.UpdateNextChangepoint(state.CurrentTime);
+        UpdateNextChangepoint(state.CurrentTime);
 
         EventDispatcher.UnregisterChangepointCallbacks(this);
         EventDispatcher.RegisterChangepointCallback(this, processor.nextChangepoint);
+    }
+
+    internal void OnDirtyLateUpdate()
+    {
+        if (!IsDirty)
+            return;
+
+        var currentTime = Planetarium.GetUniversalTime();
+        var prevChangepoint = NextChangepoint;
+        UpdateNextChangepoint(currentTime);
+
+        if (prevChangepoint == NextChangepoint)
+            return;
+
+        EventDispatcher.UnregisterChangepointCallbacks(this);
+        EventDispatcher.RegisterChangepointCallback(this, NextChangepoint);
     }
 
     // We use this event to save the vessel state _before_ we actually get saved.
@@ -221,7 +242,7 @@ public sealed partial class BackgroundResourceProcessor
         processor.ForceUpdateBehaviours(state);
         processor.ComputeRates();
         DispatchOnRatesComputed(currentTime);
-        processor.UpdateNextChangepoint(currentTime);
+        UpdateNextChangepoint(currentTime);
     }
 
     private void DispatchOnRatesComputed(double currentTime)
@@ -238,10 +259,25 @@ public sealed partial class BackgroundResourceProcessor
         }
     }
 
+    private void UpdateNextChangepoint(double currentTime)
+    {
+        processor.UpdateNextChangepoint(currentTime);
+        IsDirty = false;
+    }
+
     private void RegisterCallbacks()
     {
         if (vessel.loaded)
             GameEvents.onGameStateSave.Add(OnGameStateSave);
+    }
+
+    private void MarkDirty()
+    {
+        if (IsDirty)
+            return;
+
+        EventDispatcher.RegisterDirty(this);
+        IsDirty = true;
     }
 
     private void UnregisterCallbacks()

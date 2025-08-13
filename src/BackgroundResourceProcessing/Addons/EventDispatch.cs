@@ -24,6 +24,7 @@ internal class EventDispatcher : MonoBehaviour
     public static EventDispatcher Instance { get; private set; }
 
     private readonly PriorityQueue<BackgroundResourceProcessor, double> queue = new();
+    private readonly List<BackgroundResourceProcessor> dirty = [];
     private bool mustBeEnabled = true;
 
     #region Global API
@@ -66,6 +67,18 @@ internal class EventDispatcher : MonoBehaviour
 
         Instance.RemoveCallbacks(module);
     }
+
+    /// <summary>
+    /// Schedule a callback to OnDirtyLateUpdate to happen during LateUpdate.
+    /// </summary>
+    /// <param name="module"></param>
+    public static void RegisterDirty(BackgroundResourceProcessor module)
+    {
+        if (Instance == null)
+            return;
+
+        Instance.AddDirty(module);
+    }
     #endregion
 
     #region Internal API
@@ -81,6 +94,11 @@ internal class EventDispatcher : MonoBehaviour
 
         if (queue.IsEmpty)
             Disable();
+    }
+
+    private void AddDirty(BackgroundResourceProcessor module)
+    {
+        dirty.Add(module);
     }
 
     private void Disable()
@@ -134,6 +152,12 @@ internal class EventDispatcher : MonoBehaviour
         // If we have no work to do
         if (queue.IsEmpty)
             Disable();
+    }
+
+    void LateUpdate()
+    {
+        while (dirty.TryPopBack(out var module))
+            module.OnDirtyLateUpdate();
     }
 
     void OnSceneConfirmExit(GameScenes _)
