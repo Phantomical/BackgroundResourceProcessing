@@ -130,6 +130,7 @@ public class MonitorVesselCache : MonoBehaviour
             stats.SuppliesExhaustedUT = supplyB?.lastSatisfied ?? stats.SuppliesExhaustedUT;
 
             stats.SupplyState = processor.GetResourceState("Supplies");
+            stats.EcState = processor.GetResourceState("ElectricCharge");
         }
 
         return stats;
@@ -164,10 +165,16 @@ public class MonitorVesselCache : MonoBehaviour
         public double SuppliesExhaustedUT;
 
         public InventoryState SupplyState;
+        public InventoryState EcState;
 
         public readonly double GetSuppliesAtUT(double UT)
         {
             return SupplyState.amount + SupplyState.rate * (UT - LastChangepoint);
+        }
+
+        public readonly double GetEcAtUT(double UT)
+        {
+            return EcState.amount + EcState.rate * (UT - LastChangepoint);
         }
     }
 
@@ -336,7 +343,7 @@ public static class LifeSupportMonitor_GetResourceInVessel_Patch
 {
     static bool Prefix(ref double __result, Vessel vessel, string resName)
     {
-        if (vessel == null || vessel.loaded || resName != "Supplies")
+        if (vessel == null || vessel.loaded)
             return true;
 
         var settings = HighLogic.CurrentGame?.Parameters.CustomParams<Settings>();
@@ -349,7 +356,12 @@ public static class LifeSupportMonitor_GetResourceInVessel_Patch
         var stats = _stats.Value;
         var now = Planetarium.GetUniversalTime();
 
-        __result = stats.GetSuppliesAtUT(now);
+        if (resName == "Supplies")
+            __result = stats.GetSuppliesAtUT(now);
+        else if (resName == "ElectricCharge")
+            __result = stats.GetEcAtUT(now);
+        else
+            return true;
         return false;
     }
 }

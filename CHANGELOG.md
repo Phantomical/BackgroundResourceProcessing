@@ -19,6 +19,8 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 * Fixed a solver crash when presolve manages to completely elide an OR-constraint.
 * Fixed a bug where a behaviour that fails to deserialize could cause the
   background simulation to make no progress.
+* Fixed a bug where the USI-LS status panel would show a vessel as being out of
+  EC despite the vessel still having EC available.
 
 ## 0.1.5
 ### Added

@@ -199,10 +199,18 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
     /// <returns></returns>
     public InventoryState GetResourceState(string resourceName)
     {
+        return GetResourceState(resourceName.GetHashCode());
+    }
+
+    /// <summary>
+    /// Get a summary for a single resource.
+    /// </summary>
+    public InventoryState GetResourceState(int resourceId)
+    {
         InventoryState state = default;
         foreach (var inventory in processor.inventories)
         {
-            if (inventory.ResourceName == resourceName)
+            if (inventory.ResourceId == resourceId)
                 state = state.Merge(inventory.State);
         }
         return state;
