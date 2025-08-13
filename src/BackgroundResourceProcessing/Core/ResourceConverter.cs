@@ -87,7 +87,10 @@ public class ResourceConverter(ConverterBehaviour behaviour)
     public bool Refresh(VesselState state)
     {
         if (Behaviour == null)
+        {
+            NextChangepoint = double.PositiveInfinity;
             return false;
+        }
 
         try
         {
