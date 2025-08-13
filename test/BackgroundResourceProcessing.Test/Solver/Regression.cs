@@ -137,7 +137,17 @@ namespace BackgroundResourceProcessing.Test.Solver
         {
             var processor = TestUtil.LoadVessel("regression/crash-bad-bchoice-access.cfg");
             var solver = new BackgroundResourceProcessing.Solver.Solver();
-            var rates = solver.ComputeInventoryRates(processor);
+            solver.ComputeInventoryRates(processor);
+        }
+
+        [TestMethod]
+        public void TestCrashNoProgress()
+        {
+            var processor = TestUtil.LoadVessel("regression/crash-bad-bchoice-access.cfg");
+            processor.ComputeRates();
+            var changepoint = processor.ComputeNextChangepoint(0.0);
+
+            Assert.AreNotEqual(0.0, changepoint);
         }
     }
 }
