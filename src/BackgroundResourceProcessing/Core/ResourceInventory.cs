@@ -340,7 +340,7 @@ public class ResourceInventory
 
     public override string ToString()
     {
-        return $"{ResourceName} {Amount:G6}/{MaxAmount:G6}";
+        return $"{ResourceName} {Amount:G6}/{MaxAmount:G6} (rate {Rate:G6})";
     }
 
     internal void SolverHash(ref HashCode hasher)
