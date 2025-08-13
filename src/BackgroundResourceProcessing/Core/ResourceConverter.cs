@@ -42,29 +42,29 @@ public class ResourceConverter(ConverterBehaviour behaviour)
     /// <summary>
     /// The resource inputs returned from the behaviour.
     /// </summary>
-    public SortedMap<int, ResourceRatio> inputs = [];
+    public SortedMap<int, ResourceRatio> Inputs = [];
 
     /// <summary>
     /// The resource outputs returned from the behaviour.
     /// </summary>
-    public SortedMap<int, ResourceRatio> outputs = [];
+    public SortedMap<int, ResourceRatio> Outputs = [];
 
     /// <summary>
     /// The resource requirements returned from the behaviour.
     /// </summary>
-    public SortedMap<int, ResourceConstraint> required = [];
+    public SortedMap<int, ResourceConstraint> Required = [];
 
     /// <summary>
     /// The time at which the behaviour has said that its behaviour might
     /// change next.
     /// </summary>
-    public double nextChangepoint = double.PositiveInfinity;
+    public double NextChangepoint = double.PositiveInfinity;
 
     /// <summary>
     /// The current rate at which this converter is running. This will
     /// always be a number in the range <c>[0, 1]</c>.
     /// </summary>
-    public double rate = 0.0;
+    public double Rate = 0.0;
 
     /// <summary>
     /// The total amount of time that this converter has been active,
@@ -76,9 +76,13 @@ public class ResourceConverter(ConverterBehaviour behaviour)
     /// processing. Rather, it is provided for use by other users of the
     /// API.
     /// </remarks>
-    public double activeTime = 0.0;
+    public double ActiveTime = 0.0;
 
-    public int priority = 0;
+    /// <summary>
+    /// The priority of this converter. Converters with a higher priority will
+    /// be preferred over those with a lower priority.
+    /// </summary>
+    public int Priority = 0;
 
     public bool Refresh(VesselState state)
     {
@@ -88,24 +92,24 @@ public class ResourceConverter(ConverterBehaviour behaviour)
         try
         {
             var resources = Behaviour.GetResources(state);
-            nextChangepoint = resources.NextChangepoint;
+            NextChangepoint = resources.NextChangepoint;
 
-            if (nextChangepoint < state.CurrentTime)
+            if (NextChangepoint < state.CurrentTime)
             {
                 LogUtil.Error(
                     $"Behaviour {Behaviour.GetType().Name} returned changepoint in the past. ",
                     "Setting changepoint to infinity instead."
                 );
-                nextChangepoint = double.PositiveInfinity;
+                NextChangepoint = double.PositiveInfinity;
             }
 
             bool changed = false;
 
-            if (OverwriteRatios(ref inputs, resources.Inputs))
+            if (OverwriteRatios(ref Inputs, resources.Inputs))
                 changed = true;
-            if (OverwriteRatios(ref outputs, resources.Outputs))
+            if (OverwriteRatios(ref Outputs, resources.Outputs))
                 changed = true;
-            if (OverwriteConstraints(ref required, resources.Requirements))
+            if (OverwriteConstraints(ref Required, resources.Requirements))
                 changed = true;
 
             return changed;
@@ -114,10 +118,10 @@ public class ResourceConverter(ConverterBehaviour behaviour)
         {
             LogUtil.Error($"{Behaviour.GetType().Name}.GetResources threw an exception: {e}");
 
-            nextChangepoint = double.PositiveInfinity;
-            inputs = [];
-            outputs = [];
-            required = [];
+            NextChangepoint = double.PositiveInfinity;
+            Inputs = [];
+            Outputs = [];
+            Required = [];
 
             return true;
         }
@@ -125,9 +129,9 @@ public class ResourceConverter(ConverterBehaviour behaviour)
 
     public void Load(ConfigNode node, Vessel vessel = null)
     {
-        node.TryGetDouble("nextChangepoint", ref nextChangepoint);
-        node.TryGetValue("rate", ref rate);
-        node.TryGetValue("priority", ref priority);
+        node.TryGetDouble("nextChangepoint", ref NextChangepoint);
+        node.TryGetValue("rate", ref Rate);
+        node.TryGetValue("priority", ref Priority);
 
         foreach (var inner in node.GetNodes("PUSH_INVENTORIES"))
             Push.AddAll(LoadBitSet(inner));
@@ -151,14 +155,14 @@ public class ResourceConverter(ConverterBehaviour behaviour)
 
             LogUtil.Error($"Failed to load ConverterBehaviour {name}: {e}");
 
-            nextChangepoint = double.PositiveInfinity;
+            NextChangepoint = double.PositiveInfinity;
         }
 
-        outputs.Clear();
-        inputs.Clear();
-        required.Clear();
+        Outputs.Clear();
+        Inputs.Clear();
+        Required.Clear();
 
-        outputs.AddAll(
+        Outputs.AddAll(
             ConfigUtil
                 .LoadOutputResources(node)
                 .Select(ratio => new KeyValuePair<int, ResourceRatio>(
@@ -166,7 +170,7 @@ public class ResourceConverter(ConverterBehaviour behaviour)
                     ratio
                 ))
         );
-        inputs.AddAll(
+        Inputs.AddAll(
             ConfigUtil
                 .LoadInputResources(node)
                 .Select(ratio => new KeyValuePair<int, ResourceRatio>(
@@ -174,7 +178,7 @@ public class ResourceConverter(ConverterBehaviour behaviour)
                     ratio
                 ))
         );
-        required.AddAll(
+        Required.AddAll(
             ConfigUtil
                 .LoadRequiredResources(node)
                 .Select(ratio => new KeyValuePair<int, ResourceConstraint>(
@@ -210,9 +214,9 @@ public class ResourceConverter(ConverterBehaviour behaviour)
 
     public void Save(ConfigNode node)
     {
-        node.AddValue("nextChangepoint", nextChangepoint);
-        node.AddValue("rate", rate);
-        node.AddValue("priority", priority);
+        node.AddValue("nextChangepoint", NextChangepoint);
+        node.AddValue("rate", Rate);
+        node.AddValue("priority", Priority);
 
         if (!Push.IsEmpty)
             SaveBitSet(node.AddNode("PUSH_INVENTORIES"), Push);
@@ -222,9 +226,9 @@ public class ResourceConverter(ConverterBehaviour behaviour)
             SaveBitSet(node.AddNode("CONSTRAINT_INVENTORIES"), Constraint);
 
         Behaviour?.Save(node.AddNode("BEHAVIOUR"));
-        ConfigUtil.SaveOutputResources(node, outputs.Select(output => output.Value));
-        ConfigUtil.SaveInputResources(node, inputs.Select(input => input.Value));
-        ConfigUtil.SaveRequiredResources(node, required.Select(required => required.Value));
+        ConfigUtil.SaveOutputResources(node, Outputs.Select(output => output.Value));
+        ConfigUtil.SaveInputResources(node, Inputs.Select(input => input.Value));
+        ConfigUtil.SaveRequiredResources(node, Required.Select(required => required.Value));
     }
 
     private static DynamicBitSet LoadBitSet(ConfigNode node)
@@ -258,8 +262,8 @@ public class ResourceConverter(ConverterBehaviour behaviour)
 
     public override string ToString()
     {
-        var inputs = this.inputs.Select(entry => entry.Value.ResourceName);
-        var outputs = this.outputs.Select(entry => entry.Value.ResourceName);
+        var inputs = this.Inputs.Select(entry => entry.Value.ResourceName);
+        var outputs = this.Outputs.Select(entry => entry.Value.ResourceName);
 
         return $"{string.Join(",", inputs)} => {string.Join(",", outputs)}";
     }
@@ -300,7 +304,7 @@ public class ResourceConverter(ConverterBehaviour behaviour)
     {
         var clone = (ResourceConverter)MemberwiseClone();
         clone.Behaviour = null;
-        clone.nextChangepoint = double.PositiveInfinity;
+        clone.NextChangepoint = double.PositiveInfinity;
         return clone;
     }
 

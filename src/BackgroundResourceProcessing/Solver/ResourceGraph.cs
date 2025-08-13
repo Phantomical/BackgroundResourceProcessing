@@ -168,17 +168,17 @@ internal struct GraphConverter
         // using var span = new TraceSpan("new GraphConverter");
 
         baseId = id;
-        weight = GetPriorityWeight(converter.priority);
+        weight = GetPriorityWeight(converter.Priority);
 
         // inputs = new(converter.inputs.Count);
         // outputs = new(converter.outputs.Count);
-        if (converter.required.Count == 0)
+        if (converter.Required.Count == 0)
             constraints = Empty;
         else
-            constraints = new(converter.required.Count);
+            constraints = new(converter.Required.Count);
 
-        inputs = converter.inputs;
-        outputs = converter.outputs;
+        inputs = converter.Inputs;
+        outputs = converter.Outputs;
     }
 
     public void Merge(GraphConverter other)
@@ -347,7 +347,7 @@ internal class ResourceGraph
     {
         using var cbuilder = gconv.constraints.CreateBuilder();
 
-        foreach (var (resource, required) in rconv.required)
+        foreach (var (resource, required) in rconv.Required)
         {
             double total = 0.0;
 

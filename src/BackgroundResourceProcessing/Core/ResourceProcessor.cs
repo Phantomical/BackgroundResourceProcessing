@@ -115,7 +115,7 @@ internal class ResourceProcessor
             foreach (var inventory in inventories)
                 inventory.Rate = 0.0;
             foreach (var converter in converters)
-                converter.rate = 0.0;
+                converter.Rate = 0.0;
 
             for (int i = 0; i < inventories.Count; ++i)
             {
@@ -130,7 +130,7 @@ internal class ResourceProcessor
                 double rate = soln.converterRates[i];
                 if (!MathUtil.IsFinite(rate))
                     throw new Exception($"Rate for converter {i} was {rate}");
-                converters[i].rate = rate;
+                converters[i].Rate = rate;
             }
         }
         catch (Exception e)
@@ -138,7 +138,7 @@ internal class ResourceProcessor
             foreach (var inventory in inventories)
                 inventory.Rate = 0.0;
             foreach (var converter in converters)
-                converter.rate = 0.0;
+                converter.Rate = 0.0;
 
             DumpCrashReport(e);
         }
@@ -149,7 +149,7 @@ internal class ResourceProcessor
         foreach (var inventory in inventories)
             inventory.Rate = 0.0;
         foreach (var converter in converters)
-            converter.rate = 0.0;
+            converter.Rate = 0.0;
     }
 
     private SolverSolution ComputeRateSolution()
@@ -217,7 +217,7 @@ internal class ResourceProcessor
     {
         ConstraintState state = ConstraintState.ENABLED;
 
-        foreach (var (resource, required) in converter.required)
+        foreach (var (resource, required) in converter.Required)
         {
             double total = 0.0;
 
@@ -282,9 +282,9 @@ internal class ResourceProcessor
 
         foreach (var converter in converters)
         {
-            changepoint = Math.Min(changepoint, converter.nextChangepoint);
+            changepoint = Math.Min(changepoint, converter.NextChangepoint);
 
-            foreach (var requirement in converter.required.Values)
+            foreach (var requirement in converter.Required.Values)
             {
                 var (total, rate) = totals.GetValueOr(requirement.ResourceName, default);
                 if (rate == 0.0)
@@ -450,17 +450,17 @@ internal class ResourceProcessor
 
             var converter = new ResourceConverter(behaviour)
             {
-                priority = behaviour.Priority ?? priority,
+                Priority = behaviour.Priority ?? priority,
             };
             converter.Refresh(state);
 
             LogUtil.Debug(() =>
-                $"Converter has {converter.inputs.Count} inputs and {converter.outputs.Count} outputs"
+                $"Converter has {converter.Inputs.Count} inputs and {converter.Outputs.Count} outputs"
             );
 
             converters.Add(converter);
 
-            foreach (var ratio in converter.inputs.Values)
+            foreach (var ratio in converter.Inputs.Values)
             {
                 var pull = GetConnectedResources(
                     vessel,
@@ -489,7 +489,7 @@ internal class ResourceProcessor
                 }
             }
 
-            foreach (var ratio in converter.outputs.Values)
+            foreach (var ratio in converter.Outputs.Values)
             {
                 var push = GetConnectedResources(
                     vessel,
@@ -518,7 +518,7 @@ internal class ResourceProcessor
                 }
             }
 
-            foreach (var req in converter.required.Values)
+            foreach (var req in converter.Required.Values)
             {
                 // Treat constraints as if they are pulling resources when
                 // determining which resources they are attached to.
@@ -572,7 +572,7 @@ internal class ResourceProcessor
 
         foreach (var converter in converters)
         {
-            if (converter.nextChangepoint > currentTime)
+            if (converter.NextChangepoint > currentTime)
                 continue;
 
             if (converter.Refresh(state))
@@ -690,7 +690,7 @@ internal class ResourceProcessor
         }
 
         foreach (var converter in converters)
-            converter.activeTime += deltaT * converter.rate;
+            converter.ActiveTime += deltaT * converter.Rate;
 
         lastUpdate = currentTime;
         return changepoint;

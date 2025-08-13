@@ -100,9 +100,9 @@ public class MonitorVesselCache : MonoBehaviour
         double? supplyExhausted = null;
         foreach (var changepoint in simulator.Steps())
         {
-            if (ec.rate < 1.0)
+            if (ec.Rate < 1.0)
                 ecExhausted ??= changepoint;
-            if (supply.rate < 1.0)
+            if (supply.Rate < 1.0)
                 supplyExhausted ??= changepoint;
 
             if (ecExhausted != null && supplyExhausted != null)

@@ -106,9 +106,9 @@ namespace BackgroundResourceProcessing.Test.Solver
             {
                 var converter = processor.converters[i];
 
-                if (!converter.inputs.ContainsKey("ElectricCharge".GetHashCode()))
+                if (!converter.Inputs.ContainsKey("ElectricCharge".GetHashCode()))
                     continue;
-                if (!converter.inputs.ContainsKey("BRPCryoTankBoiloff".GetHashCode()))
+                if (!converter.Inputs.ContainsKey("BRPCryoTankBoiloff".GetHashCode()))
                     continue;
 
                 Assert.AreNotEqual(0.0, rates.converterRates[i]);

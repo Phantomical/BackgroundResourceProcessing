@@ -88,8 +88,8 @@ public class ModuleBackgroundUSILifeSupport : VesselModule
 
         // We set the converters at a high priority so that life support gets
         // prioritized over everything else.
-        var supplyConverter = new Core.ResourceConverter(supplyBehaviour) { priority = 10 };
-        var ecConverter = new Core.ResourceConverter(ecBehaviour) { priority = 10 };
+        var supplyConverter = new Core.ResourceConverter(supplyBehaviour) { Priority = 10 };
+        var ecConverter = new Core.ResourceConverter(ecBehaviour) { Priority = 10 };
 
         // Now we need to manually set up which inventories this converter is
         // connected to.
@@ -244,7 +244,7 @@ public class USILifeSupportBehaviour(ConversionRecipe recipe) : ConverterBehavio
     {
         base.OnRatesComputed(processor, converter, evt);
 
-        if (converter.rate < 1.0)
+        if (converter.Rate < 1.0)
             lastSatisfied ??= evt.CurrentTime;
         else
         {

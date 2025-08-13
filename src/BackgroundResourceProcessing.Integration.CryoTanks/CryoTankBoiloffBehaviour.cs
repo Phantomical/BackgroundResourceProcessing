@@ -79,9 +79,9 @@ public class CryoTankBoiloffBehaviour : ConstantProducer
             return;
 
         if (inventory.Rate == 0.0)
-            converter.nextChangepoint = double.PositiveInfinity;
+            converter.NextChangepoint = double.PositiveInfinity;
         else
-            converter.nextChangepoint =
+            converter.NextChangepoint =
                 evt.CurrentTime
                 + Math.Max(inventory.Amount / Math.Abs(inventory.Rate) * MaxError, 600.0);
     }

@@ -90,9 +90,9 @@ public class ScienceConverterBehaviour : ConverterBehaviour
             return;
 
         if (data.Rate == 0.0)
-            converter.nextChangepoint = double.PositiveInfinity;
+            converter.NextChangepoint = double.PositiveInfinity;
         else
-            converter.nextChangepoint =
+            converter.NextChangepoint =
                 evt.CurrentTime + Math.Max(data.Amount / Math.Abs(data.Rate) * MaxError, 600.0);
     }
 }
