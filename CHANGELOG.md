@@ -12,6 +12,9 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ## Unreleased
 
+### Added
+* Added support for `SpaceDust`.
+
 ## 0.1.5
 ### Added
 * Added support for `Near Future Solar` - specifically: `ModuleCurvedSolarPanel`.
