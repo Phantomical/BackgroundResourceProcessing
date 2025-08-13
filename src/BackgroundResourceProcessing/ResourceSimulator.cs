@@ -98,7 +98,7 @@ public class ResourceSimulator
         InventoryState state = new();
         foreach (var inventory in processor.inventories)
         {
-            if (inventory.resourceName != resourceName)
+            if (inventory.ResourceName != resourceName)
                 continue;
 
             state = state.Merge(inventory.State);
@@ -115,10 +115,10 @@ public class ResourceSimulator
         Dictionary<string, InventoryState> states = [];
         foreach (var inventory in processor.inventories)
         {
-            if (!states.TryGetValue(inventory.resourceName, out var state))
+            if (!states.TryGetValue(inventory.ResourceName, out var state))
                 state = new();
 
-            states[inventory.resourceName] = state.Merge(inventory.State);
+            states[inventory.ResourceName] = state.Merge(inventory.State);
         }
         return states;
     }

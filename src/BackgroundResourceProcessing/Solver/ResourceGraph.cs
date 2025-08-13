@@ -102,11 +102,11 @@ internal struct GraphInventory
 
     public GraphInventory(ResourceInventory inventory, int id)
     {
-        resourceName = inventory.resourceName;
+        resourceName = inventory.ResourceName;
         resourceId = resourceName.GetHashCode();
         baseId = id;
-        amount = inventory.amount;
-        maxAmount = inventory.maxAmount;
+        amount = inventory.Amount;
+        maxAmount = inventory.MaxAmount;
 
         state = InventoryState.Unconstrained;
         if (inventory.Full)
@@ -354,8 +354,8 @@ internal class ResourceGraph
             foreach (var invId in rconv.Constraint)
             {
                 var inventory = processor.inventories[invId];
-                if (inventory.resourceName == required.ResourceName)
-                    total += inventory.amount;
+                if (inventory.ResourceName == required.ResourceName)
+                    total += inventory.Amount;
             }
 
             if (MathUtil.ApproxEqual(required.Amount, total, ResourceProcessor.ResourceEpsilon))

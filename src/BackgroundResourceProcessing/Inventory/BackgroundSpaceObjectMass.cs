@@ -29,9 +29,9 @@ public class BackgroundSpaceObjectMass : BackgroundInventory<ModuleSpaceObjectIn
 
     public override void UpdateResource(ModuleSpaceObjectInfo module, ResourceInventory inventory)
     {
-        if (inventory.resourceName != ResourceName)
+        if (inventory.ResourceName != ResourceName)
             return;
 
-        module.currentMassVal = module.massThresholdVal + inventory.amount;
+        module.currentMassVal = module.massThresholdVal + inventory.Amount;
     }
 }

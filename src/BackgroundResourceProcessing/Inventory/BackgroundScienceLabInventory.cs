@@ -35,16 +35,16 @@ public class BackgroundScienceLabInventory : BackgroundInventory<ModuleScienceLa
 
     public override void UpdateResource(ModuleScienceLab lab, ResourceInventory inventory)
     {
-        if (inventory.resourceName == DataResourceName)
+        if (inventory.ResourceName == DataResourceName)
         {
-            var delta = lab.dataStored - inventory.amount;
-            lab.dataStored = (float)MathUtil.Clamp(inventory.amount + delta, 0.0, lab.dataStorage);
+            var delta = lab.dataStored - inventory.Amount;
+            lab.dataStored = (float)MathUtil.Clamp(inventory.Amount + delta, 0.0, lab.dataStorage);
         }
-        else if (inventory.resourceName == ScienceResourceName)
+        else if (inventory.ResourceName == ScienceResourceName)
         {
-            var delta = lab.storedScience - inventory.amount;
+            var delta = lab.storedScience - inventory.Amount;
             lab.storedScience = (float)
-                MathUtil.Clamp(inventory.amount + delta, 0.0, inventory.maxAmount);
+                MathUtil.Clamp(inventory.Amount + delta, 0.0, inventory.MaxAmount);
         }
     }
 
@@ -56,19 +56,19 @@ public class BackgroundScienceLabInventory : BackgroundInventory<ModuleScienceLa
     {
         var node = module.moduleValues;
 
-        if (inventory.resourceName == DataResourceName)
+        if (inventory.ResourceName == DataResourceName)
         {
-            node.TryGetValue("dataStored", ref inventory.amount);
+            node.TryGetValue("dataStored", ref inventory.Amount);
             base.UpdateSnapshot(module, inventory, update);
-            node.SetValue("dataStored", inventory.amount, createIfNotFound: true);
-            inventory.originalAmount = inventory.amount;
+            node.SetValue("dataStored", inventory.Amount, createIfNotFound: true);
+            inventory.OriginalAmount = inventory.Amount;
         }
-        else if (inventory.resourceName == ScienceResourceName)
+        else if (inventory.ResourceName == ScienceResourceName)
         {
-            node.TryGetValue("storedSciencec", ref inventory.amount);
+            node.TryGetValue("storedSciencec", ref inventory.Amount);
             base.UpdateSnapshot(module, inventory, update);
-            node.SetValue("storedScience", inventory.amount);
-            inventory.originalAmount = inventory.amount;
+            node.SetValue("storedScience", inventory.Amount);
+            inventory.OriginalAmount = inventory.Amount;
         }
         else
         {

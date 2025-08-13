@@ -419,8 +419,8 @@ internal class Solver
     [DebuggerDisplay("{amount}/{maxAmount}")]
     private struct InventorySummary(ResourceInventory inventory)
     {
-        public double amount = inventory.amount;
-        public double maxAmount = inventory.maxAmount;
+        public double amount = inventory.Amount;
+        public double maxAmount = inventory.MaxAmount;
     }
 }
 

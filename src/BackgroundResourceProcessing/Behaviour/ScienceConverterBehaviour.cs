@@ -47,7 +47,7 @@ public class ScienceConverterBehaviour : ConverterBehaviour
         if (dataInv == null)
             return default;
 
-        var data = dataInv.amount;
+        var data = dataInv.Amount;
 
         return new ConverterResources()
         {
@@ -89,10 +89,10 @@ public class ScienceConverterBehaviour : ConverterBehaviour
         if (data == null)
             return;
 
-        if (data.rate == 0.0)
+        if (data.Rate == 0.0)
             converter.nextChangepoint = double.PositiveInfinity;
         else
             converter.nextChangepoint =
-                evt.CurrentTime + Math.Max(data.amount / Math.Abs(data.rate) * MaxError, 600.0);
+                evt.CurrentTime + Math.Max(data.Amount / Math.Abs(data.Rate) * MaxError, 600.0);
     }
 }

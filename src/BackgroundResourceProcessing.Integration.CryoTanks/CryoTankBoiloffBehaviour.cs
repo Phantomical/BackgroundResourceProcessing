@@ -34,7 +34,7 @@ public class CryoTankBoiloffBehaviour : ConstantProducer
         if (inventory == null)
             return new();
 
-        var rate = inventory.amount * BoiloffRate;
+        var rate = inventory.Amount * BoiloffRate;
 
         ConverterResources resources = new()
         {
@@ -48,7 +48,7 @@ public class CryoTankBoiloffBehaviour : ConstantProducer
                 },
                 new ResourceRatio()
                 {
-                    ResourceName = inventory.resourceName,
+                    ResourceName = inventory.ResourceName,
                     Ratio = rate,
                     FlowMode = ResourceFlowMode.NO_FLOW,
                 },
@@ -78,12 +78,12 @@ public class CryoTankBoiloffBehaviour : ConstantProducer
         if (inventory == null)
             return;
 
-        if (inventory.rate == 0.0)
+        if (inventory.Rate == 0.0)
             converter.nextChangepoint = double.PositiveInfinity;
         else
             converter.nextChangepoint =
                 evt.CurrentTime
-                + Math.Max(inventory.amount / Math.Abs(inventory.rate) * MaxError, 600.0);
+                + Math.Max(inventory.Amount / Math.Abs(inventory.Rate) * MaxError, 600.0);
     }
 
     protected override void OnLoad(ConfigNode node)

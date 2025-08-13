@@ -43,10 +43,10 @@ public struct InventoryId
 
     public InventoryId(ResourceInventory inventory)
     {
-        FlightId = inventory.flightId;
-        ModuleId = inventory.moduleId;
-        resourceName = inventory.resourceName;
-        ResourceId = inventory.resourceId;
+        FlightId = inventory.FlightId;
+        ModuleId = inventory.ModuleId;
+        resourceName = inventory.ResourceName;
+        ResourceId = inventory.ResourceId;
     }
 
     public InventoryId(PartResource resource, uint? moduleId = null)
@@ -143,52 +143,57 @@ public class ResourceInventory
     /// The persistent part id. Used to find the part again when the
     /// vessel goes off the rails.
     /// </summary>
-    public uint flightId;
+    public uint FlightId;
 
     /// <summary>
     /// The persistent ID of the module, if this corresponds to a
     /// <see cref="BackgroundInventory"/>.
     /// </summary>
-    public uint? moduleId;
+    public uint? ModuleId;
 
     /// <summary>
     /// The name of the resource stored in this inventory.
     /// </summary>
-    public string resourceName
+    public string ResourceName
     {
         get => _resourceName;
         set
         {
-            resourceId = value.GetHashCode();
+            ResourceId = value.GetHashCode();
             _resourceName = value;
         }
     }
     private string _resourceName;
 
     /// <summary>
-    /// The hash code of <see cref="resourceName"/>.
+    /// The hash code of <see cref="ResourceName"/>.
     /// </summary>
-    public int resourceId { get; private set; }
+    public int ResourceId { get; private set; }
 
     /// <summary>
     /// How many units of resource are stored in this inventory.
     /// </summary>
-    public double amount;
+    public double Amount;
 
     /// <summary>
     /// The maximum number of units of resource that can be stored in
     /// inventory.
     /// </summary>
-    public double maxAmount;
+    public double MaxAmount;
+
+    /// <summary>
+    /// How much space is left in this inventory.
+    /// </summary>
+    public double Available => MaxAmount - Amount;
 
     /// <summary>
     /// The rate at which resources are currently being added or removed
     /// from this inventory.
     /// </summary>
-    public double rate = 0.0;
+    public double Rate = 0.0;
 
     /// <summary>
-    /// The <see cref="amount" /> value when this resource inventory was
+    /// The <see cref="Amount" /> value when this resource inventory was
     /// recorded.
     /// </summary>
     ///
@@ -196,7 +201,7 @@ public class ResourceInventory
     /// This is used to handle cases where resources are changed in the
     /// background without BRP knowing about it.
     /// </remarks>
-    public double originalAmount;
+    public double OriginalAmount;
 
     /// <summary>
     /// A reference to the <c><see cref="ProtoPartResourceSnapshot"/></c>
@@ -233,12 +238,12 @@ public class ResourceInventory
     /// <summary>
     /// Is this inventory full?
     /// </summary>
-    public bool Full => maxAmount - amount < ResourceProcessor.ResourceEpsilon;
+    public bool Full => Available < ResourceProcessor.ResourceEpsilon;
 
     /// <summary>
     /// Is this inventory empty?
     /// </summary>
-    public bool Empty => amount < ResourceProcessor.ResourceEpsilon;
+    public bool Empty => Amount < ResourceProcessor.ResourceEpsilon;
 
     /// <summary>
     /// How much time remains until this inventory either fills up or
@@ -248,17 +253,17 @@ public class ResourceInventory
     {
         get
         {
-            if (rate == 0.0)
+            if (Rate == 0.0)
                 return double.PositiveInfinity;
 
-            if (rate < 0.0)
-                return amount / -rate;
-            return (maxAmount - amount) / rate;
+            if (Rate < 0.0)
+                return Amount / -Rate;
+            return (MaxAmount - Amount) / Rate;
         }
     }
 
     public InventoryId Id => new(this);
-    public InventoryState State => new(amount, maxAmount, rate);
+    public InventoryState State => new(Amount, MaxAmount, Rate);
 
     public ResourceInventory() { }
 
@@ -266,52 +271,52 @@ public class ResourceInventory
     {
         var part = resource.part;
 
-        flightId = part.flightID;
-        resourceName = resource.resourceName;
-        amount = resource.amount;
-        maxAmount = resource.maxAmount;
-        originalAmount = resource.amount;
+        FlightId = part.flightID;
+        ResourceName = resource.resourceName;
+        Amount = resource.amount;
+        MaxAmount = resource.maxAmount;
+        OriginalAmount = resource.amount;
     }
 
     public ResourceInventory(FakePartResource resource, PartModule module)
     {
         var part = module.part;
 
-        flightId = part.flightID;
-        moduleId = module.GetPersistentId();
-        resourceName = resource.resourceName;
-        amount = resource.amount;
-        maxAmount = resource.maxAmount;
-        originalAmount = resource.amount;
+        FlightId = part.flightID;
+        ModuleId = module.GetPersistentId();
+        ResourceName = resource.resourceName;
+        Amount = resource.amount;
+        MaxAmount = resource.maxAmount;
+        OriginalAmount = resource.amount;
     }
 
     public void Save(ConfigNode node)
     {
-        node.AddValue("flightId", flightId);
-        if (moduleId != null)
-            node.AddValue("moduleId", (uint)moduleId);
-        node.AddValue("resourceName", resourceName);
-        node.AddValue("amount", amount);
-        node.AddValue("maxAmount", maxAmount);
-        node.AddValue("rate", rate);
-        node.AddValue("originalAmount", originalAmount);
+        node.AddValue("flightId", FlightId);
+        if (ModuleId != null)
+            node.AddValue("moduleId", (uint)ModuleId);
+        node.AddValue("resourceName", ResourceName);
+        node.AddValue("amount", Amount);
+        node.AddValue("maxAmount", MaxAmount);
+        node.AddValue("rate", Rate);
+        node.AddValue("originalAmount", OriginalAmount);
     }
 
     public void Load(ConfigNode node)
     {
-        node.TryGetValue("flightId", ref flightId);
+        node.TryGetValue("flightId", ref FlightId);
 
         uint moduleId = 0;
         if (node.TryGetValue("moduleId", ref moduleId))
-            this.moduleId = moduleId;
+            this.ModuleId = moduleId;
 
         string resourceName = null;
         if (node.TryGetValue("resourceName", ref resourceName))
-            this.resourceName = resourceName;
-        node.TryGetValue("amount", ref amount);
-        node.TryGetDouble("maxAmount", ref maxAmount);
-        node.TryGetValue("rate", ref rate);
-        node.TryGetValue("originalAmount", ref originalAmount);
+            this.ResourceName = resourceName;
+        node.TryGetValue("amount", ref Amount);
+        node.TryGetDouble("maxAmount", ref MaxAmount);
+        node.TryGetValue("rate", ref Rate);
+        node.TryGetValue("originalAmount", ref OriginalAmount);
     }
 
     internal Solver.InventoryState GetInventoryState()
@@ -335,11 +340,11 @@ public class ResourceInventory
 
     public override string ToString()
     {
-        return $"{resourceName} {amount:G6}/{maxAmount:G6}";
+        return $"{ResourceName} {Amount:G6}/{MaxAmount:G6}";
     }
 
     internal void SolverHash(ref HashCode hasher)
     {
-        hasher.Add(flightId, moduleId, resourceId, GetInventoryState());
+        hasher.Add(FlightId, ModuleId, ResourceId, GetInventoryState());
     }
 }

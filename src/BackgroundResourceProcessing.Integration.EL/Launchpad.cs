@@ -171,9 +171,9 @@ public class BackgroundELLaunchpadInventory : BackgroundInventory<ELLaunchpad>
         // The main thing we need to do here is to update the launchpad's
         // tracked resources to account for the work done in the background.
 
-        if (inventory.resourceName != WorkHoursResource)
+        if (inventory.ResourceName != WorkHoursResource)
             return;
-        if (inventory.amount == 0.0)
+        if (inventory.Amount == 0.0)
             return;
 
         var control = launchpad.control;
@@ -187,8 +187,8 @@ public class BackgroundELLaunchpadInventory : BackgroundInventory<ELLaunchpad>
         if (workNet == null)
             return;
 
-        var workHours = inventory.amount;
-        var total = inventory.maxAmount;
+        var workHours = inventory.Amount;
+        var total = inventory.MaxAmount;
         if (total <= 0.0 || !MathUtil.IsFinite(total))
             return;
 

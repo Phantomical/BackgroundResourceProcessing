@@ -88,7 +88,7 @@ namespace BackgroundResourceProcessing.Test.Solver
 
             for (int i = 0; i < processor.inventories.Count; ++i)
             {
-                if (processor.inventories[i].resourceName != "Fertilizer")
+                if (processor.inventories[i].ResourceName != "Fertilizer")
                     continue;
 
                 Assert.AreEqual(0.0, rates.inventoryRates[i]);
@@ -125,7 +125,7 @@ namespace BackgroundResourceProcessing.Test.Solver
             for (int i = 0; i < processor.inventories.Count; ++i)
             {
                 var inventory = processor.inventories[i];
-                if (inventory.resourceName != "ElectricCharge")
+                if (inventory.ResourceName != "ElectricCharge")
                     continue;
 
                 Assert.AreNotEqual(0.0, rates.inventoryRates[i]);

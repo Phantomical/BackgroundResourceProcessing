@@ -118,7 +118,7 @@ public abstract class BackgroundInventory : IRegistryItem
         SnapshotUpdate update
     )
     {
-        inventory.amount += update.Delta;
+        inventory.Amount += update.Delta;
     }
 
     protected virtual void OnLoad(ConfigNode node)

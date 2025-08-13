@@ -60,12 +60,6 @@ public readonly struct ReadOnlyList<T>(List<T> list) : IList<T>, ICollection<T>,
         list.CopyTo(array, index);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public IEnumerator<T> GetEnumerator()
-    {
-        return list.GetEnumerator();
-    }
-
     /// <summary>
     /// Searches for the specified object and returns the zero-backed index of
     /// the first occurrence within this list.
@@ -81,6 +75,11 @@ public readonly struct ReadOnlyList<T>(List<T> list) : IList<T>, ICollection<T>,
     public readonly ReadOnlyCollection<T> AsReadOnlyCollection()
     {
         return list.AsReadOnly();
+    }
+
+    public List<T>.Enumerator GetEnumerator()
+    {
+        return list.GetEnumerator();
     }
 
     public override bool Equals(object obj)
@@ -126,6 +125,13 @@ public readonly struct ReadOnlyList<T>(List<T> list) : IList<T>, ICollection<T>,
     bool ICollection<T>.Remove(T item)
     {
         throw new NotImplementedException();
+    }
+    #endregion
+
+    #region IEnumerable<T>
+    IEnumerator<T> IEnumerable<T>.GetEnumerator()
+    {
+        return GetEnumerator();
     }
     #endregion
 

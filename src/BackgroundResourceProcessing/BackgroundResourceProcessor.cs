@@ -1,9 +1,13 @@
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Converter;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
+using BackgroundResourceProcessing.Utils;
 
 namespace BackgroundResourceProcessing;
 
@@ -198,7 +202,7 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
         InventoryState state = default;
         foreach (var inventory in processor.inventories)
         {
-            if (inventory.resourceName == resourceName)
+            if (inventory.ResourceName == resourceName)
                 state = state.Merge(inventory.State);
         }
         return state;
@@ -230,6 +234,132 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
         processor.converters.Add(converter);
         return index;
     }
+
+    /// <summary>
+    /// Add a resource to the inventories within this vessel. This does nothing
+    /// if the vessel is currently loaded.
+    /// </summary>
+    /// <param name="resourceName">The name of the resource to add.</param>
+    /// <param name="amount">
+    ///   How much resource should be added. This can be positive or negative
+    ///   infinity in order to fill/empty all inventories.
+    /// </param>
+    /// <param name="includeModuleInventories">
+    ///   Whether to add resources to inventories associated with part modules.
+    ///   This is <c>false</c> by default.
+    /// </param>
+    /// <returns>
+    ///   The amount of resource that was actually added. If <paramref name="amount"/>
+    ///   was negative then this will be negative (or zero) as well.
+    /// </returns>
+    ///
+    /// <remarks>
+    /// Be careful when using infinite amounts combined with
+    /// <c><paramref name="includeModuleInventories"/> = true</c>. It is valid
+    /// for background inventories to have an infinite <c>maxAmount</c> but
+    /// synchronizing an infinite value back into the <c>PartModule</c> it
+    /// represents may result in issues.
+    /// </remarks>
+    public double AddResource(
+        string resourceName,
+        double amount,
+        bool includeModuleInventories = false
+    )
+    {
+        if (double.IsNaN(amount))
+            throw new ArgumentException(nameof(amount), "amount added was NaN");
+
+        if (vessel.loaded)
+            return 0.0;
+
+        UpdateBackgroundState();
+
+        if (amount == 0.0)
+            return 0.0;
+
+        int resourceId = resourceName.GetHashCode();
+        double total = 0.0;
+        var inventories = GetResourceEnumerator(resourceId, includeModuleInventories);
+
+        if (double.IsInfinity(amount))
+        {
+            if (amount > 0)
+            {
+                foreach (var inventory in inventories)
+                {
+                    total += inventory.Available;
+                    inventory.Amount = inventory.MaxAmount;
+                }
+
+                return total;
+            }
+            else
+            {
+                foreach (var inventory in inventories)
+                {
+                    total -= inventory.Amount;
+                    inventory.Amount = 0.0;
+                }
+
+                return total;
+            }
+        }
+
+        double available = 0.0;
+        if (amount < 0.0)
+        {
+            foreach (var inventory in inventories)
+                available += inventory.Amount;
+        }
+        else
+        {
+            foreach (var inventory in inventories)
+                available += inventory.Available;
+        }
+
+        if (double.IsNaN(amount))
+            throw new Exception($"total stored amount for resource `{resourceName}` was NaN");
+
+        if (Math.Abs(amount) >= available)
+        {
+            if (amount < 0.0)
+            {
+                foreach (var inventory in inventories)
+                    inventory.Amount = 0.0;
+
+                return -available;
+            }
+            else
+            {
+                foreach (var inventory in inventories)
+                    inventory.Amount = inventory.MaxAmount;
+
+                return available;
+            }
+        }
+
+        if (double.IsInfinity(available))
+        {
+            foreach (var inventory in inventories)
+            {
+                if (double.IsInfinity(inventory.MaxAmount))
+                {
+                    inventory.Amount += amount;
+                    break;
+                }
+            }
+
+            return amount;
+        }
+
+        foreach (var inventory in inventories)
+        {
+            var frac = inventory.Available / available;
+            inventory.Amount += frac * amount;
+        }
+
+        return amount;
+    }
     #endregion
 
     #region Internal API
@@ -255,4 +385,74 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
             processor.ComputeRates();
     }
     #endregion
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private ResourceInventoryEnumerator GetResourceEnumerator(
+        int resourceId,
+        bool includeModuleInventories = false
+    )
+    {
+        return new ResourceInventoryEnumerator(this, resourceId, includeModuleInventories);
+    }
+
+    [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private struct ResourceInventoryEnumerator(
+        BackgroundResourceProcessor processor,
+        int resourceId,
+        bool includeModuleInventories
+    ) : IEnumerator<ResourceInventory>
+    {
+        List<ResourceInventory>.Enumerator enumerator = processor.Inventories.GetEnumerator();
+        readonly int resourceId = resourceId;
+        readonly bool includeModuleInventories = includeModuleInventories;
+
+        public ResourceInventory Current
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get { return enumerator.Current; }
+        }
+        object IEnumerator.Current => Current;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool MoveNext()
+        {
+            while (enumerator.MoveNext())
+            {
+                var inventory = enumerator.Current;
+                if (inventory.ResourceId != resourceId)
+                    continue;
+                if (!includeModuleInventories && inventory.ModuleId is not null)
+                    continue;
+
+                return true;
+            }
+
+            return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Reset()
+        {
+            CallReset(ref enumerator);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Dispose()
+        {
+            enumerator.Dispose();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void CallReset<T>(ref T value)
+            where T : struct, IEnumerator<ResourceInventory>
+        {
+            value.Reset();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly ResourceInventoryEnumerator GetEnumerator()
+        {
+            return this;
+        }
+    }
 }

@@ -102,11 +102,11 @@ public class ModuleBackgroundUSILifeSupport : VesselModule
         {
             var inventory = inventories[i];
 
-            if (inventory.resourceName == "Supplies")
+            if (inventory.ResourceName == "Supplies")
                 supplies.Add(i);
-            else if (inventory.resourceName == "Mulch")
+            else if (inventory.ResourceName == "Mulch")
                 mulch.Add(i);
-            else if (inventory.resourceName == "ElectricCharge")
+            else if (inventory.ResourceName == "ElectricCharge")
                 ec.Add(i);
         }
 

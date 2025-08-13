@@ -113,7 +113,7 @@ internal class ResourceProcessor
             var soln = ComputeRateSolution();
 
             foreach (var inventory in inventories)
-                inventory.rate = 0.0;
+                inventory.Rate = 0.0;
             foreach (var converter in converters)
                 converter.rate = 0.0;
 
@@ -122,7 +122,7 @@ internal class ResourceProcessor
                 var rate = soln.inventoryRates[i];
                 if (!MathUtil.IsFinite(rate))
                     throw new Exception($"Rate for inventory {inventories[i].Id} was {rate}");
-                inventories[i].rate = rate;
+                inventories[i].Rate = rate;
             }
 
             for (int i = 0; i < converters.Count; ++i)
@@ -136,7 +136,7 @@ internal class ResourceProcessor
         catch (Exception e)
         {
             foreach (var inventory in inventories)
-                inventory.rate = 0.0;
+                inventory.Rate = 0.0;
             foreach (var converter in converters)
                 converter.rate = 0.0;
 
@@ -147,7 +147,7 @@ internal class ResourceProcessor
     public void ClearRates()
     {
         foreach (var inventory in inventories)
-            inventory.rate = 0.0;
+            inventory.Rate = 0.0;
         foreach (var converter in converters)
             converter.rate = 0.0;
     }
@@ -222,8 +222,8 @@ internal class ResourceProcessor
             double total = 0.0;
 
             foreach (var id in converter.Constraint)
-                if (inventories[id].resourceName == required.ResourceName)
-                    total += inventories[id].amount;
+                if (inventories[id].ResourceName == required.ResourceName)
+                    total += inventories[id].Amount;
 
             if (MathUtil.ApproxEqual(required.Amount, total, ResourceEpsilon))
             {
@@ -263,19 +263,19 @@ internal class ResourceProcessor
 
         foreach (var inv in inventories)
         {
-            var (total, tRate) = totals.GetValueOr(inv.resourceName, default);
-            total += inv.amount;
-            tRate += inv.rate;
-            totals[inv.resourceName] = new(total, tRate);
+            var (total, tRate) = totals.GetValueOr(inv.ResourceName, default);
+            total += inv.Amount;
+            tRate += inv.Rate;
+            totals[inv.ResourceName] = new(total, tRate);
 
-            if (inv.rate == 0.0)
+            if (inv.Rate == 0.0)
                 continue;
 
             double duration;
-            if (inv.rate < 0.0)
-                duration = inv.amount / -inv.rate;
+            if (inv.Rate < 0.0)
+                duration = inv.Amount / -inv.Rate;
             else
-                duration = (inv.maxAmount - inv.amount) / inv.rate;
+                duration = (inv.MaxAmount - inv.Amount) / inv.Rate;
 
             changepoint = Math.Min(changepoint, currentTime + duration);
         }
@@ -613,15 +613,17 @@ internal class ResourceProcessor
 
             if (!updateSnapshots)
             {
-                inventory.amount += inventory.rate * deltaT;
+                inventory.Amount += inventory.Rate * deltaT;
             }
             else if (inventory.Snapshot != null)
             {
                 var snapshot = inventory.Snapshot;
 
-                inventory.amount = snapshot.amount;
-                inventory.maxAmount = snapshot.maxAmount;
-                inventory.amount += inventory.rate * deltaT;
+                inventory.Amount = snapshot.amount;
+                inventory.MaxAmount = snapshot.maxAmount;
+                inventory.Amount += inventory.Rate * deltaT;
+
+                snapshot.UpdateConfigNodeAmounts();
             }
             else if (inventory.ModuleSnapshot != null)
             {
@@ -637,31 +639,31 @@ internal class ResourceProcessor
                 {
                     LastUpdate = lastUpdate,
                     CurrentTime = currentTime,
-                    Delta = inventory.rate * deltaT,
+                    Delta = inventory.Rate * deltaT,
                 };
 
                 var adapter = BackgroundInventory.GetInventoryForType(moduleType);
                 if (adapter == null)
-                    inventory.amount += snapshot.Delta;
+                    inventory.Amount += snapshot.Delta;
                 else
                     adapter.UpdateSnapshot(module, inventory, snapshot);
             }
             else
             {
-                inventory.amount += inventory.rate * deltaT;
+                inventory.Amount += inventory.Rate * deltaT;
             }
 
-            if (!MathUtil.IsFinite(inventory.amount))
+            if (!MathUtil.IsFinite(inventory.Amount))
             {
                 LogUtil.Error(
-                    $"Refusing to update inventory to {inventory.amount:g4}/{inventory.maxAmount:g4} {inventory.resourceName}"
+                    $"Refusing to update inventory to {inventory.Amount:g4}/{inventory.MaxAmount:g4} {inventory.ResourceName}"
                 );
                 continue;
             }
             else if (inventory.Full)
-                inventory.amount = inventory.maxAmount;
+                inventory.Amount = inventory.MaxAmount;
             else if (inventory.Empty)
-                inventory.amount = 0.0;
+                inventory.Amount = 0.0;
             else if (inventory.RemainingTime < ResourceBoundaryEpsilon)
             {
                 // Fudge inventory rates slightly to reduce the number of
@@ -669,18 +671,18 @@ internal class ResourceProcessor
                 //
                 // If the inventory is going to fill up/empty in < 0.01s
                 // then we can just set it to full/empty right here.
-                if (inventory.rate < 0.0)
-                    inventory.amount = 0.0;
+                if (inventory.Rate < 0.0)
+                    inventory.Amount = 0.0;
                 else
-                    inventory.amount = inventory.maxAmount;
+                    inventory.Amount = inventory.MaxAmount;
             }
 
             if (updateSnapshots && inventory.Snapshot != null)
             {
                 var snapshot = inventory.Snapshot;
 
-                snapshot.amount = inventory.amount;
-                inventory.originalAmount = inventory.amount;
+                snapshot.amount = inventory.Amount;
+                inventory.OriginalAmount = inventory.Amount;
             }
 
             if (oldState != inventory.GetInventoryState())
@@ -702,11 +704,11 @@ internal class ResourceProcessor
         Dictionary<uint, List<ResourceInventory>> inventoryByModuleId = [];
         foreach (var inventory in inventories)
         {
-            if (inventory.moduleId == null)
+            if (inventory.ModuleId == null)
                 continue;
 
-            if (!inventoryByModuleId.TryGetValue((uint)inventory.moduleId, out var list))
-                inventoryByModuleId.Add((uint)inventory.moduleId, list = []);
+            if (!inventoryByModuleId.TryGetValue((uint)inventory.ModuleId, out var list))
+                inventoryByModuleId.Add((uint)inventory.ModuleId, list = []);
 
             list.Add(inventory);
         }
@@ -747,15 +749,15 @@ internal class ResourceProcessor
 
         foreach (var inventory in inventories)
         {
-            if (inventory.moduleId == null)
+            if (inventory.ModuleId == null)
                 continue;
 
-            if (inventory.moduleId != currentFlightID)
+            if (inventory.ModuleId != currentFlightID)
             {
-                current = GetProtoPartByFlightId(vessel.protoVessel, inventory.flightId);
+                current = GetProtoPartByFlightId(vessel.protoVessel, inventory.FlightId);
                 if (current == null)
                     continue;
-                currentFlightID = inventory.flightId;
+                currentFlightID = inventory.FlightId;
             }
 
             ProtoPartSnapshot part = current;
@@ -790,16 +792,16 @@ internal class ResourceProcessor
 
         foreach (var inventory in inventories)
         {
-            if (!parts.TryGetValue(inventory.flightId, out var part))
+            if (!parts.TryGetValue(inventory.FlightId, out var part))
                 continue;
 
-            if (inventory.moduleId == null)
+            if (inventory.ModuleId == null)
             {
-                var resource = part.Resources.Get(inventory.resourceName);
+                var resource = part.Resources.Get(inventory.ResourceName);
                 if (resource == null)
                     continue;
 
-                var amount = inventory.amount;
+                var amount = inventory.Amount;
                 if (!MathUtil.IsFinite(amount))
                 {
                     LogUtil.Error(
@@ -808,9 +810,9 @@ internal class ResourceProcessor
                     continue;
                 }
 
-                if (!MathUtil.ApproxEqual(inventory.originalAmount, resource.amount))
+                if (!MathUtil.ApproxEqual(inventory.OriginalAmount, resource.amount))
                 {
-                    var difference = resource.amount - inventory.originalAmount;
+                    var difference = resource.amount - inventory.OriginalAmount;
                     amount += difference;
                 }
 
@@ -822,7 +824,7 @@ internal class ResourceProcessor
             }
             else
             {
-                var module = part.Modules[(uint)inventory.moduleId];
+                var module = part.Modules[(uint)inventory.ModuleId];
                 if (module == null)
                     continue;
 
@@ -831,7 +833,7 @@ internal class ResourceProcessor
                     continue;
 
                 LogUtil.Debug(() =>
-                    $"Updating fake inventory on module {module.GetType().Name} of {part.name} to {inventory.amount:g4}/{inventory.maxAmount:g4} {inventory.resourceName}"
+                    $"Updating fake inventory on module {module.GetType().Name} of {part.name} to {inventory.Amount:g4}/{inventory.MaxAmount:g4} {inventory.ResourceName}"
                 );
 
                 try
@@ -859,8 +861,8 @@ internal class ResourceProcessor
 
         foreach (var inventory in inventories)
         {
-            var state = totals.GetValueOr(inventory.resourceName, default);
-            totals[inventory.resourceName] = state.Merge(inventory.State);
+            var state = totals.GetValueOr(inventory.ResourceName, default);
+            totals[inventory.ResourceName] = state.Merge(inventory.State);
         }
 
         return totals;
