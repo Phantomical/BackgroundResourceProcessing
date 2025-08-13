@@ -276,9 +276,7 @@ internal class ResourceProcessor
         foreach (var inv in inventories)
         {
             var entry = totals.GetEntry(inv.ResourceId);
-            if (!entry.HasValue)
-                entry.Insert(new());
-            ref var res = ref entry.Value;
+            ref var res = ref entry.GetOrInsert(new());
             res.total += inv.Amount;
             res.rate += inv.Rate;
 

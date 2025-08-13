@@ -266,6 +266,18 @@ internal class LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Lin
             if (index == map.count)
                 map.count += 1;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref V GetOrInsert(V value)
+        {
+            ref V slot = ref map.entries[index].Value;
+            if (index == map.Count)
+            {
+                map.count += 1;
+                slot = value;
+            }
+            return ref slot;
+        }
     }
 
     [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
