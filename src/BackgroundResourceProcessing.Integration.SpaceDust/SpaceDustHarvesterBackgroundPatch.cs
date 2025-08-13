@@ -20,7 +20,7 @@ public class Loader : MonoBehaviour
 [HarmonyPatch("AddBackgroundResources")]
 public class SpaceDustHarvesterBackground_AddBackgroundResources_Patch
 {
-    static bool Prefix(ProtoVessel protoVessel, string resourceName, double amount)
+    static bool Prefix(ProtoVessel protoVessel, string resourceName, double amountToAdd)
     {
         try
         {
@@ -34,7 +34,7 @@ public class SpaceDustHarvesterBackground_AddBackgroundResources_Patch
             if (processor == null)
                 return true;
 
-            processor.AddResource(resourceName, amount);
+            processor.AddResource(resourceName, amountToAdd);
             return false;
         }
         catch (Exception e)
