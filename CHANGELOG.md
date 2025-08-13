@@ -15,6 +15,11 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 ### Added
 * Added support for `SpaceDust`.
 
+### Fixed
+* Fixed a solver crash when presolve manages to completely elide an OR-constraint.
+* Fixed a bug where a behaviour that fails to deserialize could cause the
+  background simulation to make no progress.
+
 ## 0.1.5
 ### Added
 * Added support for `Near Future Solar` - specifically: `ModuleCurvedSolarPanel`.
