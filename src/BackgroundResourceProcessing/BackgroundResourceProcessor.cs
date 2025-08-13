@@ -316,6 +316,9 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
                 available += inventory.Available;
         }
 
+        if (available == 0.0)
+            return 0.0;
+
         if (double.IsNaN(amount))
             throw new Exception($"total stored amount for resource `{resourceName}` was NaN");
 

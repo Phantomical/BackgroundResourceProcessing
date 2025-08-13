@@ -67,6 +67,13 @@ public class Settings : GameParameters.CustomParameterNode
     public bool EnableUSILSIntegration = true;
 
     [GameParameters.CustomParameterUI(
+        "Enable SpaceDust Integration",
+        toolTip = "Patch SpaceDust's background simulation to interact with "
+            + "Background Resource Processing."
+    )]
+    public bool EnableSpaceDustIntegration = true;
+
+    [GameParameters.CustomParameterUI(
         "Enable Experimental Orbit Shadows",
         toolTip = "Simulate the effect of planet shadows on orbiting ships. "
             + "This is currently quite buggy, though it won't break your game. "

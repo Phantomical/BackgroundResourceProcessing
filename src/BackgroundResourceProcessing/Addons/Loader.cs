@@ -42,6 +42,10 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
             [new DirectAssemblyDependency("NearFutureSolar", new(0, 4))]
         ),
         new(
+            "BackgroundResourceProcessing.Integration.SpaceDust",
+            [new DirectAssemblyDependency("SpaceDust", new(0, 5, 4))]
+        ),
+        new(
             "BackgroundResourceProcessing.Integration.SystemHeat",
             [new DirectAssemblyDependency("SystemHeat", new(0, 1))]
         ),
