@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using UnityEngine.XR;
 
 namespace BackgroundResourceProcessing.Solver;
 
@@ -19,9 +18,8 @@ internal struct VariableMap : IEnumerable<KeyValuePair<int, int>>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         readonly get
         {
-            static void ThrowKeyNotFoundException(int key) =>
-                throw new KeyNotFoundException($"key {key} not present in the map");
-
+            if (key >= Capacity)
+                ThrowKeyOutOfBoundsException(key);
             if (data[key] < 0)
                 ThrowKeyNotFoundException(key);
             return data[key];
@@ -29,6 +27,8 @@ internal struct VariableMap : IEnumerable<KeyValuePair<int, int>>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set
         {
+            if (key >= Capacity)
+                ThrowKeyOutOfBoundsException(key);
             if (data[key] < 0)
                 count += 1;
             if (value < 0)
@@ -46,6 +46,8 @@ internal struct VariableMap : IEnumerable<KeyValuePair<int, int>>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly bool TryGetValue(int key, out int value)
     {
+        if (key >= Capacity)
+            ThrowKeyOutOfBoundsException(key);
         value = data[key];
         return value >= 0;
     }
@@ -56,6 +58,14 @@ internal struct VariableMap : IEnumerable<KeyValuePair<int, int>>
         for (int i = 0; i < data.Length; ++i)
             data[i] = -1;
     }
+
+    readonly void ThrowKeyNotFoundException(int key) =>
+        throw new KeyNotFoundException($"key {key} not present in the map");
+
+    readonly void ThrowKeyOutOfBoundsException(int key) =>
+        throw new IndexOutOfRangeException(
+            $"key {key} was out of the range of the map (map capacity was {Capacity})"
+        );
 
     public readonly Enumerator GetEnumerator()
     {

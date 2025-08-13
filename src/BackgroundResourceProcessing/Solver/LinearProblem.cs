@@ -438,12 +438,6 @@ internal class LinearProblem
     {
         using var span = new TraceSpan("LinearProblem.SolveBranchAndBound");
 
-        VariableMap varMap = new(VariableCount);
-        VariableMap binaryIndices = new(VariableCount);
-
-        for (int i = 0; i < disjunctions.Count; ++i)
-            binaryIndices[disjunctions[i].variable.Index] = i;
-
         Presolve(ref func);
 
         if (Trace)
@@ -451,6 +445,12 @@ internal class LinearProblem
 
         if (simple.Count == 0 && constraints.Count == 0 && disjunctions.Count == 0)
             return ExtractEmptySolution();
+
+        VariableMap varMap = new(VariableCount);
+        VariableMap binaryIndices = new(VariableCount);
+
+        for (int i = 0; i < disjunctions.Count; ++i)
+            binaryIndices[disjunctions[i].variable.Index] = i;
 
         // Do a depth-first search but order by score in order to break depth ties.
         PriorityQueue<QueueEntry, KeyValuePair<int, double>> entries = new(

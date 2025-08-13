@@ -131,5 +131,13 @@ namespace BackgroundResourceProcessing.Test.Solver
                 Assert.AreNotEqual(0.0, rates.inventoryRates[i]);
             }
         }
+
+        [TestMethod]
+        public void TestCrashBadBchoiceAccess()
+        {
+            var processor = TestUtil.LoadVessel("regression/crash-bad-bchoice-access.cfg");
+            var solver = new BackgroundResourceProcessing.Solver.Solver();
+            var rates = solver.ComputeInventoryRates(processor);
+        }
     }
 }
