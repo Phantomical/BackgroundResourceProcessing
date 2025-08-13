@@ -278,6 +278,18 @@ internal class LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Lin
             }
             return ref slot;
         }
+
+        public override string ToString()
+        {
+            return $"[{Key}, {Value}]";
+        }
+
+        public override int GetHashCode()
+        {
+            var hasher = new HashCode();
+            hasher.Add(Key, Value);
+            return hasher.GetHashCode();
+        }
     }
 
     [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
