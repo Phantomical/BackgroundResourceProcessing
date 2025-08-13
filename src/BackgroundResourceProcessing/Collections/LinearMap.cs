@@ -85,6 +85,15 @@ internal class LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Lin
         return false;
     }
 
+    public V GetValueOr(K key, V defaultValue)
+    {
+        if (TryGetValue(key, out var value))
+            return value;
+        return defaultValue;
+    }
+
+    public V GetValueOrDefault(K key) => GetValueOr(key, default);
+
     private bool TryGetIndex(K key, out int index)
     {
         for (int i = 0; i < entries.Length; ++i)

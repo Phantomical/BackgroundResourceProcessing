@@ -254,19 +254,33 @@ internal class ResourceProcessor
         return changepoint;
     }
 
+    private struct ResourceRate
+    {
+        public double total;
+        public double rate;
+
+        public readonly void Deconstruct(out double total, out double rate)
+        {
+            total = this.total;
+            rate = this.rate;
+        }
+    }
+
     public double ComputeNextChangepoint(double currentTime)
     {
         using var span = new TraceSpan("ResourceProcessor.ComputeNextChangepoint");
 
         double changepoint = double.PositiveInfinity;
-        Dictionary<string, KeyValuePair<double, double>> totals = [];
+        LinearMap<int, ResourceRate> totals = new(32);
 
         foreach (var inv in inventories)
         {
-            var (total, tRate) = totals.GetValueOr(inv.ResourceName, default);
-            total += inv.Amount;
-            tRate += inv.Rate;
-            totals[inv.ResourceName] = new(total, tRate);
+            var entry = totals.GetEntry(inv.ResourceId);
+            if (!entry.HasValue)
+                entry.Insert(new());
+            ref var res = ref entry.Value;
+            res.total += inv.Amount;
+            res.rate += inv.Rate;
 
             if (inv.Rate == 0.0)
                 continue;
@@ -284,9 +298,9 @@ internal class ResourceProcessor
         {
             changepoint = Math.Min(changepoint, converter.NextChangepoint);
 
-            foreach (var requirement in converter.Required.Values)
+            foreach (var (resourceId, requirement) in converter.Required)
             {
-                var (total, rate) = totals.GetValueOr(requirement.ResourceName, default);
+                var (total, rate) = totals.GetValueOrDefault(resourceId);
                 if (rate == 0.0)
                     continue;
 
