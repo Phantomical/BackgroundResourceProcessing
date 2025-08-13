@@ -17,7 +17,7 @@ public class Loader : MonoBehaviour
 }
 
 [HarmonyPatch(typeof(SpaceDustHarvesterBackground))]
-[HarmonyPatch("AddBackgroundResource")]
+[HarmonyPatch("AddBackgroundResources")]
 public class SpaceDustHarvesterBackground_AddBackgroundResources_Patch
 {
     static bool Prefix(ProtoVessel protoVessel, string resourceName, double amount)
