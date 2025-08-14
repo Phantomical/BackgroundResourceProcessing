@@ -11,7 +11,7 @@ namespace BackgroundResourceProcessing.Integration.USILifeSupport;
 [KSPAddon(KSPAddon.Startup.AllGameScenes, false)]
 public class EventDispatcher : MonoBehaviour
 {
-    void Start()
+    void Awake()
     {
         BackgroundResourceProcessor.onVesselRecord.Add(OnRecord);
         BackgroundResourceProcessor.onVesselRestore.Add(OnRestore);

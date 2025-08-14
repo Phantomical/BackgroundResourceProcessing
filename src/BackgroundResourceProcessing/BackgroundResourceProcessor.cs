@@ -55,6 +55,11 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
     /// <summary>
     /// This event is fired just after a vessel is restored.
     /// </summary>
+    ///
+    /// <remarks>
+    /// This event usually fires before unity has a chance to call <c>Start</c>
+    /// methods. You will want to subscribe to it in <c>Awake</c> instead.
+    /// </remarks>
     public static readonly EventData<BackgroundResourceProcessor> onVesselRestore = new(
         "onVesselRestore"
     );

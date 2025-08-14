@@ -21,6 +21,8 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
   background simulation to make no progress.
 * Fixed a bug where the USI-LS status panel would show a vessel as being out of
   EC despite the vessel still having EC available.
+* Fixed a bug where the USI-LS integration was not suppressing catch-up code
+  appropriately, resulting in extra supplies being consumed.
 
 ## 0.1.5
 ### Added
