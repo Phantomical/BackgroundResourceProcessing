@@ -222,7 +222,7 @@ internal class ResourceProcessor
             double total = 0.0;
 
             foreach (var id in converter.Constraint)
-                if (inventories[id].ResourceName == required.ResourceName)
+                if (inventories[id].ResourceId == resource)
                     total += inventories[id].Amount;
 
             if (MathUtil.ApproxEqual(required.Amount, total, ResourceEpsilon))
