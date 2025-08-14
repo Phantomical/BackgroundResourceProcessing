@@ -12,6 +12,7 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ## Unreleased
 
+## 0.1.6
 ### Added
 * Added support for `SpaceDust`.
 
