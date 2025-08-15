@@ -69,7 +69,7 @@ public struct ResourceConstraint()
         }
     }
 
-    public void Save(ConfigNode node)
+    public readonly void Save(ConfigNode node)
     {
         node.AddValue("ResourceName", ResourceName);
         node.AddValue("Amount", Amount);

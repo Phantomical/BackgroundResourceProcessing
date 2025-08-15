@@ -262,7 +262,7 @@ internal struct GraphConverter
         return Math.Pow(B, priority);
     }
 
-    public override string ToString()
+    public override readonly string ToString()
     {
         var inputs = this.inputs.Select((entry) => entry.Value.ResourceName);
         var outputs = this.outputs.Select((entry) => entry.Value.ResourceName);
@@ -328,58 +328,46 @@ internal class ResourceGraph
             var converter = processor.converters[i];
             var conv = new GraphConverter(i, converter);
 
-            if (!SatisfiesConstraints(processor, converter, ref conv))
+            if (!SatisfiesConstraints(converter, ref conv))
                 continue;
 
             converters.Add(i, conv);
             inputs.GetConverterEntry(i).OrWith(converter.Pull.SubSlice(nInventories));
             outputs.GetConverterEntry(i).OrWith(converter.Push.SubSlice(nInventories));
-            constraints.GetConverterEntry(i).OrWith(converter.Constraint.SubSlice(nInventories));
+
+            if (!conv.constraints.IsEmpty)
+            {
+                // We only want to keep constraint edges if they are relevant to an
+                // active constraint. That way we can merge converters with different
+                // constraints as long as those constraints are not currently active.
+                var crow = constraints.GetConverterEntry(i);
+                foreach (int inventoryId in converter.Constraint)
+                {
+                    ref var inventory = ref inventories[inventoryId];
+                    if (!conv.constraints.ContainsKey(inventory.resourceId))
+                        continue;
+
+                    crow[inventoryId] = true;
+                }
+            }
         }
         cspan.Dispose();
     }
 
-    private bool SatisfiesConstraints(
-        ResourceProcessor processor,
-        Core.ResourceConverter rconv,
-        ref GraphConverter gconv
-    )
+    private bool SatisfiesConstraints(Core.ResourceConverter rconv, ref GraphConverter gconv)
     {
+        gconv.constraints.Reserve(rconv.Required.Count);
         using var cbuilder = gconv.constraints.CreateBuilder();
 
         foreach (var (resource, required) in rconv.Required)
         {
-            double total = 0.0;
-
-            foreach (var invId in rconv.Constraint)
-            {
-                var inventory = processor.inventories[invId];
-                if (inventory.ResourceName == required.ResourceName)
-                    total += inventory.Amount;
-            }
-
-            if (MathUtil.ApproxEqual(required.Amount, total, ResourceProcessor.ResourceEpsilon))
-            {
+            var state = required.State;
+            if (state == ConstraintState.UNSET)
+                throw new Exception("Converter ConstraintState was UNSET");
+            if (state == ConstraintState.DISABLED)
+                return false;
+            if (state == ConstraintState.BOUNDARY)
                 cbuilder.AddUnchecked(resource, required.Constraint);
-                continue;
-            }
-
-            switch (required.Constraint)
-            {
-                case Constraint.AT_LEAST:
-                    if (total < required.Amount)
-                        return false;
-                    break;
-                case Constraint.AT_MOST:
-                    if (total > required.Amount)
-                        return false;
-                    break;
-                default:
-                    LogUtil.Warn(
-                        $"Got unexpected constraint {required.Constraint} on resource {required.ResourceName}. This converter will be ignored."
-                    );
-                    return false;
-            }
         }
 
         return true;

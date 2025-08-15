@@ -245,6 +245,7 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
 
         var index = processor.converters.Count;
         processor.converters.Add(converter);
+        processor.UpdateConstraintState(converter);
         return index;
     }
 
@@ -290,7 +291,22 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
         if (amount == 0.0)
             return 0.0;
 
-        int resourceId = resourceName.GetHashCode();
+        var resourceId = resourceName.GetHashCode();
+        var added = AddResourceImpl(resourceName, resourceId, amount, includeModuleInventories);
+
+        if (added != 0.0)
+            MarkDirty();
+
+        return added;
+    }
+
+    private double AddResourceImpl(
+        string resourceName,
+        int resourceId,
+        double amount,
+        bool includeModuleInventories
+    )
+    {
         double total = 0.0;
         var inventories = GetResourceEnumerator(resourceId, includeModuleInventories);
 
@@ -313,7 +329,6 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
                 }
             }
 
-            MarkDirty();
             return total;
         }
 
@@ -334,8 +349,6 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
 
         if (double.IsNaN(amount))
             throw new Exception($"total stored amount for resource `{resourceName}` was NaN");
-
-        MarkDirty();
 
         if (Math.Abs(amount) >= available)
         {

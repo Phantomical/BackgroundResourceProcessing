@@ -4,6 +4,7 @@ using System.Linq;
 using BackgroundResourceProcessing.Behaviour;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Utils;
+using FinePrint.Contracts;
 
 namespace BackgroundResourceProcessing.Core;
 
@@ -52,7 +53,7 @@ public class ResourceConverter(ConverterBehaviour behaviour)
     /// <summary>
     /// The resource requirements returned from the behaviour.
     /// </summary>
-    public SortedMap<int, ResourceConstraint> Required = [];
+    public SortedMap<int, ResourceConverterConstraint> Required = [];
 
     /// <summary>
     /// The time at which the behaviour has said that its behaviour might
@@ -83,6 +84,22 @@ public class ResourceConverter(ConverterBehaviour behaviour)
     /// be preferred over those with a lower priority.
     /// </summary>
     public int Priority = 0;
+
+    /// <summary>
+    /// Get the overall constraint state for this converter.
+    /// </summary>
+    public ConstraintState ConstraintState
+    {
+        get
+        {
+            var state = ConstraintState.ENABLED;
+
+            foreach (ref var required in Required.Values)
+                state = state.Merge(required.State);
+
+            return state;
+        }
+    }
 
     public bool Refresh(VesselState state)
     {
@@ -181,14 +198,7 @@ public class ResourceConverter(ConverterBehaviour behaviour)
                     ratio
                 ))
         );
-        Required.AddAll(
-            ConfigUtil
-                .LoadRequiredResources(node)
-                .Select(ratio => new KeyValuePair<int, ResourceConstraint>(
-                    ratio.ResourceName.GetHashCode(),
-                    ratio
-                ))
-        );
+        Required = LoadRequiredResources(node);
     }
 
     internal void LoadLegacyEdges(ConfigNode node, Dictionary<InventoryId, int> inventoryIds)
@@ -215,6 +225,14 @@ public class ResourceConverter(ConverterBehaviour behaviour)
         }
     }
 
+    internal void ComputeConstraintStates(ResourceProcessor processor)
+    {
+        if (ConstraintState != ConstraintState.UNSET)
+            return;
+
+        processor.UpdateConstraintState(this);
+    }
+
     public void Save(ConfigNode node)
     {
         node.AddValue("nextChangepoint", NextChangepoint);
@@ -231,7 +249,7 @@ public class ResourceConverter(ConverterBehaviour behaviour)
         Behaviour?.Save(node.AddNode("BEHAVIOUR"));
         ConfigUtil.SaveOutputResources(node, Outputs.Select(output => output.Value));
         ConfigUtil.SaveInputResources(node, Inputs.Select(input => input.Value));
-        ConfigUtil.SaveRequiredResources(node, Required.Select(required => required.Value));
+        SaveRequiredResources(node, Required);
     }
 
     private static DynamicBitSet LoadBitSet(ConfigNode node)
@@ -288,7 +306,7 @@ public class ResourceConverter(ConverterBehaviour behaviour)
     }
 
     private static bool OverwriteConstraints(
-        ref SortedMap<int, ResourceConstraint> ratios,
+        ref SortedMap<int, ResourceConverterConstraint> ratios,
         List<ResourceConstraint> inputs
     )
     {
@@ -296,8 +314,8 @@ public class ResourceConverter(ConverterBehaviour behaviour)
         ratios = new(inputs.Count);
         using (var builder = ratios.CreateBuilder())
         {
-            foreach (var ratio in inputs)
-                builder.Add(ratio.ResourceName.GetHashCode(), ratio.WithDefaultedFlowMode());
+            foreach (var constraint in inputs)
+                builder.Add(constraint.ResourceName.GetHashCode(), new(constraint));
         }
 
         return old == ratios;
@@ -308,6 +326,7 @@ public class ResourceConverter(ConverterBehaviour behaviour)
         var clone = (ResourceConverter)MemberwiseClone();
         clone.Behaviour = null;
         clone.NextChangepoint = double.PositiveInfinity;
+        clone.Required = Required.Clone();
         return clone;
     }
 
@@ -315,6 +334,37 @@ public class ResourceConverter(ConverterBehaviour behaviour)
     {
         hasher.AddAll(Push.Bits);
         hasher.AddAll(Pull.Bits);
+        hasher.Add(ConstraintState);
+    }
+
+    private static void SaveRequiredResources(
+        ConfigNode node,
+        SortedMap<int, ResourceConverterConstraint> required
+    )
+    {
+        foreach (var constraint in required.Values)
+            constraint.Save(node.AddNode("REQUIRED_RESOURCE"));
+    }
+
+    private static SortedMap<int, ResourceConverterConstraint> LoadRequiredResources(
+        ConfigNode node
+    )
+    {
+        var nodes = node.GetNodes("REQUIRED_RESOURCE");
+        if (nodes == null || nodes.Length == 0)
+            return [];
+
+        var required = new SortedMap<int, ResourceConverterConstraint>(nodes.Length);
+        var builder = required.CreateBuilder();
+        for (int i = 0; i < nodes.Length; ++i)
+        {
+            ResourceConverterConstraint constraint = default;
+            constraint.Load(nodes[i]);
+            builder.Set(constraint.ResourceName.GetHashCode(), constraint);
+        }
+
+        builder.Commit();
+        return required;
     }
 }
 

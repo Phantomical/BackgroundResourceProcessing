@@ -129,13 +129,14 @@ public sealed partial class BackgroundResourceProcessor
             recompute = true;
         if (processor.UpdateBehaviours(state))
             recompute = true;
+        if (processor.UpdateConstraintState())
+            recompute = true;
         if (recompute)
         {
             processor.ComputeRates();
             DispatchOnRatesComputed(changepoint);
         }
 
-        IsDirty = false;
         UpdateNextChangepoint(changepoint);
         if (NextChangepoint == changepoint)
         {
@@ -168,6 +169,8 @@ public sealed partial class BackgroundResourceProcessor
         var state = new VesselState(Planetarium.GetUniversalTime());
         state.SetShadowState(ShadowState.Value);
 
+        processor.UpdateState(state.CurrentTime, true);
+        processor.UpdateConstraintState();
         processor.ForceUpdateBehaviours(state);
         processor.ComputeRates();
         DispatchOnRatesComputed(state.CurrentTime);
@@ -183,11 +186,18 @@ public sealed partial class BackgroundResourceProcessor
             return;
 
         var currentTime = Planetarium.GetUniversalTime();
-        var prevChangepoint = NextChangepoint;
-        UpdateNextChangepoint(currentTime);
+        if (processor.UpdateConstraintState())
+        {
+            processor.nextChangepoint = currentTime;
+        }
+        else
+        {
+            var prevChangepoint = NextChangepoint;
+            UpdateNextChangepoint(currentTime);
 
-        if (prevChangepoint == NextChangepoint)
-            return;
+            if (prevChangepoint == NextChangepoint)
+                return;
+        }
 
         EventDispatcher.UnregisterChangepointCallbacks(this);
         EventDispatcher.RegisterChangepointCallback(this, NextChangepoint);
@@ -240,6 +250,7 @@ public sealed partial class BackgroundResourceProcessor
         using (var eventspan = new TraceSpan("onVesselRecord"))
             onVesselRecord.Fire(this);
         processor.ForceUpdateBehaviours(state);
+        processor.UpdateConstraintState();
         processor.ComputeRates();
         DispatchOnRatesComputed(currentTime);
         UpdateNextChangepoint(currentTime);

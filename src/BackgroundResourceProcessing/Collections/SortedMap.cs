@@ -33,16 +33,18 @@ public class SortedMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Sorte
         }
     }
 
+    private static readonly Entry[] Empty = [];
+
     Entry[] entries;
     int count;
 
     public int Count => count;
     public int Capacity => entries.Length;
+    public bool IsEmpty => count == 0;
 
     public KeyEnumerator Keys => new(this);
     public ValueEnumerator Values => new(this);
-
-    public Entry[] Entries => entries;
+    public EntryEnumerable Entries => new(this);
 
     public ref V this[K key]
     {
@@ -66,7 +68,7 @@ public class SortedMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Sorte
     }
 
     public SortedMap()
-        : this(16) { }
+        : this(Empty) { }
 
     public SortedMap(int capacity)
         : this(new Entry[capacity], 0) { }
@@ -122,8 +124,19 @@ public class SortedMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Sorte
         count = 0;
     }
 
+    public void Reserve(int capacity)
+    {
+        if (capacity <= Capacity)
+            return;
+
+        Expand(capacity - Capacity);
+    }
+
     public SortedMap<K, V> Clone()
     {
+        if (count == 0)
+            return new();
+
         return new((Entry[])entries.Clone(), count);
     }
 
@@ -229,6 +242,26 @@ public class SortedMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Sorte
             AddUnchecked(key, value);
         }
 
+        public void Set(K key, V value)
+        {
+            if (map.TryGetIndex(key, out var index))
+            {
+                map.entries[index].Value = value;
+                return;
+            }
+
+            for (int i = map.count; i < Count; ++i)
+            {
+                if (!map.entries[i].Key.Equals(key))
+                    continue;
+
+                map.entries[i].Value = value;
+                return;
+            }
+
+            AddUnchecked(key, value);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddUnchecked(K key, V value)
         {
@@ -282,47 +315,33 @@ public class SortedMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Sorte
     [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
     public struct Enumerator(SortedMap<K, V> map) : IEnumerator<KeyValuePair<K, V>>
     {
-        readonly SortedMap<K, V> map = map;
-        int index = -1;
+        EntryEnumerator enumerator = new(map);
 
         public readonly KeyValuePair<K, V> Current
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                var (key, value) = map.entries[index];
+                var (key, value) = enumerator.Current;
                 return new(key, value);
             }
         }
 
         readonly object IEnumerator.Current => Current;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool MoveNext()
-        {
-            index += 1;
-            return index < map.Count;
-        }
+        public bool MoveNext() => enumerator.MoveNext();
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly void Dispose() { }
+        public readonly void Dispose() => enumerator.Dispose();
 
-        public void Reset()
-        {
-            index = -1;
-        }
+        public void Reset() => enumerator.Reset();
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly Enumerator GetEnumerator()
-        {
-            return this;
-        }
+        public readonly Enumerator GetEnumerator() => this;
     }
 
     [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
     public struct KeyEnumerator(SortedMap<K, V> map) : IEnumerator<K>
     {
-        Enumerator enumerator = new(map);
+        EntryEnumerator enumerator = new(map);
 
         public readonly K Current
         {
@@ -355,13 +374,15 @@ public class SortedMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Sorte
     [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
     public struct ValueEnumerator(SortedMap<K, V> map) : IEnumerator<V>
     {
-        Enumerator enumerator = new(map);
+        EntryEnumerator enumerator = new(map);
 
-        public readonly V Current
+        public readonly ref V Current
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return enumerator.Current.Value; }
+            get { return ref enumerator.Current.Value; }
         }
+
+        readonly V IEnumerator<V>.Current => Current;
 
         readonly object IEnumerator.Current => Current;
 
@@ -383,6 +404,61 @@ public class SortedMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Sorte
         {
             return this;
         }
+    }
+
+    [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly struct EntryEnumerable(SortedMap<K, V> map) : IEnumerable<Entry>
+    {
+        readonly SortedMap<K, V> map = map;
+
+        public ref Entry this[int index]
+        {
+            [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get
+            {
+                if (index < 0 || index >= map.Count)
+                    ThrowIndexOutOfRangeException(index);
+
+                return ref map.entries[index];
+            }
+        }
+
+        public int Count => map.Count;
+
+        private void ThrowIndexOutOfRangeException(int index) =>
+            throw new IndexOutOfRangeException(
+                $"index {index} out of range for sorted map entries (expected index <= {map.Count})"
+            );
+
+        public EntryEnumerator GetEnumerator() => new(map);
+
+        IEnumerator<Entry> IEnumerable<Entry>.GetEnumerator() => GetEnumerator();
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
+    public struct EntryEnumerator(SortedMap<K, V> map) : IEnumerator<Entry>
+    {
+        readonly SortedMap<K, V> map = map;
+        int index = -1;
+
+        public readonly ref Entry Current => ref map.entries[index];
+        readonly Entry IEnumerator<Entry>.Current => Current;
+        readonly object IEnumerator.Current => Current;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool MoveNext()
+        {
+            index += 1;
+            return index < map.Count;
+        }
+
+        public void Reset()
+        {
+            index = -1;
+        }
+
+        public readonly void Dispose() { }
     }
 
     private class DebugView(SortedMap<K, V> map)

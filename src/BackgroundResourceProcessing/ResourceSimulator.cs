@@ -139,6 +139,7 @@ public class ResourceSimulator
 
         var currentTime = NextChangepoint;
         processor.UpdateState(currentTime, false);
+        processor.UpdateConstraintState();
         processor.ComputeRates();
         processor.UpdateNextChangepoint(currentTime);
         iteration += 1;

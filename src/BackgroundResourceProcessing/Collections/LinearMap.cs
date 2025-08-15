@@ -23,6 +23,18 @@ internal class LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Lin
             key = Key;
             value = Value;
         }
+
+        public override readonly int GetHashCode()
+        {
+            HashCode hasher = new();
+            hasher.Add(Key, Value);
+            return hasher.GetHashCode();
+        }
+
+        public override readonly string ToString()
+        {
+            return $"[{Key}, {Value}]";
+        }
     }
 
     Pair[] entries;
@@ -144,6 +156,13 @@ internal class LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Lin
     {
         Array.Clear(entries, 0, count);
         count = 0;
+    }
+
+    public void Reserve(int capacity)
+    {
+        if (capacity <= Capacity)
+            return;
+        Expand(capacity - Capacity);
     }
 
     private void Expand(int additional)
@@ -292,22 +311,104 @@ internal class LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Lin
         }
     }
 
-    [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
     public struct Enumerator(LinearMap<K, V> map) : IEnumerator<KeyValuePair<K, V>>
     {
-        readonly LinearMap<K, V> map = map;
-        int index = -1;
+        EntryEnumerator enumerator = new(map);
 
         public readonly KeyValuePair<K, V> Current
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                var pair = map.entries[index];
+                var pair = enumerator.Current;
                 return new(pair.Key, pair.Value);
             }
         }
 
+        readonly object IEnumerator.Current => Current;
+
+        public bool MoveNext() => enumerator.MoveNext();
+
+        public readonly void Dispose() => enumerator.Dispose();
+
+        public void Reset() => enumerator.Reset();
+
+        public readonly Enumerator GetEnumerator() => this;
+    }
+
+    public struct KeyEnumerator(LinearMap<K, V> map) : IEnumerator<K>
+    {
+        EntryEnumerator enumerator = new(map);
+
+        public readonly K Current => enumerator.Current.Key;
+
+        readonly object IEnumerator.Current => Current;
+
+        public bool MoveNext() => enumerator.MoveNext();
+
+        public readonly void Dispose() => enumerator.Dispose();
+
+        public void Reset() => enumerator.Reset();
+
+        public readonly KeyEnumerator GetEnumerator() => this;
+    }
+
+    public struct ValueEnumerator(LinearMap<K, V> map) : IEnumerator<V>
+    {
+        EntryEnumerator enumerator = new(map);
+
+        public readonly ref V Current => ref enumerator.Current.Value;
+
+        readonly V IEnumerator<V>.Current => Current;
+        readonly object IEnumerator.Current => Current;
+
+        public bool MoveNext() => enumerator.MoveNext();
+
+        public readonly void Dispose() => enumerator.Dispose();
+
+        public void Reset() => enumerator.Reset();
+
+        public readonly ValueEnumerator GetEnumerator() => this;
+    }
+
+    [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly struct EntryEnumerable(LinearMap<K, V> map) : IEnumerable<Pair>
+    {
+        readonly LinearMap<K, V> map = map;
+
+        public ref Pair this[int index]
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get
+            {
+                if (index < 0 || index >= map.Count)
+                    ThrowIndexOutOfRangeException(index);
+
+                return ref map.entries[index];
+            }
+        }
+
+        public int Count => map.Count;
+
+        private void ThrowIndexOutOfRangeException(int index) =>
+            throw new IndexOutOfRangeException(
+                $"index {index} out of range for linear map entries (expected index <= {map.Count})"
+            );
+
+        public EntryEnumerator GetEnumerator() => new(map);
+
+        IEnumerator<Pair> IEnumerable<Pair>.GetEnumerator() => GetEnumerator();
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
+    [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public struct EntryEnumerator(LinearMap<K, V> map) : IEnumerator<Pair>
+    {
+        readonly LinearMap<K, V> map = map;
+        int index = -1;
+
+        public readonly ref Pair Current => ref map.entries[index];
+        readonly Pair IEnumerator<Pair>.Current => Current;
         readonly object IEnumerator.Current => Current;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -317,85 +418,12 @@ internal class LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Lin
             return index < map.Count;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly void Dispose() { }
-
         public void Reset()
         {
             index = -1;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly Enumerator GetEnumerator()
-        {
-            return this;
-        }
-    }
-
-    [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public struct KeyEnumerator(LinearMap<K, V> map) : IEnumerator<K>
-    {
-        Enumerator enumerator = new(map);
-
-        public readonly K Current
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return enumerator.Current.Key; }
-        }
-
-        readonly object IEnumerator.Current => Current;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool MoveNext()
-        {
-            return enumerator.MoveNext();
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly void Dispose() { }
-
-        public void Reset()
-        {
-            enumerator.Reset();
-        }
-
-        public readonly KeyEnumerator GetEnumerator()
-        {
-            return this;
-        }
-    }
-
-    [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public struct ValueEnumerator(LinearMap<K, V> map) : IEnumerator<V>
-    {
-        Enumerator enumerator = new(map);
-
-        public readonly V Current
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get { return enumerator.Current.Value; }
-        }
-
-        readonly object IEnumerator.Current => Current;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool MoveNext()
-        {
-            return enumerator.MoveNext();
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly void Dispose() { }
-
-        public void Reset()
-        {
-            enumerator.Reset();
-        }
-
-        public readonly ValueEnumerator GetEnumerator()
-        {
-            return this;
-        }
     }
 
     private class KeyComparer : IComparer<Pair>
@@ -408,17 +436,9 @@ internal class LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Lin
         }
     }
 
-    private class DebugView
+    private class DebugView(LinearMap<K, V> map)
     {
-        readonly KeyValuePair<K, V>[] items;
-
         [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
-        public KeyValuePair<K, V>[] Items => items;
-
-        public DebugView(LinearMap<K, V> map)
-        {
-            items = new KeyValuePair<K, V>[map.Count];
-            Array.Copy(map.entries, items, map.Count);
-        }
+        public KeyValuePair<K, V>[] Items => [.. map];
     }
 }

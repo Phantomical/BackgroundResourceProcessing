@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -68,13 +69,6 @@ internal class ResourceProcessor
         node.TryGetDouble("lastUpdate", ref lastUpdate);
         node.TryGetDouble("nextChangepoint", ref nextChangepoint);
 
-        foreach (var cNode in node.GetNodes("CONVERTER"))
-        {
-            ResourceConverter converter = new(null);
-            converter.Load(cNode, vessel);
-            converters.Add(converter);
-        }
-
         foreach (var iNode in node.GetNodes("INVENTORY"))
         {
             ResourceInventory inventory = new();
@@ -83,11 +77,14 @@ internal class ResourceProcessor
             inventories.Add(inventory);
         }
 
-        int index = 0;
         foreach (var cNode in node.GetNodes("CONVERTER"))
         {
-            var converter = converters[index++];
+            ResourceConverter converter = new(null);
+            converter.Load(cNode, vessel);
+            converters.Add(converter);
+
             converter.LoadLegacyEdges(cNode, inventoryIds);
+            converter.ComputeConstraintStates(this);
         }
     }
 
@@ -179,13 +176,6 @@ internal class ResourceProcessor
         return soln;
     }
 
-    enum ConstraintState
-    {
-        DISABLED,
-        ENABLED,
-        BOUNDARY,
-    }
-
     private int ComputeSolverCacheHash()
     {
         using var span = new TraceSpan("ResourceProcessor.ComputeSolverCacheHash");
@@ -202,49 +192,12 @@ internal class ResourceProcessor
         var cspan = new TraceSpan("Converter Hashes");
         count = converters.Count;
         for (int i = 0; i < count; ++i)
-        {
             converters[i].SolverHash(ref hasher);
-            hasher.Add(GetConverterConstraintState(converters[i]));
-        }
         cspan.Dispose();
 
         hasher.Add(this);
 
         return hasher.GetHashCode();
-    }
-
-    private ConstraintState GetConverterConstraintState(ResourceConverter converter)
-    {
-        ConstraintState state = ConstraintState.ENABLED;
-
-        foreach (var (resource, required) in converter.Required)
-        {
-            double total = 0.0;
-
-            foreach (var id in converter.Constraint)
-                if (inventories[id].ResourceId == resource)
-                    total += inventories[id].Amount;
-
-            if (MathUtil.ApproxEqual(required.Amount, total, ResourceEpsilon))
-            {
-                state = ConstraintState.BOUNDARY;
-                continue;
-            }
-
-            switch (required.Constraint)
-            {
-                case Constraint.AT_LEAST:
-                    if (total < required.Amount)
-                        return ConstraintState.DISABLED;
-                    break;
-                case Constraint.AT_MOST:
-                    if (total > required.Amount)
-                        return ConstraintState.DISABLED;
-                    break;
-            }
-        }
-
-        return state;
     }
 
     public double UpdateNextChangepoint(double currentTime)
@@ -706,6 +659,99 @@ internal class ResourceProcessor
 
         lastUpdate = currentTime;
         return changepoint;
+    }
+
+    /// <summary>
+    /// Update the recorded constraint states for each converter.
+    /// </summary>
+    /// <returns>
+    ///   <c>true</c> if there has been a change in constraint state for a
+    ///   converter.
+    /// </returns>
+    public bool UpdateConstraintState()
+    {
+        LinearMap<int, double> totals = new(16);
+        bool changed = false;
+
+        foreach (var converter in converters)
+        {
+            if (converter.Required.Count == 0)
+                continue;
+
+            changed |= UpdateConstraintState(converter, totals);
+        }
+
+        return changed;
+    }
+
+    /// <summary>
+    /// Update the recorded constraint state for the provided converter.
+    /// </summary>
+    /// <param name="converter"></param>
+    /// <returns></returns>
+    public bool UpdateConstraintState(ResourceConverter converter)
+    {
+        if (converter.Required.Count == 0)
+            return false;
+
+        LinearMap<int, double> totals = new(converter.Required.Count);
+        return UpdateConstraintState(converter, totals);
+    }
+
+    private bool UpdateConstraintState(ResourceConverter converter, LinearMap<int, double> totals)
+    {
+        if (converter.Required.Count == 0)
+            return false;
+
+        totals.Clear();
+        totals.Reserve(converter.Required.Count);
+
+        ConstraintState prev = ConstraintState.ENABLED;
+        ConstraintState next = ConstraintState.ENABLED;
+
+        foreach (var inventoryId in converter.Constraint)
+        {
+            var inventory = inventories[inventoryId];
+            if (!converter.Required.ContainsKey(inventory.ResourceId))
+                continue;
+
+            var entry = totals.GetEntry(inventory.ResourceId);
+            ref var total = ref entry.GetOrInsert(0.0);
+            total += inventory.Amount;
+        }
+
+        foreach (ref var entry in converter.Required.Entries)
+        {
+            var resource = entry.Key;
+            ref var required = ref entry.Value;
+            var total = totals.GetValueOr(resource, 0.0);
+
+            prev = prev.Merge(required.State);
+
+            if (MathUtil.ApproxEqual(required.Amount, total, ResourceEpsilon))
+            {
+                required.State = ConstraintState.BOUNDARY;
+            }
+            else
+            {
+                required.State = ConstraintState.ENABLED;
+                switch (required.Constraint)
+                {
+                    case Constraint.AT_LEAST:
+                        if (total < required.Amount)
+                            required.State = ConstraintState.DISABLED;
+                        break;
+                    case Constraint.AT_MOST:
+                        if (total > required.Amount)
+                            required.State = ConstraintState.DISABLED;
+                        break;
+                }
+            }
+
+            next = next.Merge(required.State);
+        }
+
+        return prev != next;
     }
 
     public void RecordProtoInventories(Vessel vessel)
