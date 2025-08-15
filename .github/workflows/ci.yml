@@ -8,9 +8,6 @@ on:
 
 env:
   KSP_ROOT: D:\\KSP
-  CKAN_DEPS: |
-    Harmony2 ExtraPlanetaryLaunchpads ClickThroughBlocker Kopernicus USI-LS SystemHeat
-    CryoTanks-Core NearFutureSolar-Core SpaceDust
   GH_TOKEN: ${{ github.token }}
   RELEASE_STAGING: D:\\release
 
@@ -42,7 +39,7 @@ jobs:
 
       - name: Install CKAN dependencies
         shell: bash
-        run: ./ckan.exe install --asroot --headless --no-recommends $CKAN_DEPS
+        run: ./ckan.exe install --asroot --headless --no-recommends --ckanfiles dependencies.ckan
 
       - uses: actions/setup-dotnet@v4
         with:
