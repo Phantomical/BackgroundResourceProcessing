@@ -13,6 +13,7 @@
         { "name": "Harmony2" },
         { "name": "ClickThroughBlocker" },
 
+        { "name": "BackgroundResources",            "suppress_recommendations": true },
         { "name": "CryoTanks-Core",                 "suppress_recommendations": true },
         { "name": "ExtraPlanetaryLaunchpads",       "suppress_recommendations": true },
         { "name": "Kopernicus",                     "suppress_recommendations": true },

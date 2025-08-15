@@ -22,6 +22,10 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
     private static readonly Dictionary<string, List<AssemblyDependency>> Dependencies =
     [
         new(
+            "BackgroundResourceProcessing.Integration.BackgroundResources",
+            [new DirectAssemblyDependency("BackgroundResources", new(1, 12))]
+        ),
+        new(
             "BackgroundResourceProcessing.Integration.ClickThroughBlocker",
             [new KSPAssemblyDependency("ClickThroughBlocker", new(2, 0))]
         ),
