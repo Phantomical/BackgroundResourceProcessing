@@ -13,6 +13,12 @@ public class BackgroundCombinedConverter : BackgroundConverter
 {
     readonly List<ConverterEntry> options = [];
 
+    /// <summary>
+    /// A condition to evaluate to determine whether this converter should
+    /// be active. This can be any target filter expression.
+    /// </summary>
+    public ConditionalExpression ActiveCondition = ConditionalExpression.Always;
+
     public override ModuleBehaviour GetBehaviour(PartModule module)
     {
         ModuleBehaviour combined = null;
@@ -65,6 +71,8 @@ public class BackgroundCombinedConverter : BackgroundConverter
 
         var name = node.GetValue("name");
         var target = GetTargetType(node);
+
+        node.TryGetCondition(nameof(ActiveCondition), target, ref ActiveCondition);
 
         foreach (var child in node.GetNodes(NodeName))
         {

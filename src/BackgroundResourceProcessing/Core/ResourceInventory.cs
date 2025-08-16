@@ -284,10 +284,10 @@ public class ResourceInventory
 
         FlightId = part.flightID;
         ModuleId = module.GetPersistentId();
-        ResourceName = resource.resourceName;
-        Amount = resource.amount;
-        MaxAmount = resource.maxAmount;
-        OriginalAmount = resource.amount;
+        ResourceName = resource.ResourceName;
+        Amount = resource.Amount;
+        MaxAmount = resource.MaxAmount;
+        OriginalAmount = resource.Amount;
     }
 
     public void Save(ConfigNode node)

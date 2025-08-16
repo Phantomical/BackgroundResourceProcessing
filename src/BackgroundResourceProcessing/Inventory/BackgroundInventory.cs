@@ -16,12 +16,12 @@ public class FakePartResource
     /// The name of the resource that is being stored within this fake
     /// inventory.
     /// </summary>
-    public string resourceName;
+    public string ResourceName;
 
     /// <summary>
     /// The amount of resource that is stored in this inventory.
     /// </summary>
-    public double amount = 0.0;
+    public double Amount = 0.0;
 
     /// <summary>
     /// The maximum amount of resource that can be stored in this inventory.
@@ -31,7 +31,7 @@ public class FakePartResource
     /// This is permitted to be infinite, but negative or NaN values will
     /// result in this inventory being ignored.
     /// </remarks>
-    public double maxAmount = 0.0;
+    public double MaxAmount = 0.0;
 }
 
 public struct SnapshotUpdate

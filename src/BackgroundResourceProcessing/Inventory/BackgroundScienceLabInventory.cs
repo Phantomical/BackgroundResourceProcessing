@@ -16,18 +16,18 @@ public class BackgroundScienceLabInventory : BackgroundInventory<ModuleScienceLa
     {
         FakePartResource data = new()
         {
-            resourceName = DataResourceName,
-            amount = lab.dataStored,
-            maxAmount = lab.dataStorage,
+            ResourceName = DataResourceName,
+            Amount = lab.dataStored,
+            MaxAmount = lab.dataStorage,
         };
 
         FakePartResource science = new()
         {
-            resourceName = ScienceResourceName,
-            amount = lab.storedScience,
+            ResourceName = ScienceResourceName,
+            Amount = lab.storedScience,
             // So for some reason the science cap is actually specified on the
             // science converter module??
-            maxAmount = lab.Converter?.scienceCap ?? double.PositiveInfinity,
+            MaxAmount = lab.Converter?.scienceCap ?? double.PositiveInfinity,
         };
 
         return [data, science];

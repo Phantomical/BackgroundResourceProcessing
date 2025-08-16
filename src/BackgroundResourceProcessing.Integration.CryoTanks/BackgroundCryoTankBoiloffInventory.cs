@@ -32,9 +32,9 @@ public class BackgroundCryoTankBoiloffInventory : BackgroundInventory<ModuleCryo
             resources.Add(
                 new FakePartResource()
                 {
-                    resourceName = boiloff,
-                    amount = 0.0,
-                    maxAmount = 0.0,
+                    ResourceName = boiloff,
+                    Amount = 0.0,
+                    MaxAmount = 0.0,
                 }
             );
         }

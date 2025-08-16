@@ -113,6 +113,8 @@ internal class TypeRegistry<T>(string nodeName)
             {
                 if (!type.IsSubclassOf(baseType))
                     continue;
+                if (type.IsGenericTypeDefinition)
+                    continue;
 
                 assembly.types.Add(baseType, type);
                 assembly.typesDictionary.Add(baseType, type);

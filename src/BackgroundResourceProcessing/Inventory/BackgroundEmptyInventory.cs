@@ -21,7 +21,7 @@ public sealed class BackgroundEmptyInventory : BackgroundInventory
 
         var list = new List<FakePartResource>(ResourceNames.Count);
         foreach (var resource in ResourceNames)
-            list.Add(new() { resourceName = resource });
+            list.Add(new() { ResourceName = resource });
 
         return list;
     }
