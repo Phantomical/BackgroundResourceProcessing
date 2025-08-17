@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 
 namespace BackgroundResourceProcessing.Collections;
 
-internal static class KeyValuePairExt
+public static class KeyValuePairExt
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Deconstruct<K, V>(this KeyValuePair<K, V> pair, out K key, out V value)

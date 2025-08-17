@@ -34,6 +34,10 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
             [new DirectAssemblyDependency("SimpleBoiloff", new(0, 2))]
         ),
         new(
+            "BackgroundResourceProcessing.Integration.DeepFreeze",
+            [new KSPAssemblyDependency("DeepFreeze", new(0, 31))]
+        ),
+        new(
             "BackgroundResourceProcessing.Integration.EL",
             [new DirectAssemblyDependency("Launchpad", new(6, 99))]
         ),

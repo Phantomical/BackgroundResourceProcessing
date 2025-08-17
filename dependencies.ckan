@@ -15,6 +15,7 @@
 
         { "name": "BackgroundResources",            "suppress_recommendations": true },
         { "name": "CryoTanks-Core",                 "suppress_recommendations": true },
+        { "name": "DeepFreeze",                     "suppress_recommendations": true },
         { "name": "ExtraPlanetaryLaunchpads",       "suppress_recommendations": true },
         { "name": "Kopernicus",                     "suppress_recommendations": true },
         { "name": "NearFutureElectrical-Core",      "suppress_recommendations": true },
