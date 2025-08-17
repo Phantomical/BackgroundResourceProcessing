@@ -1,0 +1,23 @@
+{
+    "spec_version": "v1.6",
+    "identifier": "BackgroundResourceProcessing-Dependencies-2",
+    "name": "BackgroundResourceProcessing Dependency Set 2",
+    "abstract": "Dependencies required to do development for BackgroundResourceProcessing",
+    "author": "steamroller",
+    "version": "1",
+    "ksp_version_min": "1.8",
+    "ksp_version_max": "1.12",
+    "license": "MIT",
+    "kind": "metapackage",
+    "depends": [
+        { "name": "Harmony2" },
+        { "name": "ClickThroughBlocker" },
+
+        { "name": "BackgroundResources",            "suppress_recommendations": true },
+        { "name": "DeepFreeze",                     "suppress_recommendations": true },
+        { "name": "TACLS",                          "suppress_recommendations": true }
+    ],
+    "recommends": [
+        { "name": "KSPCommunityFixes" }
+    ]
+}

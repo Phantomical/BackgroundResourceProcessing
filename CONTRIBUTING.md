@@ -17,6 +17,27 @@ If you're doing a lot of editing of patches you may want to follow the steps
 on setting up the build system so that copying all the files to the mod
 directory is handled for you.
 
+## Installing Dependencies
+Background Resource Processing has integrations with a whole bunch of mods.
+Some of these dependencies conflict so they cannot all be added to the same
+install at the same time. As such, there is a script that installs these
+dependencies into a few fake CKAN installs that you will need to run before
+you can build anything.
+
+On Windows, run
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\setup-deps.ps1 -ckan path\to\ckan.exe
+```
+
+On Linux/MacOS run
+```bash
+./setup-deps.sh
+```
+
+These must be run in the repository root. They will create some fake ckan
+installs under `deps/installs` and install the relevant mods within.
+
 ## Building
 In order to build the mod you will need:
 - the `dotnet` CLI

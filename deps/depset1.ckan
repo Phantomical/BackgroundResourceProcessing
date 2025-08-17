@@ -1,7 +1,7 @@
 {
     "spec_version": "v1.6",
-    "identifier": "BackgroundResourceProcessing-Dependencies",
-    "name": "BackgroundResourceProcessing Dependencies",
+    "identifier": "BackgroundResourceProcessing-Dependencies-1",
+    "name": "BackgroundResourceProcessing Dependency Set 1",
     "abstract": "Dependencies required to do development for BackgroundResourceProcessing",
     "author": "steamroller",
     "version": "1",
@@ -13,9 +13,7 @@
         { "name": "Harmony2" },
         { "name": "ClickThroughBlocker" },
 
-        { "name": "BackgroundResources",            "suppress_recommendations": true },
         { "name": "CryoTanks-Core",                 "suppress_recommendations": true },
-        { "name": "DeepFreeze",                     "suppress_recommendations": true },
         { "name": "ExtraPlanetaryLaunchpads",       "suppress_recommendations": true },
         { "name": "Kopernicus",                     "suppress_recommendations": true },
         { "name": "NearFutureElectrical-Core",      "suppress_recommendations": true },
