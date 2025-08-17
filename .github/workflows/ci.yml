@@ -27,7 +27,7 @@ jobs:
 
       - name: Install CKAN dependencies
         shell: powershell
-        run: .\setup-deps.ps1 -ckan .\ckan.exe --asroot
+        run: .\setup-deps.ps1 -ckan .\ckan.exe -asroot
 
       - uses: actions/setup-dotnet@v4
         with:
