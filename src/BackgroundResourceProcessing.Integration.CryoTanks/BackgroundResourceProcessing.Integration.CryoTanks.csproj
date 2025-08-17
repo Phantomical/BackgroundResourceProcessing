@@ -16,7 +16,7 @@
         </ProjectReference>
 
         <Reference Include="SimpleBoiloff.dll">
-            <HintPath>$(KSPRoot)\GameData\CryoTanks\Plugins\SimpleBoiloff.dll</HintPath>
+            <HintPath>$(DepSet1)\CryoTanks\Plugins\SimpleBoiloff.dll</HintPath>
             <Private>false</Private>
             <CKANIdentifier>CryoTanksCore</CKANIdentifier>
         </Reference>

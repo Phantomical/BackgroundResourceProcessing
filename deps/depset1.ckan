@@ -14,6 +14,7 @@
         { "name": "ClickThroughBlocker" },
 
         { "name": "CryoTanks-Core",                 "suppress_recommendations": true },
+        { "name": "TweakScaleRescaled-Redist",      "suppress_recommendations": true },
         { "name": "ExtraPlanetaryLaunchpads",       "suppress_recommendations": true },
         { "name": "Kopernicus",                     "suppress_recommendations": true },
         { "name": "NearFutureElectrical-Core",      "suppress_recommendations": true },
@@ -25,5 +26,8 @@
     ],
     "recommends": [
         { "name": "KSPCommunityFixes" }
+    ],
+    "conflicts": [
+        { "name": "SimpleConstruction" }
     ]
 }

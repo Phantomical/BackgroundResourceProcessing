@@ -16,7 +16,7 @@
         </ProjectReference>
 
         <Reference Include="Kopernicus.dll">
-            <HintPath>$(KSPRoot)\GameData\Kopernicus\Plugins\Kopernicus.dll</HintPath>
+            <HintPath>$(DepSet1)\Kopernicus\Plugins\Kopernicus.dll</HintPath>
             <Private>false</Private>
             <CKANIdentifier>Kopernicus</CKANIdentifier>
             <KSPAssemblyName>Kopernicus</KSPAssemblyName>
