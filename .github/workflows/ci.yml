@@ -18,17 +18,6 @@ jobs:
       
       - name: Download ckan.exe
         run: gh release download --repo KSP-CKAN/CKAN --pattern ckan.exe -O ckan.exe
-
-      - name: Configure CKAN
-        run: |
-          ./ckan.exe instance fake --asroot --set-default KSP ${{ env.KSP_ROOT }} 1.12.5 --game KSP --MakingHistory 1.9.1 --BreakingGround 1.7.1
-          ./ckan.exe update --asroot
-          ./ckan.exe compat add --asroot 1.12
-          ./ckan.exe compat add --asroot 1.11
-          ./ckan.exe compat add --asroot 1.10
-          ./ckan.exe compat add --asroot 1.9
-          ./ckan.exe compat add --asroot 1.8
-        shell: bash
         
       - name: Download KSP Libs
         run: |
@@ -37,8 +26,8 @@ jobs:
         shell: bash
 
       - name: Install CKAN dependencies
-        shell: bash
-        run: ./ckan.exe install --asroot --headless --no-recommends --ckanfiles dependencies.ckan
+        shell: ps
+        run: .\setup-deps.ps1 -ckan .\ckan.exe
 
       - uses: actions/setup-dotnet@v4
         with:
