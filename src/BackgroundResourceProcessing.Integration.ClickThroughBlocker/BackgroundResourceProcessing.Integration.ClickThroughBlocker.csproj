@@ -16,9 +16,8 @@
         </ProjectReference>
 
         <Reference Include="ClickThroughBlocker.dll">
-            <HintPath>$(KSPRoot)\GameData\000_ClickThroughBlocker\Plugins\ClickThroughBlocker.dll</HintPath>
+            <HintPath>$(DepSet1)\000_ClickThroughBlocker\Plugins\ClickThroughBlocker.dll</HintPath>
             <Private>false</Private>
-
             <KSPAssemblyName>ClickThroughBlocker</KSPAssemblyName>
             <KSPAssemblyVersion>2.0.0</KSPAssemblyVersion>
         </Reference>

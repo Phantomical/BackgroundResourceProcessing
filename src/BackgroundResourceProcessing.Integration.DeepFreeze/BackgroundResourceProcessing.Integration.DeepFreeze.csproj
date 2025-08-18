@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <Description>BackgroundResourceProcessing Kopernicus Integration</Description>
+        <Description>BackgroundResourceProcessing DeepFreeze Integration</Description>
 
         <GenerateKSPAssemblyAttribute>true</GenerateKSPAssemblyAttribute>
         <GenerateKSPAssemblyDependencyAttributes>true</GenerateKSPAssemblyDependencyAttributes>
@@ -15,10 +15,20 @@
             <KSPAssemblyVersion>$(Version)</KSPAssemblyVersion>
         </ProjectReference>
 
-        <Reference Include="SimpleBoiloff.dll">
-            <HintPath>$(DepSet1)\CryoTanks\Plugins\SimpleBoiloff.dll</HintPath>
+        <Reference Include="0Harmony.dll">
+            <HintPath>$(DepSet1)\000_Harmony\0Harmony.dll</HintPath>
             <Private>false</Private>
-            <CKANIdentifier>CryoTanksCore</CKANIdentifier>
+            <CKANIdentifier>Harmony2</CKANIdentifier>
+            <KSPAssemblyName>HarmonyKSP</KSPAssemblyName>
+            <KSPAssemblyVersion>1.0.0</KSPAssemblyVersion>
+        </Reference>
+
+        <Reference Include="DeepFreeze.dll">
+            <HintPath>$(DepSet2)\REPOSoftTech\DeepFreeze\Plugins\DeepFreeze.dll</HintPath>
+            <Private>false</Private>
+            <CKANIdentifier>DeepFreeze</CKANIdentifier>
+            <KSPAssemblyName>DeepFreeze</KSPAssemblyName>
+            <KSPAssemblyVersion>0.31.0</KSPAssemblyVersion>
         </Reference>
 
         <InternalsVisibleTo Include="BackgroundResourceProcessing.Test" />

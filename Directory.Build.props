@@ -48,6 +48,14 @@
     </PropertyGroup>
 
     <!--
+        Paths to GameData folders in the dependency set installs.
+    -->
+    <PropertyGroup>
+        <DepSet1>$(ProjectRootDir)/deps/installs/depset1/GameData</DepSet1>
+        <DepSet2>$(ProjectRootDir)/deps/installs/depset2/GameData</DepSet2>
+    </PropertyGroup>
+
+    <!--
         The rest of this here is copied from KSPBuildTools.
 
         We're doing some custom bits with what gets copied to GameData so we

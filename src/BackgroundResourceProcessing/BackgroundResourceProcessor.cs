@@ -300,6 +300,32 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
         return added;
     }
 
+    /// <summary>
+    /// Remove a resource from inventories within this vessel. This does nothing
+    /// if the vessel is currently loaded.
+    /// </summary>
+    /// <param name="resourceName">The name of the resource to remove.</param>
+    /// <param name="amount">
+    ///   How much resource should be removed. This be infinite in order to
+    ///   empty all inventories.
+    /// </param>
+    /// <param name="includeModuleInventories">
+    ///   Whether to add resources to inventories associated with part modules.
+    ///   This is <c>false</c> by default.
+    /// </param>
+    /// <returns>
+    ///   The amount of resource that was actually removed. If <paramref name="amount"/>
+    ///   was negative then this will be negative (or zero) as well.
+    /// </returns>
+    public double RemoveResource(
+        string resourceName,
+        double amount,
+        bool includeModuleInventories = false
+    )
+    {
+        return -AddResource(resourceName, -amount, includeModuleInventories);
+    }
+
     private double AddResourceImpl(
         string resourceName,
         int resourceId,
@@ -378,14 +404,14 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
                     break;
                 }
             }
-
-            return amount;
         }
-
-        foreach (var inventory in inventories)
+        else
         {
-            var frac = inventory.Available / available;
-            inventory.Amount += frac * amount;
+            foreach (var inventory in inventories)
+            {
+                var frac = inventory.Available / available;
+                inventory.Amount += frac * amount;
+            }
         }
 
         return amount;

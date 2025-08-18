@@ -335,27 +335,27 @@ internal class ResourceProcessor
 
                 foreach (var res in resources)
                 {
-                    if (res.amount < 0.0 || !MathUtil.IsFinite(res.amount))
+                    if (res.Amount < 0.0 || !MathUtil.IsFinite(res.Amount))
                     {
                         LogUtil.Error(
                             $"Inventory {adapter.GetType().Name} on part {part.partName} returned ",
-                            $"a FakePartResource with invalid resource amount {res.amount}"
+                            $"a FakePartResource with invalid resource amount {res.Amount}"
                         );
                         continue;
                     }
 
                     // Note we specifically allow +Infinity here.
-                    if (res.maxAmount < 0.0 || double.IsNaN(res.maxAmount))
+                    if (res.MaxAmount < 0.0 || double.IsNaN(res.MaxAmount))
                     {
                         LogUtil.Error(
                             $"Inventory {adapter.GetType().Name} on part {part.partName} returned ",
-                            $"a FakePartResource with invalid resource maxAmount {res.maxAmount}"
+                            $"a FakePartResource with invalid resource maxAmount {res.MaxAmount}"
                         );
                         continue;
                     }
 
                     LogUtil.Debug(() =>
-                        $"Found inventory with {res.amount}/{res.maxAmount} {res.resourceName}"
+                        $"Found inventory with {res.Amount}/{res.MaxAmount} {res.ResourceName}"
                     );
 
                     var inventory = new ResourceInventory(res, module);

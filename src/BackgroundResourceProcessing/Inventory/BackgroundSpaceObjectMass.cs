@@ -19,9 +19,9 @@ public class BackgroundSpaceObjectMass : BackgroundInventory<ModuleSpaceObjectIn
 
         FakePartResource resource = new()
         {
-            resourceName = ResourceName,
-            amount = remainingMass,
-            maxAmount = remainingMass,
+            ResourceName = ResourceName,
+            Amount = remainingMass,
+            MaxAmount = remainingMass,
         };
 
         return [resource];

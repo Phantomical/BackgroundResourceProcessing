@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
@@ -53,7 +54,7 @@ public class ResourceSimulator
     /// Note that you can still modify the inventories themselves. You just
     /// cannot add or remove inventories from the set.
     /// </remarks>
-    public ReadOnlyCollection<ResourceInventory> Inventories => processor.inventories.AsReadOnly();
+    public ReadOnlyList<ResourceInventory> Inventories => new(processor.inventories);
 
     /// <summary>
     /// Get a read-only view of the available converters.
@@ -63,8 +64,7 @@ public class ResourceSimulator
     /// Note that you can still modify the inventories themselves. You just
     /// cannot add or remove inventories from the set.
     /// </remarks>
-    public ReadOnlyCollection<Core.ResourceConverter> Converters =>
-        processor.converters.AsReadOnly();
+    public ReadOnlyList<Core.ResourceConverter> Converters => new(processor.converters);
 
     internal ResourceSimulator(ResourceProcessor processor)
     {
@@ -121,6 +121,25 @@ public class ResourceSimulator
             states[inventory.ResourceName] = state.Merge(inventory.State);
         }
         return states;
+    }
+
+    /// <summary>
+    /// Add a new converter that doesn't correspond to any part modules on
+    /// the vessel.
+    /// </summary>
+    /// <returns>The index of the converter within <see cref="Converters"/>.</returns>
+    ///
+    /// <remarks>
+    ///   This allows you to introduce new converters to represent processes
+    ///   that are not being simulated by BRP.
+    /// </remarks>
+    public int AddConverter(Core.ResourceConverter converter)
+    {
+        converter.CloneForSimulator();
+
+        processor.converters.Add(converter);
+        processor.UpdateConstraintState(converter);
+        return processor.converters.Count - 1;
     }
 
     /// <summary>

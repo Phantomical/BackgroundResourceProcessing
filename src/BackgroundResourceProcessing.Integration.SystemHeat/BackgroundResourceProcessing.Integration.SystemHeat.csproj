@@ -16,7 +16,7 @@
         </ProjectReference>
 
         <Reference Include="SystemHeat.dll">
-            <HintPath>$(KSPRoot)\GameData\SystemHeat\Plugin\SystemHeat.dll</HintPath>
+            <HintPath>$(DepSet1)\SystemHeat\Plugin\SystemHeat.dll</HintPath>
             <Private>false</Private>
             <CKANIdentifier>SystemHeat</CKANIdentifier>
         </Reference>

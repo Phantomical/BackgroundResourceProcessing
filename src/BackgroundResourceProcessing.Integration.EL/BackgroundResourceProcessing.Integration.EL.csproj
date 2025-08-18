@@ -13,11 +13,10 @@
             Include="$(ProjectDir)/../BackgroundResourceProcessing/BackgroundResourceProcessing.csproj">
             <KSPAssemblyName>BackgroundResourceProcessing</KSPAssemblyName>
             <KSPAssemblyVersion>$(Version)</KSPAssemblyVersion>
-            <Private>false</Private>
         </ProjectReference>
 
         <Reference Include="Launchpad.dll">
-            <HintPath>$(KSPRoot)\GameData\ExtraplanetaryLaunchpads\Plugins\Launchpad.dll</HintPath>
+            <HintPath>$(DepSet1)\ExtraplanetaryLaunchpads\Plugins\Launchpad.dll</HintPath>
             <Private>false</Private>
             <KSPAssemblyName>Launchpad</KSPAssemblyName>
         </Reference>

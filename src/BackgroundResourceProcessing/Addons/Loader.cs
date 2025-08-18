@@ -22,12 +22,20 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
     private static readonly Dictionary<string, List<AssemblyDependency>> Dependencies =
     [
         new(
+            "BackgroundResourceProcessing.Integration.BackgroundResources",
+            [new DirectAssemblyDependency("BackgroundResources", new(1, 12))]
+        ),
+        new(
             "BackgroundResourceProcessing.Integration.ClickThroughBlocker",
             [new KSPAssemblyDependency("ClickThroughBlocker", new(2, 0))]
         ),
         new(
             "BackgroundResourceProcessing.Integration.CryoTanks",
             [new DirectAssemblyDependency("SimpleBoiloff", new(0, 2))]
+        ),
+        new(
+            "BackgroundResourceProcessing.Integration.DeepFreeze",
+            [new KSPAssemblyDependency("DeepFreeze", new(0, 31))]
         ),
         new(
             "BackgroundResourceProcessing.Integration.EL",

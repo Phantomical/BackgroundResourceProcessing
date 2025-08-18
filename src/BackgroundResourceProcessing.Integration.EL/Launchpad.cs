@@ -158,9 +158,9 @@ public class BackgroundELLaunchpadInventory : BackgroundInventory<ELLaunchpad>
         var work = control.CalculateWork();
         var output = new FakePartResource()
         {
-            resourceName = WorkHoursResource,
-            amount = 0.0,
-            maxAmount = work,
+            ResourceName = WorkHoursResource,
+            Amount = 0.0,
+            MaxAmount = work,
         };
 
         return [output];

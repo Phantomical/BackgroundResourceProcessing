@@ -1,0 +1,33 @@
+{
+    "spec_version": "v1.6",
+    "identifier": "BackgroundResourceProcessing-Dependencies-1",
+    "name": "BackgroundResourceProcessing Dependency Set 1",
+    "abstract": "Dependencies required to do development for BackgroundResourceProcessing",
+    "author": "steamroller",
+    "version": "1",
+    "ksp_version_min": "1.8",
+    "ksp_version_max": "1.12",
+    "license": "MIT",
+    "kind": "metapackage",
+    "depends": [
+        { "name": "Harmony2" },
+        { "name": "ClickThroughBlocker" },
+
+        { "name": "CryoTanks-Core",                 "suppress_recommendations": true },
+        { "name": "TweakScaleRescaled-Redist",      "suppress_recommendations": true },
+        { "name": "ExtraPlanetaryLaunchpads",       "suppress_recommendations": true },
+        { "name": "Kopernicus",                     "suppress_recommendations": true },
+        { "name": "NearFutureElectrical-Core",      "suppress_recommendations": true },
+        { "name": "NearFutureSolar-Core",           "suppress_recommendations": true },
+        { "name": "FarFutureTechnologies",          "suppress_recommendations": true },
+        { "name": "SpaceDust",                      "suppress_recommendations": true },
+        { "name": "SystemHeat",                     "suppress_recommendations": true },
+        { "name": "USI-LS",                         "suppress_recommendations": true }
+    ],
+    "recommends": [
+        { "name": "KSPCommunityFixes" }
+    ],
+    "conflicts": [
+        { "name": "SimpleConstruction" }
+    ]
+}

@@ -16,7 +16,7 @@
         </ProjectReference>
 
         <Reference Include="NearFutureSolar.dll">
-            <HintPath>$(KSPRoot)\GameData\NearFutureSolar\Plugins\NearFutureSolar.dll</HintPath>
+            <HintPath>$(DepSet1)\NearFutureSolar\Plugins\NearFutureSolar.dll</HintPath>
             <Private>false</Private>
             <CKANIdentifier>NearFutureSolar-Core</CKANIdentifier>
         </Reference>

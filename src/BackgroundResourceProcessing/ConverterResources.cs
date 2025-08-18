@@ -12,19 +12,34 @@ public struct ConverterResources()
     /// A list of resources that are consumed by this converter, along
     /// with their rates and flow modes.
     /// </summary>
-    public List<ResourceRatio> Inputs = [];
+    public List<ResourceRatio> Inputs
+    {
+        get => inputs ??= [];
+        set => inputs = value;
+    }
+    private List<ResourceRatio> inputs = null;
 
     /// <summary>
     /// A list of resources that are produced by this converter, along
     /// with their rates and flow modes.
     /// </summary>
-    public List<ResourceRatio> Outputs = [];
+    public List<ResourceRatio> Outputs
+    {
+        get => outputs ??= [];
+        set => outputs = value;
+    }
+    private List<ResourceRatio> outputs = null;
 
     /// <summary>
     /// A list of constraints on what resources must be present on the
     /// vessel in order for this converter to be active.
     /// </summary>
-    public List<ResourceConstraint> Requirements = [];
+    public List<ResourceConstraint> Requirements
+    {
+        get => requirements ??= [];
+        set => requirements = value;
+    }
+    private List<ResourceConstraint> requirements = null;
 
     /// <summary>
     /// The time at which the resources emitted by this vessel will change next.
