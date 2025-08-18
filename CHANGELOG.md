@@ -12,6 +12,13 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ## Unreleased
 
+## 0.1.7
+### Added
+* Added support for `Background Resource` - BRP disables it if present and then
+  patches `UnloadedResourceProcessing` methods to call into BRP.
+* Added support for `DeepFreeze`.
+* Added support for `TAC Life Support`.
+
 ## 0.1.6
 ### Added
 * Added support for `SpaceDust`.
