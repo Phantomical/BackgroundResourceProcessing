@@ -31,8 +31,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessin
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessing.Integration.DeepFreeze", "src\BackgroundResourceProcessing.Integration.DeepFreeze\BackgroundResourceProcessing.Integration.DeepFreeze.csproj", "{1C838403-880A-A56B-1276-C753FDFE35B0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessing.Integration.TACLifeSupport", "src\BackgroundResourceProcessing.Integration.TACLifeSupport\BackgroundResourceProcessing.Integration.TACLifeSupport.csproj", "{A764D4E5-4DE2-85DB-807C-F032A7D0E2F9}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
