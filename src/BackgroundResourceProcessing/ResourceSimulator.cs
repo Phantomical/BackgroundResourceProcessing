@@ -124,6 +124,25 @@ public class ResourceSimulator
     }
 
     /// <summary>
+    /// Add a new converter that doesn't correspond to any part modules on
+    /// the vessel.
+    /// </summary>
+    /// <returns>The index of the converter within <see cref="Converters"/>.</returns>
+    ///
+    /// <remarks>
+    ///   This allows you to introduce new converters to represent processes
+    ///   that are not being simulated by BRP.
+    /// </remarks>
+    public int AddConverter(Core.ResourceConverter converter)
+    {
+        converter.CloneForSimulator();
+
+        processor.converters.Add(converter);
+        processor.UpdateConstraintState(converter);
+        return processor.converters.Count - 1;
+    }
+
+    /// <summary>
     /// Step the simulator forward to the next changepoint.
     /// </summary>
     ///
