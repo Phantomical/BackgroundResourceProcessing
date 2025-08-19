@@ -26,7 +26,8 @@
         { "name": "KSPBurst-Full",                  "suppress_recommendations": true }
     ],
     "recommends": [
-        { "name": "KSPCommunityFixes" }
+        { "name": "KSPCommunityFixes" },
+        { "name": "QuickStart" }
     ],
     "conflicts": [
         { "name": "SimpleConstruction" }
