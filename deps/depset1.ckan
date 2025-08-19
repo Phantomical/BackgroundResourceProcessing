@@ -22,10 +22,12 @@
         { "name": "FarFutureTechnologies",          "suppress_recommendations": true },
         { "name": "SpaceDust",                      "suppress_recommendations": true },
         { "name": "SystemHeat",                     "suppress_recommendations": true },
-        { "name": "USI-LS",                         "suppress_recommendations": true }
+        { "name": "USI-LS",                         "suppress_recommendations": true },
+        { "name": "KSPBurst-Full",                  "suppress_recommendations": true }
     ],
     "recommends": [
-        { "name": "KSPCommunityFixes" }
+        { "name": "KSPCommunityFixes" },
+        { "name": "QuickStart" }
     ],
     "conflicts": [
         { "name": "SimpleConstruction" }

@@ -9,6 +9,8 @@ depends:
     min_version: 4.2.3
   - name: Harmony2
     min_version: 2.2.1
+  - name: KSPBurst
+    min_version: 1.5.5.2
 
 suggests:
   - name: ClickThroughBlocker
