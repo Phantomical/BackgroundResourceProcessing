@@ -12,6 +12,16 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ## Unreleased
 
+## 0.1.8
+This version now has a dependency on `KSPBurst`.
+
+### Added
+* Added support for `FusionReactor` modules from FFT.
+
+### Changed
+* Some core solver methods are now compiled using burst and will use AVX2 if
+  supported on your processor.
+
 ## 0.1.7
 ### Added
 * Added support for `Background Resource` - BRP disables it if present and then
