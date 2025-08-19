@@ -1367,7 +1367,7 @@ internal struct FieldExpression
 
         static Expression CoerceToTarget<T>(Expression expr)
         {
-            if (expr.Type == typeof(T))
+            if (typeof(T).IsAssignableFrom(expr.Type))
                 return expr;
 
             if (typeof(T) == typeof(bool))

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -31,6 +32,9 @@ public class BackgroundConstantConverter : BackgroundConverter
     [KSPField]
     public string LastUpdateField = null;
 
+    public FieldExpression<object> InputList = new(_ => null, "null");
+    public FieldExpression<object> OutputList = new(_ => null, "null");
+
     private List<ConverterMultiplier> multipliers = [];
     private FieldInfo lastUpdateField = null;
 
@@ -44,6 +48,9 @@ public class BackgroundConstantConverter : BackgroundConverter
         IEnumerable<ResourceConstraint> required = this.required.Select(req =>
             req.Evaluate(module)
         );
+
+        inputs = inputs.Concat(GetResourceList(module, InputList) ?? []);
+        outputs = outputs.Concat(GetResourceList(module, OutputList) ?? []);
 
         var mult = 1.0;
         foreach (var field in multipliers)
@@ -76,6 +83,33 @@ public class BackgroundConstantConverter : BackgroundConverter
         return behaviour;
     }
 
+    private IEnumerable<ResourceRatio> GetResourceList(
+        PartModule module,
+        FieldExpression<object> expr
+    )
+    {
+        if (!expr.TryEvaluate(module, out var value))
+            return null;
+
+        return value switch
+        {
+            IEnumerable<ResourceRatio> ratios => ratios,
+            IEnumerable<ModuleResource> resources => resources.Select(
+                resource => new ResourceRatio()
+                {
+                    ResourceName = resource.name,
+                    Ratio = resource.rate,
+                    DumpExcess = false,
+                    FlowMode = resource.flowMode,
+                }
+            ),
+            null => null,
+            _ => throw new NotImplementedException(
+                $"Unable to read a rate list from a value of type {value.GetType().Name}"
+            ),
+        };
+    }
+
     protected override void OnLoad(ConfigNode node)
     {
         base.OnLoad(node);
@@ -83,6 +117,8 @@ public class BackgroundConstantConverter : BackgroundConverter
         var target = GetTargetType(node);
 
         node.TryGetCondition(nameof(ActiveCondition), target, ref ActiveCondition);
+        node.TryGetExpression(nameof(InputList), target, ref InputList);
+        node.TryGetExpression(nameof(OutputList), target, ref OutputList);
 
         multipliers = ConverterMultiplier.LoadAll(target, node);
 
