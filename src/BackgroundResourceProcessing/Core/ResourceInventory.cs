@@ -1,3 +1,4 @@
+using System;
 using BackgroundResourceProcessing.Inventory;
 using BackgroundResourceProcessing.Utils;
 
@@ -126,6 +127,16 @@ public struct InventoryState(double amount = 0.0, double maxAmount = 0.0, double
             maxAmount = maxAmount + other.maxAmount,
             rate = rate + other.rate,
         };
+    }
+
+    /// <summary>
+    /// Get the amount of resource that will be stored in this inventory after
+    /// <paramref name="time"/> seconds have passed from the time this inventory
+    /// state represents.
+    /// </summary>
+    public readonly double GetAmountAfterTime(double time)
+    {
+        return MathUtil.Clamp(amount + rate * time, 0.0, maxAmount);
     }
 }
 
