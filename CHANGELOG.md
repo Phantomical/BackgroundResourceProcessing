@@ -11,6 +11,8 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 -->
 
 ## Unreleased
+
+## 0.1.9
 ### Added
 * Added a config option to disable background simulation of science labs
   specifically.
