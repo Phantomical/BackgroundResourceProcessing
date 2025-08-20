@@ -868,15 +868,17 @@ internal class ResourceProcessor
                     continue;
                 }
 
-                if (!MathUtil.ApproxEqual(inventory.OriginalAmount, resource.amount))
-                {
-                    var difference = resource.amount - inventory.OriginalAmount;
+                double difference = resource.amount - inventory.OriginalAmount;
+                if (!MathUtil.ApproxEqual(difference, 0.0))
                     amount += difference;
-                }
 
-                LogUtil.Debug(() =>
+                LogUtil.Log(
                     $"Updating inventory on {part.name} to {amount:g4}/{resource.maxAmount:g4} {resource.resourceName}"
                 );
+                if (!MathUtil.ApproxEqual(difference, 0.0))
+                    LogUtil.Log(
+                        $"  Stored amount differs by {difference:g4} from saved original amount {inventory.OriginalAmount:g4}"
+                    );
 
                 resource.amount = MathUtil.Clamp(amount, 0.0, resource.maxAmount);
             }
