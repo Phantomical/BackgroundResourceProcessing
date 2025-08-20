@@ -18,7 +18,15 @@ namespace BackgroundResourceProcessing.Converter;
 /// </remarks>
 public class ModuleBehaviour()
 {
-    public List<ConverterBehaviour> Converters = null;
+    /// <summary>
+    /// A list of <see cref="ConverterBehaviour"/>s.
+    /// </summary>
+    public List<ConverterBehaviour> Converters
+    {
+        get => converters ??= [];
+        set => converters = value;
+    }
+    private List<ConverterBehaviour> converters = null;
 
     /// <summary>
     /// A set of <see cref="PartModule"/>s to inspect for background
@@ -27,7 +35,12 @@ public class ModuleBehaviour()
     /// inventories that the converters in <see cref="Converters"/> can push
     /// resource to.
     /// </summary>
-    public List<PartModule> Push = null;
+    public List<PartModule> Push
+    {
+        get => push ??= [];
+        set => push = value;
+    }
+    private List<PartModule> push = null;
 
     /// <summary>
     /// A set of <see cref="PartModule"/>s to inspect for background
@@ -36,7 +49,12 @@ public class ModuleBehaviour()
     /// inventories that the converters in <see cref="Converters"/> can pull
     /// resource from.
     /// </summary>
-    public List<PartModule> Pull = null;
+    public List<PartModule> Pull
+    {
+        get => pull ??= [];
+        set => pull = value;
+    }
+    private List<PartModule> pull = null;
 
     /// <summary>
     /// A set of <see cref="PartModule"/>s to inspect for background
@@ -45,7 +63,12 @@ public class ModuleBehaviour()
     /// inventories that the converters in <see cref="Converters"/>
     /// reference for constraints.
     /// </summary>
-    public List<PartModule> Constraint = null;
+    public List<PartModule> Constraint
+    {
+        get => constraint ??= [];
+        set => constraint = value;
+    }
+    private List<PartModule> constraint = null;
 
     public ModuleBehaviour(ConverterBehaviour behaviour)
         : this()
@@ -63,11 +86,7 @@ public class ModuleBehaviour()
     /// Add a new <see cref="ConverterBehaviour"/>.
     /// </summary>
     /// <param name="behaviour"></param>
-    public void Add(ConverterBehaviour behaviour)
-    {
-        Converters ??= [];
-        Converters.Add(behaviour);
-    }
+    public void Add(ConverterBehaviour behaviour) => Converters.Add(behaviour);
 
     /// <summary>
     /// Add a part module that this converter will push resources to.
@@ -77,11 +96,7 @@ public class ModuleBehaviour()
     /// This is only for use with <see cref="BackgroundInventory"/> modules.
     /// Regular resources are connected using KSPs flow rules.
     /// </remarks>
-    public void AddPushModule(PartModule module)
-    {
-        Push ??= [];
-        Push.Add(module);
-    }
+    public void AddPushModule(PartModule module) => Push.Add(module);
 
     /// <summary>
     /// Add a part module that this converter will push resources to.
@@ -91,11 +106,7 @@ public class ModuleBehaviour()
     /// This is only for use with <see cref="BackgroundInventory"/> modules.
     /// Regular resources are connected using KSPs flow rules.
     /// </remarks>
-    public void AddPullModule(PartModule module)
-    {
-        Pull ??= [];
-        Pull.Add(module);
-    }
+    public void AddPullModule(PartModule module) => Pull.Add(module);
 
     /// <summary>
     /// Add a part module that this converter will refer to when determining
@@ -106,11 +117,7 @@ public class ModuleBehaviour()
     /// This is only for use with <see cref="BackgroundInventory"/> modules.
     /// Regular resources are connected using KSPs flow rules.
     /// </remarks>
-    public void AddConstraintModule(PartModule module)
-    {
-        Pull ??= [];
-        Pull.Add(module);
-    }
+    public void AddConstraintModule(PartModule module) => Constraint.Add(module);
 }
 
 /// <summary>
