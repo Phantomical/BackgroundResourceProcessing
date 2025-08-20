@@ -85,4 +85,12 @@ public class Settings : GameParameters.CustomParameterNode
         toolTip = "Simulate Day/Night for landed vessels."
     )]
     public bool EnableLandedShadows = true;
+
+    [GameParameters.CustomParameterUI(
+        "Take over background processing of science labs",
+        toolTip = "Simulate the conversion of lab data into science. "
+            + "If you are encountering bugs with lab data then you can "
+            + "disable this to work around it."
+    )]
+    public bool EnableBackgroundScienceLabProcessing = true;
 }

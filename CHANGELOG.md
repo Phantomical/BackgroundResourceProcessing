@@ -12,6 +12,15 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ## Unreleased
 
+## 0.1.9
+### Added
+* Added a config option to disable background simulation of science labs
+  specifically.
+
+### Fixed
+* Fixed a bug where the background simulation of science labs was running
+  at twice the rate it was supposed to be.
+
 ## 0.1.8
 This version now has a dependency on `KSPBurst`.
 

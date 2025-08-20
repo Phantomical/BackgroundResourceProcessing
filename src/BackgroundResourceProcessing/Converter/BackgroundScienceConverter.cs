@@ -9,6 +9,10 @@ public class BackgroundScienceConverter : BackgroundConverter<ModuleScienceConve
     const BindingFlags Flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
     private static readonly MethodInfo GetScientistsMethod =
         typeof(ModuleScienceConverter).GetMethod("GetScientists", Flags);
+    private static readonly FieldInfo LastUpdateTimeField = typeof(ModuleScienceConverter).GetField(
+        "lastUpdateTime",
+        Flags
+    );
 
     [KSPField]
     public string DataResourceName = "BRPScienceLabData";
@@ -47,6 +51,15 @@ public class BackgroundScienceConverter : BackgroundConverter<ModuleScienceConve
         behaviour.AddPushModule(module.Lab);
         behaviour.AddPullModule(module.Lab);
         return behaviour;
+    }
+
+    public override void OnRestore(ModuleScienceConverter module, ResourceConverter converter)
+    {
+        var settings = HighLogic.CurrentGame.Parameters.CustomParams<Settings>();
+        if (!settings.EnableBackgroundScienceLabProcessing)
+            return;
+
+        LastUpdateTimeField.SetValue(module, Planetarium.GetUniversalTime());
     }
 
     private static float GetScientists(ModuleScienceConverter module)

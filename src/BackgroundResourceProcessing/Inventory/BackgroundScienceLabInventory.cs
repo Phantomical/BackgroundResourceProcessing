@@ -35,6 +35,10 @@ public class BackgroundScienceLabInventory : BackgroundInventory<ModuleScienceLa
 
     public override void UpdateResource(ModuleScienceLab lab, ResourceInventory inventory)
     {
+        var settings = HighLogic.CurrentGame.Parameters.CustomParams<Settings>();
+        if (!settings.EnableBackgroundScienceLabProcessing)
+            return;
+
         if (inventory.ResourceName == DataResourceName)
         {
             var delta = lab.dataStored - inventory.Amount;
@@ -54,6 +58,13 @@ public class BackgroundScienceLabInventory : BackgroundInventory<ModuleScienceLa
         SnapshotUpdate update
     )
     {
+        var settings = HighLogic.CurrentGame.Parameters.CustomParams<Settings>();
+        if (!settings.EnableBackgroundScienceLabProcessing)
+        {
+            base.UpdateSnapshot(module, inventory, update);
+            return;
+        }
+
         var node = module.moduleValues;
 
         if (inventory.ResourceName == DataResourceName)
