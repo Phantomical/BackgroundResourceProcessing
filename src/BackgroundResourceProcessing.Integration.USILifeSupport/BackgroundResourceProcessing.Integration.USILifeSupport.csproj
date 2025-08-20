@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <Description>BackgroundResourceProcessing Kopernicus Integration</Description>
+        <Description>BackgroundResourceProcessing USI Life Support Integration</Description>
 
         <GenerateKSPAssemblyAttribute>true</GenerateKSPAssemblyAttribute>
         <GenerateKSPAssemblyDependencyAttributes>true</GenerateKSPAssemblyDependencyAttributes>
