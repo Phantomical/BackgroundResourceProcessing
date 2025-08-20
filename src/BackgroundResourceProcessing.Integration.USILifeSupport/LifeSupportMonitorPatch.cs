@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection.Emit;
+using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
 using HarmonyLib;
@@ -20,70 +21,29 @@ public class Loader : MonoBehaviour
     }
 }
 
-[KSPAddon(KSPAddon.Startup.AllGameScenes, false)]
-public class MonitorVesselCache : MonoBehaviour
+public struct VesselStats
 {
-    internal static MonitorVesselCache Instance = null;
+    public double LastChangepoint;
+    public double EcExhaustedUT;
+    public double SuppliesExhaustedUT;
 
-    readonly Dictionary<Vessel, VesselStats> unloadedStats = [];
-    readonly Dictionary<Vessel, LoadedVesselStats> loadedStats = [];
+    public InventoryState SupplyState;
+    public InventoryState EcState;
 
-    public VesselStats? GetVesselStats(Vessel vessel)
+    public readonly double GetSuppliesAtUT(double UT)
     {
-        var processor = vessel.FindVesselModuleImplementing<BackgroundResourceProcessor>();
-        if (processor == null)
-            return null;
-
-        if (vessel.loaded)
-            return GetLoadedVesselStats(vessel, processor);
-        else
-            return GetUnloadedVesselStats(vessel, processor);
+        return SupplyState.amount + SupplyState.rate * (UT - LastChangepoint);
     }
 
-    VesselStats? GetUnloadedVesselStats(Vessel vessel, BackgroundResourceProcessor processor)
+    public readonly double GetEcAtUT(double UT)
     {
-        if (unloadedStats.TryGetValue(vessel, out var saved))
-        {
-            if (saved.LastChangepoint == processor.LastChangepoint)
-                return saved;
-        }
-
-        var stats = SimulateVessel(vessel, processor);
-        if (stats == null)
-            return null;
-
-        unloadedStats[vessel] = (VesselStats)stats;
-        return stats;
+        return EcState.amount + EcState.rate * (UT - LastChangepoint);
     }
 
-    VesselStats? GetLoadedVesselStats(Vessel vessel, BackgroundResourceProcessor processor)
+    public static VesselStats? SimulateVessel(BackgroundResourceProcessor processor)
     {
-        var now = DateTime.UtcNow;
-        if (loadedStats.TryGetValue(vessel, out var saved))
-        {
-            if ((now - saved.LastRecorded) < TimeSpan.FromSeconds(5))
-                return saved.Stats;
-        }
-
-        saved ??= new();
-
-        var stats = SimulateVessel(vessel, processor);
-        if (stats == null)
-            return null;
-
-        saved.Vessel = vessel;
-        saved.LastRecorded = now;
-        saved.Stats = (VesselStats)stats;
-
-        loadedStats[vessel] = saved;
-        return stats;
-    }
-
-    VesselStats? SimulateVessel(Vessel vessel, BackgroundResourceProcessor processor)
-    {
+        var vessel = processor.Vessel;
         var module = vessel.FindVesselModuleImplementing<ModuleBackgroundUSILifeSupport>();
-        if (module == null)
-            return null;
 
         var original = processor.Converters;
 
@@ -135,57 +95,9 @@ public class MonitorVesselCache : MonoBehaviour
 
         return stats;
     }
-
-    void Start()
-    {
-        GameEvents.onVesselDestroy.Add(ResetCachedState);
-        GameEvents.onVesselUnloaded.Add(ResetCachedState);
-
-        Instance = this;
-    }
-
-    void OnDestroy()
-    {
-        Instance = null;
-
-        GameEvents.onVesselDestroy.Remove(ResetCachedState);
-        GameEvents.onVesselUnloaded.Remove(ResetCachedState);
-    }
-
-    void ResetCachedState(Vessel vessel)
-    {
-        unloadedStats.Remove(vessel);
-        loadedStats.Remove(vessel);
-    }
-
-    public struct VesselStats
-    {
-        public double LastChangepoint;
-        public double EcExhaustedUT;
-        public double SuppliesExhaustedUT;
-
-        public InventoryState SupplyState;
-        public InventoryState EcState;
-
-        public readonly double GetSuppliesAtUT(double UT)
-        {
-            return SupplyState.amount + SupplyState.rate * (UT - LastChangepoint);
-        }
-
-        public readonly double GetEcAtUT(double UT)
-        {
-            return EcState.amount + EcState.rate * (UT - LastChangepoint);
-        }
-    }
-
-    public class LoadedVesselStats
-    {
-        public Vessel Vessel;
-        public DateTime LastRecorded;
-
-        public VesselStats Stats;
-    }
 }
+
+public class VesselSimulationCache : SimulationCache<VesselStats?> { }
 
 [HarmonyPatch(typeof(LifeSupportMonitor))]
 [HarmonyPatch("GetVesselStats")]
@@ -248,10 +160,13 @@ public static class LifeSupportMonitor_GetVesselStats_Patch
                     // we discovered earlier.
                     new CodeInstruction(OpCodes.Ldloca, suppliesTimeLoc),
                     new CodeInstruction(OpCodes.Ldloca, ecTimeLoc),
-                    // And then make our call, which will remove the 3 parameters
+                    // We need to access the game object associated with the GUI
+                    // so we grab `this` as well.
+                    new CodeInstruction(OpCodes.Ldarg_0),
+                    // And then make our call, which will remove the 4 parameters
                     // from the stack leaving it exactly as it was before.
                     CodeInstruction.Call<Vessel>(vessel =>
-                        UpdateTimeLeftWrapper(vessel, ref dummy, ref dummy)
+                        UpdateTimeLeftWrapper(vessel, ref dummy, ref dummy, null)
                     ),
                 ]
             );
@@ -280,7 +195,8 @@ public static class LifeSupportMonitor_GetVesselStats_Patch
     public static void UpdateTimeLeftWrapper(
         Vessel vessel,
         ref double suppliesTimeLeft,
-        ref double ecTimeLeft
+        ref double ecTimeLeft,
+        LifeSupportMonitor monitor
     )
     {
         double cachedSupplies = suppliesTimeLeft;
@@ -288,7 +204,7 @@ public static class LifeSupportMonitor_GetVesselStats_Patch
 
         try
         {
-            UpdateTimeLeft(vessel, ref suppliesTimeLeft, ref ecTimeLeft);
+            UpdateTimeLeft(monitor, vessel, ref suppliesTimeLeft, ref ecTimeLeft);
         }
         catch (Exception e)
         {
@@ -302,7 +218,12 @@ public static class LifeSupportMonitor_GetVesselStats_Patch
         }
     }
 
-    static void UpdateTimeLeft(Vessel vessel, ref double suppliesTimeLeft, ref double ecTimeLeft)
+    static void UpdateTimeLeft(
+        LifeSupportMonitor monitor,
+        Vessel vessel,
+        ref double suppliesTimeLeft,
+        ref double ecTimeLeft
+    )
     {
         var settings = HighLogic.CurrentGame?.Parameters.CustomParams<Settings>();
         if (!(settings?.EnableUSILSIntegration ?? false))
@@ -312,7 +233,11 @@ public static class LifeSupportMonitor_GetVesselStats_Patch
             $"LifeSupportMonitor.UpdateTimeLeft({vessel.GetDisplayName()})"
         );
 
-        var _stats = MonitorVesselCache.Instance?.GetVesselStats(vessel);
+        var gameObject = monitor.gameObject;
+        if (!gameObject.TryGetComponent<VesselSimulationCache>(out var cache))
+            cache = gameObject.AddComponent<VesselSimulationCache>();
+
+        var _stats = cache.GetVesselEntry(vessel, VesselStats.SimulateVessel);
         if (_stats == null)
             return;
 
@@ -341,7 +266,12 @@ public static class LifeSupportMonitor_GetVesselStats_Patch
 [HarmonyPatch("GetResourceInVessel")]
 public static class LifeSupportMonitor_GetResourceInVessel_Patch
 {
-    static bool Prefix(ref double __result, Vessel vessel, string resName)
+    static bool Prefix(
+        LifeSupportMonitor __instance,
+        ref double __result,
+        Vessel vessel,
+        string resName
+    )
     {
         if (vessel == null || vessel.loaded)
             return true;
@@ -350,7 +280,11 @@ public static class LifeSupportMonitor_GetResourceInVessel_Patch
         if (!(settings?.EnableUSILSIntegration ?? false))
             return true;
 
-        var _stats = MonitorVesselCache.Instance?.GetVesselStats(vessel);
+        var gameObject = __instance.gameObject;
+        if (!gameObject.TryGetComponent<VesselSimulationCache>(out var cache))
+            cache = gameObject.AddComponent<VesselSimulationCache>();
+
+        var _stats = cache.GetVesselEntry(vessel, VesselStats.SimulateVessel);
         if (_stats == null)
             return true;
         var stats = _stats.Value;
