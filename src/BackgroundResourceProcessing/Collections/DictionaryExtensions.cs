@@ -33,11 +33,20 @@ internal static class DictionaryExtensions
         return true;
     }
 
-    public static V GetValueOr<K, V>(this Dictionary<K, V> dict, K key, V defaultValue)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static V GetValueOr<K, V>(this IDictionary<K, V> dict, K key, V defaultValue)
     {
         if (dict.TryGetValue(key, out var value))
             return value;
         return defaultValue;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static V GetValueOrDefault<K, V>(this IDictionary<K, V> dict, K key)
+    {
+        if (dict.TryGetValue(key, out var value))
+            return value;
+        return default;
     }
 
     public static void Add<K, V>(this Dictionary<K, V> dict, KeyValuePair<K, V> pair)
