@@ -64,19 +64,19 @@ internal partial class DebugUI : MonoBehaviour
             DefaultHeight
         );
 
+        GameEvents.OnGameSettingsApplied.Add(OnGameSettingsApplied);
+
         var settings = HighLogic.CurrentGame.Parameters.CustomParams<DebugSettings>();
         if (settings.DebugUI)
             CreateApplication();
-        else
-            GameEvents.OnGameSettingsApplied.Add(OnGameSettingsApplied);
     }
 
     void OnDestroy()
     {
+        GameEvents.OnGameSettingsApplied.Remove(OnGameSettingsApplied);
+
         if (button)
             ApplicationLauncher.Instance.RemoveModApplication(button);
-        else
-            GameEvents.OnGameSettingsApplied.Remove(OnGameSettingsApplied);
     }
 
     void InitStatics()
@@ -115,17 +115,13 @@ internal partial class DebugUI : MonoBehaviour
     void OnGameSettingsApplied()
     {
         if (button != null)
-        {
-            GameEvents.OnGameSettingsApplied.Remove(OnGameSettingsApplied);
             return;
-        }
 
         var settings = HighLogic.CurrentGame.Parameters.CustomParams<DebugSettings>();
         if (!settings.DebugUI)
             return;
 
         CreateApplication();
-        GameEvents.OnGameSettingsApplied.Remove(OnGameSettingsApplied);
     }
 
     void ShowToolbarGUI()
