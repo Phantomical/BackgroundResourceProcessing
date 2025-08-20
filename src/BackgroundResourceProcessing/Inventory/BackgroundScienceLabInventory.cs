@@ -76,7 +76,7 @@ public class BackgroundScienceLabInventory : BackgroundInventory<ModuleScienceLa
         }
         else if (inventory.ResourceName == ScienceResourceName)
         {
-            node.TryGetValue("storedSciencec", ref inventory.Amount);
+            node.TryGetValue("storedScience", ref inventory.Amount);
             base.UpdateSnapshot(module, inventory, update);
             node.SetValue("storedScience", inventory.Amount);
             inventory.OriginalAmount = inventory.Amount;
