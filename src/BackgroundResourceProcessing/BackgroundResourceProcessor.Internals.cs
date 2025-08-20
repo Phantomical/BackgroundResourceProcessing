@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using BackgroundResourceProcessing.Addons;
 using BackgroundResourceProcessing.Tracing;
@@ -123,6 +124,7 @@ public sealed partial class BackgroundResourceProcessor
         state.SetShadowState(ShadowState.Value);
 
         var recompute = false;
+        ImmediateChangepointRequested = false;
 
         processor.RecordProtoInventories(vessel);
         if (processor.UpdateState(changepoint, true))
@@ -138,7 +140,7 @@ public sealed partial class BackgroundResourceProcessor
         }
 
         UpdateNextChangepoint(changepoint);
-        if (NextChangepoint == changepoint)
+        if (NextChangepoint == changepoint && !ImmediateChangepointRequested)
         {
             LogUtil.Error(
                 $"{Vessel.GetDisplayName()}: Background simulation failed to progress. This vessel's background simulation has been disabled."
@@ -148,6 +150,7 @@ public sealed partial class BackgroundResourceProcessor
             processor.nextChangepoint = double.PositiveInfinity;
         }
 
+        ImmediateChangepointRequested = false;
         EventDispatcher.RegisterChangepointCallback(this, processor.nextChangepoint);
     }
 
@@ -280,15 +283,6 @@ public sealed partial class BackgroundResourceProcessor
     {
         if (vessel.loaded)
             GameEvents.onGameStateSave.Add(OnGameStateSave);
-    }
-
-    private void MarkDirty()
-    {
-        if (IsDirty)
-            return;
-
-        EventDispatcher.RegisterDirty(this);
-        IsDirty = true;
     }
 
     private void UnregisterCallbacks()

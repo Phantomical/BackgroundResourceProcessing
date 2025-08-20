@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using BackgroundResourceProcessing.Addons;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Converter;
 using BackgroundResourceProcessing.Core;
@@ -23,6 +24,8 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
     private readonly ResourceProcessor processor = new();
 
     private bool IsDirty = false;
+
+    private bool ImmediateChangepointRequested = false;
 
     #region Events
     /// <summary>
@@ -165,6 +168,41 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
     }
 
     /// <summary>
+    /// Suppress the error that no progress has been made with the current
+    /// changepoint.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// This does nothing if called outside of evaluation of a changepoint.
+    /// It is provided as an escape hatch in case you end up modifying behaviours
+    /// in an <see cref="onVesselChangepoint"/> callback.
+    /// </remarks>
+    public void SuppressNoProgressError()
+    {
+        ImmediateChangepointRequested = true;
+    }
+
+    /// <summary>
+    /// Indicate that a change has been made that might change the current
+    /// changepoint or simulation behaviour.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// You should call this any time you directly modify inventories or
+    /// converters owned by this <see cref="BackgroundResourceProcessor"/>.
+    /// This method is cheap and updates to determine if a changepoint needs
+    /// to be run will be deferred until LateUpdate.
+    /// </remarks>
+    public void MarkDirty()
+    {
+        if (IsDirty)
+            return;
+
+        EventDispatcher.RegisterDirty(this);
+        IsDirty = true;
+    }
+
+    /// <summary>
     /// Get a simulator that allows you to model the resource state of the
     /// vessel into the future.
     /// </summary>
@@ -246,6 +284,7 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
         var index = processor.converters.Count;
         processor.converters.Add(converter);
         processor.UpdateConstraintState(converter);
+        MarkDirty();
         return index;
     }
 
