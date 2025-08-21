@@ -5,7 +5,7 @@
         <GenerateKSPAssemblyAttribute>true</GenerateKSPAssemblyAttribute>
         <GenerateKSPAssemblyDependencyAttributes>true</GenerateKSPAssemblyDependencyAttributes>
 
-        <KSPBinaryType>plugin</KSPBinaryType>
+        <KSPBinaryType>binary</KSPBinaryType>
     </PropertyGroup>
 
     <ItemGroup>

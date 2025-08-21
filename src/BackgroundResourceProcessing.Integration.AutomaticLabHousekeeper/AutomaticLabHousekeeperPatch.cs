@@ -12,15 +12,7 @@ public class Loader : MonoBehaviour
     void Awake()
     {
         Harmony harmony = new("BackgroundResourceProcessing.Integration.AutomaticLabHousekeeper");
-        try
-        {
-            Harmony.DEBUG = true;
-            harmony.PatchAll(typeof(Loader).Assembly);
-        }
-        finally
-        {
-            Harmony.DEBUG = false;
-        }
+        harmony.PatchAll(typeof(Loader).Assembly);
     }
 }
 
@@ -180,7 +172,7 @@ public static class AutomaticLabHouseKeeper_TransferScienceFromUnloadedLab_Patch
         if (!lab.moduleValues.TryGetValue("persistentId", ref moduleId))
             return;
 
-        var processor = vessel.FindPartModuleImplementing<BackgroundResourceProcessor>();
+        var processor = vessel.FindVesselModuleImplementing<BackgroundResourceProcessor>();
         var inventory = processor.GetInventoryById(new(part.flightID, "BRPScience", moduleId));
         if (inventory == null)
             return;
