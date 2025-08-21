@@ -22,6 +22,10 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
     private static readonly Dictionary<string, List<AssemblyDependency>> Dependencies =
     [
         new(
+            "BackgroundResourceProcessing.Integration.AutomaticLabHousekeeper",
+            [new DirectAssemblyDependency("AutomaticLabHousekeeper", new(1, 0))]
+        ),
+        new(
             "BackgroundResourceProcessing.Integration.BackgroundResources",
             [new DirectAssemblyDependency("BackgroundResources", new(1, 12))]
         ),
