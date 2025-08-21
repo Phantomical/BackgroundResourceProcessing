@@ -14,6 +14,9 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 ### Added
 * Add support for `AutomaticLabHousekeeper`.
 
+### Fixed
+* Fixed non-discarded log statements causing KSPBurst to fail to compile bursted code.
+
 ## 0.1.9
 ### Added
 * Added a config option to disable background simulation of science labs
