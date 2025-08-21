@@ -46,6 +46,7 @@ public sealed partial class BackgroundResourceProcessor
         }
         else
         {
+            processor.RecordProtoInventories(vessel);
             EventDispatcher.RegisterChangepointCallback(this, processor.nextChangepoint);
         }
     }
@@ -250,6 +251,7 @@ public sealed partial class BackgroundResourceProcessor
         state.SetShadowState((Shadow)ShadowState);
 
         processor.RecordVesselState(vessel, currentTime);
+        processor.RecordProtoInventories(vessel);
         using (var eventspan = new TraceSpan("onVesselRecord"))
             onVesselRecord.Fire(this);
         processor.ForceUpdateBehaviours(state);
