@@ -527,18 +527,21 @@ internal static class LinearPresolve
         }
     }
 
+    [BurstDiscard]
     private static unsafe void TraceInferZeros(double* matrix, int width, int height)
     {
         Matrix tableau = new(matrix, (uint)width, (uint)height);
         LogUtil.Log($"Presolve matrix after InferZeros:\n{tableau}");
     }
 
+    [BurstDiscard]
     private static unsafe void TraceInitialMatrix(double* matrix, int width, int height)
     {
         Matrix tableau = new(matrix, (uint)width, (uint)height);
         LogUtil.Log($"Initial presolve matrix:\n{tableau}");
     }
 
+    [BurstDiscard]
     private static unsafe void TraceMatrix(double* matrix, int width, int height)
     {
         Matrix tableau = new(matrix, (uint)width, (uint)height);
