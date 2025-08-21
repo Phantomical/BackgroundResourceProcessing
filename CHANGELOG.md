@@ -11,6 +11,7 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 -->
 
 ## Unreleased
+## 0.1.10
 ### Added
 * Add support for `AutomaticLabHousekeeper`.
 
