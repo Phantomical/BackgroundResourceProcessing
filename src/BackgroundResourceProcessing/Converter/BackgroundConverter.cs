@@ -26,7 +26,7 @@ public class ModuleBehaviour()
         get => converters ??= [];
         set => converters = value;
     }
-    private List<ConverterBehaviour> converters = null;
+    internal List<ConverterBehaviour> converters = null;
 
     /// <summary>
     /// A set of <see cref="PartModule"/>s to inspect for background
@@ -40,7 +40,7 @@ public class ModuleBehaviour()
         get => push ??= [];
         set => push = value;
     }
-    private List<PartModule> push = null;
+    internal List<PartModule> push = null;
 
     /// <summary>
     /// A set of <see cref="PartModule"/>s to inspect for background
@@ -54,7 +54,7 @@ public class ModuleBehaviour()
         get => pull ??= [];
         set => pull = value;
     }
-    private List<PartModule> pull = null;
+    internal List<PartModule> pull = null;
 
     /// <summary>
     /// A set of <see cref="PartModule"/>s to inspect for background
@@ -68,7 +68,7 @@ public class ModuleBehaviour()
         get => constraint ??= [];
         set => constraint = value;
     }
-    private List<PartModule> constraint = null;
+    internal List<PartModule> constraint = null;
 
     public ModuleBehaviour(ConverterBehaviour behaviour)
         : this()

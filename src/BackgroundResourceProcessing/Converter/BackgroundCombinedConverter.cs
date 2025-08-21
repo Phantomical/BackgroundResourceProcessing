@@ -49,10 +49,10 @@ public class BackgroundCombinedConverter : BackgroundConverter
             return;
         }
 
-        MergeLists(ref dest.Converters, src.Converters);
-        MergeLists(ref dest.Push, src.Push);
-        MergeLists(ref dest.Pull, src.Pull);
-        MergeLists(ref dest.Constraint, src.Constraint);
+        MergeLists(ref dest.converters, src.converters);
+        MergeLists(ref dest.push, src.push);
+        MergeLists(ref dest.pull, src.pull);
+        MergeLists(ref dest.constraint, src.constraint);
     }
 
     void MergeLists<T>(ref List<T> dest, List<T> src)
