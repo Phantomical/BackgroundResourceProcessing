@@ -1,4 +1,5 @@
 using System;
+using BackgroundResourceProcessing.Maths;
 using BackgroundResourceProcessing.Utils;
 using static System.Math;
 using KSPOrbit = Orbit;
@@ -25,6 +26,14 @@ internal readonly struct Orbit
 
     public readonly double Period;
 
+    /// <summary>
+    /// The index of the celestial body that this orbit is relative to.
+    ///
+    /// Note that it is only relative to the position of the parent body.
+    /// It is not transformed by the OrbitFrame othe parent body.
+    /// </summary>
+    public readonly int? ParentBodyIndex;
+
     public readonly double SemiLatusRectum;
     public readonly double SemiMinorAxis
     {
@@ -41,7 +50,7 @@ internal readonly struct Orbit
     public readonly double ApR => (1.0 + Eccentricity) * SemiMajorAxis;
     public readonly double PeR => (1.0 - Eccentricity) * SemiMajorAxis;
 
-    public Orbit(KSPOrbit orbit)
+    public Orbit(KSPOrbit orbit, int parentBodyIndex)
     {
         Eccentricity = orbit.eccentricity;
         Inclination = orbit.inclination;
@@ -53,6 +62,7 @@ internal readonly struct Orbit
         MeanMotion = orbit.meanMotion;
         MeanAnomalyAtEpoch = orbit.meanAnomalyAtEpoch;
         GravParameter = orbit.referenceBody.gravParameter;
+        ParentBodyIndex = parentBodyIndex;
 
         Period = 2.0 * PI / MeanMotion;
         SemiLatusRectum = SemiMajorAxis * (1.0 - Eccentricity * Eccentricity);
@@ -258,9 +268,9 @@ internal readonly struct Orbit
 
     #region Position
     public Vector3d GetRelativePositionAtUT(double UT) =>
-        GetRelativePositionFromEccAnomaly(GetEccentricAnomalyAtUT(UT));
+        GetRelativePositionAtEccentricAnomaly(GetEccentricAnomalyAtUT(UT));
 
-    public Vector3d GetRelativePositionFromEccAnomaly(double E)
+    public Vector3d GetRelativePositionAtEccentricAnomaly(double E)
     {
         double x = 0.0;
         double y = 0.0;
@@ -279,7 +289,7 @@ internal readonly struct Orbit
         return OrbitFrame.X * x + OrbitFrame.Y * y;
     }
 
-    public Vector3d GetRelativePositionFromTrueAnomaly(double tA)
+    public Vector3d GetRelativePositionAtTrueAnomaly(double tA)
     {
         var (sinTA, cosTA) = MathUtil.SinCos(tA);
         double radius = SemiLatusRectum / (1.0 + Eccentricity * cosTA);
@@ -302,5 +312,41 @@ internal readonly struct Orbit
         GetOrbitalVelocityAtTrueAnomaly(GetTrueAnomalyAtT(ObT));
 
     public Vector3d GetOrbitalVelocityAtUT(double UT) => GetOrbitalVelocityAtObT(GetObTAtUT(UT));
+    #endregion
+
+    #region Acceleration
+    public Vector3d GetAccelerationAtUT(double UT) =>
+        GetAccelerationAtTrueAnomaly(GetTrueAnomalyAtUT(UT));
+
+    public Vector3d GetAccelerationAtTrueAnomaly(double tA) =>
+        GetAccelerationAtPosition(GetRelativePositionAtTrueAnomaly(tA));
+
+    public Vector3d GetAccelerationAtPosition(Vector3d pos)
+    {
+        var R = pos.magnitude;
+        var invR = 1.0 / R;
+        return -pos * invR * invR * invR * GravParameter;
+    }
+    #endregion
+
+    #region Duals
+    public DualVector3 GetRelativePositionAtUT(Dual UT)
+    {
+        var tA = GetTrueAnomalyAtUT(UT.x);
+        var pos = GetRelativePositionAtTrueAnomaly(tA);
+        var vel = GetOrbitalVelocityAtTrueAnomaly(tA);
+
+        return new DualVector3(pos, vel * UT.dx);
+    }
+
+    public Dual2Vector3 GetRelativePositionAtUT(Dual2 UT)
+    {
+        var tA = GetTrueAnomalyAtUT(UT.x);
+        var pos = GetRelativePositionAtTrueAnomaly(tA);
+        var vel = GetOrbitalVelocityAtTrueAnomaly(tA);
+        var acc = GetAccelerationAtTrueAnomaly(tA);
+
+        return new(pos, vel * UT.dx, acc * UT.dx * UT.dx + vel * UT.ddx);
+    }
     #endregion
 }
