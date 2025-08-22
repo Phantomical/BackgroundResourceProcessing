@@ -8,19 +8,29 @@ internal static class OrbitShadow
     /// <summary>
     /// Computes the universal time (UT) at which the vessel whose orbit
     /// is defined by <paramref name="vessel"/> will next enter into the
-    /// planet's shadow.
+    /// planet's shadow casted by the celestial body defined by
+    /// <paramref name="sunIndex"/>.
     /// </summary>
     /// <param name="celestialBodies"></param>
     /// <param name="vessel"></param>
+    /// <param name="sunIndex"></param>
     /// <param name="UT"></param>
     /// <returns></returns>
     /// <exception cref="NotImplementedException"></exception>
+    ///
+    /// <remarks>
+    /// This method assumes that <paramref name="vessel"/> is not
+    /// currently within the shadow of the planet it is orbiting.
+    /// </remarks>
     public static double ComputeOrbitTerminatorEntranceUT(
         Orbit[] celestialBodies,
         Orbit vessel,
+        int sunIndex,
         double UT
     )
     {
+        Orbit sun = celestialBodies[sunIndex];
+
         throw new NotImplementedException();
     }
 
