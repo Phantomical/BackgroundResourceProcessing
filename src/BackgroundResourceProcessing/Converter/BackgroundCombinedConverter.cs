@@ -102,3 +102,5 @@ public class BackgroundCombinedConverter : BackgroundConverter
         public BackgroundConverter converter;
     }
 }
+
+public class SelectAll : BackgroundCombinedConverter { }

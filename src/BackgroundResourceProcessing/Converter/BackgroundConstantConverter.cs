@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using BackgroundResourceProcessing.Behaviour;
+using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Utils;
 
 namespace BackgroundResourceProcessing.Converter;
@@ -43,10 +44,14 @@ public class BackgroundConstantConverter : BackgroundConverter
         if (!ActiveCondition.Evaluate(module))
             return null;
 
-        IEnumerable<ResourceRatio> inputs = this.inputs.Select(input => input.Evaluate(module));
-        IEnumerable<ResourceRatio> outputs = this.outputs.Select(output => output.Evaluate(module));
-        IEnumerable<ResourceConstraint> required = this.required.Select(req =>
-            req.Evaluate(module)
+        IEnumerable<ResourceRatio> inputs = this.inputs.TrySelect<ResourceRatioExpression, ResourceRatio>(
+            (input, out value) => input.Evaluate(module, out value)
+        );
+        IEnumerable<ResourceRatio> outputs = this.outputs.TrySelect<ResourceRatioExpression, ResourceRatio>(
+            (output, out value) => output.Evaluate(module, out value)
+        );
+        IEnumerable<ResourceConstraint> required = this.required.TrySelect<ResourceConstraintExpression, ResourceConstraint>(
+            (req, out value) => req.Evaluate(module, out value)
         );
 
         inputs = inputs.Concat(GetResourceList(module, InputList) ?? []);

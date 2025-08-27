@@ -5,6 +5,8 @@ namespace BackgroundResourceProcessing.Utils;
 
 public struct ResourceRatioExpression()
 {
+    public ConditionalExpression condition = ConditionalExpression.Always;
+
     public FieldExpression<ResourceFlowMode> FlowMode = new(_ => ResourceFlowMode.NULL, "NULL");
 
     public FieldExpression<string> ResourceName;
@@ -13,9 +15,15 @@ public struct ResourceRatioExpression()
 
     public FieldExpression<bool> DumpExcess = new(_ => false, "false");
 
-    public ResourceRatio Evaluate(PartModule module)
+    public bool Evaluate(PartModule module, out ResourceRatio ratio)
     {
-        var ratio = new ResourceRatio()
+        if (!condition.Evaluate(module))
+        {
+            ratio = default;
+            return false;
+        }
+
+        ratio = new ResourceRatio()
         {
             FlowMode = FlowMode.Evaluate(module) ?? ResourceFlowMode.NULL,
             ResourceName = ResourceName.Evaluate(module),
@@ -23,13 +31,14 @@ public struct ResourceRatioExpression()
             DumpExcess = DumpExcess.Evaluate(module) ?? false,
         };
 
-        return ratio;
+        return true;
     }
 
     public static ResourceRatioExpression Load(Type target, ConfigNode node)
     {
         ResourceRatioExpression result = new();
 
+        node.TryGetCondition(nameof(condition), target, ref result.condition);
         node.TryGetExpression(nameof(ResourceName), target, ref result.ResourceName);
         node.TryGetExpression(nameof(Ratio), target, ref result.Ratio);
         node.TryGetExpression(nameof(DumpExcess), target, ref result.DumpExcess);

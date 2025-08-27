@@ -1,24 +1,36 @@
 using System;
 using System.Collections.Generic;
+using KSPAchievements;
 
 namespace BackgroundResourceProcessing.Utils;
 
 public struct ResourceConstraintExpression()
 {
+    public ConditionalExpression condition = ConditionalExpression.Always;
+
     public FieldExpression<string> ResourceName;
+
     public FieldExpression<double> Amount;
+
     public FieldExpression<Constraint> Constraint = new(
         _ => BackgroundResourceProcessing.Constraint.AT_LEAST,
         "AT_LEAST"
     );
+
     public FieldExpression<ResourceFlowMode> FlowMode = new(
         _ => ResourceFlowMode.ALL_VESSEL,
         "ALL_VESSEL"
     );
 
-    public ResourceConstraint Evaluate(PartModule module)
+    public bool Evaluate(PartModule module, out ResourceConstraint constraint)
     {
-        var constraint = new ResourceConstraint()
+        if (!condition.Evaluate(module))
+        {
+            constraint = default;
+            return false;
+        }
+
+        constraint = new ResourceConstraint()
         {
             ResourceName = ResourceName.Evaluate(module),
             Amount = Amount.Evaluate(module) ?? 0.0,
@@ -27,13 +39,14 @@ public struct ResourceConstraintExpression()
             FlowMode = FlowMode.Evaluate(module) ?? ResourceFlowMode.NULL,
         };
 
-        return constraint;
+        return true;
     }
 
     public static ResourceConstraintExpression Load(Type target, ConfigNode node)
     {
         ResourceConstraintExpression result = new();
 
+        node.TryGetCondition(nameof(condition), target, ref result.condition);
         node.TryGetExpression(nameof(ResourceName), target, ref result.ResourceName);
         node.TryGetExpression(nameof(Amount), target, ref result.Amount);
         node.TryGetExpression(nameof(Constraint), target, ref result.Constraint);

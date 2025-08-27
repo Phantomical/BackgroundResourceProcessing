@@ -67,3 +67,5 @@ public class BackgroundSelectableConverter : BackgroundConverter
 
 [Obsolete("BackgroundMultiConverter has been renamed to BackgroundSelectableConverter")]
 public class BackgroundMultiConverter : BackgroundSelectableConverter { }
+
+public class SelectFirst : BackgroundSelectableConverter { }
