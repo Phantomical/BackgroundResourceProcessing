@@ -6,25 +6,34 @@ namespace BackgroundResourceProcessing.Utils;
 
 public struct FakePartResourceExpression()
 {
-    public FieldExpression<string> ResourceName;
+    public ConditionalExpression condition = ConditionalExpression.Always;
+    public string ResourceName;
     public FieldExpression<double> Amount = new(_ => 0.0, "0");
     public FieldExpression<double> MaxAmount = new(_ => 0.0, "0");
 
-    public readonly FakePartResource Evaluate(PartModule module)
+    public readonly bool Evaluate(PartModule module, out FakePartResource res)
     {
-        return new()
+        if (!condition.Evaluate(module))
         {
-            ResourceName = ResourceName.Evaluate(module),
+            res = default;
+            return false;
+        }
+
+        res = new()
+        {
+            ResourceName = ResourceName,
             Amount = Amount.Evaluate(module) ?? 0.0,
             MaxAmount = MaxAmount.Evaluate(module) ?? 0.0,
         };
+
+        return true;
     }
 
     public static FakePartResourceExpression Load(Type target, ConfigNode node)
     {
         FakePartResourceExpression result = new();
 
-        node.TryGetExpression(nameof(ResourceName), target, ref result.ResourceName);
+        node.TryGetValue(nameof(ResourceName), ref result.ResourceName);
         node.TryGetExpression(nameof(Amount), target, ref result.Amount);
         node.TryGetExpression(nameof(MaxAmount), target, ref result.MaxAmount);
 

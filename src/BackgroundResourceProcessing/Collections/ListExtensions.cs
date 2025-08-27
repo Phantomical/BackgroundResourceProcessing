@@ -6,7 +6,7 @@ internal static class ListExtensions
 {
     /// <summary>
     /// Remove all duplicate elements from a list. This is implemented
-    /// in-place an requires that the list be sorted first.
+    /// in-place and requires that the list be sorted first.
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <param name="list"></param>

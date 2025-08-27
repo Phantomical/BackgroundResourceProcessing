@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using BackgroundResourceProcessing.Converter;
-using BackgroundResourceProcessing.Core;
 
 namespace BackgroundResourceProcessing.Utils;
 
