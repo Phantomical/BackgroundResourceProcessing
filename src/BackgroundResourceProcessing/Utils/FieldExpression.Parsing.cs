@@ -930,8 +930,9 @@ internal struct FieldExpression
 
             if (Current == TokenKind.LPAREN)
             {
-                List<Expression> args = [obj, Expression.Constant(field.ToString())];
+                List<Expression> args = [];
 
+                ExpectToken(TokenKind.LPAREN);
                 while (true)
                 {
                     args.Add(ParseExpression());
@@ -941,10 +942,9 @@ internal struct FieldExpression
                     if (Current == TokenKind.RPAREN)
                         break;
                 }
+                ExpectToken(TokenKind.RPAREN);
 
-                lexer.MoveNext();
-
-                return CallMethod(() => Methods.DoMethodInvoke(null, null), [.. args]);
+                return BuildMethodCall(obj, field.ToString(), args);
             }
             else
             {
@@ -1233,6 +1233,27 @@ internal struct FieldExpression
                 );
 
             return CallOverloadedMethod(nameof(Methods.DoEquals), lhs, rhs);
+        }
+
+        readonly Expression BuildMethodCall(
+            Expression base_,
+            string method,
+            IEnumerable<Expression> args
+        )
+        {
+            var info = GetMethodInfo(() => Methods.DoMethodInvoke(null, null));
+
+            return Expression.Call(
+                info,
+                [
+                    CoerceToObject(base_),
+                    Expression.Constant(method),
+                    Expression.NewArrayInit(
+                        typeof(object),
+                        args.Select(arg => CoerceToObject(arg))
+                    ),
+                ]
+            );
         }
 
         static bool ParametersCompatibleWith(ParameterInfo[] parameters, Type[] types)

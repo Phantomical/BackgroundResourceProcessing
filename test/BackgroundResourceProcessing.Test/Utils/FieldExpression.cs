@@ -44,4 +44,18 @@ public sealed class FieldExpressionTests
         );
         Assert.AreEqual(expr.Evaluate(module), ResourceFlowMode.NO_FLOW);
     }
+
+    class FloatCurveTest : PartModule
+    {
+        public double Evaluate(double value) => value;
+    }
+
+    [TestMethod]
+    public void EvaluateFloatCurve()
+    {
+        FloatCurveTest module = new();
+
+        var expr = FieldExpression<double>.Compile("%.Evaluate(75)", new(), typeof(FloatCurveTest));
+        Assert.AreEqual(75.0, expr.Evaluate(module));
+    }
 }
