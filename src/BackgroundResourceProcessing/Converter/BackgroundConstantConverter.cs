@@ -5,6 +5,7 @@ using System.Reflection;
 using BackgroundResourceProcessing.Behaviour;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Utils;
+using UnityEngine.Playables;
 
 namespace BackgroundResourceProcessing.Converter;
 
@@ -37,6 +38,7 @@ public class BackgroundConstantConverter : BackgroundConverter
     public FieldExpression<object> OutputList = new(_ => null, "null");
 
     private List<ConverterMultiplier> multipliers = [];
+    private List<LinkExpression> links = []; 
     private FieldInfo lastUpdateField = null;
 
     public override ModuleBehaviour GetBehaviour(PartModule module)
@@ -83,6 +85,9 @@ public class BackgroundConstantConverter : BackgroundConverter
         if (PullFromLocalBackgroundInventory)
             behaviour.AddPullModule(module);
 
+        foreach (var link in links)
+            link.Evaluate(module, behaviour);
+
         lastUpdateField?.SetValue(module, Planetarium.GetUniversalTime());
 
         return behaviour;
@@ -126,6 +131,7 @@ public class BackgroundConstantConverter : BackgroundConverter
         node.TryGetExpression(nameof(OutputList), target, ref OutputList);
 
         multipliers = ConverterMultiplier.LoadAll(target, node);
+        links = LinkExpression.LoadList(target, node);
 
         inputs.AddRange(ResourceRatioExpression.LoadInputs(target, node));
         outputs.AddRange(ResourceRatioExpression.LoadOutputs(target, node));
