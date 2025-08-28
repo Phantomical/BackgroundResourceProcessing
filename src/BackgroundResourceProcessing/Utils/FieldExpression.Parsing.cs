@@ -1759,12 +1759,13 @@ internal struct FieldExpression
             {
                 i += 1;
 
-                if (i >= span.Length || (span[i] != '-' && span[i] != '+'))
+                if (i >= span.Length)
                     throw RenderError(
-                        $"invalid number literal, expected '+' or '-' after `{span[i - 1]}`"
+                        $"invalid number literal, expected '+', '-', or a digit after `{span[i - 1]}`"
                     );
 
-                i += 1;
+                if (span[i] == '-' || span[i] == '+')
+                    i += 1;
 
                 while (i < span.Length && char.IsDigit(span[i]))
                     ++i;
@@ -1772,8 +1773,15 @@ internal struct FieldExpression
 
             DONE:
             var slice = span.Slice(0, i);
-            if (!double.TryParse(slice.ToString(), out var _))
-                throw RenderError("invalid number literal");
+
+            try
+            {
+                double.Parse(slice.ToString());
+            }
+            catch (Exception e)
+            {
+                throw RenderError($"invalid number literal: {e.Message}");
+            }
 
             return TakeFirst(i, TokenKind.NUMBER);
         }

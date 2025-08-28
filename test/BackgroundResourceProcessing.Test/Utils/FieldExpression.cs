@@ -14,6 +14,7 @@ public sealed class FieldExpressionTests
         FieldExpression<double>.Compile("1e+10", node);
         FieldExpression<double>.Compile("1", node);
         FieldExpression<double>.Compile("-88", node);
+        FieldExpression<double>.Compile("1e6", node);
     }
 
     class IndexNullTest : PartModule
