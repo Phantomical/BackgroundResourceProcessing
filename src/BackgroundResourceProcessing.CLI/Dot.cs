@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Solver;
@@ -60,19 +61,23 @@ namespace BackgroundResourceProcessing.CLI
             if (options.Output == null)
             {
                 using var writer = new StreamWriter(Console.OpenStandardOutput());
-                EmitDot(graph, writer);
+                EmitDot(processor, graph, writer);
             }
             else
             {
                 var file = File.Create(options.Output);
                 using var writer = new StreamWriter(file);
-                EmitDot(graph, writer);
+                EmitDot(processor, graph, writer);
             }
 
             return 0;
         }
 
-        private static void EmitDot(ResourceGraph rg, StreamWriter output)
+        private static void EmitDot(
+            ResourceProcessor processor,
+            ResourceGraph rg,
+            StreamWriter output
+        )
         {
             var graph = new DotGraph().WithIdentifier("ResourceGraph");
             graph.Directed = true;
@@ -89,11 +94,20 @@ namespace BackgroundResourceProcessing.CLI
                 graph.Add(node);
             }
 
-            foreach (var id in rg.converters.Keys)
+            foreach (var (id, converter) in rg.converters)
             {
+                var real = processor.converters[converter.baseId];
+                int count = rg.converterIds.Where(id => id == converter.baseId).Count();
+
+                var label = $"c{id}";
+                if (real.Behaviour?.SourceModule != null)
+                    label = $"{label}: {real.Behaviour.SourceModule}";
+                if (count > 1)
+                    label = $"{label} (+{count - 1})";
+
                 var node = new DotNode()
                     .WithIdentifier($"c{id}")
-                    .WithLabel($"c{id}")
+                    .WithLabel(label)
                     .WithStyle(DotNodeStyle.Solid);
 
                 graph.Add(node);
