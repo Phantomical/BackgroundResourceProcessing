@@ -11,6 +11,9 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 -->
 
 ## Unreleased
+### Added
+* Added support for Nehemiah Engineering Orbital Science.
+
 ## 0.1.10
 ### Added
 * Add support for `AutomaticLabHousekeeper`.
