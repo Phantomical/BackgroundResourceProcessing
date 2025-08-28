@@ -38,8 +38,8 @@ public class BackgroundConstantConverter : BackgroundConverter
     public FieldExpression<object> OutputList = new(_ => null, "null");
 
     private List<ConverterMultiplier> multipliers = [];
-    private List<LinkExpression> links = []; 
-    private FieldInfo lastUpdateField = null;
+    private List<LinkExpression> links = [];
+    private MemberAccessor<double>? lastUpdateField = null;
 
     public override ModuleBehaviour GetBehaviour(PartModule module)
     {
@@ -138,16 +138,6 @@ public class BackgroundConstantConverter : BackgroundConverter
         required.AddRange(ResourceConstraintExpression.LoadRequirements(target, node));
 
         if (LastUpdateField != null)
-        {
-            var field = target.GetField(LastUpdateField, Flags);
-            if (field.FieldType == typeof(double))
-                lastUpdateField = field;
-            else
-            {
-                LogUtil.Error(
-                    $"{target.Name}.{field.Name} has unsupported type {field.FieldType.Name} (expected double instead)"
-                );
-            }
-        }
+            lastUpdateField = new(target, LastUpdateField);
     }
 }

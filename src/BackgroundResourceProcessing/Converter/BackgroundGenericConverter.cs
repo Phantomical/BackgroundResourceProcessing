@@ -65,7 +65,7 @@ public class BackgroundGenericConverter : BackgroundConverter
     public ResourceFlowMode? OverrideFlowMode = null;
 
     private List<ConverterMultiplier> multipliers;
-    private MemberInfo lastUpdateMember;
+    private MemberAccessor<double>? lastUpdateMember = null;
     private MemberInfo inputsMember;
     private MemberInfo outputsMember;
     private MemberInfo requiredMember;
@@ -159,8 +159,7 @@ public class BackgroundGenericConverter : BackgroundConverter
 
     public override void OnRestore(PartModule module, ResourceConverter converter)
     {
-        if (lastUpdateMember != null)
-            SetMemberValue(lastUpdateMember, module, Planetarium.GetUniversalTime());
+        lastUpdateMember?.SetValue(module, Planetarium.GetUniversalTime());
     }
 
     protected override void OnLoad(ConfigNode node)
@@ -172,7 +171,7 @@ public class BackgroundGenericConverter : BackgroundConverter
 
         node.TryGetCondition(nameof(ActiveCondition), target, ref ActiveCondition);
         if (LastUpdateField != null)
-            lastUpdateMember = GetTypedMember<double>(target, LastUpdateField, Access.Write);
+            lastUpdateMember = new(target, LastUpdateField);
         if (InputsField != null)
             inputsMember = GetRateListMember(target, InputsField);
         if (OutputsField != null)
@@ -189,26 +188,6 @@ public class BackgroundGenericConverter : BackgroundConverter
     }
 
     private class MemberException(string message) : Exception(message) { }
-
-    private static MemberInfo GetTypedMember<T>(Type type, string fieldName, Access access)
-    {
-        var info = GetNamedMember(type, fieldName, access);
-        if (info == null)
-            return info;
-
-        var memberType = GetMemberType(info);
-        if (memberType != typeof(T))
-        {
-            if (typeof(T) == typeof(double) && memberType == typeof(float))
-                return info;
-
-            throw new MemberException(
-                $"Member {type.Name}.{info.Name} is not a {typeof(T).Name}, got {memberType.Name} instead"
-            );
-        }
-
-        return info;
-    }
 
     private static MemberInfo GetRateListMember(Type type, string field)
     {
@@ -327,15 +306,5 @@ public class BackgroundGenericConverter : BackgroundConverter
             PropertyInfo propertyInfo => propertyInfo.GetValue(obj),
             _ => throw new NotImplementedException(),
         };
-    }
-
-    private static void SetMemberValue<T>(MemberInfo member, object obj, T value)
-    {
-        if (member is FieldInfo fieldInfo)
-            fieldInfo.SetValue(obj, value);
-        else if (member is PropertyInfo propertyInfo)
-            propertyInfo.SetValue(obj, value);
-        else
-            throw new NotImplementedException();
     }
 }

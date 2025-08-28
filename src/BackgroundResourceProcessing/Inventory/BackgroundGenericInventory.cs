@@ -38,11 +38,11 @@ public class BackgroundGenericInventory : BackgroundInventory
         if (!resources.TryGetValue(inventory.ResourceName, out var resource))
             return;
 
-        var original = resource.GetField(module) ?? inventory.OriginalAmount;
+        var original = resource.Field?.GetValue(module) ?? inventory.OriginalAmount;
         var delta = original - inventory.OriginalAmount;
         var amount = MathUtil.Clamp(inventory.Amount + delta, 0.0, inventory.MaxAmount);
 
-        resource.SetField(module, amount);
+        resource.Field?.SetValue(module, amount);
     }
 
     public override void UpdateSnapshot(
@@ -64,9 +64,17 @@ public class BackgroundGenericInventory : BackgroundInventory
             return;
         }
 
-        node.TryGetValue(resource.Field.Name, ref inventory.Amount);
+        if (resource.Field is null)
+        {
+            base.UpdateSnapshot(module, inventory, update);
+            return;
+        }
+
+        var accessor = resource.Field.Value;
+
+        node.TryGetValue(accessor.Name, ref inventory.Amount);
         base.UpdateSnapshot(module, inventory, update);
-        node.SetValue(resource.Field.Name, inventory.Amount, createIfNotFound: true);
+        node.SetValue(accessor.Name, inventory.Amount, createIfNotFound: true);
         inventory.OriginalAmount = inventory.Amount;
     }
 
@@ -98,7 +106,7 @@ public class BackgroundGenericInventory : BackgroundInventory
         /// The field that will be updated with the amount of resource
         /// stored within this inventory.
         /// </summary>
-        public FieldInfo Field = null;
+        public MemberAccessor<double>? Field = null;
 
         /// <summary>
         /// Enable updating of the config node based on the field name.
@@ -123,23 +131,11 @@ public class BackgroundGenericInventory : BackgroundInventory
             string field = null;
             if (node.TryGetValue(nameof(Field), ref field))
             {
-                const BindingFlags Flags =
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-                var info = target.GetField(field, Flags);
+                var accessor = new MemberAccessor<double>(target, field);
 
-                if (info == null)
-                    throw new Exception(
-                        $"Target module {target.Name} contains no field named {field}"
-                    );
-
-                if (info.FieldType != typeof(double) && info.FieldType != typeof(float))
-                    throw new Exception(
-                        $"Field {target.Name}.{info.Name} must be of type double or float"
-                    );
-
-                res.Field = info;
+                res.Field = accessor;
                 res.Amount = FieldExpression<double>.Field(field, target);
-                res.UpdateConfigNode = IsKspField(info);
+                res.UpdateConfigNode = IsKspField(accessor);
             }
 
             node.TryGetExpression(nameof(Amount), target, ref res.Amount);
@@ -149,37 +145,7 @@ public class BackgroundGenericInventory : BackgroundInventory
             return res;
         }
 
-        public readonly void SetField(PartModule module, double value)
-        {
-            if (Field == null)
-                return;
-
-            if (Field.FieldType == typeof(double))
-                Field.SetValue(module, value);
-            else if (Field.FieldType == typeof(float))
-                Field.SetValue(module, (float)value);
-            else
-                throw new NotImplementedException(
-                    $"Cannot set a field of type `{Field.FieldType.Name}`"
-                );
-        }
-
-        public readonly double? GetField(PartModule module)
-        {
-            if (Field == null)
-                return null;
-
-            return Field.GetValue(module) switch
-            {
-                double d => d,
-                float f => (double)f,
-                _ => throw new NotImplementedException(
-                    $"not able to read field {Field.DeclaringType.Name}.{Field.Name} of type {Field.FieldType.Name}"
-                ),
-            };
-        }
-
-        public static bool IsKspField(FieldInfo field) =>
-            field.GetCustomAttribute<KSPField>() != null;
+        public static bool IsKspField(MemberAccessor<double> field) =>
+            field.Member.GetCustomAttribute<KSPField>() != null;
     }
 }
