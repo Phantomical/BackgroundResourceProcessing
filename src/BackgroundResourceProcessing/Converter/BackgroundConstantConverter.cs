@@ -138,6 +138,6 @@ public class BackgroundConstantConverter : BackgroundConverter
         required.AddRange(ResourceConstraintExpression.LoadRequirements(target, node));
 
         if (LastUpdateField != null)
-            lastUpdateField = new(target, LastUpdateField);
+            lastUpdateField = new(target, LastUpdateField, MemberAccessor<double>.Access.Write);
     }
 }
