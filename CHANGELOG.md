@@ -14,6 +14,10 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 ### Added
 * Added support for Nehemiah Engineering Orbital Science.
 
+### Fixed
+* Fixed a bug where FFT antimatter tanks were not being simulated in the
+  background due to a missing inventory.
+
 ## 0.1.10
 ### Added
 * Add support for `AutomaticLabHousekeeper`.
