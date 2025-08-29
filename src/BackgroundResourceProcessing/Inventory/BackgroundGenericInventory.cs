@@ -19,13 +19,16 @@ public class BackgroundGenericInventory : BackgroundInventory
             if (!resource.condition.Evaluate(module))
                 continue;
 
+            double maxAmount = Math.Max(resource.MaxAmount.Evaluate(module) ?? 0.0, 0.0);
+            double amount = MathUtil.Clamp(resource.Amount.Evaluate(module) ?? 0.0, 0.0, maxAmount);
+
             outputs ??= [];
             outputs.Add(
                 new()
                 {
                     ResourceName = resource.ResourceName,
-                    Amount = resource.Amount.Evaluate(module) ?? 0.0,
-                    MaxAmount = resource.MaxAmount.Evaluate(module) ?? 0.0,
+                    Amount = amount,
+                    MaxAmount = maxAmount,
                 }
             );
         }
@@ -99,7 +102,17 @@ public class BackgroundGenericInventory : BackgroundInventory
     {
         public ConditionalExpression condition = ConditionalExpression.Always;
         public string ResourceName;
+
+        /// <summary>
+        /// The amount of <see cref="ResourceName"/> that is currently stored
+        /// in this inventory.
+        /// </summary>
         public FieldExpression<double> Amount = new(_ => 0.0, "0");
+
+        /// <summary>
+        /// The maximum amount of <see cref="ResourceName"/> that can be stored
+        /// in this inventory. This can be infinite.
+        /// </summary>
         public FieldExpression<double> MaxAmount = new(_ => 0.0, "0");
 
         /// <summary>
