@@ -73,6 +73,8 @@ internal struct FieldExpression
             internal static readonly Builtins Instance = new();
 
             public Settings Settings => Settings.Instance;
+
+            public double Infinity => double.PositiveInfinity;
         }
 
         public static object DoFieldAccess(object obj, string member)
