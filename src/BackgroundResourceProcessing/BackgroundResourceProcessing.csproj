@@ -41,7 +41,7 @@
     <Reference Include="KSPBurst">
       <HintPath>$(DepSet1)/000_KSPBurst/Plugins/KSPBurst.dll</HintPath>
       <Private>false</Private>
-      <KSPAssemblyDependency>KSPBurst</KSPAssemblyDependency>
+      <KSPAssemblyName>KSPBurst</KSPAssemblyName>
       <KSPAssemblyVersion>1.5.5</KSPAssemblyVersion>
     </Reference>
 

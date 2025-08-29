@@ -30,10 +30,6 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
             [new DirectAssemblyDependency("BackgroundResources", new(1, 12))]
         ),
         new(
-            "BackgroundResourceProcessing.Integration.ClickThroughBlocker",
-            [new KSPAssemblyDependency("ClickThroughBlocker", new(2, 0))]
-        ),
-        new(
             "BackgroundResourceProcessing.Integration.CryoTanks",
             [new DirectAssemblyDependency("SimpleBoiloff", new(0, 2))]
         ),
@@ -44,10 +40,6 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
         new(
             "BackgroundResourceProcessing.Integration.EL",
             [new DirectAssemblyDependency("Launchpad", new(6, 99))]
-        ),
-        new(
-            "BackgroundResourceProcessing.Integration.Kopernicus",
-            [new KSPAssemblyDependency("Kopernicus", new(1, 0))]
         ),
         new(
             "BackgroundResourceProcessing.Integration.NearFutureSolar",
