@@ -1,3 +1,4 @@
+using System;
 using BackgroundResourceProcessing.Utils;
 
 namespace BackgroundResourceProcessing;
@@ -24,16 +25,13 @@ public class VesselState(double CurrentTime)
     /// </remarks>
     public readonly double CurrentTime = CurrentTime;
 
-    public ShadowState ShadowState { get; private set; } = ShadowState.AlwaysInShadow();
+    public ShadowState ShadowState = ShadowState.AlwaysInShadow();
+
+    public BackgroundResourceProcessor Processor = null;
 
     /// <summary>
     /// Create a <c><see cref="VesselState"/></c> with the current time.
     /// </summary>
     public VesselState()
         : this(Planetarium.GetUniversalTime()) { }
-
-    public void SetShadowState(ShadowState state)
-    {
-        ShadowState = state;
-    }
 }

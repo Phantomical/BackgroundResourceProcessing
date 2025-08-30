@@ -49,6 +49,8 @@ public sealed class FieldExpressionTests
     class FloatCurveTest : PartModule
     {
         public double Evaluate(double value) => value;
+
+        public double NoParams() => 1.0;
     }
 
     [TestMethod]
@@ -58,5 +60,13 @@ public sealed class FieldExpressionTests
 
         var expr = FieldExpression<double>.Compile("%.Evaluate(75)", new(), typeof(FloatCurveTest));
         Assert.AreEqual(75.0, expr.Evaluate(module));
+    }
+
+    [TestMethod]
+    public void EvaluateNoParams()
+    {
+        FloatCurveTest module = new();
+        var expr = FieldExpression<double>.Compile("%.NoParams()", new(), typeof(FloatCurveTest));
+        Assert.AreEqual(1.0, expr.Evaluate(module));
     }
 }
