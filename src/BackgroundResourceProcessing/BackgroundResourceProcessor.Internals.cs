@@ -121,8 +121,11 @@ public sealed partial class BackgroundResourceProcessor
         if (ShadowState.Value.NextTerminatorEstimate <= changepoint)
             ShadowState = Shadow.GetShadowState(vessel);
 
-        var state = new VesselState(changepoint);
-        state.SetShadowState(ShadowState.Value);
+        var state = new VesselState(changepoint)
+        {
+            Processor = this,
+            ShadowState = (Shadow)ShadowState,
+        };
 
         var recompute = false;
         ImmediateChangepointRequested = false;
@@ -170,8 +173,11 @@ public sealed partial class BackgroundResourceProcessor
         );
 
         ShadowState = Shadow.GetShadowState(vessel);
-        var state = new VesselState(Planetarium.GetUniversalTime());
-        state.SetShadowState(ShadowState.Value);
+        var state = new VesselState(Planetarium.GetUniversalTime())
+        {
+            Processor = this,
+            ShadowState = (Shadow)ShadowState,
+        };
 
         processor.UpdateState(state.CurrentTime, true);
         processor.UpdateConstraintState();
@@ -240,7 +246,7 @@ public sealed partial class BackgroundResourceProcessor
             processor.ClearVesselState();
 
         var currentTime = Planetarium.GetUniversalTime();
-        var state = new VesselState(currentTime);
+        var state = new VesselState(currentTime) { Processor = this };
 
         // If we have already been saved this frame then there is nothing else
         // we need to do here.
@@ -248,7 +254,7 @@ public sealed partial class BackgroundResourceProcessor
             return;
 
         ShadowState = Shadow.GetShadowState(vessel);
-        state.SetShadowState((Shadow)ShadowState);
+        state.ShadowState = (Shadow)ShadowState;
 
         processor.RecordVesselState(vessel, currentTime);
         processor.RecordProtoInventories(vessel);

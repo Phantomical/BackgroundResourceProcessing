@@ -5,7 +5,6 @@ using System.Reflection;
 using BackgroundResourceProcessing.Behaviour;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Utils;
-using UnityEngine.Playables;
 
 namespace BackgroundResourceProcessing.Converter;
 
@@ -14,8 +13,6 @@ namespace BackgroundResourceProcessing.Converter;
 /// </summary>
 public class BackgroundConstantConverter : BackgroundConverter
 {
-    const BindingFlags Flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
-
     public List<ResourceRatioExpression> inputs = [];
     public List<ResourceRatioExpression> outputs = [];
     public List<ResourceConstraintExpression> required = [];
@@ -46,14 +43,17 @@ public class BackgroundConstantConverter : BackgroundConverter
         if (!ActiveCondition.Evaluate(module))
             return null;
 
-        IEnumerable<ResourceRatio> inputs = this.inputs.TrySelect<ResourceRatioExpression, ResourceRatio>(
-            (input, out value) => input.Evaluate(module, out value)
+        var inputs = this.inputs.TrySelect(
+            (ResourceRatioExpression input, out ResourceRatio value) =>
+                input.Evaluate(module, out value)
         );
-        IEnumerable<ResourceRatio> outputs = this.outputs.TrySelect<ResourceRatioExpression, ResourceRatio>(
-            (output, out value) => output.Evaluate(module, out value)
+        var outputs = this.outputs.TrySelect(
+            (ResourceRatioExpression output, out ResourceRatio value) =>
+                output.Evaluate(module, out value)
         );
-        IEnumerable<ResourceConstraint> required = this.required.TrySelect<ResourceConstraintExpression, ResourceConstraint>(
-            (req, out value) => req.Evaluate(module, out value)
+        var required = this.required.TrySelect(
+            (ResourceConstraintExpression req, out ResourceConstraint value) =>
+                req.Evaluate(module, out value)
         );
 
         inputs = inputs.Concat(GetResourceList(module, InputList) ?? []);
@@ -88,9 +88,12 @@ public class BackgroundConstantConverter : BackgroundConverter
         foreach (var link in links)
             link.Evaluate(module, behaviour);
 
-        lastUpdateField?.SetValue(module, Planetarium.GetUniversalTime());
-
         return behaviour;
+    }
+
+    public override void OnRestore(PartModule module, ResourceConverter converter)
+    {
+        lastUpdateField?.SetValue(module, Planetarium.GetUniversalTime());
     }
 
     private IEnumerable<ResourceRatio> GetResourceList(

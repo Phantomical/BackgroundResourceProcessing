@@ -122,6 +122,8 @@ public class DynamicBitSet : IEnumerable<int>
             words[i] |= bitset.words[i];
     }
 
+    public void Clear() => Array.Clear(words, 0, words.Length);
+
     private void Expand(int required)
     {
         var newCap = Math.Max(words.Length * 2, required);

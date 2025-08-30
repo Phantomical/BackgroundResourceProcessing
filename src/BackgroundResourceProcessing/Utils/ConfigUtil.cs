@@ -174,4 +174,33 @@ public static class ConfigUtil
 
         return false;
     }
+
+    public interface IConfigLoadable
+    {
+        void Load(ConfigNode node);
+        void Save(ConfigNode node);
+    }
+
+    public static List<T> LoadNodeList<T>(ConfigNode node, string nodeName)
+        where T : IConfigLoadable
+    {
+        var nodes = node.GetNodes(nodeName);
+        var list = new List<T>(nodes.Length);
+
+        foreach (var child in nodes)
+        {
+            T item = Activator.CreateInstance<T>();
+            item.Load(child);
+            list.Add(item);
+        }
+
+        return list;
+    }
+
+    public static void SaveNodeList<T>(ConfigNode node, string nodeName, IEnumerable<T> items)
+        where T : IConfigLoadable
+    {
+        foreach (var item in items)
+            item.Save(node.AddNode(nodeName));
+    }
 }

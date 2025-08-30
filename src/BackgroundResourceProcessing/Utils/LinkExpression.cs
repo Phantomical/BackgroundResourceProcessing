@@ -8,15 +8,19 @@ public struct LinkExpression()
 {
     public enum LinkRelation
     {
-        PUSH,
-        PULL,
-        REQUIRED,
-        INVALID,
+        INVALID = 0,
+
+        PUSH = 0x1,
+        PULL = 0x2,
+        REQUIRED = 0x4,
+
+        PUSH_AND_PULL = 0x3,
+        ALL = 0x7,
     }
 
     public ConditionalExpression condition = ConditionalExpression.Always;
 
-    public LinkRelation Relation = LinkRelation.PUSH;
+    public LinkRelation Relation = LinkRelation.INVALID;
 
     public FieldExpression<PartModule> Target = new();
 
@@ -27,21 +31,17 @@ public struct LinkExpression()
 
         if (!Target.TryEvaluate(module, out var target))
             return;
+        if (target == null)
+            return;
 
-        switch (Relation)
-        {
-            case LinkRelation.PUSH:
-                behaviour.AddPushModule(target);
-                break;
+        if (Relation.HasFlag(LinkRelation.PUSH))
+            behaviour.AddPushModule(target);
 
-            case LinkRelation.PULL:
-                behaviour.AddPullModule(target);
-                break;
+        if (Relation.HasFlag(LinkRelation.PULL))
+            behaviour.AddPullModule(target);
 
-            case LinkRelation.REQUIRED:
-                behaviour.AddConstraintModule(target);
-                break;
-        }
+        if (Relation.HasFlag(LinkRelation.REQUIRED))
+            behaviour.AddConstraintModule(target);
     }
 
     public static LinkExpression Load(Type target, ConfigNode node)
