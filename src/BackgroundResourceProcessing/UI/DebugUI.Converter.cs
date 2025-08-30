@@ -341,8 +341,12 @@ internal partial class DebugUI
                     return;
                 }
 
-                var state = new VesselState();
-                state.SetShadowState(ShadowState.GetShadowState(module.vessel));
+                var state = new VesselState()
+                {
+                    ShadowState = ShadowState.GetShadowState(module.vessel),
+                    Processor =
+                        module.vessel.FindVesselModuleImplementing<BackgroundResourceProcessor>(),
+                };
 
                 foreach (var converter in behaviour.Converters)
                 {

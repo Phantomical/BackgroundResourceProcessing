@@ -22,7 +22,7 @@ public enum Constraint
 /// A constraint applied to a resource.
 /// </summary>
 [DebuggerDisplay("{Constraint} {Amount} {ResourceName}")]
-public struct ResourceConstraint()
+public struct ResourceConstraint() : ConfigUtil.IConfigLoadable
 {
     /// <summary>
     /// The name of the resource that this constraint applies to.

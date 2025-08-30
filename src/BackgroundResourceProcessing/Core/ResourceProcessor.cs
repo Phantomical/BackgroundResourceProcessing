@@ -270,13 +270,12 @@ internal class ResourceProcessor
     }
 
     #region Vessel Recording
-    public void RecordVesselState(Vessel vessel, double currentTime)
+    public void RecordVesselState(Vessel vessel, VesselState state)
     {
         using var span = new TraceSpan("ResourceProcessor.RecordVesselState");
 
         ClearVesselState();
-        var state = new VesselState(currentTime);
-        lastUpdate = currentTime;
+        lastUpdate = state.CurrentTime;
 
         LogUtil.Debug(() => $"Recording vessel state for vessel {vessel.GetDisplayName()}");
 
