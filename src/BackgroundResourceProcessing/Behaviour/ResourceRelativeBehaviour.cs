@@ -193,7 +193,7 @@ public class ResourceRelativeBehaviour : ConverterBehaviour
         Connected = new(8);
 
         var values = node.GetValues(nameof(Connected));
-        for (int i = values.Length - 1; i >= 0; ++i)
+        for (int i = values.Length - 1; i >= 0; --i)
         {
             if (uint.TryParse(values[i], out var index))
                 Connected.Add(index);
