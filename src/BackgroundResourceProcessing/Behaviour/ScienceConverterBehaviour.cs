@@ -11,6 +11,7 @@ namespace BackgroundResourceProcessing.Behaviour;
 /// inventory as specified by <see cref="DataResourceName"/>,
 /// <see cref="LabFlightId"/>, and <see cref="LabModuleId"/>.
 /// </remarks>
+[Obsolete("This can now be implemented using ResourceRelativeBehaviour")]
 public class ScienceConverterBehaviour : ConverterBehaviour
 {
     [KSPField(isPersistant = true)]
