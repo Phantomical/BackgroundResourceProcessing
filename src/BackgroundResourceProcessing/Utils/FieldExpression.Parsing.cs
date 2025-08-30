@@ -880,12 +880,13 @@ internal partial struct FieldExpression
                 ExpectToken(TokenKind.LPAREN);
                 while (true)
                 {
+                    if (Current == TokenKind.RPAREN)
+                        break;
+
                     args.Add(ParseExpression());
 
                     if (Current == TokenKind.COMMA)
                         lexer.MoveNext();
-                    if (Current == TokenKind.RPAREN)
-                        break;
                 }
                 ExpectToken(TokenKind.RPAREN);
 
