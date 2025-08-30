@@ -12,6 +12,9 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ## Unreleased
 
+### Added
+* Added support for `KSP-WarpDrive`.
+
 ## 0.1.11
 ### Added
 * Added support for Nehemiah Engineering Orbital Science.
