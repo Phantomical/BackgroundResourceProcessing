@@ -275,7 +275,7 @@ public abstract class BackgroundConverter : IRegistryItem
 /// </summary>
 /// <typeparam name="T"></typeparam>
 public abstract class BackgroundConverter<T> : BackgroundConverter
-    where T : class
+    where T : PartModule
 {
     public sealed override ModuleBehaviour GetBehaviour(PartModule module)
     {
@@ -292,6 +292,25 @@ public abstract class BackgroundConverter<T> : BackgroundConverter
     }
 
     public abstract ModuleBehaviour GetBehaviour(T module);
+
+    public sealed override int GetModulePriority(PartModule module)
+    {
+        if (module == null)
+            return GetModulePriority((T)null);
+
+        if (module is not T downcasted)
+        {
+            LogUnexpectedType(module);
+            return 0;
+        }
+
+        return GetModulePriority(downcasted);
+    }
+
+    public virtual int GetModulePriority(T module)
+    {
+        return base.GetModulePriority(module);
+    }
 
     public sealed override void OnRestore(PartModule module, ResourceConverter converter)
     {

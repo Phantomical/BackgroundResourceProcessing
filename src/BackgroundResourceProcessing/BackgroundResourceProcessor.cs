@@ -69,7 +69,7 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
     #endregion
 
     /// <summary>
-    /// The current the vessel WRT to being in the planet's shadow.
+    /// The current state of the vessel WRT to being in the planet's shadow.
     /// </summary>
     public ShadowState? ShadowState { get; private set; } = null;
 

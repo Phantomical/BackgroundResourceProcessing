@@ -18,7 +18,7 @@ namespace BackgroundResourceProcessing;
 ///   the future in order to determine what the future state of inventories
 ///   and converters.
 /// </remarks>
-public class ResourceSimulator
+public sealed class ResourceSimulator
 {
     readonly ResourceProcessor processor;
 
@@ -54,7 +54,7 @@ public class ResourceSimulator
     /// Note that you can still modify the inventories themselves. You just
     /// cannot add or remove inventories from the set.
     /// </remarks>
-    public ReadOnlyList<ResourceInventory> Inventories => new(processor.inventories);
+    public ReadOnlyList<Core.ResourceInventory> Inventories => new(processor.inventories);
 
     /// <summary>
     /// Get a read-only view of the available converters.

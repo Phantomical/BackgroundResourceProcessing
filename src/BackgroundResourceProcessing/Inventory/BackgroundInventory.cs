@@ -153,7 +153,7 @@ public abstract class BackgroundInventory : IRegistryItem
 }
 
 public abstract class BackgroundInventory<T> : BackgroundInventory
-    where T : class
+    where T : PartModule
 {
     /// <summary>
     /// Get a list of <see cref="FakePartResource"/>s that are present on
