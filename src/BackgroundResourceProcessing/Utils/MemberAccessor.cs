@@ -1,4 +1,5 @@
 using System;
+using System.Linq.Expressions;
 using System.Reflection;
 
 namespace BackgroundResourceProcessing.Utils;
@@ -12,8 +13,13 @@ public readonly struct MemberAccessor<T>
         ReadWrite = Read | Write,
     }
 
-    readonly Access access;
+    public const Access Read = Access.Read;
+    public const Access Write = Access.Write;
+    public const Access ReadWrite = Access.ReadWrite;
+
     readonly MemberInfo member;
+    readonly Func<object, T> getter = null;
+    readonly Action<object, T> setter = null;
 
     public readonly string Name => member.Name;
     public readonly MemberInfo Member => member;
@@ -23,58 +29,49 @@ public readonly struct MemberAccessor<T>
         const BindingFlags Flags =
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
-        this.member = GetMember(type, name, Flags);
-        this.access = access;
+        member = GetMember(type, name, Flags);
 
         if (member == null)
             throw new Exception($"type {type.Name} has no field or property named `{name}`");
 
         if (member is PropertyInfo property)
         {
-            if ((access & Access.Read) != 0 && !property.CanRead)
+            if (access.HasFlag(Access.Read) && !property.CanRead)
                 throw new Exception(
                     $"property {type.Name}.{property.Name} is required to be readable, but was not readable"
                 );
 
-            if ((access & Access.Write) != 0 && !property.CanWrite)
+            if (access.HasFlag(Access.Write) && !property.CanWrite)
                 throw new Exception(
                     $"property {type.Name}.{property.Name} is required to be writable, but was not writable"
                 );
         }
 
-        var memberType = GetMemberType(member);
-        if (!IsCompatibleType(memberType))
-            throw new Exception(
-                $"property {type.Name}.{name} had type {memberType.Name} which was not compatible with expected type {typeof(T).Name}"
-            );
+        if (access.HasFlag(Access.Read))
+            getter = CreateGetter(member);
+
+        if (access.HasFlag(Access.Write))
+            setter = CreateSetter(member);
     }
 
     public T GetValue(object obj)
     {
-        if ((access & Access.Read) == 0)
+        if (getter == null)
             throw new InvalidOperationException(
                 "Cannot read a field value using a MemberAccessor not configured for read access"
             );
 
-        var value = GetMemberValue(member, obj);
-
-        if (typeof(T) == typeof(double))
-        {
-            if (value is float f)
-                return (T)(object)(double)f;
-        }
-
-        return (T)value;
+        return getter(obj);
     }
 
     public void SetValue(object obj, T value)
     {
-        if ((access & Access.Write) == 0)
+        if (setter == null)
             throw new InvalidOperationException(
                 "Cannot write a field value using a MemberAccessor not configured for write access"
             );
 
-        SetMemberValue(member, obj, value);
+        setter(obj, value);
     }
 
     private static MemberInfo GetMember(Type type, string name, BindingFlags flags)
@@ -102,42 +99,68 @@ public readonly struct MemberAccessor<T>
         };
     }
 
-    private static object GetMemberValue(MemberInfo member, object obj)
+    private static Func<object, T> CreateGetter(MemberInfo member)
     {
-        return member switch
-        {
-            FieldInfo field => field.GetValue(obj),
-            PropertyInfo property => property.GetValue(obj),
-            _ => throw new NotImplementedException(
-                $"unsupported member type {member.GetType().Name}"
-            ),
-        };
-    }
+        var parent = member.DeclaringType;
+        var param = Expression.Parameter(typeof(object));
+        var casted = Expression.Convert(param, parent);
 
-    private static void SetMemberValue(MemberInfo member, object obj, object value)
-    {
+        Expression access;
         if (member is FieldInfo field)
-            field.SetValue(obj, value);
+            access = Expression.Field(casted, field);
         else if (member is PropertyInfo property)
-            property.SetValue(obj, value);
+            access = Expression.Property(casted, property);
         else
-            throw new NotImplementedException($"unsupported member type {member.GetType().Name}");
-    }
+            throw new NotSupportedException();
 
-    private static bool IsCompatibleType(Type memberType)
-    {
-        if (typeof(T) == memberType)
-            return true;
-
-        if (typeof(T).IsAssignableFrom(memberType))
-            return true;
-
-        if (typeof(T) == typeof(double))
+        if (access.Type != typeof(T))
         {
-            if (memberType == typeof(float))
-                return true;
+            if (typeof(T) == typeof(double) && access.Type == typeof(float))
+                access = Expression.Convert(access, typeof(T));
+            else if (typeof(T) == typeof(float) && access.Type == typeof(double))
+                access = Expression.Convert(access, typeof(T));
+            else
+                throw new NotSupportedException(
+                    $"Cannot convert a field {parent.Name}.{member.Name} of type {access.Type.Name} to type {typeof(T).Name}"
+                );
         }
 
-        return false;
+        return Expression.Lambda<Func<object, T>>(access, param).Compile();
+    }
+
+    private static Action<object, T> CreateSetter(MemberInfo member)
+    {
+        var parent = member.DeclaringType;
+        var param = Expression.Parameter(typeof(object));
+        var casted = Expression.Convert(param, parent);
+        var value = Expression.Parameter(typeof(T));
+
+        if (parent.IsValueType)
+            throw new NotSupportedException(
+                $"Cannot use MemberAccessor to set a field on value type {parent.Name}"
+            );
+
+        Expression converted;
+        var memberType = GetMemberType(member);
+        if (typeof(T) == memberType)
+            converted = value;
+        else if (typeof(T) == typeof(double) && memberType == typeof(float))
+            converted = Expression.Convert(value, memberType);
+        else if (typeof(T) == typeof(float) && memberType == typeof(double))
+            converted = Expression.Convert(value, memberType);
+        else
+            throw new NotSupportedException(
+                $"Cannot use MemberAccessor to set a field or property {parent.Name}.{member.Name} of type {memberType.Name} with a value of type {typeof(T).Name}"
+            );
+
+        Expression setter;
+        if (member is FieldInfo field)
+            setter = Expression.Assign(Expression.Field(casted, field), converted);
+        else if (member is PropertyInfo property)
+            setter = Expression.Assign(Expression.Property(casted, property), converted);
+        else
+            throw new NotSupportedException();
+
+        return Expression.Lambda<Action<object, T>>(setter, param, value).Compile();
     }
 }
