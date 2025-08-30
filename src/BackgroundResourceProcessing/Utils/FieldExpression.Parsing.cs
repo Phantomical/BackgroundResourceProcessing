@@ -50,6 +50,11 @@ internal partial struct FieldExpression
             try
             {
                 var member = type.GetMethod(method, Flags, null, ptypes, []);
+                if (member == null)
+                    throw new Exception(
+                        $"There is no method {type.Name}.{method}({string.Join(", ", ptypes.Select(t => t.Name))})"
+                    );
+
                 return member.Invoke(obj, parameters);
             }
             catch (Exception e)

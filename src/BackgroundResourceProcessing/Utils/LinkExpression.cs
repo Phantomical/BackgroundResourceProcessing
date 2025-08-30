@@ -26,11 +26,7 @@ public struct LinkExpression()
 
     public readonly void Evaluate(PartModule module, ModuleBehaviour behaviour)
     {
-        if (!condition.Evaluate(module))
-            return;
-
-        if (!Target.TryEvaluate(module, out var target))
-            return;
+        var target = EvaluateTarget(module);
         if (target == null)
             return;
 
@@ -42,6 +38,17 @@ public struct LinkExpression()
 
         if (Relation.HasFlag(LinkRelation.REQUIRED))
             behaviour.AddConstraintModule(target);
+    }
+
+    public readonly PartModule EvaluateTarget(PartModule module)
+    {
+        if (!condition.Evaluate(module))
+            return null;
+
+        if (!Target.TryEvaluate(module, out var target))
+            return null;
+
+        return target;
     }
 
     public static LinkExpression Load(Type target, ConfigNode node)

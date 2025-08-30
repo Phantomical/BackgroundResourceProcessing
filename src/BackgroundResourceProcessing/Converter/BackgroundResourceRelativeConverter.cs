@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using BackgroundResourceProcessing.Behaviour;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Utils;
@@ -207,20 +208,9 @@ public class BackgroundResourceRelativeConverter : BackgroundConverter
                 break;
 
             default:
-                foreach (var resource in part.Resources.dict.Values)
-                {
-                    if (!resource.flowState)
-                        continue;
-
-                    if (!resource.flowMode.HasFlag(PartResource.FlowMode.Out))
-                        continue;
-
-                    var index = processor.GetInventoryIndex(new(resource));
-                    if (index is null)
-                        continue;
-
+                var index = GetFlowingResourceInventoryIndex(processor, part, resourceId);
+                if (index is not null)
                     connected[(int)index] = true;
-                }
 
                 break;
         }
@@ -241,10 +231,7 @@ public class BackgroundResourceRelativeConverter : BackgroundConverter
         {
             if (!link.Relation.HasFlag(LinkExpression.LinkRelation.REQUIRED))
                 continue;
-            if (!link.condition.Evaluate(module))
-                continue;
-            if (!link.Target.TryEvaluate(module, out var target))
-                continue;
+            var target = link.EvaluateTarget(module);
             if (target == null)
                 continue;
 
@@ -256,6 +243,19 @@ public class BackgroundResourceRelativeConverter : BackgroundConverter
         }
 
         return connected;
+    }
+
+    private int? GetFlowingResourceInventoryIndex(
+        BackgroundResourceProcessor processor,
+        Part part,
+        int resourceId
+    )
+    {
+        var resource = part.Resources.GetFlowing(resourceId, true);
+        if (resource == null)
+            return null;
+
+        return processor.GetInventoryIndex(new(resource));
     }
 
     protected override void OnLoad(ConfigNode node)
