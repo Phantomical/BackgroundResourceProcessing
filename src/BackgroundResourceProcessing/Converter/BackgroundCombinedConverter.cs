@@ -19,20 +19,41 @@ public class BackgroundCombinedConverter : BackgroundConverter
     /// </summary>
     public ConditionalExpression ActiveCondition = ConditionalExpression.Always;
 
+    private List<LinkExpression> links = [];
+
     public override ModuleBehaviour GetBehaviour(PartModule module)
     {
+        if (!ActiveCondition.Evaluate(module))
+            return null;
+
         ModuleBehaviour combined = null;
-        foreach (var option in options)
+        for (int i = 0; i < options.Count; ++i)
         {
+            var option = options[i];
             if (!option.condition.Evaluate(module))
                 continue;
 
             int priority = option.converter.GetModulePriority(module);
             var behaviour = option.converter.GetBehaviour(module);
-            foreach (var converter in behaviour.Converters ?? [])
-                converter.Priority ??= priority;
+
+            if (DebugSettings.Instance.DebugLogging)
+                LogUtil.Debug(() =>
+                    $"Selecting sub-converter {option.converter.GetType().Name} at index {i}"
+                );
+
+            if (behaviour?.Converters != null)
+            {
+                foreach (var converter in behaviour.Converters)
+                    converter.Priority ??= priority;
+            }
 
             MergeBehaviours(ref combined, behaviour);
+        }
+
+        if (combined != null)
+        {
+            foreach (var link in links)
+                link.Evaluate(module, combined);
         }
 
         return combined;
@@ -73,6 +94,7 @@ public class BackgroundCombinedConverter : BackgroundConverter
         var target = GetTargetType(node);
 
         node.TryGetCondition(nameof(ActiveCondition), target, ref ActiveCondition);
+        links = LinkExpression.LoadList(target, node);
 
         foreach (var child in node.GetNodes(NodeName))
         {

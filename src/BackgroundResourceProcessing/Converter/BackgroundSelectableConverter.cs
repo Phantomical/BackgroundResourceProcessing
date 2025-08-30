@@ -12,21 +12,41 @@ public class BackgroundSelectableConverter : BackgroundConverter
 {
     readonly List<ConverterEntry> options = [];
 
+    /// <summary>
+    /// A condition to evaluate to determine whether this converter should
+    /// be active. This can be any target filter expression.
+    /// </summary>
+    public ConditionalExpression ActiveCondition = ConditionalExpression.Always;
+
+    private List<LinkExpression> links = [];
+
     public override ModuleBehaviour GetBehaviour(PartModule module)
     {
+        if (!ActiveCondition.Evaluate(module))
+            return null;
+
+        ModuleBehaviour behaviour = null;
         for (int i = 0; i < options.Count; ++i)
         {
             var option = options[i];
             if (!option.condition.Evaluate(module))
                 continue;
 
-            LogUtil.Debug(() =>
-                $"Selecting sub-converter {option.converter.GetType().Name} at index {i}"
-            );
-            return option.converter.GetBehaviour(module);
+            if (DebugSettings.Instance.DebugLogging)
+                LogUtil.Debug(() =>
+                    $"Selecting sub-converter {option.converter.GetType().Name} at index {i}"
+                );
+            behaviour = option.converter.GetBehaviour(module);
+            break;
         }
 
-        return null;
+        if (behaviour != null)
+        {
+            foreach (var link in links)
+                link.Evaluate(module, behaviour);
+        }
+
+        return behaviour;
     }
 
     protected override void OnLoad(ConfigNode node)
@@ -35,6 +55,9 @@ public class BackgroundSelectableConverter : BackgroundConverter
 
         var name = node.GetValue("name");
         var target = GetTargetType(node);
+
+        node.TryGetCondition(nameof(ActiveCondition), target, ref ActiveCondition);
+        links = LinkExpression.LoadList(target, node);
 
         foreach (var child in node.GetNodes(NodeName))
         {
