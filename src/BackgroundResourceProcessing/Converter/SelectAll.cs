@@ -5,10 +5,11 @@ using BackgroundResourceProcessing.Utils;
 namespace BackgroundResourceProcessing.Converter;
 
 /// <summary>
-/// A background converter which selects between multiple different
-/// converters at runtime based on their filter expressions.
+/// A converter that combines together multiple different background converters.
+/// Any nested converter within whose entry condition evaluates to <c>true</c>
+/// (or is not present) will be merged together into one larger behaviour.
 /// </summary>
-public class BackgroundSelectableConverter : BackgroundConverter
+public class SelectAll : BackgroundConverter
 {
     readonly List<ConverterEntry> options = [];
 
@@ -25,28 +26,64 @@ public class BackgroundSelectableConverter : BackgroundConverter
         if (!ActiveCondition.Evaluate(module))
             return null;
 
-        ModuleBehaviour behaviour = null;
+        ModuleBehaviour combined = null;
         for (int i = 0; i < options.Count; ++i)
         {
             var option = options[i];
             if (!option.condition.Evaluate(module))
                 continue;
 
+            int priority = option.converter.GetModulePriority(module);
+            var behaviour = option.converter.GetBehaviour(module);
+
             if (DebugSettings.Instance.DebugLogging)
                 LogUtil.Debug(() =>
                     $"Selecting sub-converter {option.converter.GetType().Name} at index {i}"
                 );
-            behaviour = option.converter.GetBehaviour(module);
-            break;
+
+            if (behaviour?.Converters != null)
+            {
+                foreach (var converter in behaviour.Converters)
+                    converter.Priority ??= priority;
+            }
+
+            MergeBehaviours(ref combined, behaviour);
         }
 
-        if (behaviour != null)
+        if (combined != null)
         {
             foreach (var link in links)
-                link.Evaluate(module, behaviour);
+                link.Evaluate(module, combined);
         }
 
-        return behaviour;
+        return combined;
+    }
+
+    void MergeBehaviours(ref ModuleBehaviour dest, ModuleBehaviour src)
+    {
+        if (src == null)
+            return;
+
+        if (dest == null)
+        {
+            dest = src;
+            return;
+        }
+
+        MergeLists(ref dest.converters, src.converters);
+        MergeLists(ref dest.push, src.push);
+        MergeLists(ref dest.pull, src.pull);
+        MergeLists(ref dest.constraint, src.constraint);
+    }
+
+    void MergeLists<T>(ref List<T> dest, List<T> src)
+    {
+        if (src == null)
+            return;
+        if (dest == null)
+            dest = src;
+        else
+            dest.AddRange(src);
     }
 
     protected override void OnLoad(ConfigNode node)
@@ -88,7 +125,5 @@ public class BackgroundSelectableConverter : BackgroundConverter
     }
 }
 
-[Obsolete("BackgroundMultiConverter has been renamed to BackgroundSelectableConverter")]
-public class BackgroundMultiConverter : BackgroundSelectableConverter { }
-
-public class SelectFirst : BackgroundSelectableConverter { }
+[Obsolete("BackgroundCombinedConverter has been renamed to SelectAll")]
+public class BackgroundCombinedConverter : SelectAll { }
