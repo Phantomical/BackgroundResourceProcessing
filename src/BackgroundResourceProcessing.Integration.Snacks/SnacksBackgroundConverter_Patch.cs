@@ -162,7 +162,7 @@ static class SnacksBackgroundConverter_Methods_Patch
     )
     {
         var settings = HighLogic.CurrentGame.Parameters.CustomParams<ModIntegrationSettings>();
-        if (!(settings?.EnableSnacksIntegration ?? false))
+        if (!(settings?.EnableWildBlueIntegration ?? false))
             SupplyAmountFunc(instance, resourceName, supply, flowMode, dumpExcess);
 
         var vessel = proto.vesselRef;
@@ -203,7 +203,7 @@ static class SnacksBackgroundConverter_Methods_Patch
     )
     {
         var settings = HighLogic.CurrentGame.Parameters.CustomParams<ModIntegrationSettings>();
-        if (!(settings?.EnableSnacksIntegration ?? false))
+        if (!(settings?.EnableWildBlueIntegration ?? false))
             return RequestAmountFunc(instance, resourceName, demand, flowMode);
 
         var vessel = proto.vesselRef;
@@ -237,7 +237,7 @@ static class SnacksBackgroundConverter_Methods_Patch
     )
     {
         var settings = HighLogic.CurrentGame.Parameters.CustomParams<ModIntegrationSettings>();
-        if (!(settings?.EnableSnacksIntegration ?? false))
+        if (!(settings?.EnableWildBlueIntegration ?? false))
             return GetAmountFunc(instance, resourceName, flowMode);
 
         var vessel = proto.vesselRef;
@@ -300,7 +300,7 @@ static class SnacksBackgroundConverter_ProduceYieldsList_Patch
     static bool Prefix(SnacksBackgroundConverter __instance, ProtoVessel vessel)
     {
         var settings = HighLogic.CurrentGame.Parameters.CustomParams<ModIntegrationSettings>();
-        if (!(settings?.EnableSnacksIntegration ?? false))
+        if (!(settings?.EnableWildBlueIntegration ?? false))
             return true;
 
         var yields = (List<ResourceRatio>)YieldsListField.GetValue(__instance);
@@ -361,7 +361,7 @@ static class SnacksBackgroundConverter_GetBackgroundConverters_Patch
     )
     {
         var settings = HighLogic.CurrentGame.Parameters.CustomParams<ModIntegrationSettings>();
-        if (!(settings?.EnableSnacksIntegration ?? false))
+        if (!(settings?.EnableWildBlueIntegration ?? false))
             return converters;
 
         List<Vessel> removed = [];
@@ -430,7 +430,7 @@ static class SnacksBackgroundConverter_PrepareToProcess_Patch
     static bool Prefix(SnacksBackgroundConverter __instance)
     {
         var settings = HighLogic.CurrentGame.Parameters.CustomParams<ModIntegrationSettings>();
-        if (!(settings?.EnableSnacksIntegration ?? false))
+        if (!(settings?.EnableWildBlueIntegration ?? false))
             return true;
 
         var protoResources = (IDictionary)ProtoResourcesField.GetValue(__instance);

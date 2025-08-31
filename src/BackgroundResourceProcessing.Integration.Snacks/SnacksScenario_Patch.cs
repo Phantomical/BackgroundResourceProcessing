@@ -176,7 +176,7 @@ static class SnacksScenario_UpdateSnapshots_Patch
     )
     {
         var settings = HighLogic.CurrentGame.Parameters.CustomParams<ModIntegrationSettings>();
-        if (!(settings?.EnableSnacksIntegration ?? false))
+        if (!(settings?.EnableWildBlueIntegration ?? false))
             return __result;
 
         return UpdateSnapshots(__instance);

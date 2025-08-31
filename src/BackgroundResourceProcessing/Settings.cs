@@ -107,13 +107,9 @@ public class ModIntegrationSettings : GameParameters.CustomParameterNode
     public override GameParameters.GameMode GameMode => GameParameters.GameMode.ANY;
 
     [GameParameters.CustomParameterUI(
-        "Enable Snacks! Integration",
-        toolTip = "Patch Snacks' background simulation to use Background Resource Processing"
+        "Enable Wild Blue Integrations",
+        toolTip = "Patch background simulation in the various WBI mods to use Background Resource Processing. "
+            + "Includes support for Snacks! and WildBlueTools."
     )]
-    public bool EnableSnacksIntegration = true;
-    [GameParameters.CustomParameterUI(
-        "Enable WildBlueTools Integration",
-        toolTip = "Patch WildBlueTools' background simulation to use Background Resource Processing"
-    )]
-    public bool EnableWildBlueToolsIntegration = true;
+    public bool EnableWildBlueIntegration = true;
 }

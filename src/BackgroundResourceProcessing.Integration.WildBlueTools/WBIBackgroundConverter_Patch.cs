@@ -158,7 +158,7 @@ static class WBIBackgroundConverter_Methods_Patch
     )
     {
         var settings = HighLogic.CurrentGame.Parameters.CustomParams<ModIntegrationSettings>();
-        if (!(settings?.EnableWildBlueToolsIntegration ?? false))
+        if (!(settings?.EnableWildBlueIntegration ?? false))
         {
             SupplyAmountFunc(instance, resourceName, supply, flowMode, dumpExcess);
             return;
@@ -202,7 +202,7 @@ static class WBIBackgroundConverter_Methods_Patch
     )
     {
         var settings = HighLogic.CurrentGame.Parameters.CustomParams<ModIntegrationSettings>();
-        if (!(settings?.EnableWildBlueToolsIntegration ?? false))
+        if (!(settings?.EnableWildBlueIntegration ?? false))
             return RequestAmountFunc(instance, resourceName, demand, flowMode);
 
         var vessel = proto.vesselRef;
@@ -236,7 +236,7 @@ static class WBIBackgroundConverter_Methods_Patch
     )
     {
         var settings = HighLogic.CurrentGame.Parameters.CustomParams<ModIntegrationSettings>();
-        if (!(settings?.EnableWildBlueToolsIntegration ?? false))
+        if (!(settings?.EnableWildBlueIntegration ?? false))
             return GetAmountFunc(instance, resourceName, flowMode);
 
         var vessel = proto.vesselRef;
@@ -299,7 +299,7 @@ static class WBIBackgroundConverter_ProduceYieldResources_Patch
     static bool Prefix(WBIBackgroundConverter __instance, ProtoVessel vessel)
     {
         var settings = HighLogic.CurrentGame.Parameters.CustomParams<ModIntegrationSettings>();
-        if (!(settings?.EnableWildBlueToolsIntegration ?? false))
+        if (!(settings?.EnableWildBlueIntegration ?? false))
             return true;
 
         var yields = (List<ResourceRatio>)YieldsListField.GetValue(__instance);
@@ -365,7 +365,7 @@ static class WBIBackgroundConverter_GetBackgroundConverters_Patch
     )
     {
         var settings = HighLogic.CurrentGame.Parameters.CustomParams<ModIntegrationSettings>();
-        if (!(settings?.EnableWildBlueToolsIntegration ?? false))
+        if (!(settings?.EnableWildBlueIntegration ?? false))
             return converters;
 
         List<Vessel> removed = [];
@@ -432,7 +432,7 @@ static class WBIBackgroundConverter_PrepareToProcess_Patch
     static bool Prefix(WBIBackgroundConverter __instance)
     {
         var settings = HighLogic.CurrentGame.Parameters.CustomParams<ModIntegrationSettings>();
-        if (!(settings?.EnableWildBlueToolsIntegration ?? false))
+        if (!(settings?.EnableWildBlueIntegration ?? false))
             return true;
 
         var protoResources = (IDictionary)ProtoResourcesField.GetValue(__instance);
