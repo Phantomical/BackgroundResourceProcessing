@@ -61,6 +61,10 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
             "BackgroundResourceProcessing.Integration.USILifeSupport",
             [new DirectAssemblyDependency("USILifeSupport", new(1, 0))]
         ),
+        new(
+            "BackgroundResourceProcessing.Integration.WildBlueTools",
+            [new DirectAssemblyDependency("WildBlueTools", new(1, 0))]
+        ),
     ];
 
 #if !DIRECT_PLUGIN_LOAD

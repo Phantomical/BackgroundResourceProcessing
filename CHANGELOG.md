@@ -16,6 +16,10 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 * Added support for `KSP-WarpDrive`.
 * Added support for `Snacks!`
 
+### Changed
+* The `WildBlueTools` integration now fully integrates with its existing
+  background simulation.
+
 ## 0.1.11
 ### Added
 * Added support for Nehemiah Engineering Orbital Science.

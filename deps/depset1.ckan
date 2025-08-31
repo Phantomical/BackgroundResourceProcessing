@@ -26,7 +26,8 @@
         { "name": "SpaceDust",                         "suppress_recommendations": true },
         { "name": "SystemHeat",                        "suppress_recommendations": true },
         { "name": "Snacks",                            "suppress_recommendations": true },
-        { "name": "USI-LS",                            "suppress_recommendations": true }
+        { "name": "USI-LS",                            "suppress_recommendations": true },
+        { "name": "WildBlueTools",                     "suppress_recommendations": true }
     ],
     "recommends": [
         { "name": "KSPCommunityFixes" },

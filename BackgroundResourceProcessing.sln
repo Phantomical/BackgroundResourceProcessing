@@ -35,6 +35,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessin
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessing.Integration.Snacks", "src\BackgroundResourceProcessing.Integration.Snacks\BackgroundResourceProcessing.Integration.Snacks.csproj", "{62391C34-1A88-DB9E-AFA5-BB5BA1BD2D02}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessing.Integration.WildBlueTools", "src\BackgroundResourceProcessing.Integration.WildBlueTools\BackgroundResourceProcessing.Integration.WildBlueTools.csproj", "{6DF961DE-4F31-B209-5547-B8657E81D6D3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -105,6 +107,10 @@ Global
 		{62391C34-1A88-DB9E-AFA5-BB5BA1BD2D02}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{62391C34-1A88-DB9E-AFA5-BB5BA1BD2D02}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{62391C34-1A88-DB9E-AFA5-BB5BA1BD2D02}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6DF961DE-4F31-B209-5547-B8657E81D6D3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6DF961DE-4F31-B209-5547-B8657E81D6D3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6DF961DE-4F31-B209-5547-B8657E81D6D3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6DF961DE-4F31-B209-5547-B8657E81D6D3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

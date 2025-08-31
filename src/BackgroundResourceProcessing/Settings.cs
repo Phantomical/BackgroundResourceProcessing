@@ -111,4 +111,9 @@ public class ModIntegrationSettings : GameParameters.CustomParameterNode
         toolTip = "Patch Snacks' background simulation to use Background Resource Processing"
     )]
     public bool EnableSnacksIntegration = true;
+    [GameParameters.CustomParameterUI(
+        "Enable WildBlueTools Integration",
+        toolTip = "Patch WildBlueTools' background simulation to use Background Resource Processing"
+    )]
+    public bool EnableWildBlueToolsIntegration = true;
 }
