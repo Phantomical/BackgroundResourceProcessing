@@ -1,8 +1,5 @@
-using System;
-using System.Collections;
 using BackgroundResourceProcessing.Addons;
 using BackgroundResourceProcessing.Tracing;
-using UnityEngine;
 using Shadow = BackgroundResourceProcessing.ShadowState;
 
 namespace BackgroundResourceProcessing;
@@ -121,11 +118,7 @@ public sealed partial class BackgroundResourceProcessor
         if (ShadowState.Value.NextTerminatorEstimate <= changepoint)
             ShadowState = Shadow.GetShadowState(vessel);
 
-        var state = new VesselState(changepoint)
-        {
-            Processor = this,
-            ShadowState = (Shadow)ShadowState,
-        };
+        var state = GetVesselState(changepoint);
 
         var recompute = false;
         ImmediateChangepointRequested = false;
@@ -173,11 +166,7 @@ public sealed partial class BackgroundResourceProcessor
         );
 
         ShadowState = Shadow.GetShadowState(vessel);
-        var state = new VesselState(Planetarium.GetUniversalTime())
-        {
-            Processor = this,
-            ShadowState = (Shadow)ShadowState,
-        };
+        var state = GetVesselState();
 
         processor.UpdateState(state.CurrentTime, true);
         processor.UpdateConstraintState();
@@ -246,7 +235,6 @@ public sealed partial class BackgroundResourceProcessor
             processor.ClearVesselState();
 
         var currentTime = Planetarium.GetUniversalTime();
-        var state = new VesselState(currentTime) { Processor = this };
 
         // If we have already been saved this frame then there is nothing else
         // we need to do here.
@@ -254,7 +242,7 @@ public sealed partial class BackgroundResourceProcessor
             return;
 
         ShadowState = Shadow.GetShadowState(vessel);
-        state.ShadowState = (Shadow)ShadowState;
+        var state = GetVesselState(currentTime);
 
         processor.RecordVesselState(vessel, state);
         processor.RecordProtoInventories(vessel);

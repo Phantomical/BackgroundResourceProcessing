@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <Description>BackgroundResourceProcessing Snacks Integration</Description>
+
+        <GenerateKSPAssemblyAttribute>true</GenerateKSPAssemblyAttribute>
+        <GenerateKSPAssemblyDependencyAttributes>true</GenerateKSPAssemblyDependencyAttributes>
+
+        <!-- <KSPBinaryType>plugin</KSPBinaryType> -->
+         <KSPBinaryType>binary</KSPBinaryType>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference
+            Include="$(ProjectDir)/../BackgroundResourceProcessing/BackgroundResourceProcessing.csproj">
+            <KSPAssemblyName>BackgroundResourceProcessing</KSPAssemblyName>
+            <KSPAssemblyVersion>$(Version)</KSPAssemblyVersion>
+        </ProjectReference>
+
+        <Reference Include="0Harmony.dll">
+            <HintPath>$(DepSet1)\000_Harmony\0Harmony.dll</HintPath>
+            <Private>false</Private>
+            <CKANIdentifier>Harmony2</CKANIdentifier>
+            <KSPAssemblyName>HarmonyKSP</KSPAssemblyName>
+            <KSPAssemblyVersion>1.0.0</KSPAssemblyVersion>
+        </Reference>
+
+        <Reference Include="SnacksUtils.dll">
+            <HintPath>$(DepSet1)\WildBlueIndustries\Snacks\Plugin\SnacksUtils.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+
+        <InternalsVisibleTo Include="BackgroundResourceProcessing.Test" />
+    </ItemGroup>
+</Project>

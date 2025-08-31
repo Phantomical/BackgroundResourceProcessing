@@ -33,6 +33,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessin
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessing.Integration.NEOS", "src\BackgroundResourceProcessing.Integration.NEOS\BackgroundResourceProcessing.Integration.NEOS.csproj", "{4C5EAD24-A354-C780-7EFD-F765D6A95BD9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessing.Integration.Snacks", "src\BackgroundResourceProcessing.Integration.Snacks\BackgroundResourceProcessing.Integration.Snacks.csproj", "{62391C34-1A88-DB9E-AFA5-BB5BA1BD2D02}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -99,6 +101,10 @@ Global
 		{4C5EAD24-A354-C780-7EFD-F765D6A95BD9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4C5EAD24-A354-C780-7EFD-F765D6A95BD9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4C5EAD24-A354-C780-7EFD-F765D6A95BD9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{62391C34-1A88-DB9E-AFA5-BB5BA1BD2D02}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{62391C34-1A88-DB9E-AFA5-BB5BA1BD2D02}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{62391C34-1A88-DB9E-AFA5-BB5BA1BD2D02}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{62391C34-1A88-DB9E-AFA5-BB5BA1BD2D02}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

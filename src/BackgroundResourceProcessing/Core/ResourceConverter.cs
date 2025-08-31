@@ -86,6 +86,18 @@ public class ResourceConverter(ConverterBehaviour behaviour)
     public int Priority = 0;
 
     /// <summary>
+    /// The flight id of the part this converter was created from, or null if it
+    /// was not created from a part.
+    /// </summary>
+    public uint? FlightId = null;
+
+    /// <summary>
+    /// The persistent id of the part module this converter was created from, or
+    /// null if it was not created from a part module.
+    /// </summary>
+    public uint? ModuleId = null;
+
+    /// <summary>
     /// Get the overall constraint state for this converter.
     /// </summary>
     public ConstraintState ConstraintState
@@ -152,6 +164,14 @@ public class ResourceConverter(ConverterBehaviour behaviour)
         node.TryGetDouble("nextChangepoint", ref NextChangepoint);
         node.TryGetValue("rate", ref Rate);
         node.TryGetValue("priority", ref Priority);
+
+        uint flightId = 0;
+        if (node.TryGetValue("flightId", ref flightId))
+            FlightId = flightId;
+
+        uint moduleId = 0;
+        if (node.TryGetValue("moduleId", ref moduleId))
+            ModuleId = moduleId;
 
         foreach (var inner in node.GetNodes("PUSH_INVENTORIES"))
             Push.AddAll(LoadBitSet(inner));
@@ -238,6 +258,12 @@ public class ResourceConverter(ConverterBehaviour behaviour)
         node.AddValue("nextChangepoint", NextChangepoint);
         node.AddValue("rate", Rate);
         node.AddValue("priority", Priority);
+
+        if (FlightId is not null)
+            node.AddValue("flightId", FlightId.Value);
+
+        if (ModuleId is not null)
+            node.AddValue("moduleId", ModuleId.Value);
 
         if (!Push.IsEmpty)
             SaveBitSet(node.AddNode("PUSH_INVENTORIES"), Push);

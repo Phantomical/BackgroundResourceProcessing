@@ -24,7 +24,11 @@ public abstract class ConverterBehaviour() : DynamicallySerializable<ConverterBe
     /// This is mainly used for debugging and log messages. It will be
     /// automatically set when returned from a component module.
     /// </remarks>
-    public string SourceModule => sourceModule;
+    public string SourceModule
+    {
+        get => sourceModule;
+        set => sourceModule = value;
+    }
 
     [KSPField]
     internal string sourceModule = null;
@@ -36,7 +40,11 @@ public abstract class ConverterBehaviour() : DynamicallySerializable<ConverterBe
     /// <remarks>
     /// This is purely added for debugging purposes.
     /// </remarks>
-    public string SourcePart => sourcePart;
+    public string SourcePart
+    {
+        get => sourcePart;
+        set => sourcePart = value;
+    }
 
     [KSPField]
     internal string sourcePart = null;

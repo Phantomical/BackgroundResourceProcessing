@@ -13,6 +13,7 @@ namespace BackgroundResourceProcessing.Collections;
 /// </summary>
 /// <typeparam name="T"></typeparam>
 [DebuggerDisplay("Count = {Count}")]
+[DebuggerTypeProxy(typeof(ReadOnlyList<>.DebugView))]
 public readonly struct ReadOnlyList<T>(List<T> list) : IList<T>, ICollection<T>, IEnumerable<T>
 {
     readonly List<T> list = list ?? throw new ArgumentNullException(nameof(list));

@@ -60,6 +60,8 @@ public abstract class SimulationCache<T>(SimulationCache<T>.Options options) : M
     readonly Dictionary<Guid, Entry> unloaded = [];
     readonly Dictionary<Guid, LoadedEntry> loaded = [];
 
+    private bool Enabled => DebugSettings.Instance?.EnableSolutionCache ?? true;
+
     public SimulationCache()
         : this(new Options()) { }
 
@@ -94,7 +96,7 @@ public abstract class SimulationCache<T>(SimulationCache<T>.Options options) : M
         if (vessel.loaded)
         {
             var now = DateTime.UtcNow;
-            if (loaded.TryGetValue(vessel.id, out var saved))
+            if (Enabled && loaded.TryGetValue(vessel.id, out var saved))
             {
                 if ((now - saved.LastRecorded) < options.LoadedTTL)
                     return saved.Value;
@@ -107,7 +109,7 @@ public abstract class SimulationCache<T>(SimulationCache<T>.Options options) : M
         }
         else
         {
-            if (unloaded.TryGetValue(vessel.id, out var saved))
+            if (Enabled && unloaded.TryGetValue(vessel.id, out var saved))
             {
                 if (saved.LastChangepoint == processor.LastChangepoint)
                     return saved.Value;

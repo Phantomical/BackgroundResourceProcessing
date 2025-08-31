@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using BackgroundResourceProcessing.Inventory;
 using BackgroundResourceProcessing.Utils;
 
@@ -57,6 +58,9 @@ public struct InventoryId
         : this(module.part.flightID, resourceName, module.GetPersistentId()) { }
 
     public InventoryId(Part part, string resourceName)
+        : this(part.flightID, resourceName) { }
+
+    public InventoryId(ProtoPartSnapshot part, string resourceName)
         : this(part.flightID, resourceName) { }
 
     public void Load(ConfigNode node)
@@ -137,6 +141,11 @@ public struct InventoryState(double amount = 0.0, double maxAmount = 0.0, double
     public readonly double GetAmountAfterTime(double time)
     {
         return MathUtil.Clamp(amount + rate * time, 0.0, maxAmount);
+    }
+
+    public override readonly string ToString()
+    {
+        return $"{amount:G4}/{maxAmount:G4} (rate {rate:G4})";
     }
 }
 

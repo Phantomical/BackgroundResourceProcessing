@@ -34,7 +34,6 @@ public sealed class ResourceSimulator
     /// bugs and numerical imprecision can result in a vessel that
     /// </remarks>
     public int IterationLimit = 100;
-    private int iteration = 0;
 
     /// <summary>
     /// The time at which this simulator was last updated.
@@ -133,9 +132,45 @@ public sealed class ResourceSimulator
     ///   This allows you to introduce new converters to represent processes
     ///   that are not being simulated by BRP.
     /// </remarks>
-    public int AddConverter(Core.ResourceConverter converter)
+    public int AddConverter(Core.ResourceConverter converter, VesselState state) =>
+        AddConverter(converter, state, new AddConverterOptions());
+
+    /// <summary>
+    /// Add a new converter that doesn't correspond to any part modules on
+    /// the vessel.
+    /// </summary>
+    /// <returns>The index of the converter within <see cref="Converters"/>.</returns>
+    ///
+    /// <remarks>
+    ///   This allows you to introduce new converters to represent processes
+    ///   that are not being simulated by BRP.
+    /// </remarks>
+    public int AddConverter(
+        Core.ResourceConverter converter,
+        VesselState state,
+        AddConverterOptions options
+    )
     {
-        converter.CloneForSimulator();
+        converter.Refresh(state);
+        converter = converter.CloneForSimulator();
+
+        if (options.LinkToAll)
+        {
+            var count = Inventories.Count;
+            for (int i = count - 1; i >= 0; --i)
+            {
+                var inventory = Inventories[i];
+                if (inventory.ModuleId is not null)
+                    continue;
+
+                if (converter.Inputs.ContainsKey(inventory.ResourceId))
+                    converter.Pull.Add(i);
+                if (converter.Outputs.ContainsKey(inventory.ResourceId))
+                    converter.Push.Add(i);
+                if (converter.Required.ContainsKey(inventory.ResourceId))
+                    converter.Constraint.Add(i);
+            }
+        }
 
         processor.converters.Add(converter);
         processor.UpdateConstraintState(converter);
@@ -143,44 +178,40 @@ public sealed class ResourceSimulator
     }
 
     /// <summary>
-    /// Step the simulator forward to the next changepoint.
+    /// Update the initial state to take into account any converters that have
+    /// been added directly to the simulator.
     /// </summary>
-    ///
-    /// <returns><c>true</c> if the simulation was stepped forward.</returns>
-    public bool Step()
+    public void ComputeInitialRates()
     {
-        if (!MathUtil.IsFinite(NextChangepoint))
-            return false;
-        if (iteration >= IterationLimit)
-            return false;
-
-        using var span = new TraceSpan(() => $"ResourceSimulator.Step({NextChangepoint})");
-
-        var currentTime = NextChangepoint;
+        var currentTime = Planetarium.GetUniversalTime();
         processor.UpdateState(currentTime, false);
         processor.UpdateConstraintState();
         processor.ComputeRates();
         processor.UpdateNextChangepoint(currentTime);
-        iteration += 1;
-
-        return true;
     }
 
     /// <summary>
     /// An enumerator over the steps of this simulator. It will advance the
     /// simulator as it goes.
     /// </summary>
-    ///
-    /// <remarks>
-    /// <see cref="Step"/> always advances the simulator. This method will also
-    /// give you the current timestamp in the first iteration, which makes it
-    /// easier to use.
-    /// </remarks>
     public IEnumerable<double> Steps()
     {
-        yield return LastUpdate;
+        var currentTime = Planetarium.GetUniversalTime();
 
-        while (Step())
-            yield return LastUpdate;
+        for (int i = 0; i < IterationLimit; ++i)
+        {
+            processor.UpdateState(currentTime, false);
+
+            yield return currentTime;
+
+            using var span = new TraceSpan("ResourceSimulator.Step");
+            processor.UpdateConstraintState();
+            processor.ComputeRates();
+            processor.UpdateNextChangepoint(currentTime);
+
+            currentTime = processor.nextChangepoint;
+            if (!MathUtil.IsFinite(currentTime))
+                break;
+        }
     }
 }

@@ -415,6 +415,8 @@ internal class ResourceProcessor
             var converter = new ResourceConverter(behaviour)
             {
                 Priority = behaviour.Priority ?? priority,
+                FlightId = part.flightID,
+                ModuleId = partModule.GetPersistentId(),
             };
             converter.Refresh(state);
 

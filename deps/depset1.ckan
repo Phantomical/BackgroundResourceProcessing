@@ -17,15 +17,16 @@
         { "name": "CryoTanks-Core",                    "suppress_recommendations": true },
         { "name": "TweakScaleRescaled-Redist",         "suppress_recommendations": true },
         { "name": "ExtraPlanetaryLaunchpads",          "suppress_recommendations": true },
+        { "name": "FarFutureTechnologies",             "suppress_recommendations": true },
         { "name": "Kopernicus",                        "suppress_recommendations": true },
+        { "name": "KSPBurst-Full",                     "suppress_recommendations": true },
         { "name": "NearFutureElectrical-Core",         "suppress_recommendations": true },
         { "name": "NearFutureSolar-Core",              "suppress_recommendations": true },
-        { "name": "FarFutureTechnologies",             "suppress_recommendations": true },
+        { "name": "NehemiahEngineeringOrbitalScience", "suppress_recommendations": true },
         { "name": "SpaceDust",                         "suppress_recommendations": true },
         { "name": "SystemHeat",                        "suppress_recommendations": true },
-        { "name": "USI-LS",                            "suppress_recommendations": true },
-        { "name": "KSPBurst-Full",                     "suppress_recommendations": true },
-        { "name": "NehemiahEngineeringOrbitalScience", "suppress_recommendations": true }
+        { "name": "Snacks",                            "suppress_recommendations": true },
+        { "name": "USI-LS",                            "suppress_recommendations": true }
     ],
     "recommends": [
         { "name": "KSPCommunityFixes" },

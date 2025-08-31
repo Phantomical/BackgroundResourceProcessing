@@ -50,6 +50,10 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
             [new DirectAssemblyDependency("SpaceDust", new(0, 5, 4))]
         ),
         new(
+            "BackgroundResourceProcessing.Integration.Snacks",
+            [new DirectAssemblyDependency("Snacks", new(1, 0))]
+        ),
+        new(
             "BackgroundResourceProcessing.Integration.SystemHeat",
             [new DirectAssemblyDependency("SystemHeat", new(0, 1))]
         ),

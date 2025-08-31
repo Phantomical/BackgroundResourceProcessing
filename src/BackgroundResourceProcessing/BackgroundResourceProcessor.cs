@@ -7,6 +7,7 @@ using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Converter;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
+using Shadow = BackgroundResourceProcessing.ShadowState;
 
 namespace BackgroundResourceProcessing;
 
@@ -259,6 +260,19 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
         return state;
     }
 
+    public VesselState GetVesselState() => GetVesselState(Planetarium.GetUniversalTime());
+
+    /// <summary>
+    /// Get the current <see cref="VesselState"/> for this processor.
+    /// </summary>
+    /// <param name="UT"></param>
+    /// <returns></returns>
+    public VesselState GetVesselState(double UT)
+    {
+        ShadowState ??= Shadow.GetShadowState(vessel);
+        return new VesselState(UT) { Processor = this, ShadowState = ShadowState.Value };
+    }
+
     /// <summary>
     /// Add a new converter that doesn't correspond to any part modules on the
     /// vessel.
@@ -277,9 +291,50 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
     /// initialized for this converter. You will have to do so yourself.
     /// </para>
     /// </remarks>
-    public int AddConverter(Core.ResourceConverter converter)
+    public int AddConverter(Core.ResourceConverter converter) =>
+        AddConverter(converter, new AddConverterOptions());
+
+    /// <summary>
+    /// Add a new converter that doesn't correspond to any part modules on the
+    /// vessel.
+    /// </summary>
+    /// <returns>The index of the converter within <see cref="Converters"/>.</returns>
+    ///
+    /// <remarks>
+    /// <para>
+    /// This is meant to allow integrating external resource consumers/producers.
+    /// If you can tie it to a specific part module you are much better off using
+    /// a <see cref="BackgroundConverter"/> instead.
+    /// </para>
+    ///
+    /// <para>
+    /// Note that the sets of connected inventories will not be automatically
+    /// initialized for this converter. You will have to do so yourself.
+    /// </para>
+    /// </remarks>
+    public int AddConverter(Core.ResourceConverter converter, AddConverterOptions options)
     {
         converter.Behaviour.Vessel = Vessel;
+
+        if (options.LinkToAll)
+        {
+            converter.Refresh(GetVesselState());
+
+            var count = Inventories.Count;
+            for (int i = count - 1; i >= 0; --i)
+            {
+                var inventory = Inventories[i];
+                if (inventory.ModuleId is not null)
+                    continue;
+
+                if (converter.Inputs.ContainsKey(inventory.ResourceId))
+                    converter.Pull.Add(i);
+                if (converter.Outputs.ContainsKey(inventory.ResourceId))
+                    converter.Push.Add(i);
+                if (converter.Required.ContainsKey(inventory.ResourceId))
+                    converter.Constraint.Add(i);
+            }
+        }
 
         var index = processor.converters.Count;
         processor.converters.Add(converter);

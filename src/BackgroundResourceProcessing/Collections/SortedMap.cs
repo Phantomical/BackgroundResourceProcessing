@@ -124,6 +124,20 @@ public class SortedMap<K, V> : IEnumerable<KeyValuePair<K, V>>, IEquatable<Sorte
         count = 0;
     }
 
+    /// <summary>
+    /// Clear this SortedMap without clearing the internal array.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// This is ok if the map is known to have a bounded (and short) lifetime.
+    /// Otherwise it will lead to memory leaks since elements previously wihtin
+    /// the map will not be garbage collected.
+    /// </remarks>
+    public void FastClear()
+    {
+        count = 0;
+    }
+
     public void Reserve(int capacity)
     {
         if (capacity <= Capacity)

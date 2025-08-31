@@ -94,3 +94,21 @@ public class Settings : GameParameters.CustomParameterNode
     )]
     public bool EnableBackgroundScienceLabProcessing = true;
 }
+
+public class ModIntegrationSettings : GameParameters.CustomParameterNode
+{
+    public override string Title => "Mod Integrations";
+    public override string Section => "BackgroundResourceProcessing";
+    public override string DisplaySection => "Background Resource Processing";
+
+    public override int SectionOrder => 1;
+    public override bool HasPresets => false;
+
+    public override GameParameters.GameMode GameMode => GameParameters.GameMode.ANY;
+
+    [GameParameters.CustomParameterUI(
+        "Enable Snacks! Integration",
+        toolTip = "Patch Snacks' background simulation to use Background Resource Processing"
+    )]
+    public bool EnableSnacksIntegration = true;
+}
