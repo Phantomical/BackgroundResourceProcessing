@@ -14,6 +14,7 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ### Added
 * Added support for `KSP-WarpDrive`.
+* Added support for `Snacks!`
 
 ## 0.1.11
 ### Added
