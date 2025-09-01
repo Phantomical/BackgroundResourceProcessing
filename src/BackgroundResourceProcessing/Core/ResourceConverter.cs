@@ -340,8 +340,14 @@ public class ResourceConverter(ConverterBehaviour behaviour)
         ratios = new(inputs.Count);
         using (var builder = ratios.CreateBuilder())
         {
-            foreach (var constraint in inputs)
+            foreach (var _constraint in inputs)
+            {
+                var constraint = _constraint;
+                if (constraint.Amount > 0 && constraint.Amount < 1e-5)
+                    constraint.Amount = 1e-5;
+
                 builder.Add(constraint.ResourceName.GetHashCode(), new(constraint));
+            }
         }
 
         return old == ratios;
