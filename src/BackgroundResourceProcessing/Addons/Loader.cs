@@ -58,6 +58,10 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
             [new DirectAssemblyDependency("SystemHeat", new(0, 1))]
         ),
         new(
+            "BackgroundResourceProcessing.Integration.TACLifeSupport",
+            [new DirectAssemblyDependency("TacLifeSupport", new(0, 18))]
+        ),
+        new(
             "BackgroundResourceProcessing.Integration.USILifeSupport",
             [new DirectAssemblyDependency("USILifeSupport", new(1, 0))]
         ),

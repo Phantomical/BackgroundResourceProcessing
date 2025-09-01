@@ -112,4 +112,11 @@ public class ModIntegrationSettings : GameParameters.CustomParameterNode
             + "Includes support for Snacks! and WildBlueTools."
     )]
     public bool EnableWildBlueIntegration = true;
+
+    [GameParameters.CustomParameterUI(
+        "Enable TAC-LS Integration",
+        toolTip = "Show resource depletion times in TAC-LS monitoring window based on Background Resource Processing simulation. "
+            + "Provides more accurate predictions for unloaded vessels."
+    )]
+    public bool EnableTACLSIntegration = true;
 }
