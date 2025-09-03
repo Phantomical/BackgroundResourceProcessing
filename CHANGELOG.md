@@ -12,6 +12,11 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ## Unreleased
 
+## 0.1.14
+### Fixed
+* Removed unintended debug logging from TAC-LS integration.
+* Fixed a build issue causing import errors with TAC-LS integration.
+
 ## 0.1.13
 ### Added
 * Patched TAC-LS status window to show estimates using BRP's background
