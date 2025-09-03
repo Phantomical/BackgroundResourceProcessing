@@ -12,6 +12,17 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ## Unreleased
 
+## 0.1.13
+### Added
+* Patched TAC-LS status window to show estimates using BRP's background
+  simulation.
+
+### Fixed
+* Fixed a bug where an item might get removed twice the cache, causing a
+  solver crash.
+* Fixed some issues in `ResourceSimulator` that were causing USI-LS to show
+  indefinite time left on resources when that should not be the case.
+
 ## 0.1.12
 ### Added
 * Added support for `KSP-WarpDrive`.
