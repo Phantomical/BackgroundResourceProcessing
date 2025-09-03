@@ -8,15 +8,7 @@ public class Loader : MonoBehaviour
 {
     void Awake()
     {
-        try
-        {
-            Harmony.DEBUG = true;
-            Harmony harmony = new("BackgroundResourceProcessing.Integration.TACLifeSupport");
-            harmony.PatchAll(typeof(Loader).Assembly);
-        }
-        finally
-        {
-            Harmony.DEBUG = false;
-        }
+        Harmony harmony = new("BackgroundResourceProcessing.Integration.TACLifeSupport");
+        harmony.PatchAll(typeof(Loader).Assembly);
     }
 }
