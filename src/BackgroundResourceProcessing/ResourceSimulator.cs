@@ -6,6 +6,7 @@ using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
+using TMPro;
 
 namespace BackgroundResourceProcessing;
 
@@ -64,6 +65,8 @@ public sealed class ResourceSimulator
     /// cannot add or remove inventories from the set.
     /// </remarks>
     public ReadOnlyList<Core.ResourceConverter> Converters => new(processor.converters);
+
+    private bool Dirty = false;
 
     internal ResourceSimulator(ResourceProcessor processor)
     {
@@ -172,6 +175,7 @@ public sealed class ResourceSimulator
             }
         }
 
+        Dirty = true;
         processor.converters.Add(converter);
         processor.UpdateConstraintState(converter);
         return processor.converters.Count - 1;
@@ -181,13 +185,32 @@ public sealed class ResourceSimulator
     /// Update the initial state to take into account any converters that have
     /// been added directly to the simulator.
     /// </summary>
-    public void ComputeInitialRates()
+    ///
+    /// <remarks>
+    /// This will automatically be done when you call <see cref="Steps"/> but it
+    /// allows you to inspect the state of the simulator at the current time
+    /// instead of whatever time the processor this simulator has been
+    /// constructed from was last updated.
+    /// </remarks>
+    public void ComputeInitialRates() => Step(Planetarium.GetUniversalTime());
+
+    private void Step(double currentTime)
     {
-        var currentTime = Planetarium.GetUniversalTime();
-        processor.UpdateState(currentTime, false);
-        processor.UpdateConstraintState();
-        processor.ComputeRates();
-        processor.UpdateNextChangepoint(currentTime);
+        using var span = new TraceSpan("ResourceSimulator.Step");
+
+        bool changepoint = Dirty;
+        if (processor.UpdateState(currentTime, false))
+            changepoint = true;
+        if (processor.UpdateConstraintState())
+            changepoint = true;
+
+        if (changepoint)
+        {
+            processor.ComputeRates();
+            processor.UpdateNextChangepoint(currentTime);
+        }
+
+        Dirty = false;
     }
 
     /// <summary>
@@ -200,14 +223,9 @@ public sealed class ResourceSimulator
 
         for (int i = 0; i < IterationLimit; ++i)
         {
-            processor.UpdateState(currentTime, false);
+            Step(currentTime);
 
             yield return currentTime;
-
-            using var span = new TraceSpan("ResourceSimulator.Step");
-            processor.UpdateConstraintState();
-            processor.ComputeRates();
-            processor.UpdateNextChangepoint(currentTime);
 
             currentTime = processor.nextChangepoint;
             if (!MathUtil.IsFinite(currentTime))
