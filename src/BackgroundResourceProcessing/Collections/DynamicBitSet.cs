@@ -135,6 +135,21 @@ public class DynamicBitSet : IEnumerable<int>
         words = newWords;
     }
 
+    /// <summary>
+    /// Whether the two bitsets have any values in common.
+    /// </summary>
+    public bool Intersects(DynamicBitSet other)
+    {
+        int len = Math.Min(words.Length, other.words.Length);
+        for (int i = len - 1; i >= 0; --i)
+        {
+            if ((words[i] & other.words[i]) != 0)
+                return true;
+        }
+
+        return false;
+    }
+
     internal BitSliceX SubSlice(int length)
     {
         length = Math.Min((length + (ULongBits - 1)) / ULongBits, words.Length);
