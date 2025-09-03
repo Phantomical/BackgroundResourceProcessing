@@ -1,13 +1,14 @@
 using System;
 using System.Collections.Generic;
+using Smooth.Algebraics;
 
 namespace BackgroundResourceProcessing.Collections;
 
 internal class LRUCache<K, V>
 {
     readonly int capacity;
-    readonly LinkedList<V> entries = [];
-    readonly Dictionary<K, LinkedListNode<V>> map;
+    readonly LinkedList<KeyValuePair<K, V>> entries = [];
+    readonly Dictionary<K, LinkedListNode<KeyValuePair<K, V>>> map;
 
     public int Count => entries.Count;
     public int Capacity => capacity;
@@ -25,7 +26,7 @@ internal class LRUCache<K, V>
     {
         if (map.TryGetValue(key, out var node))
         {
-            node.Value = value;
+            node.Value = new(key, value);
 
             entries.Remove(node);
             entries.AddFirst(node);
@@ -33,10 +34,13 @@ internal class LRUCache<K, V>
         else
         {
             if (entries.Count >= capacity)
+            {
+                var last = entries.Last;
+                map.Remove(last.Value.Key);
                 entries.RemoveLast();
+            }
 
-            node = entries.AddFirst(value);
-            map.Add(key, node);
+            map.Add(key, entries.AddFirst(new KeyValuePair<K, V>(key, value)));
         }
     }
 
@@ -61,24 +65,21 @@ internal class LRUCache<K, V>
         entries.Remove(node);
         entries.AddFirst(node);
 
-        value = node.Value;
+        value = node.Value.Value;
         return true;
     }
 
     public void RemoveIf(Func<K, V, bool> func)
     {
-        List<K> removed = [];
-        foreach (var (key, node) in map)
+        for (var node = entries.First; node != null; node = node.Next)
         {
-            if (!func(key, node.Value))
+            var (key, value) = node.Value;
+            if (!func(key, value))
                 continue;
 
-            removed.Add(key);
+            map.Remove(key);
             entries.Remove(node);
         }
-
-        foreach (var key in removed)
-            map.Remove(key);
     }
 
     public void Clear()
