@@ -1,12 +1,8 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
-using TMPro;
 
 namespace BackgroundResourceProcessing;
 
@@ -176,9 +172,7 @@ public sealed class ResourceSimulator
         }
 
         Dirty = true;
-        processor.converters.Add(converter);
-        processor.UpdateConstraintState(converter);
-        return processor.converters.Count - 1;
+        return processor.AddConverter(converter);
     }
 
     /// <summary>

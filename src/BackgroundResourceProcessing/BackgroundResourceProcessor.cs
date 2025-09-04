@@ -206,6 +206,45 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
     }
 
     /// <summary>
+    /// Indicate that a change has been made to the selected inventory.
+    /// </summary>
+    /// <param name="index">The index of the inventory that has been changed.</param>
+    public void MarkInventoryDirty(int index)
+    {
+        if (IsDirty)
+            return;
+
+        // If a resource constraint applies to this converter then we likely need
+        // to do a full check, so mark ourselves as dirty and carry on.
+        if (processor.constrained.Contains(index))
+        {
+            MarkDirty();
+            return;
+        }
+
+        var inventory = Inventories[index];
+        var remaining = inventory.RemainingTime;
+        var changepoint = LastChangepoint + remaining;
+
+        if (changepoint < NextChangepoint)
+            MarkDirty();
+    }
+
+    /// <summary>
+    /// Indicate that a change has been made to the selected inventory.
+    /// </summary>
+    public void MarkInventoryDirty(InventoryId id)
+    {
+        if (IsDirty)
+            return;
+
+        if (!processor.inventoryIds.TryGetValue(id, out var index))
+            return;
+
+        MarkInventoryDirty(index);
+    }
+
+    /// <summary>
     /// Get a simulator that allows you to model the resource state of the
     /// vessel into the future.
     /// </summary>
@@ -338,11 +377,8 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
             }
         }
 
-        var index = processor.converters.Count;
-        processor.converters.Add(converter);
-        processor.UpdateConstraintState(converter);
         MarkDirty();
-        return index;
+        return processor.AddConverter(converter);
     }
 
     /// <summary>

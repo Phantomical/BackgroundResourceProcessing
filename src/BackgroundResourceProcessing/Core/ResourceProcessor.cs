@@ -51,6 +51,7 @@ internal class ResourceProcessor
     public List<ResourceConverter> converters = [];
     public List<ResourceInventory> inventories = [];
     public Dictionary<InventoryId, int> inventoryIds = [];
+    public DynamicBitSet constrained = [];
 
     public double lastUpdate = 0.0;
     public double nextChangepoint = double.PositiveInfinity;
@@ -514,7 +515,79 @@ internal class ResourceProcessor
                     converter.Constraint[index] = true;
                 }
             }
+
+            constrained.AddAll(converter.Constraint);
         }
+    }
+
+    public void RecordProtoInventories(Vessel vessel)
+    {
+        if (!snapshotsDirty)
+            return;
+
+        Dictionary<uint, List<ResourceInventory>> inventoryByModuleId = [];
+        foreach (var inventory in inventories)
+        {
+            if (inventory.ModuleId == null)
+                continue;
+
+            if (!inventoryByModuleId.TryGetValue((uint)inventory.ModuleId, out var list))
+                inventoryByModuleId.Add((uint)inventory.ModuleId, list = []);
+
+            list.Add(inventory);
+        }
+
+        foreach (var part in vessel.protoVessel.protoPartSnapshots)
+        {
+            var flightId = part.flightID;
+
+            foreach (var resource in part.resources)
+            {
+                var id = new InventoryId(flightId, resource.resourceName);
+                if (!inventoryIds.TryGetValue(id, out var index))
+                    continue;
+                var inventory = inventories[index];
+
+                inventory.Snapshot = resource;
+            }
+
+            if (inventoryByModuleId.Count == 0)
+                continue;
+
+            foreach (var module in part.modules)
+            {
+                uint moduleId = 0;
+                if (!module.moduleValues.TryGetValue("persistentId", ref moduleId))
+                    continue;
+
+                if (!inventoryByModuleId.TryGetValue(moduleId, out var inventories))
+                    continue;
+
+                foreach (var inventory in inventories)
+                    inventory.ModuleSnapshot = module;
+            }
+        }
+
+        ProtoPartSnapshot current = null;
+        uint? currentFlightID = null;
+
+        foreach (var inventory in inventories)
+        {
+            if (inventory.ModuleId == null)
+                continue;
+
+            if (inventory.ModuleId != currentFlightID)
+            {
+                current = GetProtoPartByFlightId(vessel.protoVessel, inventory.FlightId);
+                if (current == null)
+                    continue;
+                currentFlightID = inventory.FlightId;
+            }
+
+            ProtoPartSnapshot part = current;
+        }
+
+        snapshotsDirty = false;
     }
 
     public void ClearVesselState()
@@ -522,9 +595,28 @@ internal class ResourceProcessor
         converters.Clear();
         inventories.Clear();
         inventoryIds.Clear();
+        constrained.Clear();
         nextChangepoint = double.PositiveInfinity;
     }
     #endregion
+
+    #region Add a new converter
+    /// <summary>
+    /// Add a new converter to this processor.
+    /// </summary>
+    /// <param name="converter"></param>
+    /// <returns>The index that the converter was inserted at.</returns>
+    public int AddConverter(ResourceConverter converter)
+    {
+        converters.Add(converter);
+        constrained.AddAll(converter.Constraint);
+        UpdateConstraintState(converter);
+
+        return converters.Count - 1;
+    }
+    #endregion
+
+    #region State Updates
 
     /// <summary>
     /// Update behaviours that have indicated their next changepoint has
@@ -755,76 +847,7 @@ internal class ResourceProcessor
         return prev != next;
     }
 
-    public void RecordProtoInventories(Vessel vessel)
-    {
-        if (!snapshotsDirty)
-            return;
-
-        Dictionary<uint, List<ResourceInventory>> inventoryByModuleId = [];
-        foreach (var inventory in inventories)
-        {
-            if (inventory.ModuleId == null)
-                continue;
-
-            if (!inventoryByModuleId.TryGetValue((uint)inventory.ModuleId, out var list))
-                inventoryByModuleId.Add((uint)inventory.ModuleId, list = []);
-
-            list.Add(inventory);
-        }
-
-        foreach (var part in vessel.protoVessel.protoPartSnapshots)
-        {
-            var flightId = part.flightID;
-
-            foreach (var resource in part.resources)
-            {
-                var id = new InventoryId(flightId, resource.resourceName);
-                if (!inventoryIds.TryGetValue(id, out var index))
-                    continue;
-                var inventory = inventories[index];
-
-                inventory.Snapshot = resource;
-            }
-
-            if (inventoryByModuleId.Count == 0)
-                continue;
-
-            foreach (var module in part.modules)
-            {
-                uint moduleId = 0;
-                if (!module.moduleValues.TryGetValue("persistentId", ref moduleId))
-                    continue;
-
-                if (!inventoryByModuleId.TryGetValue(moduleId, out var inventories))
-                    continue;
-
-                foreach (var inventory in inventories)
-                    inventory.ModuleSnapshot = module;
-            }
-        }
-
-        ProtoPartSnapshot current = null;
-        uint? currentFlightID = null;
-
-        foreach (var inventory in inventories)
-        {
-            if (inventory.ModuleId == null)
-                continue;
-
-            if (inventory.ModuleId != currentFlightID)
-            {
-                current = GetProtoPartByFlightId(vessel.protoVessel, inventory.FlightId);
-                if (current == null)
-                    continue;
-                currentFlightID = inventory.FlightId;
-            }
-
-            ProtoPartSnapshot part = current;
-        }
-
-        snapshotsDirty = false;
-    }
-
+    #endregion
     private static ProtoPartSnapshot GetProtoPartByFlightId(ProtoVessel vessel, uint flightID)
     {
         foreach (var part in vessel.protoPartSnapshots)
@@ -974,6 +997,7 @@ internal class ResourceProcessor
         var clone = (ResourceProcessor)MemberwiseClone();
         clone.inventories = [.. inventories.Select(inv => inv.CloneForSimulator())];
         clone.converters = [.. converters.Select(conv => conv.CloneForSimulator())];
+        clone.constrained = constrained.Clone();
         return clone;
     }
 
