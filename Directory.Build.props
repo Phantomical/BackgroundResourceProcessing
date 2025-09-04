@@ -53,6 +53,7 @@
     <PropertyGroup>
         <DepSet1>$(ProjectRootDir)/deps/installs/depset1/GameData</DepSet1>
         <DepSet2>$(ProjectRootDir)/deps/installs/depset2/GameData</DepSet2>
+        <DepSet3>$(ProjectRootDir)/deps/installs/depset3/GameData</DepSet3>
     </PropertyGroup>
 
     <!--

@@ -1,0 +1,15 @@
+{
+    "spec_version": "v1.6",
+    "identifier": "BackgroundResourceProcessing-Dependencies-3",
+    "name": "BackgroundResourceProcessing Dependency Set 3",
+    "abstract": "Dependencies required to do development for BackgroundResourceProcessing",
+    "author": "steamroller",
+    "version": "1",
+    "ksp_version_min": "1.8",
+    "ksp_version_max": "1.13",
+    "license": "MIT",
+    "kind": "metapackage",
+    "depends": [
+        { "name": "Kerbalism", "suppress_recommendations": true }
+    ]
+}
