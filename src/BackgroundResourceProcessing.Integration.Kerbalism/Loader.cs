@@ -8,7 +8,15 @@ public class Loader : MonoBehaviour
 {
     void Awake()
     {
-        Harmony harmony = new("BackgroundResourceProcessing.Integration.Kerbalism");
-        harmony.PatchAll(typeof(Loader).Assembly);
+        try
+        {
+            Harmony.DEBUG = true;
+            Harmony harmony = new("BackgroundResourceProcessing.Integration.Kerbalism");
+            harmony.PatchAll(typeof(Loader).Assembly);
+        }
+        finally
+        {
+            Harmony.DEBUG = false;
+        }
     }
 }

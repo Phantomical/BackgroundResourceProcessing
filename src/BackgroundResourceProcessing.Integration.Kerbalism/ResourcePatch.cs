@@ -71,7 +71,7 @@ static class VesselResources_Sync_Patch
             info.AddToSyncSet(default(ProtoPartResourceSnapshot), 0)
         );
         var enumeratorCurrent = GetPropertyInfo(() =>
-            default(IEnumerator<ProtoPartSnapshot>).Current
+            default(List<ProtoPartSnapshot>.Enumerator).Current
         ).GetMethod;
 
         // Load the resource processor once at the start so we don't need to look it
@@ -87,17 +87,14 @@ static class VesselResources_Sync_Patch
 
         // Find the local index storing the current ProtoPartSnapshot
         matcher
-            .MatchStartForward(new CodeMatch(OpCodes.Callvirt, enumeratorCurrent))
-            .ThrowIfInvalid("Unable to find call to IEnumerator<ProtoPartSnapshot>.get_Current")
+            .MatchStartForward(new CodeMatch(OpCodes.Call, enumeratorCurrent))
+            .ThrowIfInvalid("Unable to find call to List<ProtoPartSnapshot>.Enumerator.get_Current")
             .Advance(1);
 
-        var inst = matcher.Instruction;
-        if (inst.opcode != OpCodes.Stloc)
+        if (!GetStoreIndex(matcher.Instruction, out var partIndex))
             throw new Exception(
-                "IEnumerator<ProtoPartSnapshot>.get_Current was not followed by a stloc instruction"
+                $"Enumerator<ProtoPartSnapshot>.get_Current was not followed by a stloc instruction: {matcher.Instruction}"
             );
-
-        var partIndex = (int)inst.operand;
 
         // Finally, replace the existing call to AddToSyncSet with our own that
         // returns a custom wrapper class.
@@ -143,6 +140,27 @@ static class VesselResources_Sync_Patch
         WrapInventory wrap = WrapInventory.cache.Next();
         wrap.Link(processor, (int)id);
         pts.Add(wrap, priority);
+    }
+
+    private static bool GetStoreIndex(CodeInstruction inst, out int index)
+    {
+        index = -1;
+
+        var opcode = inst.opcode;
+        if (opcode == OpCodes.Stloc || opcode == OpCodes.Stloc_S)
+            index = ((LocalBuilder)inst.operand).LocalIndex;
+        else if (opcode == OpCodes.Stloc_0)
+            index = 0;
+        else if (opcode == OpCodes.Stloc_1)
+            index = 1;
+        else if (opcode == OpCodes.Stloc_2)
+            index = 2;
+        else if (opcode == OpCodes.Stloc_3)
+            index = 3;
+        else
+            return false;
+
+        return true;
     }
 }
 
