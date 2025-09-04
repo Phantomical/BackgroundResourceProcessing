@@ -14,9 +14,11 @@ namespace BackgroundResourceProcessing.Collections;
 /// <typeparam name="T"></typeparam>
 [DebuggerDisplay("Count = {Count}")]
 [DebuggerTypeProxy(typeof(ReadOnlyList<>.DebugView))]
-public readonly struct ReadOnlyList<T>(List<T> list) : IList<T>, ICollection<T>, IEnumerable<T>
+public readonly struct ReadOnlyList<T> : IList<T>, ICollection<T>, IEnumerable<T>
 {
-    readonly List<T> list = list ?? throw new ArgumentNullException(nameof(list));
+    internal struct UnsafeTrustedMarker() { }
+
+    readonly List<T> list;
 
     /// <summary>
     /// Gets the element at the specified index.
@@ -27,7 +29,6 @@ public readonly struct ReadOnlyList<T>(List<T> list) : IList<T>, ICollection<T>,
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get { return list[index]; }
-        set { throw new NotImplementedException(); }
     }
 
     /// <summary>
@@ -39,6 +40,20 @@ public readonly struct ReadOnlyList<T>(List<T> list) : IList<T>, ICollection<T>,
     /// Indicates that this collection is read-only. Always returns <c>true</c>.
     /// </summary>
     public readonly bool IsReadOnly => true;
+
+    public ReadOnlyList(List<T> list)
+    {
+        if (list is null)
+            throw new ArgumentNullException(nameof(list));
+
+        this.list = list;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal ReadOnlyList(List<T> list, UnsafeTrustedMarker _)
+    {
+        this.list = list;
+    }
 
     /// <summary>
     /// Determines whether an element is in the list.
@@ -101,6 +116,13 @@ public readonly struct ReadOnlyList<T>(List<T> list) : IList<T>, ICollection<T>,
     }
 
     #region IList<T>
+
+    T IList<T>.this[int index]
+    {
+        get => this[index];
+        set => throw new NotImplementedException();
+    }
+
     void IList<T>.Insert(int index, T item)
     {
         throw new NotImplementedException();
