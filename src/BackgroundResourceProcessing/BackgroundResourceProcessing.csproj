@@ -30,11 +30,12 @@
 
     <InternalsVisibleTo Include="BackgroundResourceProcessing.Test" />
     <InternalsVisibleTo Include="BackgroundResourceProcessing.CLI" />
+    <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.BackgroundResources" />
     <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.ClickThroughBlocker" />
+    <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.KerbalismBootstrap" />
     <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.SpaceDust" />
     <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.TACLifeSupport" />
     <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.USILifeSupport" />
-    <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.BackgroundResources" />
   </ItemGroup>
 
   <!-- KSPBurst Dependencies -->

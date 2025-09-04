@@ -42,6 +42,15 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
             [new DirectAssemblyDependency("Launchpad", new(6, 99))]
         ),
         new(
+            "BackgroundResourceProcessing.Integration.KerbalismBootstrap",
+            [new DirectAssemblyDependency("KerbalismBootstrap", new(3, 23))]
+        ),
+        // Kerbalism has a custom plugin loader that loads during Start so
+        // there is no way to use the usual plugin loader to load it.
+        //
+        // The KerbalismBootstrap integration takes care of this.
+        new("BackgroundResourceProcessing.Integration.Kerbalism", [new Disabled()]),
+        new(
             "BackgroundResourceProcessing.Integration.NearFutureSolar",
             [new DirectAssemblyDependency("NearFutureSolar", new(0, 4))]
         ),
@@ -153,6 +162,50 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
 
         // And now we clean up after ourselves.
         Destroy(this);
+    }
+
+    internal static void LoadPlugin(string plugin)
+    {
+        AssemblyLoader.LoadedAssembly loaded;
+        var name = GetPluginNameWithoutExtension(plugin);
+
+        try
+        {
+            var assembly = Assembly.LoadFile(plugin);
+            loaded = new AssemblyLoader.LoadedAssembly(
+                assembly,
+                assembly.Location,
+                assembly.Location,
+                null
+            );
+
+            UpdateAssemblyLoaderTypeCache(loaded);
+
+            LogUtil.Log($"Loaded integration {assembly.FullName}");
+            AssemblyLoader.loadedAssemblies.Add(loaded);
+        }
+        catch (ReflectionTypeLoadException e)
+        {
+            LogUtil.Warn($"Failed to load integration {name}: {e}");
+            var message = "Additional information:";
+            foreach (Exception inner in e.LoaderExceptions)
+                message += $"\n{inner}";
+            LogUtil.Warn(message);
+            return;
+        }
+        catch (Exception e)
+        {
+            LogUtil.Warn($"Failed to load integration {name}: {e}");
+            return;
+        }
+
+        // KSP has already enumerated vessel modules so we need to add any
+        // new ones ourselves.
+        var numVesselModules = RegisterAssemblyVesselModules(loaded);
+        if (numVesselModules != 0)
+            LogUtil.Log($"VesselModules: Found {numVesselModules} additional vessel modules");
+
+        StartAssemblyAddons(loaded);
     }
 
     /// <summary>
@@ -293,7 +346,7 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
         StartAddonMethod.Invoke(AddonLoader.Instance, [asm, type, addon, addon.startup]);
     }
 
-    private static string GetPluginDirectory()
+    internal static string GetPluginDirectory()
     {
         return Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
     }
@@ -395,5 +448,10 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
 
             return false;
         }
+    }
+
+    private class Disabled : AssemblyDependency
+    {
+        public override bool IsSatisfied() => false;
     }
 }

@@ -1,15 +1,14 @@
 using HarmonyLib;
 using UnityEngine;
 
-namespace BackgroundResourceProcessing.Integration.Kerbalism
+namespace BackgroundResourceProcessing.Integration.Kerbalism;
+
+[KSPAddon(KSPAddon.Startup.Instantly, true)]
+public class Loader : MonoBehaviour
 {
-    [KSPAddon(KSPAddon.Startup.Instantly, true)]
-    public class Loader : MonoBehaviour
+    void Awake()
     {
-        void Awake()
-        {
-            Harmony harmony = new("BackgroundResourceProcessing.Integration.Kerbalism");
-            harmony.PatchAll(typeof(Loader).Assembly);
-        }
+        Harmony harmony = new("BackgroundResourceProcessing.Integration.Kerbalism");
+        harmony.PatchAll(typeof(Loader).Assembly);
     }
 }
