@@ -18,6 +18,7 @@
         { "name": "TweakScaleRescaled-Redist",         "suppress_recommendations": true },
         { "name": "ExtraPlanetaryLaunchpads",          "suppress_recommendations": true },
         { "name": "FarFutureTechnologies",             "suppress_recommendations": true },
+        { "name": "Kerbalism",                         "suppress_recommendations": true },
         { "name": "Kopernicus",                        "suppress_recommendations": true },
         { "name": "KSPBurst-Full",                     "suppress_recommendations": true },
         { "name": "NearFutureElectrical-Core",         "suppress_recommendations": true },

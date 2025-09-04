@@ -24,7 +24,7 @@
         </Reference>
 
         <Reference Include="Kerbalism112.dll">
-            <HintPath>$(OutDir)\Kerbalism112.dll</HintPath>
+            <HintPath>$(BaseIntermediateOutputPath)\Kerbalism112.dll</HintPath>
             <Private>false</Private>
             <CKANIdentifier>Kerbalism</CKANIdentifier>
         </Reference>
@@ -47,8 +47,8 @@
     -->
     <Target Name="CopyKerbalismBinary" BeforeTargets="PreBuildEvent">
         <Copy
-            SourceFiles="$(DepSet3)\Kerbalism\Kerbalism112.kbin"
-            DestinationFiles="$(OutDir)\Kerbalism112.dll"
+            SourceFiles="$(DepSet1)\Kerbalism\Kerbalism112.kbin"
+            DestinationFiles="$(BaseIntermediateOutputPath)\Kerbalism112.dll"
         />
     </Target>
 </Project>
