@@ -107,7 +107,7 @@ internal static class LinearPresolve
         [NoAlias] UnsolvableState* unsolvableState
     )
     {
-        BitSpan zeros = new(new(bits, (uint)length));
+        Collections.BitSpan zeros = new(bits, length);
         ref var unsolvable = ref *unsolvableState;
 
         if (Trace)
@@ -142,7 +142,7 @@ internal static class LinearPresolve
         [NoAlias] double* matrix,
         [AssumeRange(0, int.MaxValue)] int width,
         [AssumeRange(0, int.MaxValue)] int height,
-        BitSpan zeros,
+        Collections.BitSpan zeros,
         [AssumeRange(0, int.MaxValue)] int equalities,
         [AssumeRange(0, int.MaxValue)] int inequalities,
         ref UnsolvableState unsolvable
