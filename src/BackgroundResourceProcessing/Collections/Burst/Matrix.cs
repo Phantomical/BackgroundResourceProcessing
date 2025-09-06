@@ -36,7 +36,7 @@ internal struct Matrix : IDisposable
 
     public readonly Span<double> this[int r]
     {
-        [IgnoreWarning(1310)]
+        [IgnoreWarning(1370)]
         get
         {
             AssumeSize();
@@ -49,7 +49,7 @@ internal struct Matrix : IDisposable
 
     public readonly ref double this[int r, int c]
     {
-        [IgnoreWarning(1310)]
+        [IgnoreWarning(1370)]
         get
         {
             if (r < 0 || r >= Rows)
@@ -100,7 +100,7 @@ internal struct Matrix : IDisposable
             value *= scale;
     }
 
-    [IgnoreWarning(1310)]
+    [IgnoreWarning(1370)]
     public void Reduce(int dst, int src, double scale)
     {
         if (dst == src)
@@ -126,7 +126,7 @@ internal struct Matrix : IDisposable
             val /= scale;
     }
 
-    [IgnoreWarning(1310)]
+    [IgnoreWarning(1370)]
     public void ScaleReduce(int dst, int src, int pivot)
     {
         if (dst == src)
@@ -200,13 +200,13 @@ internal struct Matrix : IDisposable
         return builder.ToString();
     }
 
-    [IgnoreWarning(1310)]
+    [IgnoreWarning(1370)]
     static void ThrowNegativeRowsException() => throw new ArgumentOutOfRangeException("rows");
 
-    [IgnoreWarning(1310)]
+    [IgnoreWarning(1370)]
     static void ThrowNegativeColsException() => throw new ArgumentOutOfRangeException("cols");
 
-    [IgnoreWarning(1310)]
+    [IgnoreWarning(1370)]
     static void ThrowArrayTooSmallException() =>
         throw new ArgumentException("provided array is too small for matrix size");
 }

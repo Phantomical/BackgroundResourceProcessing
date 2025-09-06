@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using BackgroundResourceProcessing.Utils;
 using Unity.Burst.CompilerServices;
+using static Unity.Burst.Intrinsics.X86.Bmi2;
 
 namespace BackgroundResourceProcessing.Collections.Unsafe;
 
@@ -78,6 +79,97 @@ internal readonly unsafe struct BitSpan(MemorySpan<ulong> bits)
     public void Add(uint key)
     {
         this[key] = true;
+    }
+
+    public void Remove(uint key)
+    {
+        this[key] = false;
+    }
+
+    public void Remove(int key)
+    {
+        if (key < 0)
+            ThrowIndexOutOfRangeException();
+        this[(uint)key] = false;
+    }
+
+    public readonly uint GetCount()
+    {
+        uint count = 0;
+        for (uint i = 0; i < Bits.Length; ++i)
+            count += (uint)MathUtil.PopCount(Bits[i]);
+        return count;
+    }
+
+    public void Fill(bool value)
+    {
+        Bits.Fill(value ? ulong.MaxValue : 0);
+    }
+
+    [IgnoreWarning(1370)]
+    public void ClearOutsideRange(uint start, uint end)
+    {
+        if (end < start)
+            throw new ArgumentOutOfRangeException(nameof(end));
+        if (end > Capacity)
+            throw new ArgumentOutOfRangeException(nameof(end));
+
+        uint sword = start / ULongBits;
+        uint eword = end / ULongBits;
+        uint sbit = start % ULongBits;
+        uint ebit = end % ULongBits;
+
+        for (uint i = 0; i < sword; ++i)
+            Bits[i] = 0;
+
+        if (sword >= Bits.Length)
+            return;
+
+        ulong smask = ulong.MaxValue << (int)sbit;
+        ulong emask = MaskLo((int)ebit);
+
+        Bits[sword] &= smask;
+
+        if (eword >= Bits.Length)
+            return;
+
+        Bits[eword] &= emask;
+
+        for (uint i = eword + 1; i < Bits.Length; ++i)
+            Bits[i] = 0;
+    }
+
+    [IgnoreWarning(1370)]
+    public void ClearOutsideRange(int start, int end)
+    {
+        if (start < 0)
+            throw new ArgumentOutOfRangeException(nameof(start));
+        if (end < start)
+            throw new ArgumentOutOfRangeException(nameof(end));
+        if (end > Capacity)
+            throw new ArgumentOutOfRangeException(nameof(end));
+
+        ClearOutsideRange((uint)start, (uint)end);
+    }
+
+    [IgnoreWarning(1370)]
+    public void RemoveAll(BitSpan other)
+    {
+        if (other.Capacity != Capacity)
+            throw new ArgumentException("bitset capacities did not match");
+
+        for (uint i = 0; i < Bits.Length; ++i)
+            Bits[i] &= ~other.Bits[i];
+    }
+
+    static ulong MaskLo(int bit)
+    {
+        if (IsBmi2Supported)
+            return bzhi_u64(ulong.MaxValue, (ulong)bit);
+        else if (bit >= 64)
+            return ulong.MaxValue;
+        else
+            return (1ul << bit) - 1;
     }
 
     public void Clear()

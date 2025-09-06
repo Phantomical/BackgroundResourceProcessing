@@ -1,15 +1,16 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using BackgroundResourceProcessing.BurstSolver;
 using Unity.Burst.CompilerServices;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 
 #pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
+[DebuggerDisplay("Length = {Length}")]
 internal unsafe struct RawArray<T>(Allocator allocator) : IEnumerable<T>, IDisposable
     where T : struct
 {
@@ -144,10 +145,16 @@ internal unsafe struct RawArray<T>(Allocator allocator) : IEnumerable<T>, IDispo
     }
     #endregion
 
-    [IgnoreWarning(1310)]
+    [IgnoreWarning(1370)]
     static void ThrowLengthOutOfRange() => throw new ArgumentOutOfRangeException("length");
 
-    [IgnoreWarning(1310)]
+    [IgnoreWarning(1370)]
     static void ThrowIndexOutOfRange() =>
         throw new IndexOutOfRangeException("array index out of range");
+
+    private sealed class DebugView(RawArray<T> array)
+    {
+        [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
+        public T[] Items { get; } = [.. array];
+    }
 }

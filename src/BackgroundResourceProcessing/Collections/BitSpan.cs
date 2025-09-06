@@ -1,33 +1,34 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using BackgroundResourceProcessing.Utils;
 using Unity.Burst.CompilerServices;
-using Unity.Collections;
 using static Unity.Burst.Intrinsics.X86.Bmi2;
 
-namespace BackgroundResourceProcessing.Collections.Burst;
+namespace BackgroundResourceProcessing.Collections;
 
-internal struct BitSet : IEnumerable<int>, IDisposable
+[DebuggerDisplay("Capacity = {Capacity}")]
+[DebuggerTypeProxy(typeof(DebugView))]
+internal ref struct BitSpan(Span<ulong> bits)
 {
     const int ULongBits = 64;
 
-    RawArray<ulong> bits;
+    Span<ulong> bits = bits;
 
     public readonly int Capacity
     {
         [return: AssumeRange(0, int.MaxValue)]
-        get => bits.Count * ULongBits;
+        get => bits.Length * ULongBits;
     }
-    public readonly Allocator Allocator => bits.Allocator;
-    public readonly BitSpan Span => new(bits.Span);
+    public readonly Span<ulong> Span => bits;
 
-    public readonly bool this[int key]
+    public bool this[int key]
     {
-        get
+        readonly get
         {
             if (key < 0 || key >= Capacity)
-                ThrowIndexOutOfRange();
+                ThrowIndexOutOfRangeException();
 
             var word = key / ULongBits;
             var bit = key % ULongBits;
@@ -37,7 +38,7 @@ internal struct BitSet : IEnumerable<int>, IDisposable
         set
         {
             if (key < 0 || key >= Capacity)
-                ThrowIndexOutOfRange();
+                ThrowIndexOutOfRangeException();
 
             var word = key / ULongBits;
             var bit = key % ULongBits;
@@ -50,21 +51,21 @@ internal struct BitSet : IEnumerable<int>, IDisposable
         }
     }
 
-    public BitSet(Allocator allocator) => bits = new(allocator);
+    public bool this[uint key]
+    {
+        readonly get => this[(int)key];
+        set => this[(int)key] = value;
+    }
 
-    public BitSet(int capacity, Allocator allocator) =>
-        bits = new((capacity + ULongBits - 1) / ULongBits, allocator);
+    public unsafe BitSpan(ulong* bits, int length)
+        : this(new Span<ulong>(bits, length)) { }
 
-    public BitSet(Span<ulong> span, Allocator allocator) => bits = new(span, allocator);
+    public BitSpan(BitSet set)
+        : this(set.Bits) { }
 
-    public BitSet(BitSpan span, Allocator allocator)
-        : this(span.Span, allocator) { }
-
-    public void Dispose() => bits.Dispose();
-
-    public static implicit operator BitSpan(BitSet set) => set.Span;
-
-    public readonly BitSet Clone() => new(bits.Span, Allocator);
+    [IgnoreWarning(1370)]
+    static void ThrowIndexOutOfRangeException() =>
+        throw new IndexOutOfRangeException("index out of range for bitset");
 
     public readonly bool Contains(int key)
     {
@@ -73,21 +74,52 @@ internal struct BitSet : IEnumerable<int>, IDisposable
         return this[key];
     }
 
-    public void Add(int key) => this[key] = true;
-
-    public void Remove(int key) => this[key] = false;
-
-    public void Clear() => bits.Fill(0);
-
     public readonly int GetCount()
     {
         int count = 0;
-        foreach (var word in bits)
+        foreach (ulong word in bits)
             count += MathUtil.PopCount(word);
         return count;
     }
 
-    public void Fill(bool value = true) => bits.Fill(value ? ulong.MaxValue : 0);
+    public bool Add(int key) => this[key] = true;
+
+    public bool Remove(int key) => this[key] = false;
+
+    public void Clear() => Fill(false);
+
+    public void Fill(bool value) => bits.Fill(value ? ulong.MaxValue : 0);
+
+    public void AndWith(BitSpan other)
+    {
+        if (bits.Length != other.bits.Length)
+            ThrowMismatchedSetCapacity();
+
+        for (int i = 0; i < bits.Length; ++i)
+            bits[i] &= other.bits[i];
+    }
+
+    public void OrWith(BitSpan other)
+    {
+        if (bits.Length != other.bits.Length)
+            ThrowMismatchedSetCapacity();
+
+        for (int i = 0; i < bits.Length; ++i)
+            bits[i] |= other.bits[i];
+    }
+
+    public void XorWith(BitSpan other)
+    {
+        if (bits.Length != other.bits.Length)
+            ThrowMismatchedSetCapacity();
+
+        for (int i = 0; i < bits.Length; ++i)
+            bits[i] ^= other.bits[i];
+    }
+
+    [IgnoreWarning(1370)]
+    static void ThrowMismatchedSetCapacity() =>
+        throw new ArgumentException("bitspan instances have different capacities");
 
     [IgnoreWarning(1370)]
     public void ClearUpFrom(int index)
@@ -182,7 +214,7 @@ internal struct BitSet : IEnumerable<int>, IDisposable
     }
 
     [IgnoreWarning(1370)]
-    public void CopyFrom(BitSet other)
+    public void CopyFrom(BitSpan other)
     {
         if (other.bits.Length != bits.Length)
             throw new ArgumentException("bitset capacities did not match");
@@ -192,7 +224,7 @@ internal struct BitSet : IEnumerable<int>, IDisposable
     }
 
     [IgnoreWarning(1370)]
-    public void CopyInverseFrom(BitSet other)
+    public void CopyInverseFrom(BitSpan other)
     {
         if (other.bits.Length != bits.Length)
             throw new ArgumentException("bitset capacities did not match");
@@ -202,7 +234,7 @@ internal struct BitSet : IEnumerable<int>, IDisposable
     }
 
     [IgnoreWarning(1370)]
-    public void RemoveAll(BitSet other)
+    public void RemoveAll(BitSpan other)
     {
         if (other.bits.Length != bits.Length)
             throw new ArgumentException("bitset capacities did not match");
@@ -221,20 +253,29 @@ internal struct BitSet : IEnumerable<int>, IDisposable
             return (1ul << bit) - 1;
     }
 
-    [IgnoreWarning(1370)]
-    static void ThrowIndexOutOfRange() =>
-        throw new IndexOutOfRangeException("bitset index was out of range");
+    #region operators
+    public static bool operator ==(BitSpan a, BitSpan b)
+    {
+        return a.bits == b.bits;
+    }
+
+    public static bool operator !=(BitSpan a, BitSpan b)
+    {
+        return !(a == b);
+    }
+    #endregion
+
+    public override readonly bool Equals(object obj) => false;
+
+    // This suppresses the warning but will always throw an exception.
+    public override readonly int GetHashCode() => bits.GetHashCode();
 
     #region IEnumerator<T>
     public readonly Enumerator GetEnumerator() => new(this);
 
-    readonly IEnumerator<int> IEnumerable<int>.GetEnumerator() => GetEnumerator();
-
-    readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-    public struct Enumerator(BitSet set) : IEnumerator<int>
+    public ref struct Enumerator(BitSpan set) : IEnumerator<int>
     {
-        RawArray<ulong>.Enumerator words = set.bits.GetEnumerator();
+        Span<ulong>.Enumerator words = set.bits.GetEnumerator();
         BitEnumerator bits = default;
         int wordIndex = -1;
 
@@ -265,6 +306,11 @@ internal struct BitSet : IEnumerable<int>, IDisposable
 
         public void Dispose() { }
     }
-
     #endregion
+
+    private sealed class DebugView(BitSpan span)
+    {
+        [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
+        public int[] Items { get; } = [.. span];
+    }
 }

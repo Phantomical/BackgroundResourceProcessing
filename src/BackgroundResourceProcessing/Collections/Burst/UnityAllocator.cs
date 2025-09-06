@@ -13,7 +13,7 @@ namespace BackgroundResourceProcessing.Collections.Burst;
 /// </summary>
 internal unsafe static class UnityAllocator
 {
-    [IgnoreWarning(1310)]
+    [IgnoreWarning(1370)]
     public static T* Alloc<T>(int count, Allocator allocator)
         where T : struct
     {
@@ -28,7 +28,7 @@ internal unsafe static class UnityAllocator
             );
     }
 
-    [IgnoreWarning(1310)]
+    [IgnoreWarning(1370)]
     public static void Free<T>(T* ptr, Allocator allocator)
         where T : struct
     {
@@ -38,7 +38,7 @@ internal unsafe static class UnityAllocator
         UnsafeUtility.Free(ptr, allocator);
     }
 
-    [IgnoreWarning(1310)]
+    [IgnoreWarning(1370)]
     public static void Copy<T>(T* dst, T* src, int count)
         where T : struct
     {
@@ -48,7 +48,7 @@ internal unsafe static class UnityAllocator
         UnsafeUtility.MemCpy(dst, src, UnsafeUtility.SizeOf<T>() * count);
     }
 
-    [IgnoreWarning(1310)]
+    [IgnoreWarning(1370)]
     public static void Clear<T>(T* dst, int count)
         where T : struct
     {

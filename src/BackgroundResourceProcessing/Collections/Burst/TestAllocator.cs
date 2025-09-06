@@ -149,7 +149,7 @@ public static unsafe class TestAllocator
         Marshal.FreeHGlobal((IntPtr)ptr);
     }
 
-    [IgnoreWarning(1310)]
+    [IgnoreWarning(1370)]
     static void ThrowBurstException() =>
         throw new AllocationException("cannot use test allocator when burst-compiled");
 }

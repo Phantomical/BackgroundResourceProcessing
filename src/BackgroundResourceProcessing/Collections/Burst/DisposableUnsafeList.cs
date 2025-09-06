@@ -1,10 +1,13 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Unity.Collections;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
+[DebuggerDisplay("Count = {Count}")]
+[DebuggerTypeProxy(typeof(DisposableUnsafeList<>.DebugView))]
 internal struct DisposableUnsafeList<T>(TypedUnsafeList<T> list)
     : IList<T>,
         IEnumerable<T>,
@@ -50,7 +53,16 @@ internal struct DisposableUnsafeList<T>(TypedUnsafeList<T> list)
 
     public void Add(T item) => list.Add(item);
 
-    bool ICollection<T>.Remove(T item) => throw new NotSupportedException();
+    public bool Remove(T item)
+    {
+        int index = list.IndexOf(item);
+        if (index < 0)
+            return false;
+
+        list[index].Dispose();
+        list.RemoveAt(index);
+        return true;
+    }
 
     public void Clear()
     {
@@ -91,4 +103,10 @@ internal struct DisposableUnsafeList<T>(TypedUnsafeList<T> list)
 
     readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     #endregion
+
+    private sealed class DebugView(RawArray<T> array)
+    {
+        [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
+        public T[] Items { get; } = [.. array];
+    }
 }

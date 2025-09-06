@@ -48,20 +48,22 @@ public sealed class MatrixTest
     [TestMethod]
     public void Constructor_NegativeRows_ThrowsArgumentOutOfRangeException()
     {
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => new Matrix(-1, 3, Allocator.Temp));
+        Assert.ThrowsException<ArgumentOutOfRangeException>(() => new Matrix(-1, 3, Allocator.Temp)
+        );
     }
 
     [TestMethod]
     public void Constructor_NegativeCols_ThrowsArgumentOutOfRangeException()
     {
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => new Matrix(2, -1, Allocator.Temp));
+        Assert.ThrowsException<ArgumentOutOfRangeException>(() => new Matrix(2, -1, Allocator.Temp)
+        );
     }
 
     [TestMethod]
     public void Constructor_ArrayTooSmall_ThrowsArgumentException()
     {
         using var array = new RawArray<double>(5, Allocator.Temp);
-        
+
         Assert.ThrowsException<ArgumentException>(() => new Matrix(array, 2, 3));
     }
 
@@ -134,7 +136,7 @@ public sealed class MatrixTest
     public void RowIndexer_ModifySpan_ModifiesOriginalMatrix()
     {
         using var matrix = new Matrix(2, 3, Allocator.Temp);
-        
+
         var row = matrix[0];
         row[1] = 42.0;
 
@@ -146,7 +148,10 @@ public sealed class MatrixTest
     {
         using var matrix = new Matrix(2, 3, Allocator.Temp);
 
-        Assert.ThrowsException<IndexOutOfRangeException>(() => { var row = matrix[-1]; });
+        Assert.ThrowsException<IndexOutOfRangeException>(() =>
+        {
+            var row = matrix[-1];
+        });
     }
 
     [TestMethod]
@@ -154,19 +159,22 @@ public sealed class MatrixTest
     {
         using var matrix = new Matrix(2, 3, Allocator.Temp);
 
-        Assert.ThrowsException<IndexOutOfRangeException>(() => { var row = matrix[2]; });
+        Assert.ThrowsException<IndexOutOfRangeException>(() =>
+        {
+            var row = matrix[2];
+        });
     }
 
     [TestMethod]
     public void SwapRows_ValidIndices_SwapsRowsCorrectly()
     {
         using var matrix = new Matrix(3, 3, Allocator.Temp);
-        
+
         // Set up first row: [1, 2, 3]
         matrix[0, 0] = 1.0;
         matrix[0, 1] = 2.0;
         matrix[0, 2] = 3.0;
-        
+
         // Set up second row: [4, 5, 6]
         matrix[1, 0] = 4.0;
         matrix[1, 1] = 5.0;
@@ -178,7 +186,7 @@ public sealed class MatrixTest
         Assert.AreEqual(4.0, matrix[0, 0]);
         Assert.AreEqual(5.0, matrix[0, 1]);
         Assert.AreEqual(6.0, matrix[0, 2]);
-        
+
         // Second row should now be [1, 2, 3]
         Assert.AreEqual(1.0, matrix[1, 0]);
         Assert.AreEqual(2.0, matrix[1, 1]);
@@ -243,12 +251,12 @@ public sealed class MatrixTest
     public void Reduce_ValidRows_PerformsRowReduction()
     {
         using var matrix = new Matrix(2, 3, Allocator.Temp);
-        
+
         // Destination row: [2, 4, 6]
         matrix[0, 0] = 2.0;
         matrix[0, 1] = 4.0;
         matrix[0, 2] = 6.0;
-        
+
         // Source row: [1, 2, 3]
         matrix[1, 0] = 1.0;
         matrix[1, 1] = 2.0;
@@ -260,7 +268,7 @@ public sealed class MatrixTest
         Assert.AreEqual(4.0, matrix[0, 0]);
         Assert.AreEqual(8.0, matrix[0, 1]);
         Assert.AreEqual(12.0, matrix[0, 2]);
-        
+
         // Source row should remain unchanged
         Assert.AreEqual(1.0, matrix[1, 0]);
         Assert.AreEqual(2.0, matrix[1, 1]);
@@ -322,16 +330,16 @@ public sealed class MatrixTest
     public void ScaleReduce_ValidParameters_PerformsScaleReduction()
     {
         using var matrix = new Matrix(3, 3, Allocator.Temp);
-        
+
         // Set up matrix for pivot-based reduction
-        matrix[0, 0] = 4.0;  // dst row: [4, 8, 12]
+        matrix[0, 0] = 4.0; // dst row: [4, 8, 12]
         matrix[0, 1] = 8.0;
         matrix[0, 2] = 12.0;
-        
-        matrix[1, 0] = 1.0;  // src row: [1, 2, 3]
+
+        matrix[1, 0] = 1.0; // src row: [1, 2, 3]
         matrix[1, 1] = 2.0;
         matrix[1, 2] = 3.0;
-        
+
         // Pivot is at column 0, so scale = matrix[0, 0] = 4.0
         matrix.ScaleReduce(0, 1, 0);
 
@@ -340,7 +348,7 @@ public sealed class MatrixTest
         Assert.AreEqual(0.0, matrix[0, 0]);
         Assert.AreEqual(0.0, matrix[0, 1]);
         Assert.AreEqual(0.0, matrix[0, 2]);
-        
+
         // Source row should remain unchanged
         Assert.AreEqual(1.0, matrix[1, 0]);
         Assert.AreEqual(2.0, matrix[1, 1]);
@@ -384,11 +392,11 @@ public sealed class MatrixTest
     public void ScaleReduce_NumericalAccuracy_TruncatesSmallValues()
     {
         using var matrix = new Matrix(2, 2, Allocator.Temp);
-        
+
         // Set up values that will result in very small differences
         matrix[0, 0] = 1.0;
         matrix[0, 1] = 1e-12; // Very small value that should be truncated
-        
+
         matrix[1, 0] = 1.0;
         matrix[1, 1] = 1e-12;
 
@@ -446,7 +454,7 @@ public sealed class MatrixTest
     public void MatrixIndexing_RowMajorOrder_MapsCorrectly()
     {
         using var matrix = new Matrix(2, 3, Allocator.Temp);
-        
+
         // Test that indices map to row-major order in the underlying array
         matrix[0, 1] = 42.0; // Should be at index 1
         matrix[1, 2] = 99.0; // Should be at index 5 (1*3 + 2)

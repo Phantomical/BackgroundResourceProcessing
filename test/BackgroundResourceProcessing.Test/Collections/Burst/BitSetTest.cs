@@ -485,7 +485,7 @@ public sealed class BitSetTest
         bitSet.Add(0);
         bitSet.Add(64);
 
-        var span = bitSet.Span;
+        var span = bitSet.Span.Span;
 
         Assert.AreEqual(2, span.Length);
         Assert.AreNotEqual(0u, span[0]);

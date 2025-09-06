@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Unity.Burst.CompilerServices;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -19,6 +20,8 @@ namespace BackgroundResourceProcessing.Collections.Burst;
 /// the internal type is consistent. As such, it can be stored within other
 /// lists.
 /// </remarks>
+[DebuggerDisplay("Count = {Count}")]
+[DebuggerTypeProxy(typeof(TypedUnsafeList<>.DebugView))]
 internal struct TypedUnsafeList<T>(RawList<T> list) : IList<T>, IEnumerable<T>, IDisposable
     where T : struct, IEquatable<T>
 {
@@ -50,7 +53,7 @@ internal struct TypedUnsafeList<T>(RawList<T> list) : IList<T>, IEnumerable<T>, 
     public unsafe TypedUnsafeList(int capacity, Allocator allocator)
         : this(new RawList<T>(capacity, allocator)) { }
 
-    [IgnoreWarning(1310)]
+    [IgnoreWarning(1370)]
     private static void ThrowIndexOutOfRange() =>
         throw new IndexOutOfRangeException("list index was out of range");
 
@@ -139,11 +142,11 @@ internal struct TypedUnsafeList<T>(RawList<T> list) : IList<T>, IEnumerable<T>, 
         set => this[index] = value;
     }
 
-    public int IndexOf(T item) => list.IndexOf(item);
+    public readonly int IndexOf(T item) => list.IndexOf(item);
 
     void IList<T>.Insert(int index, T item) => throw new NotSupportedException();
 
-    void IList<T>.RemoveAt(int index) => throw new NotSupportedException();
+    public void RemoveAt(int index) => list.RemoveAt(index);
     #endregion
 
     #region IEnumerator<T>
@@ -173,4 +176,11 @@ internal struct TypedUnsafeList<T>(RawList<T> list) : IList<T>, IEnumerable<T>, 
         public readonly void Dispose() { }
     }
     #endregion
+
+
+    private sealed class DebugView(RawArray<T> array)
+    {
+        [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
+        public T[] Items { get; } = [.. array];
+    }
 }

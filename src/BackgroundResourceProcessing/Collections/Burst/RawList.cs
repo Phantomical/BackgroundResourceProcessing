@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using BackgroundResourceProcessing.BurstSolver;
 using Unity.Burst.CompilerServices;
 using Unity.Collections;
@@ -20,6 +21,8 @@ namespace BackgroundResourceProcessing.Collections.Burst;
 /// to use alternate implementations of several key methods that can be used
 /// outside of unity.
 /// </remarks>
+[DebuggerDisplay("Count = {Count}")]
+[DebuggerTypeProxy(typeof(RawList<>.DebugView))]
 internal unsafe struct RawList<T>(Allocator allocator) : IDisposable
     where T : struct
 {
@@ -127,7 +130,7 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable
         count = 0;
     }
 
-    [IgnoreWarning(1310)]
+    [IgnoreWarning(1370)]
     public void RemoveAt(int index)
     {
         if (index < 0 || index >= count)
@@ -157,7 +160,7 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable
         count -= 1;
     }
 
-    [IgnoreWarning(1310)]
+    [IgnoreWarning(1370)]
     public void RemoveAtSwapBack(int index)
     {
         if (index < 0 || index >= count)
@@ -173,7 +176,7 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable
         count -= 1;
     }
 
-    [IgnoreWarning(1310)]
+    [IgnoreWarning(1370)]
     public void Resize(int newsize, NativeArrayOptions options = NativeArrayOptions.ClearMemory)
     {
         if (newsize < 0)
@@ -198,7 +201,7 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable
         count = (uint)newsize;
     }
 
-    [IgnoreWarning(1310)]
+    [IgnoreWarning(1370)]
     public void Truncate(int index)
     {
         if (index < 0)
@@ -209,7 +212,7 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable
         count = (uint)index;
     }
 
-    [IgnoreWarning(1310)]
+    [IgnoreWarning(1370)]
     public void Reserve(int capacity)
     {
         if (capacity < 0)
@@ -241,9 +244,15 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable
         Reserve(Math.Max(Capacity * 2, newcap));
     }
 
-    [IgnoreWarning(1310)]
+    [IgnoreWarning(1370)]
     static void ThrowIndexOutOfRange() =>
         throw new IndexOutOfRangeException("list index was out of range");
+
+    private sealed class DebugView(RawArray<T> array)
+    {
+        [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
+        public T[] Items { get; } = [.. array];
+    }
 }
 
 internal static class RawListExtensions
