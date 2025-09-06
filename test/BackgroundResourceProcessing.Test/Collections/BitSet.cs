@@ -80,6 +80,5 @@ namespace BackgroundResourceProcessing.Test.Collections
             copy.ClearOutsideRange(128, 130);
             AssertUtils.SequenceEqual([129], copy);
         }
-
     }
 }
