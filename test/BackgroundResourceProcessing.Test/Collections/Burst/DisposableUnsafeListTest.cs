@@ -131,25 +131,23 @@ public sealed class DisposableUnsafeListTest
     }
 
     [TestMethod]
-    [ExpectedException(typeof(IndexOutOfRangeException))]
     public void Indexer_NegativeIndex_ThrowsException()
     {
         using var list = new DisposableUnsafeList<MockDisposable>(Allocator.Temp);
         var item = new MockDisposable(42);
         list.Add(item);
 
-        _ = list[-1];
+        Assert.ThrowsException<IndexOutOfRangeException>(() => _ = list[-1]);
     }
 
     [TestMethod]
-    [ExpectedException(typeof(IndexOutOfRangeException))]
     public void Indexer_IndexOutOfBounds_ThrowsException()
     {
         using var list = new DisposableUnsafeList<MockDisposable>(Allocator.Temp);
         var item = new MockDisposable(42);
         list.Add(item);
 
-        _ = list[1];
+        Assert.ThrowsException<IndexOutOfRangeException>(() => _ = list[1]);
     }
 
     [TestMethod]
@@ -301,18 +299,16 @@ public sealed class DisposableUnsafeListTest
     }
 
     [TestMethod]
-    [ExpectedException(typeof(ArgumentNullException))]
     public void CopyTo_NullArray_ThrowsArgumentNullException()
     {
         using var list = new DisposableUnsafeList<MockDisposable>(Allocator.Temp);
         var item = new MockDisposable(10);
         list.Add(item);
 
-        list.CopyTo(null, 0);
+        Assert.ThrowsException<ArgumentNullException>(() => list.CopyTo(null, 0));
     }
 
     [TestMethod]
-    [ExpectedException(typeof(ArgumentOutOfRangeException))]
     public void CopyTo_NegativeIndex_ThrowsArgumentOutOfRangeException()
     {
         using var list = new DisposableUnsafeList<MockDisposable>(Allocator.Temp);
@@ -320,11 +316,10 @@ public sealed class DisposableUnsafeListTest
         list.Add(item);
 
         MockDisposable[] array = new MockDisposable[5];
-        list.CopyTo(array, -1);
+        Assert.ThrowsException<ArgumentOutOfRangeException>(() => list.CopyTo(array, -1));
     }
 
     [TestMethod]
-    [ExpectedException(typeof(ArgumentException))]
     public void CopyTo_InsufficientSpace_ThrowsArgumentException()
     {
         using var list = new DisposableUnsafeList<MockDisposable>(Allocator.Temp);
@@ -336,7 +331,7 @@ public sealed class DisposableUnsafeListTest
         list.Add(item3);
 
         MockDisposable[] array = new MockDisposable[3];
-        list.CopyTo(array, 1);
+        Assert.ThrowsException<ArgumentException>(() => list.CopyTo(array, 1));
     }
 
     [TestMethod]
@@ -386,18 +381,16 @@ public sealed class DisposableUnsafeListTest
     }
 
     [TestMethod]
-    [ExpectedException(typeof(NotSupportedException))]
     public void IList_Insert_ThrowsNotSupportedException()
     {
         using var list = new DisposableUnsafeList<MockDisposable>(Allocator.Temp);
         var ilist = list as IList<MockDisposable>;
         var item = new MockDisposable(42);
 
-        ilist.Insert(0, item);
+        Assert.ThrowsException<NotSupportedException>(() => ilist.Insert(0, item));
     }
 
     [TestMethod]
-    [ExpectedException(typeof(NotSupportedException))]
     public void IList_RemoveAt_ThrowsNotSupportedException()
     {
         using var list = new DisposableUnsafeList<MockDisposable>(Allocator.Temp);
@@ -405,11 +398,10 @@ public sealed class DisposableUnsafeListTest
         list.Add(item);
         var ilist = list as IList<MockDisposable>;
 
-        ilist.RemoveAt(0);
+        Assert.ThrowsException<NotSupportedException>(() => ilist.RemoveAt(0));
     }
 
     [TestMethod]
-    [ExpectedException(typeof(NotSupportedException))]
     public void ICollection_Remove_ThrowsNotSupportedException()
     {
         using var list = new DisposableUnsafeList<MockDisposable>(Allocator.Temp);
@@ -417,7 +409,7 @@ public sealed class DisposableUnsafeListTest
         list.Add(item);
         var collection = list as ICollection<MockDisposable>;
 
-        collection.Remove(item);
+        Assert.ThrowsException<NotSupportedException>(() => collection.Remove(item));
     }
 
     [TestMethod]

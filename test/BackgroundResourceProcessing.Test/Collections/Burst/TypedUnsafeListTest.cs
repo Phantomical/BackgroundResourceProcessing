@@ -94,23 +94,21 @@ public sealed class TypedUnsafeListTest
     }
 
     [TestMethod]
-    [ExpectedException(typeof(IndexOutOfRangeException))]
     public void Indexer_NegativeIndex_ThrowsException()
     {
         using var list = new TypedUnsafeList<int>(Allocator.Temp);
         list.Add(42);
 
-        _ = list[-1];
+        Assert.ThrowsException<IndexOutOfRangeException>(() => _ = list[-1]);
     }
 
     [TestMethod]
-    [ExpectedException(typeof(IndexOutOfRangeException))]
     public void Indexer_IndexOutOfBounds_ThrowsException()
     {
         using var list = new TypedUnsafeList<int>(Allocator.Temp);
         list.Add(42);
 
-        _ = list[1];
+        Assert.ThrowsException<IndexOutOfRangeException>(() => _ = list[1]);
     }
 
     [TestMethod]
@@ -264,28 +262,25 @@ public sealed class TypedUnsafeListTest
     }
 
     [TestMethod]
-    [ExpectedException(typeof(ArgumentNullException))]
     public void CopyTo_NullArray_ThrowsArgumentNullException()
     {
         using var list = new TypedUnsafeList<int>(Allocator.Temp);
         list.Add(10);
 
-        list.CopyTo(null, 0);
+        Assert.ThrowsException<ArgumentNullException>(() => list.CopyTo(null, 0));
     }
 
     [TestMethod]
-    [ExpectedException(typeof(ArgumentOutOfRangeException))]
     public void CopyTo_NegativeIndex_ThrowsArgumentOutOfRangeException()
     {
         using var list = new TypedUnsafeList<int>(Allocator.Temp);
         list.Add(10);
 
         int[] array = new int[5];
-        list.CopyTo(array, -1);
+        Assert.ThrowsException<ArgumentOutOfRangeException>(() => list.CopyTo(array, -1));
     }
 
     [TestMethod]
-    [ExpectedException(typeof(ArgumentException))]
     public void CopyTo_InsufficientSpace_ThrowsArgumentException()
     {
         using var list = new TypedUnsafeList<int>(Allocator.Temp);
@@ -294,7 +289,7 @@ public sealed class TypedUnsafeListTest
         list.Add(30);
 
         int[] array = new int[3];
-        list.CopyTo(array, 1);
+        Assert.ThrowsException<ArgumentException>(() => list.CopyTo(array, 1));
     }
 
     [TestMethod]
@@ -420,24 +415,22 @@ public sealed class TypedUnsafeListTest
     }
 
     [TestMethod]
-    [ExpectedException(typeof(NotSupportedException))]
     public void IList_Insert_ThrowsNotSupportedException()
     {
         using var list = new TypedUnsafeList<int>(Allocator.Temp);
         var ilist = list as IList<int>;
 
-        ilist.Insert(0, 42);
+        Assert.ThrowsException<NotSupportedException>(() => ilist.Insert(0, 42));
     }
 
     [TestMethod]
-    [ExpectedException(typeof(NotSupportedException))]
     public void IList_RemoveAt_ThrowsNotSupportedException()
     {
         using var list = new TypedUnsafeList<int>(Allocator.Temp);
         list.Add(42);
         var ilist = list as IList<int>;
 
-        ilist.RemoveAt(0);
+        Assert.ThrowsException<NotSupportedException>(() => ilist.RemoveAt(0));
     }
 
     [TestMethod]

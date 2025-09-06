@@ -24,7 +24,7 @@ namespace BackgroundResourceProcessing.Test.Collections
             BitSet set = new(7) { [1] = true, [2] = true };
             int[] values = [.. set];
 
-            CollectionAssert.AreEqual(new int[] { 1, 2 }, values);
+            AssertUtils.SequenceEqual([1, 2], values);
         }
 
         [TestMethod]
@@ -41,11 +41,11 @@ namespace BackgroundResourceProcessing.Test.Collections
             BitSet copy = new(64);
             copy.CopyFrom(set);
             copy.ClearUpTo(7);
-            AssertSequenceEqual([45, 56], copy);
+            AssertUtils.SequenceEqual([45, 56], copy);
 
             copy.CopyFrom(set);
             copy.ClearUpTo(54);
-            AssertSequenceEqual([56], copy);
+            AssertUtils.SequenceEqual([56], copy);
         }
 
         [TestMethod]
@@ -81,12 +81,5 @@ namespace BackgroundResourceProcessing.Test.Collections
             AssertUtils.SequenceEqual([129], copy);
         }
 
-        static void AssertSequenceEqual<T>(IEnumerable<T> expected, IEnumerable<T> actual)
-        {
-            List<T> e = [.. expected];
-            List<T> a = [.. actual];
-
-            CollectionAssert.AreEqual(e, a);
-        }
     }
 }
