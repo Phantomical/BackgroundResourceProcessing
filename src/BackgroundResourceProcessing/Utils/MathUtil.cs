@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Collections;
 using UnityEngine;
+using static Unity.Burst.Intrinsics.X86.Bmi1;
+using static Unity.Burst.Intrinsics.X86.Popcnt;
 
 namespace BackgroundResourceProcessing.Utils;
 
@@ -69,6 +71,9 @@ internal static class MathUtil
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static int TrailingZeroCount(ulong v)
     {
+        if (IsBmi1Supported)
+            return (int)tzcnt_u64(v);
+
         int c = 64;
 
         v &= (ulong)-(long)v;
@@ -93,6 +98,9 @@ internal static class MathUtil
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static int PopCount(ulong x)
     {
+        if (IsPopcntSupported)
+            return popcnt_u64(x);
+
         x -= (x >> 1) & 0x5555555555555555;
         x = (x & 0x3333333333333333) + ((x >> 2) & 0x3333333333333333);
         x = (x + (x >> 4)) & 0xF0F0F0F0F0F0F0F;
