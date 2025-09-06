@@ -71,15 +71,10 @@ internal unsafe struct RawArray<T>(Allocator allocator) : IEnumerable<T>, IDispo
         }
         else
         {
-            data = (T*)
-                UnsafeUtility.Malloc(
-                    UnsafeUtility.SizeOf<T>() * length,
-                    UnsafeUtility.AlignOf<T>(),
-                    allocator
-                );
+            data = UnityAllocator.Alloc<T>(length, allocator);
 
             if (options == NativeArrayOptions.ClearMemory)
-                UnsafeUtility.MemClear(data, UnsafeUtility.SizeOf<T>() * length);
+                UnityAllocator.Clear(data, length);
         }
 
         this.length = (uint)length;
@@ -96,7 +91,7 @@ internal unsafe struct RawArray<T>(Allocator allocator) : IEnumerable<T>, IDispo
         {
             fixed (T* src = values)
             {
-                UnsafeUtility.MemCpy(data, src, UnsafeUtility.SizeOf<T>() * values.Length);
+                UnityAllocator.Copy(data, src, values.Length);
             }
         }
     }
@@ -111,7 +106,7 @@ internal unsafe struct RawArray<T>(Allocator allocator) : IEnumerable<T>, IDispo
         if (BurstUtil.UseTestAllocator)
             TestAllocator.Free(data);
         else
-            UnsafeUtility.Free(data, allocator);
+            UnityAllocator.Free(data, allocator);
 
         data = null;
         length = 0;
