@@ -4,7 +4,9 @@ using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Collections;
 using UnityEngine;
 using static Unity.Burst.Intrinsics.X86.Bmi1;
+using static Unity.Burst.Intrinsics.X86.Fma;
 using static Unity.Burst.Intrinsics.X86.Popcnt;
+using static Unity.Burst.Intrinsics.X86.Sse2;
 
 namespace BackgroundResourceProcessing.Utils;
 
@@ -105,6 +107,15 @@ internal static class MathUtil
         x = (x & 0x3333333333333333) + ((x >> 2) & 0x3333333333333333);
         x = (x + (x >> 4)) & 0xF0F0F0F0F0F0F0F;
         return (int)((x * 0x101010101010101) >> 56);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static double Fma(double a, double b, double c)
+    {
+        if (IsFmaSupported)
+            return cvtsd_f64(fmadd_sd(set_sd(a), set_sd(b), set_sd(c)));
+        else
+            return a * b + c;
     }
 
     /// <summary>
