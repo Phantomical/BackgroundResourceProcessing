@@ -81,7 +81,7 @@ internal class Matrix
         var v2 = GetRow(r2);
 
         for (int i = 0; i < Width; ++i)
-            (v2[i], v1[i]) = (v1[i], v1[i]);
+            (v2[i], v1[i]) = (v1[i], v2[i]);
     }
 
     public void ScaleRow(int row, double scale)
