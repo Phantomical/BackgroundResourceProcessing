@@ -173,7 +173,7 @@ internal struct BitSet : IEnumerable<int>, IDisposable
             bits[i] = ulong.MaxValue;
 
         if (word < bits.Length)
-            bits[index] |= mask;
+            bits[word] |= mask;
     }
 
     [IgnoreWarning(1310)]
@@ -231,6 +231,7 @@ internal struct BitSet : IEnumerable<int>, IDisposable
     {
         RawArray<ulong>.Enumerator words = set.bits.GetEnumerator();
         BitEnumerator bits = default;
+        int wordIndex = -1;
 
         public readonly int Current => bits.Current;
         readonly object IEnumerator.Current => Current;
@@ -240,19 +241,18 @@ internal struct BitSet : IEnumerable<int>, IDisposable
             if (bits.MoveNext())
                 return true;
 
-            int index = (bits.Current + (ULongBits - 1)) & ~(ULongBits - 1);
             while (true)
             {
                 if (!words.MoveNext())
                     return false;
+                wordIndex++;
                 ulong word = words.Current;
                 if (word != 0)
                 {
+                    int index = wordIndex * ULongBits;
                     bits = new BitEnumerator(index, word);
-                    return true;
+                    return bits.MoveNext();
                 }
-
-                index += ULongBits;
             }
         }
 
