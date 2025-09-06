@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using BackgroundResourceProcessing.BurstSolver;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Utils;
 using KSPAchievements;
@@ -136,7 +137,10 @@ namespace BackgroundResourceProcessing.Test
         }
 
         [AssemblyInitialize()]
-        public static void AssemblyInitialize(TestContext _) { }
+        public static void AssemblyInitialize(TestContext _)
+        {
+            BurstUtil.TestAllocatorOverride = true;
+        }
 
         [AssemblyCleanup()]
         public static void AssemblyCleanup()
