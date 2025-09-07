@@ -21,11 +21,17 @@ internal ref struct BitSpan(Span<ulong> bits)
         [return: AssumeRange(0, int.MaxValue)]
         get => bits.Length * ULongBits;
     }
+    public readonly int Words
+    {
+        [return: AssumeRange(0, int.MaxValue)]
+        get => bits.Length;
+    }
+
     public readonly Span<ulong> Span => bits;
 
-    public bool this[int key]
+    public readonly bool this[int key]
     {
-        readonly get
+        get
         {
             if (key < 0 || key >= Capacity)
                 ThrowIndexOutOfRangeException();
@@ -51,9 +57,9 @@ internal ref struct BitSpan(Span<ulong> bits)
         }
     }
 
-    public bool this[uint key]
+    public readonly bool this[uint key]
     {
-        readonly get => this[(int)key];
+        get => this[(int)key];
         set => this[(int)key] = value;
     }
 
