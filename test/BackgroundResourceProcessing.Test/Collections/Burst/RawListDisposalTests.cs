@@ -203,7 +203,7 @@ public sealed class RawListDisposalTests
 
         // Expected behavior: items should be disposed in order 0,1,2,3,4
         TestTracker.AssertExpectedDisposalBehavior(5, "Dispose()");
-        CollectionAssert.AreEqual(new[] { 0, 1, 2, 3, 4 }, TestTracker.DisposalOrder.ToArray());
+        AssertUtils.SequenceEqual(new[] { 0, 1, 2, 3, 4 }, TestTracker.DisposalOrder.ToArray());
     }
 
     [TestMethod]
@@ -556,7 +556,7 @@ public sealed class RawListDisposalTests
 
         // Verify excess items were disposed (items 6-9)
         TestTracker.AssertDisposalCount(4);
-        CollectionAssert.AreEqual(
+        AssertUtils.SequenceEqual(
             new[] { 6, 7, 8, 9 },
             TestTracker.DisposalOrder.ToArray(),
             "Items 6-9 should be disposed in order"
@@ -652,7 +652,7 @@ public sealed class RawListDisposalTests
 
         // Verify trailing items were disposed (items 6-9)
         TestTracker.AssertDisposalCount(4);
-        CollectionAssert.AreEqual(
+        AssertUtils.SequenceEqual(
             new[] { 6, 7, 8, 9 },
             TestTracker.DisposalOrder.ToArray(),
             "Items 6-9 should be disposed in order"
@@ -874,7 +874,7 @@ public sealed class RawListDisposalTests
 
         // Should dispose exactly Count items (3), not Capacity items (10)
         TestTracker.AssertDisposalCount(3);
-        CollectionAssert.AreEqual(new[] { 0, 1, 2 }, TestTracker.DisposalOrder.ToArray());
+        AssertUtils.SequenceEqual(new[] { 0, 1, 2 }, TestTracker.DisposalOrder.ToArray());
 
         Assert.AreEqual(0, list.Count);
         Assert.AreEqual(0, list.Capacity);
