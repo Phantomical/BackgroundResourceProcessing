@@ -439,67 +439,291 @@ public sealed class RawIntMapTests
 
     #endregion
 
-    #region Entry Tests
+    #region Count Property Tests
 
     [TestMethod]
-    public void GetEntry_ValidKey_ReturnsEntry()
-    {
-        using var map = new RawIntMap<int>(10, Allocator.Temp);
-        map.Add(5, 42);
-
-        var entry = map.GetEntry(5);
-
-        Assert.IsTrue(entry.HasValue);
-        Assert.AreEqual(42, entry.Value);
-    }
-
-    [TestMethod]
-    public void GetEntry_KeyNotPresent_ReturnsEntryWithoutValue()
+    public void Count_EmptyMap_ReturnsZero()
     {
         using var map = new RawIntMap<int>(10, Allocator.Temp);
 
-        var entry = map.GetEntry(5);
-
-        Assert.IsFalse(entry.HasValue);
+        Assert.AreEqual(0, map.Count);
     }
 
     [TestMethod]
-    public void GetEntry_NegativeKey_ThrowsIndexOutOfRangeException()
+    public void Count_AfterAdd_IncrementsCorrectly()
     {
         using var map = new RawIntMap<int>(10, Allocator.Temp);
-
-        Assert.ThrowsException<IndexOutOfRangeException>(() => map.GetEntry(-1));
+        
+        Assert.AreEqual(0, map.Count);
+        
+        map.Add(0, 10);
+        Assert.AreEqual(1, map.Count);
+        
+        map.Add(5, 50);
+        Assert.AreEqual(2, map.Count);
+        
+        map.Add(9, 90);
+        Assert.AreEqual(3, map.Count);
     }
 
     [TestMethod]
-    public void GetEntry_KeyOutOfBounds_ThrowsIndexOutOfRangeException()
+    public void Count_AfterSet_OnNewKey_IncrementsCorrectly()
     {
         using var map = new RawIntMap<int>(10, Allocator.Temp);
-
-        Assert.ThrowsException<IndexOutOfRangeException>(() => map.GetEntry(10));
+        
+        Assert.AreEqual(0, map.Count);
+        
+        map.Set(3, 30);
+        Assert.AreEqual(1, map.Count);
+        
+        map.Set(7, 70);
+        Assert.AreEqual(2, map.Count);
     }
 
     [TestMethod]
-    public void EntryInsert_ValidKey_InsertsValue()
-    {
-        using var map = new RawIntMap<TestValue>(10, Allocator.Temp);
-        var entry = map.GetEntry(5);
-
-        ref var inserted = ref entry.Insert(new TestValue(42));
-
-        Assert.IsTrue(map.ContainsKey(5));
-        Assert.AreEqual(42, map[5].Value);
-        Assert.AreEqual(42, inserted.Value);
-    }
-
-    [TestMethod]
-    public void EntryValue_KeyNotPresent_ThrowsKeyNotFoundException()
+    public void Count_AfterSet_OnExistingKey_RemainsUnchanged()
     {
         using var map = new RawIntMap<int>(10, Allocator.Temp);
-        var entry = map.GetEntry(5);
-
-        Assert.ThrowsException<KeyNotFoundException>(() => _ = entry.Value);
+        map.Add(5, 50);
+        
+        Assert.AreEqual(1, map.Count);
+        
+        map.Set(5, 99);
+        Assert.AreEqual(1, map.Count);
+        
+        map.Set(5, 42);
+        Assert.AreEqual(1, map.Count);
     }
+
+    [TestMethod]
+    public void Count_AfterRemove_DecrementsCorrectly()
+    {
+        using var map = new RawIntMap<int>(10, Allocator.Temp);
+        map.Add(1, 10);
+        map.Add(3, 30);
+        map.Add(5, 50);
+        
+        Assert.AreEqual(3, map.Count);
+        
+        map.Remove(3);
+        Assert.AreEqual(2, map.Count);
+        
+        map.Remove(1);
+        Assert.AreEqual(1, map.Count);
+        
+        map.Remove(5);
+        Assert.AreEqual(0, map.Count);
+    }
+
+    [TestMethod]
+    public void Count_AfterRemove_NonExistentKey_RemainsUnchanged()
+    {
+        using var map = new RawIntMap<int>(10, Allocator.Temp);
+        map.Add(5, 50);
+        
+        Assert.AreEqual(1, map.Count);
+        
+        map.Remove(3);
+        Assert.AreEqual(1, map.Count);
+        
+        map.Remove(7);
+        Assert.AreEqual(1, map.Count);
+    }
+
+    [TestMethod]
+    public void Count_AfterTryRemove_Success_DecrementsCorrectly()
+    {
+        using var map = new RawIntMap<int>(10, Allocator.Temp);
+        map.Add(2, 20);
+        map.Add(4, 40);
+        map.Add(6, 60);
+        
+        Assert.AreEqual(3, map.Count);
+        
+        bool removed = map.TryRemove(4, out int value);
+        Assert.IsTrue(removed);
+        Assert.AreEqual(40, value);
+        Assert.AreEqual(2, map.Count);
+    }
+
+    [TestMethod]
+    public void Count_AfterTryRemove_Failure_RemainsUnchanged()
+    {
+        using var map = new RawIntMap<int>(10, Allocator.Temp);
+        map.Add(5, 50);
+        
+        Assert.AreEqual(1, map.Count);
+        
+        bool removed = map.TryRemove(3, out int value);
+        Assert.IsFalse(removed);
+        Assert.AreEqual(0, value);
+        Assert.AreEqual(1, map.Count);
+    }
+
+    [TestMethod]
+    public void Count_AfterClear_ReturnsZero()
+    {
+        using var map = new RawIntMap<int>(10, Allocator.Temp);
+        map.Add(1, 10);
+        map.Add(3, 30);
+        map.Add(5, 50);
+        
+        Assert.AreEqual(3, map.Count);
+        
+        map.Clear();
+        Assert.AreEqual(0, map.Count);
+    }
+
+    [TestMethod]
+    public void Count_AfterClear_EmptyMap_RemainsZero()
+    {
+        using var map = new RawIntMap<int>(10, Allocator.Temp);
+        
+        Assert.AreEqual(0, map.Count);
+        
+        map.Clear();
+        Assert.AreEqual(0, map.Count);
+    }
+
+    [TestMethod]
+    public void Count_ComplexModificationSequence_TracksCorrectly()
+    {
+        using var map = new RawIntMap<int>(10, Allocator.Temp);
+        
+        // Start empty
+        Assert.AreEqual(0, map.Count);
+        
+        // Add some entries
+        map.Add(1, 10);
+        map.Add(3, 30);
+        map.Add(5, 50);
+        Assert.AreEqual(3, map.Count);
+        
+        // Remove one
+        map.Remove(3);
+        Assert.AreEqual(2, map.Count);
+        
+        // Set existing (no change in count)
+        map.Set(1, 11);
+        Assert.AreEqual(2, map.Count);
+        
+        // Set new (increment count)
+        map.Set(7, 70);
+        Assert.AreEqual(3, map.Count);
+        
+        // Try remove existing (decrement count)
+        map.TryRemove(5, out _);
+        Assert.AreEqual(2, map.Count);
+        
+        // Try remove non-existent (no change)
+        map.TryRemove(9, out _);
+        Assert.AreEqual(2, map.Count);
+        
+        // Add another
+        map.Add(0, 0);
+        Assert.AreEqual(3, map.Count);
+        
+        // Clear all
+        map.Clear();
+        Assert.AreEqual(0, map.Count);
+        
+        // Add after clear
+        map.Add(2, 20);
+        Assert.AreEqual(1, map.Count);
+    }
+
+    [TestMethod]
+    public void Count_WithBoundaryKeys_TracksCorrectly()
+    {
+        using var map = new RawIntMap<int>(10, Allocator.Temp);
+        
+        // Test with key 0 (lower boundary)
+        map.Add(0, 100);
+        Assert.AreEqual(1, map.Count);
+        
+        // Test with key 9 (upper boundary for capacity 10)
+        map.Add(9, 900);
+        Assert.AreEqual(2, map.Count);
+        
+        // Remove boundary keys
+        map.Remove(0);
+        Assert.AreEqual(1, map.Count);
+        
+        map.Remove(9);
+        Assert.AreEqual(0, map.Count);
+    }
+
+    [TestMethod]
+    public void Count_ConsistentWithEnumerationCount()
+    {
+        using var map = new RawIntMap<int>(20, Allocator.Temp);
+        
+        // Add entries at various positions
+        map.Add(0, 10);
+        map.Add(5, 50);
+        map.Add(10, 100);
+        map.Add(15, 150);
+        map.Add(19, 190);
+        
+        int enumeratedCount = map.Count();
+        Assert.AreEqual(5, map.Count);
+        Assert.AreEqual(map.Count, enumeratedCount);
+        
+        // Remove some entries
+        map.Remove(5);
+        map.Remove(15);
+        
+        enumeratedCount = map.Count();
+        Assert.AreEqual(3, map.Count);
+        Assert.AreEqual(map.Count, enumeratedCount);
+    }
+
+    [TestMethod]
+    public void Count_AfterFailedOperations_RemainsCorrect()
+    {
+        using var map = new RawIntMap<int>(5, Allocator.Temp);
+        map.Add(2, 20);
+        
+        Assert.AreEqual(1, map.Count);
+        
+        // Try to add duplicate key (should fail but count unchanged)
+        Assert.ThrowsException<ArgumentException>(() => map.Add(2, 99));
+        Assert.AreEqual(1, map.Count);
+        
+        // Try operations with out-of-bounds keys (should fail but count unchanged)
+        Assert.ThrowsException<IndexOutOfRangeException>(() => map.Add(-1, 10));
+        Assert.AreEqual(1, map.Count);
+        
+        Assert.ThrowsException<IndexOutOfRangeException>(() => map.Add(5, 10));
+        Assert.AreEqual(1, map.Count);
+        
+        Assert.ThrowsException<IndexOutOfRangeException>(() => map.Set(-1, 10));
+        Assert.AreEqual(1, map.Count);
+        
+        Assert.ThrowsException<IndexOutOfRangeException>(() => map.Set(10, 10));
+        Assert.AreEqual(1, map.Count);
+        
+        // Operations that don't throw but return false shouldn't change count
+        bool removed = map.Remove(-1);
+        Assert.IsFalse(removed);
+        Assert.AreEqual(1, map.Count);
+        
+        removed = map.Remove(10);
+        Assert.IsFalse(removed);
+        Assert.AreEqual(1, map.Count);
+        
+        bool tryRemoved = map.TryRemove(-1, out _);
+        Assert.IsFalse(tryRemoved);
+        Assert.AreEqual(1, map.Count);
+        
+        tryRemoved = map.TryRemove(10, out _);
+        Assert.IsFalse(tryRemoved);
+        Assert.AreEqual(1, map.Count);
+    }
+
+    #endregion
+
+    #region
 
     #endregion
 

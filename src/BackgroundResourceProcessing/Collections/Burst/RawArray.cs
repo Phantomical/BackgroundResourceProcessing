@@ -26,6 +26,7 @@ internal unsafe struct RawArray<T>(Allocator allocator) : IEnumerable<T>, IDispo
     public readonly int Count => Length;
     public readonly Allocator Allocator => allocator;
     public readonly Span<T> Span => new(data, Length);
+    public readonly T* Ptr => data;
 
     public readonly ref T this[int index]
     {
@@ -103,6 +104,8 @@ internal unsafe struct RawArray<T>(Allocator allocator) : IEnumerable<T>, IDispo
     {
         if (data is null)
             return;
+
+        ItemDisposer<T>.DisposeRange(Span);
 
         if (BurstUtil.UseTestAllocator)
             TestAllocator.Free(data);

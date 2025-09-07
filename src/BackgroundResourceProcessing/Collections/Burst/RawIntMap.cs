@@ -2,7 +2,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.PerformanceData;
 using System.Runtime.CompilerServices;
+using SoftMasking.Samples;
 using Unity.Collections;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
@@ -28,7 +30,9 @@ public struct RawIntMap<T>(int capacity, Allocator allocator)
     }
 
     RawArray<Entry> items = new(capacity, allocator);
+    int count = 0;
 
+    public readonly int Count => count;
     public readonly int Capacity => items.Count;
     public readonly Allocator Allocator => items.Allocator;
 
@@ -75,6 +79,7 @@ public struct RawIntMap<T>(int capacity, Allocator allocator)
         if (items[key].Present)
             ThrowKeyExistsException(key);
 
+        count += 1;
         items[key] = new Entry { Present = true, Value = value };
     }
 
@@ -84,6 +89,8 @@ public struct RawIntMap<T>(int capacity, Allocator allocator)
             ThrowKeyOutOfBoundsException(key);
 
         using var prev = items[key];
+        if (!prev.Present)
+            count += 1;
         items[key] = new Entry { Present = true, Value = value };
     }
 
@@ -102,6 +109,7 @@ public struct RawIntMap<T>(int capacity, Allocator allocator)
             return false;
         }
 
+        count -= 1;
         value = entry.Value;
         entry.Present = false;
         return true;
@@ -116,30 +124,21 @@ public struct RawIntMap<T>(int capacity, Allocator allocator)
         if (!entry.Present)
             return false;
 
+        count -= 1;
         entry.Dispose();
         return true;
     }
 
-    public readonly void Clear()
+    public void Clear()
     {
         ItemDisposer<Entry>.DisposeRange(items);
-        items.Fill(default);
+        count = 0;
     }
 
-    public readonly int GetCount()
-    {
-        int count = 0;
-        for (int i = 0; i < Capacity; i++)
-        {
-            if (items[i].Present)
-                count++;
-        }
-        return count;
-    }
+    public readonly int GetCount() => Count;
 
     public void Dispose()
     {
-        Clear(); // Dispose all entries first
         items.Dispose();
     }
 
@@ -151,49 +150,6 @@ public struct RawIntMap<T>(int capacity, Allocator allocator)
 
     static void ThrowKeyExistsException(int key) =>
         throw new ArgumentException($"key {key} already exists in the map");
-
-    #region Entry
-    public readonly EntryRef GetEntry(int key)
-    {
-        if (key < 0 || key >= Capacity)
-            ThrowKeyOutOfBoundsException(key);
-
-        return new(this, key);
-    }
-
-    public readonly struct EntryRef
-    {
-        readonly RawIntMap<T> map;
-        readonly int key;
-
-        public bool HasValue => map.items[key].Present;
-        public ref T Value
-        {
-            get
-            {
-                if (!HasValue)
-                    ThrowKeyNotFoundException(key);
-                return ref map.items[key].Value;
-            }
-        }
-
-        public EntryRef(RawIntMap<T> map, int key)
-        {
-            if (key < 0 || key >= map.Capacity)
-                ThrowKeyOutOfBoundsException(key);
-
-            this.map = map;
-            this.key = key;
-        }
-
-        public ref T Insert(T value)
-        {
-            map.items[key].Dispose(); // Dispose existing entry if present
-            map.items[key] = new Entry { Present = true, Value = value };
-            return ref map.items[key].Value;
-        }
-    }
-    #endregion
 
     #region Enumerators
     public readonly Enumerator GetEnumerator() => new(this);

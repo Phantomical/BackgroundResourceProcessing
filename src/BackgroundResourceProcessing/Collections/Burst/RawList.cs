@@ -76,6 +76,8 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable, IEnumerabl
     public RawList(RawArray<T> array)
         : this(array.Span, array.Allocator) { }
 
+    public static implicit operator Span<T>(RawList<T> list) => list.Span;
+
     public void Dispose()
     {
         if (data is null)

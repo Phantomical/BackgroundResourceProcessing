@@ -278,79 +278,8 @@ public sealed class RawIntMapDisposalTests
         TestTracker.AssertDisposalCount(0);
         TestTracker.AssertNotDisposed(100);
     }
-
-    [TestMethod]
-    public void EntryValue_Access_DoesNotDisposeItem()
-    {
-        using var map = new RawIntMap<TrackingDisposable>(10, Allocator.Temp);
-        var item = new TrackingDisposable(100);
-
-        map.Add(5, item);
-
-        var entry = map.GetEntry(5);
-        Assert.IsTrue(entry.HasValue);
-
-        // Access value via Entry
-        var accessed = entry.Value;
-
-        Assert.AreEqual(100, accessed.Id);
-        Assert.AreEqual(1, map.GetCount());
-
-        // Entry.Value access should not dispose anything
-        TestTracker.AssertDisposalCount(0);
-        TestTracker.AssertNotDisposed(100);
-    }
-
     #endregion
 
-    #region Entry API Disposal Tests
-
-    [TestMethod]
-    public void EntryInsert_OverwriteExisting_DisposesOldValue()
-    {
-        using var map = new RawIntMap<TrackingDisposable>(10, Allocator.Temp);
-        var oldItem = new TrackingDisposable(100);
-        var newItem = new TrackingDisposable(200);
-
-        map.Add(5, oldItem);
-        var entry = map.GetEntry(5);
-
-        Assert.IsTrue(entry.HasValue);
-        Assert.AreEqual(100, entry.Value.Id);
-
-        // Entry.Insert should dispose old value
-        ref var inserted = ref entry.Insert(newItem);
-
-        Assert.AreEqual(200, inserted.Id);
-        Assert.AreEqual(200, map[5].Id);
-
-        // Old item should be disposed, new item should not
-        TestTracker.AssertDisposalCount(1);
-        TestTracker.AssertDisposed(100);
-        TestTracker.AssertNotDisposed(200);
-    }
-
-    [TestMethod]
-    public void EntryInsert_EmptySlot_NoDisposal()
-    {
-        using var map = new RawIntMap<TrackingDisposable>(10, Allocator.Temp);
-        var item = new TrackingDisposable(100);
-
-        var entry = map.GetEntry(5);
-        Assert.IsFalse(entry.HasValue);
-
-        // Entry.Insert into empty slot should not dispose anything
-        ref var inserted = ref entry.Insert(item);
-
-        Assert.AreEqual(100, inserted.Id);
-        Assert.AreEqual(1, map.GetCount());
-        Assert.IsTrue(map.ContainsKey(5));
-
-        TestTracker.AssertDisposalCount(0);
-        TestTracker.AssertNotDisposed(100);
-    }
-
-    #endregion
 
     #region Exception Handling Tests
 
@@ -388,25 +317,6 @@ public sealed class RawIntMapDisposalTests
         TestTracker.AssertDisposalCount(0);
         TestTracker.AssertNotDisposed(100);
     }
-
-    [TestMethod]
-    public void EntryValue_KeyNotPresent_NoDisposalOnException()
-    {
-        using var map = new RawIntMap<TrackingDisposable>(10, Allocator.Temp);
-        var item = new TrackingDisposable(100);
-
-        map.Add(5, item);
-        var entry = map.GetEntry(7); // Empty slot
-
-        Assert.IsFalse(entry.HasValue);
-        Assert.ThrowsException<KeyNotFoundException>(() => _ = entry.Value);
-
-        Assert.AreEqual(1, map.GetCount());
-
-        TestTracker.AssertDisposalCount(0);
-        TestTracker.AssertNotDisposed(100);
-    }
-
     #endregion
 
     #region Complex Scenario Tests

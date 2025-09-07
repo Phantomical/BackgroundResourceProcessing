@@ -33,6 +33,7 @@ internal struct Matrix : IDisposable
     }
     public readonly Allocator Allocator => values.Allocator;
     public readonly Span<double> Span => values.Span.Slice(0, Rows * Cols);
+    public readonly unsafe double* Ptr => values.Ptr;
 
     public readonly Span<double> this[int r]
     {
@@ -77,6 +78,16 @@ internal struct Matrix : IDisposable
 
     public Matrix(int rows, int cols, Allocator allocator)
         : this(new RawArray<double>(rows * cols, allocator), rows, cols) { }
+
+    [IgnoreWarning(1370)]
+    public readonly unsafe double* GetRowPtr(int r)
+    {
+        AssumeSize();
+        if (r < 0 || r >= Rows)
+            throw new IndexOutOfRangeException("row index was out of range");
+
+        return &Ptr[r * Cols];
+    }
 
     public void SwapRows(int r1, int r2)
     {
