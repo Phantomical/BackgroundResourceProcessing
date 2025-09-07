@@ -28,6 +28,14 @@
       <Private>true</Private>
     </Reference>
 
+    <Reference Include="0Harmony.dll">
+      <HintPath>$(DepSet1)\000_Harmony\0Harmony.dll</HintPath>
+      <Private>false</Private>
+      <CKANIdentifier>Harmony2</CKANIdentifier>
+      <KSPAssemblyName>HarmonyKSP</KSPAssemblyName>
+      <KSPAssemblyVersion>1.0.0</KSPAssemblyVersion>
+    </Reference>
+
     <InternalsVisibleTo Include="BackgroundResourceProcessing.Test" />
     <InternalsVisibleTo Include="BackgroundResourceProcessing.CLI" />
     <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.ClickThroughBlocker" />
