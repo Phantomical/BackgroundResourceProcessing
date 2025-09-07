@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using BackgroundResourceProcessing.BurstSolver;
+using BackgroundResourceProcessing.Utils;
 using Unity.Burst;
 using Unity.Burst.CompilerServices;
 using CSUnsafe = System.Runtime.CompilerServices.Unsafe;
@@ -52,6 +53,8 @@ public static unsafe class TestAllocator
     {
         if (BurstUtil.IsBurstCompiled)
             ThrowBurstException();
+        if (UnsafeUtil.ContainsReferences<T>())
+            ThrowTypeHasGcReferenceException<T>();
         AllocWrap(out T* ptr, count);
         return ptr;
     }
@@ -76,6 +79,8 @@ public static unsafe class TestAllocator
     {
         if (BurstUtil.IsBurstCompiled)
             ThrowBurstException();
+        if (UnsafeUtil.ContainsReferences<T>())
+            ThrowTypeHasGcReferenceException<T>();
         ReallocWrap(out var res, ptr, newcount);
         return res;
     }
@@ -122,6 +127,8 @@ public static unsafe class TestAllocator
     {
         if (BurstUtil.IsBurstCompiled)
             ThrowBurstException();
+        if (UnsafeUtil.ContainsReferences<T>())
+            ThrowTypeHasGcReferenceException<T>();
 
         FreeImpl(ptr);
     }
@@ -152,4 +159,10 @@ public static unsafe class TestAllocator
     [IgnoreWarning(1370)]
     static void ThrowBurstException() =>
         throw new AllocationException("cannot use test allocator when burst-compiled");
+
+    [IgnoreWarning(1370)]
+    static void ThrowTypeHasGcReferenceException<T>() =>
+        throw new InvalidOperationException(
+            $"cannot allocate type {typeof(T).Name} on the unmanaged heap as it contains GC references"
+        );
 }
