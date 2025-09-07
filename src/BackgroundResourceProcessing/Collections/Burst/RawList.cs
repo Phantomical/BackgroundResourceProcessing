@@ -1,9 +1,10 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics;
 using BackgroundResourceProcessing.BurstSolver;
 using Unity.Burst.CompilerServices;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
@@ -23,7 +24,7 @@ namespace BackgroundResourceProcessing.Collections.Burst;
 /// </remarks>
 [DebuggerDisplay("Count = {Count}")]
 [DebuggerTypeProxy(typeof(RawList<>.DebugView))]
-internal unsafe struct RawList<T>(Allocator allocator) : IDisposable
+internal unsafe struct RawList<T>(Allocator allocator) : IDisposable, IEnumerable<T>
     where T : struct
 {
     T* data = null;
@@ -41,6 +42,7 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable
         [return: AssumeRange(0, int.MaxValue)]
         get => (int)capacity;
     }
+    public readonly bool IsEmpty => Count == 0;
     public readonly Allocator Allocator => allocator;
     public readonly Span<T> Span => new(data, Count);
     public readonly T* Ptr => data;
@@ -62,20 +64,41 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable
         Reserve(capacity);
     }
 
+    public RawList(Span<T> data, Allocator allocator)
+        : this(data.Length, allocator)
+    {
+        AddRange(data);
+    }
+
+    public RawList(RawList<T> list)
+        : this(list.Span, list.Allocator) { }
+
+    public RawList(RawArray<T> array)
+        : this(array.Span, array.Allocator) { }
+
     public void Dispose()
     {
         if (data is null)
             return;
 
-        if (BurstUtil.UseTestAllocator)
-            TestAllocator.Free(data);
-        else
-            UnityAllocator.Free(data, allocator);
+        try
+        {
+            ItemDisposer<T>.DisposeRange(Span);
+        }
+        finally
+        {
+            if (BurstUtil.UseTestAllocator)
+                TestAllocator.Free(data);
+            else
+                UnityAllocator.Free(data, allocator);
 
-        data = null;
-        capacity = 0;
-        count = 0;
+            data = null;
+            capacity = 0;
+            count = 0;
+        }
     }
+
+    public readonly RawList<T> Clone() => new(this);
 
     public void Add(T elem)
     {
@@ -110,6 +133,16 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable
 
     public void Push(T elem) => Add(elem);
 
+    [IgnoreWarning(1370)]
+    public T Pop()
+    {
+        if (IsEmpty)
+            throw new InvalidOperationException("cannot pop an item from an empty list");
+
+        count -= 1;
+        return data[count];
+    }
+
     public bool TryPop(out T elem)
     {
         if (count == 0)
@@ -127,6 +160,7 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable
 
     public void Clear()
     {
+        using var guard = ItemDisposer.Guard(Span);
         count = 0;
     }
 
@@ -135,6 +169,8 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable
     {
         if (index < 0 || index >= count)
             throw new ArgumentOutOfRangeException(nameof(index));
+
+        using var guard = new DisposeGuard<T>(this[index]);
 
         if (index == count - 1)
         {
@@ -166,6 +202,8 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable
         if (index < 0 || index >= count)
             throw new ArgumentOutOfRangeException(nameof(index));
 
+        using var guard = ItemDisposer.Guard(this[index]);
+
         if (index == count - 1)
         {
             count -= 1;
@@ -184,21 +222,25 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable
         if (newsize > Capacity)
             Expand(newsize);
 
-        if (newsize <= Count || options == NativeArrayOptions.UninitializedMemory)
+        try
         {
-            // do nothing
+            if (newsize <= Count)
+                ItemDisposer<T>.DisposeRange(Span.Slice(newsize));
+            else if (options == NativeArrayOptions.UninitializedMemory) { }
+            else if (BurstUtil.UseTestAllocator)
+            {
+                for (uint i = count; i < newsize; ++i)
+                    data[i] = default;
+            }
+            else
+            {
+                UnityAllocator.Clear(&data[count], newsize - Count);
+            }
         }
-        else if (BurstUtil.UseTestAllocator)
+        finally
         {
-            for (uint i = count; i < newsize; ++i)
-                data[i] = default;
+            count = (uint)newsize;
         }
-        else
-        {
-            UnityAllocator.Clear(&data[count], newsize - Count);
-        }
-
-        count = (uint)newsize;
     }
 
     [IgnoreWarning(1370)]
@@ -209,6 +251,7 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable
         if (index >= count)
             return;
 
+        using var guard = ItemDisposer.Guard(Span.Slice(index));
         count = (uint)index;
     }
 
@@ -253,6 +296,35 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable
         [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
         public T[] Items { get; } = [.. array];
     }
+
+    #region IEnumerable<T>
+    public readonly Enumerator GetEnumerator() => new(this);
+
+    readonly IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
+
+    readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+    public unsafe struct Enumerator(RawList<T> list) : IEnumerator<T>
+    {
+        T* ptr = list.Ptr - 1;
+        readonly T* end = list.Ptr + list.Count;
+
+        public ref T Current => ref *ptr;
+        T IEnumerator<T>.Current => Current;
+        object IEnumerator.Current => Current;
+
+        public bool MoveNext()
+        {
+            ptr += 1;
+            return ptr < end;
+        }
+
+        void IEnumerator.Reset() => throw new NotSupportedException();
+
+        public void Dispose() { }
+    }
+
+    #endregion
 }
 
 internal static class RawListExtensions
@@ -268,5 +340,8 @@ internal static class RawListExtensions
     }
 
     internal static bool Contains<T>(this RawList<T> list, T item)
-        where T : struct, IEquatable<T> => list.IndexOf(item) != -1;
+        where T : struct, IEquatable<T>
+    {
+        return list.IndexOf(item) != -1;
+    }
 }
