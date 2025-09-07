@@ -165,20 +165,15 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable, IEnumerabl
     }
 
     [IgnoreWarning(1370)]
-    public void RemoveAt(int index)
+    public T RemoveAt(int index)
     {
         if (index < 0 || index >= count)
             throw new ArgumentOutOfRangeException(nameof(index));
 
-        using var guard = new DisposeGuard<T>(this[index]);
+        var item = this[index];
 
-        if (index == count - 1)
-        {
-            count -= 1;
-            return;
-        }
-
-        if (BurstUtil.UseTestAllocator)
+        if (index == count - 1) { }
+        else if (BurstUtil.UseTestAllocator)
         {
             var dst = Span.Slice(index, Count - index - 1);
             var src = Span.Slice(index + 1);
@@ -194,24 +189,22 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable, IEnumerabl
         }
 
         count -= 1;
+        return item;
     }
 
     [IgnoreWarning(1370)]
-    public void RemoveAtSwapBack(int index)
+    public T RemoveAtSwapBack(int index)
     {
         if (index < 0 || index >= count)
             throw new ArgumentOutOfRangeException(nameof(index));
 
-        using var guard = ItemDisposer.Guard(this[index]);
+        var item = this[index];
 
-        if (index == count - 1)
-        {
-            count -= 1;
-            return;
-        }
+        if (index <= count)
+            this[index] = this[Count - 1];
 
-        this[index] = this[Count - 1];
         count -= 1;
+        return item;
     }
 
     [IgnoreWarning(1370)]
@@ -291,10 +284,10 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable, IEnumerabl
     static void ThrowIndexOutOfRange() =>
         throw new IndexOutOfRangeException("list index was out of range");
 
-    private sealed class DebugView(RawArray<T> array)
+    private sealed class DebugView(RawList<T> list)
     {
         [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
-        public T[] Items { get; } = [.. array];
+        public T[] Items { get; } = [.. list];
     }
 
     #region IEnumerable<T>

@@ -54,13 +54,13 @@ internal static class ItemDisposer<T>
     {
         return
         [
-            new CodeInstruction(OpCodes.Ldarga_S, (byte)0),
+            new CodeInstruction(OpCodes.Ldarg_0),
             new CodeInstruction(OpCodes.Call, DisposeMethod),
             new CodeInstruction(OpCodes.Ret),
         ];
     }
 
-    public static readonly bool NeedsDispose = false;
+    public static readonly bool NeedsDispose;
 
     static void DisposeImpl(ref T item) { }
 
