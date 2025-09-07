@@ -23,6 +23,7 @@ public struct RawIntMap<T>(int capacity, Allocator allocator)
         {
             if (Present)
                 ItemDisposer<T>.Dispose(ref Value);
+            Present = false;
         }
     }
 
@@ -67,7 +68,7 @@ public struct RawIntMap<T>(int capacity, Allocator allocator)
         return key >= 0 && key < Capacity && items[key].Present;
     }
 
-    public readonly void Add(int key, T value)
+    public void Add(int key, T value)
     {
         if (key < 0 || key >= Capacity)
             ThrowKeyOutOfBoundsException(key);
@@ -77,27 +78,51 @@ public struct RawIntMap<T>(int capacity, Allocator allocator)
         items[key] = new Entry { Present = true, Value = value };
     }
 
-    public readonly void Set(int key, T value)
+    public void Set(int key, T value)
     {
         if (key < 0 || key >= Capacity)
             ThrowKeyOutOfBoundsException(key);
 
+        using var prev = items[key];
         items[key] = new Entry { Present = true, Value = value };
     }
 
-    public readonly bool Remove(int key)
+    public bool TryRemove(int key, out T value)
+    {
+        if (key < 0 || key >= Capacity)
+        {
+            value = default;
+            return false;
+        }
+
+        ref var entry = ref items[key];
+        if (!entry.Present)
+        {
+            value = default;
+            return false;
+        }
+
+        value = entry.Value;
+        entry.Present = false;
+        return true;
+    }
+
+    public bool Remove(int key)
     {
         if (key < 0 || key >= Capacity)
             return false;
 
         ref var entry = ref items[key];
-        bool prev = entry.Present;
-        entry = default;
-        return prev;
+        if (!entry.Present)
+            return false;
+
+        entry.Dispose();
+        return true;
     }
 
     public readonly void Clear()
     {
+        ItemDisposer<Entry>.DisposeRange(items);
         items.Fill(default);
     }
 
@@ -114,6 +139,7 @@ public struct RawIntMap<T>(int capacity, Allocator allocator)
 
     public void Dispose()
     {
+        Clear(); // Dispose all entries first
         items.Dispose();
     }
 
@@ -162,6 +188,7 @@ public struct RawIntMap<T>(int capacity, Allocator allocator)
 
         public ref T Insert(T value)
         {
+            map.items[key].Dispose(); // Dispose existing entry if present
             map.items[key] = new Entry { Present = true, Value = value };
             return ref map.items[key].Value;
         }
