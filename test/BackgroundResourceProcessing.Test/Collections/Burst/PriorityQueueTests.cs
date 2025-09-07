@@ -532,14 +532,4 @@ public class PriorityQueueTests
 
         public int CompareTo(Priority other) => Value.CompareTo(other.Value);
     }
-
-    private struct MockDisposable : IDisposable, IComparable<MockDisposable>
-    {
-        public int Value;
-        public bool IsDisposed;
-
-        public void Dispose() => IsDisposed = true;
-
-        public int CompareTo(MockDisposable other) => Value.CompareTo(other.Value);
-    }
 }
