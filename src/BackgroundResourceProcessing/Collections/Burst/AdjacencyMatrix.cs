@@ -7,7 +7,6 @@ using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using static Unity.Burst.Intrinsics.X86.Avx;
 using static Unity.Burst.Intrinsics.X86.Avx2;
-using BitSpan = BackgroundResourceProcessing.Collections.BitSpan;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 

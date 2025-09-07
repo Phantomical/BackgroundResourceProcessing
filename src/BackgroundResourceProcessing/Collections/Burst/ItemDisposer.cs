@@ -68,7 +68,7 @@ internal static class ItemDisposer<T>
 
     public static void Dispose(T item) => DisposeImpl(ref item);
 
-    public static void DisposeRange(Span<T> items)
+    public static void DisposeRange(MemorySpan<T> items)
     {
         if (!NeedsDispose)
             return;
@@ -92,7 +92,7 @@ internal static class ItemDisposer
         return new(item);
     }
 
-    internal static DisposeRangeGuard<T> Guard<T>(Span<T> item)
+    internal static DisposeRangeGuard<T> Guard<T>(MemorySpan<T> item)
         where T : struct
     {
         return new(item);
@@ -105,10 +105,10 @@ internal ref struct DisposeGuard<T>(T item) : IDisposable
     public readonly void Dispose() => ItemDisposer<T>.Dispose(item);
 }
 
-internal readonly ref struct DisposeRangeGuard<T>(Span<T> items) : IDisposable
+internal readonly ref struct DisposeRangeGuard<T>(MemorySpan<T> items) : IDisposable
     where T : struct
 {
-    readonly Span<T> items = items;
+    readonly MemorySpan<T> items = items;
 
     public void Dispose() => ItemDisposer<T>.DisposeRange(items);
 }

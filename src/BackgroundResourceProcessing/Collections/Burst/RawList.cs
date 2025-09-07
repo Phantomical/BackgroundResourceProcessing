@@ -23,7 +23,7 @@ namespace BackgroundResourceProcessing.Collections.Burst;
 /// outside of unity.
 /// </remarks>
 [DebuggerDisplay("Count = {Count}")]
-[DebuggerTypeProxy(typeof(RawList<>.DebugView))]
+[DebuggerTypeProxy(typeof(SpanDebugView<>))]
 internal unsafe struct RawList<T>(Allocator allocator) : IDisposable, IEnumerable<T>
     where T : struct
 {
@@ -44,7 +44,7 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable, IEnumerabl
     }
     public readonly bool IsEmpty => Count == 0;
     public readonly Allocator Allocator => allocator;
-    public readonly Span<T> Span => new(data, Count);
+    public readonly MemorySpan<T> Span => new(data, Count);
     public readonly T* Ptr => data;
 
     public readonly ref T this[int index]
@@ -64,6 +64,12 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable, IEnumerabl
         Reserve(capacity);
     }
 
+    public RawList(MemorySpan<T> data, Allocator allocator)
+        : this(data.Length, allocator)
+    {
+        AddRange(data);
+    }
+
     public RawList(Span<T> data, Allocator allocator)
         : this(data.Length, allocator)
     {
@@ -75,8 +81,6 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable, IEnumerabl
 
     public RawList(RawArray<T> array)
         : this(array.Span, array.Allocator) { }
-
-    public static implicit operator Span<T>(RawList<T> list) => list.Span;
 
     public void Dispose()
     {
@@ -111,26 +115,21 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable, IEnumerabl
         count += 1;
     }
 
-    public void AddRange(Span<T> values)
+    public void AddRange(MemorySpan<T> values)
     {
         if (Count + values.Length > Capacity)
             Expand(Count + values.Length);
 
-        if (BurstUtil.UseTestAllocator)
-        {
-            T* p = &data[count];
-            for (int i = 0; i < values.Length; ++i)
-                p[i] = values[i];
-        }
-        else
-        {
-            fixed (T* src = values)
-            {
-                UnityAllocator.Copy(&data[count], src, values.Length);
-            }
-        }
-
+        values.CopyTo(new MemorySpan<T>(data + Count, Capacity - Count));
         count += (uint)values.Length;
+    }
+
+    public void AddRange(Span<T> values)
+    {
+        fixed (T* ptr = values)
+        {
+            AddRange(new MemorySpan<T>(ptr, values.Length));
+        }
     }
 
     public void Push(T elem) => Add(elem);

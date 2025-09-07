@@ -11,6 +11,7 @@ using Unity.Collections;
 namespace BackgroundResourceProcessing.Collections.Burst;
 
 [DebuggerDisplay("Length = {Length}")]
+[DebuggerTypeProxy(typeof(SpanDebugView<>))]
 internal unsafe struct RawArray<T>(Allocator allocator) : IEnumerable<T>, IDisposable
     where T : struct
 {
@@ -25,7 +26,7 @@ internal unsafe struct RawArray<T>(Allocator allocator) : IEnumerable<T>, IDispo
     }
     public readonly int Count => Length;
     public readonly Allocator Allocator => allocator;
-    public readonly Span<T> Span => new(data, Length);
+    public readonly MemorySpan<T> Span => (MemorySpan<T>)this;
     public readonly T* Ptr => data;
 
     public readonly ref T this[int index]
@@ -82,19 +83,18 @@ internal unsafe struct RawArray<T>(Allocator allocator) : IEnumerable<T>, IDispo
         this.length = (uint)length;
     }
 
+    public RawArray(MemorySpan<T> values, Allocator allocator)
+        : this(values.Length, allocator, NativeArrayOptions.UninitializedMemory)
+    {
+        values.CopyTo(Span);
+    }
+
     public RawArray(Span<T> values, Allocator allocator)
         : this(values.Length, allocator, NativeArrayOptions.UninitializedMemory)
     {
-        if (BurstUtil.UseTestAllocator)
+        fixed (T* ptr = values)
         {
-            values.CopyTo(Span);
-        }
-        else
-        {
-            fixed (T* src = values)
-            {
-                UnityAllocator.Copy(data, src, values.Length);
-            }
+            new MemorySpan<T>(ptr, values.Length).CopyTo(Span);
         }
     }
 
@@ -117,8 +117,6 @@ internal unsafe struct RawArray<T>(Allocator allocator) : IEnumerable<T>, IDispo
     }
 
     public void Fill(T item) => Span.Fill(item);
-
-    public static implicit operator Span<T>(RawArray<T> array) => array.Span;
 
     #region IEnumerable<T>
     public readonly Enumerator GetEnumerator() => new(this);

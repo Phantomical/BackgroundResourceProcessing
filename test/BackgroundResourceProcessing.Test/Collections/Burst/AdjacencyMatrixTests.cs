@@ -1,8 +1,5 @@
-using System;
 using BackgroundResourceProcessing.Collections.Burst;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Unity.Collections;
-using BitSpan = BackgroundResourceProcessing.Collections.BitSpan;
 
 namespace BackgroundResourceProcessing.Test.Collections.Burst
 {

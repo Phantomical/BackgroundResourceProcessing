@@ -3,18 +3,19 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using BackgroundResourceProcessing.Utils;
+using JetBrains.Annotations;
 using Unity.Burst.CompilerServices;
 using static Unity.Burst.Intrinsics.X86.Bmi2;
 
-namespace BackgroundResourceProcessing.Collections;
+namespace BackgroundResourceProcessing.Collections.Burst;
 
 [DebuggerDisplay("Capacity = {Capacity}")]
 [DebuggerTypeProxy(typeof(DebugView))]
-internal ref struct BitSpan(Span<ulong> bits)
+internal ref struct BitSpan(MemorySpan<ulong> bits)
 {
     const int ULongBits = 64;
 
-    Span<ulong> bits = bits;
+    MemorySpan<ulong> bits = bits;
 
     public readonly int Capacity
     {
@@ -27,7 +28,7 @@ internal ref struct BitSpan(Span<ulong> bits)
         get => bits.Length;
     }
 
-    public readonly Span<ulong> Span => bits;
+    public readonly MemorySpan<ulong> Span => bits;
 
     public readonly bool this[int key]
     {
@@ -64,10 +65,12 @@ internal ref struct BitSpan(Span<ulong> bits)
     }
 
     public unsafe BitSpan(ulong* bits, int length)
-        : this(new Span<ulong>(bits, length)) { }
+        : this(new MemorySpan<ulong>(bits, length)) { }
 
     public BitSpan(BitSet set)
-        : this(set.Bits) { }
+        : this(set.Span.bits) { }
+
+    public static implicit operator BitSpan(BitSet set) => new(set);
 
     [IgnoreWarning(1370)]
     static void ThrowIndexOutOfRangeException() =>
@@ -279,9 +282,9 @@ internal ref struct BitSpan(Span<ulong> bits)
     #region IEnumerator<T>
     public readonly Enumerator GetEnumerator() => new(this);
 
-    public ref struct Enumerator(BitSpan set) : IEnumerator<int>
+    public struct Enumerator(BitSpan set) : IEnumerator<int>
     {
-        Span<ulong>.Enumerator words = set.bits.GetEnumerator();
+        MemorySpan<ulong>.Enumerator words = set.bits.GetEnumerator();
         BitEnumerator bits = default;
         int wordIndex = -1;
 

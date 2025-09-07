@@ -32,10 +32,10 @@ internal struct Matrix : IDisposable
         }
     }
     public readonly Allocator Allocator => values.Allocator;
-    public readonly Span<double> Span => values.Span.Slice(0, Rows * Cols);
+    public readonly MemorySpan<double> Span => values.Span.Slice(0, Rows * Cols);
     public readonly unsafe double* Ptr => values.Ptr;
 
-    public readonly Span<double> this[int r]
+    public readonly MemorySpan<double> this[int r]
     {
         [IgnoreWarning(1370)]
         get

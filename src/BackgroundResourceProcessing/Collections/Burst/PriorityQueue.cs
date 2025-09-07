@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime;
 using System.Runtime.CompilerServices;
 using CommNet.Network;
 using Unity.Burst.CompilerServices;
@@ -17,7 +18,7 @@ internal struct PriorityQueue<T>(RawList<T> items) : IDisposable
     public readonly bool IsEmpty => Count == 0;
     public readonly int Capacity => items.Capacity;
     public readonly Allocator Allocator => items.Allocator;
-    public readonly Span<T> Span => items.Span;
+    public readonly MemorySpan<T> Span => items.Span;
 
     public PriorityQueue(Allocator allocator)
         : this(new RawList<T>(allocator)) { }
@@ -25,16 +26,17 @@ internal struct PriorityQueue<T>(RawList<T> items) : IDisposable
     public PriorityQueue(int capacity, Allocator allocator)
         : this(new RawList<T>(capacity, allocator)) { }
 
-    public PriorityQueue(Span<T> items, Allocator allocator)
+    public PriorityQueue(MemorySpan<T> items, Allocator allocator)
         : this(new RawList<T>(items, allocator))
     {
-        // Heapify from the last non-leaf node down to the root
-        for (int i = (Count - 2) / 2; i >= 0; --i)
-            MoveDown(i);
+        Heapify();
     }
 
     public PriorityQueue(T[] items, Allocator allocator)
-        : this(new Span<T>(items), allocator) { }
+        : this(new RawList<T>(items, allocator))
+    {
+        Heapify();
+    }
 
     public void Dispose()
     {
@@ -90,6 +92,13 @@ internal struct PriorityQueue<T>(RawList<T> items) : IDisposable
     }
 
     public void Clear() => items.Clear();
+
+    private void Heapify()
+    {
+        // Heapify from the last non-leaf node down to the root
+        for (int i = (Count - 2) / 2; i >= 0; --i)
+            MoveDown(i);
+    }
 
     private void MoveUp(int index)
     {

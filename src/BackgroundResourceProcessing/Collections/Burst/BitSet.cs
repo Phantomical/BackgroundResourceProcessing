@@ -29,14 +29,14 @@ internal struct BitSet : IEnumerable<int>, IDisposable
 
     public BitSet(int capacity, Allocator allocator) => bits = new((capacity + 63) / 64, allocator);
 
+    public BitSet(MemorySpan<ulong> span, Allocator allocator) => bits = new(span, allocator);
+
     public BitSet(Span<ulong> span, Allocator allocator) => bits = new(span, allocator);
 
     public BitSet(BitSpan span, Allocator allocator)
         : this(span.Span, allocator) { }
 
     public void Dispose() => bits.Dispose();
-
-    public static implicit operator BitSpan(BitSet set) => set.Span;
 
     public readonly BitSet Clone() => new(bits.Span, Allocator);
 

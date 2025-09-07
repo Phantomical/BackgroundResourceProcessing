@@ -57,4 +57,24 @@ internal unsafe static class UnityAllocator
 
         UnsafeUtility.MemClear(dst, UnsafeUtility.SizeOf<T>() * count);
     }
+
+    [IgnoreWarning(1370)]
+    public static void Set<T>(T* dst, byte b, int count)
+        where T : struct
+    {
+        if (count < 0)
+            throw new ArgumentOutOfRangeException(nameof(count));
+
+        UnsafeUtility.MemSet(dst, b, UnsafeUtility.SizeOf<T>() * count);
+    }
+
+    [IgnoreWarning(1370)]
+    public static int Cmp<T>(T* a, T* b, int count)
+        where T : struct
+    {
+        if (count < 0)
+            throw new ArgumentOutOfRangeException(nameof(count));
+
+        return UnsafeUtility.MemCmp(a, b, UnsafeUtility.SizeOf<T>() * count);
+    }
 }

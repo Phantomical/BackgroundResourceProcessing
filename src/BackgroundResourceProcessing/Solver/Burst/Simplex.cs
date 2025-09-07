@@ -81,7 +81,7 @@ internal static partial class Simplex
         [AssumeRange(0, int.MaxValue)] int length
     )
     {
-        Collections.BitSpan selected = new(bits, length);
+        Collections.Burst.BitSpan selected = new(bits, length);
 
         for (uint iter = 0; iter < MaxIterations; ++iter)
         {
