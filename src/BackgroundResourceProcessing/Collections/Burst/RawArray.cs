@@ -66,7 +66,7 @@ internal unsafe struct RawArray<T>() : IEnumerable<T>
 
             if (options == NativeArrayOptions.ClearMemory)
             {
-                for (int i = 0; i < Length; ++i)
+                for (int i = 0; i < length; ++i)
                     data[i] = default;
             }
         }
