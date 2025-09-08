@@ -105,6 +105,7 @@ internal struct LinearProblem()
         }
     }
 
+    [IgnoreWarning(1370)]
     private static SolverConstraint StandardizeConstraint(LinearConstraint constraint)
     {
         switch (constraint.relation)
@@ -125,6 +126,7 @@ internal struct LinearProblem()
         }
     }
 
+    [IgnoreWarning(1370)]
     private static SimpleSolverConstraint StandardizeConstraint(SimpleConstraint constraint)
     {
         switch (constraint.relation)
@@ -216,6 +218,7 @@ internal struct LinearProblem()
         return soln;
     }
 
+    [IgnoreWarning(1370)]
     private readonly void CheckSolution(LinearSolution soln, double tol = 1e-6)
     {
         foreach (var constraint in constraints)
@@ -494,6 +497,7 @@ internal struct LinearProblem()
     #endregion
 
     #region Branch & Bound
+    [IgnoreWarning(1371)]
     private LinearSolution? SolveBranchAndBound(LinearEquation func)
     {
         Presolve(ref func);
@@ -655,6 +659,7 @@ internal struct LinearProblem()
         LogUtil.Log($"Final solution {soln} with score {score}");
     }
 
+    [IgnoreWarning(1370)]
     private readonly Matrix BuildSimplexTableau(
         LinearEquation func,
         MemorySpan<BinaryChoice> choices,

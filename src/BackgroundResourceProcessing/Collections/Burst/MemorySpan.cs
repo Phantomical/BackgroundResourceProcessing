@@ -184,9 +184,11 @@ internal readonly unsafe struct MemorySpan<T> : IEnumerable<T>
     static void ThrowIndexOutOfRange() =>
         throw new IndexOutOfRangeException("span index was out of range");
 
+    [IgnoreWarning(1370)]
     static void ThrowLengthOutOfRange() =>
         throw new ArgumentOutOfRangeException("span length was negative");
 
+    [IgnoreWarning(1370)]
     static void ThrowDestinationTooShort() =>
         throw new ArgumentException("MemorySpan.CopyTo destination was too short");
     #endregion

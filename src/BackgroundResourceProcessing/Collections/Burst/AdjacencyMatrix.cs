@@ -8,56 +8,60 @@ using Unity.Collections;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
-internal struct AdjacencyMatrix : IEnumerable<BitSpan>
+internal unsafe struct AdjacencyMatrix : IEnumerable<BitSpan>
 {
     const int ULongBits = 64;
 
-    RawArray<ulong> bits;
+    ulong* bits;
     readonly int rows;
     readonly int cols;
 
     public readonly int Rows
     {
         [return: AssumeRange(0, int.MaxValue)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => rows;
     }
     public readonly int Cols
     {
         [return: AssumeRange(0, int.MaxValue)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => cols * ULongBits;
     }
     public readonly int ColumnWords
     {
         [return: AssumeRange(0, int.MaxValue)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => cols;
     }
 
-    public readonly BitSpan Bits => new(bits.Span);
+    public readonly MemorySpan<ulong> Words => new(bits, rows * cols);
+
+    public readonly BitSpan Bits => new(Words);
 
     public readonly BitSpan this[int r]
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            AssumeSize();
             if (r < 0 || r >= Rows)
                 ThrowRowOutOfRangeException();
 
-            return new(bits.Span.Slice(r * ColumnWords, ColumnWords));
+            return new(new MemorySpan<ulong>(&bits[r * cols], cols));
         }
     }
 
     public readonly bool this[int r, int c]
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => this[r][c];
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set
         {
             var span = this[r];
             span[c] = value;
         }
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private readonly void AssumeSize() => Hint.Assume(rows * cols < bits.Length);
 
     public AdjacencyMatrix(int rows, int cols)
     {
@@ -68,7 +72,7 @@ internal struct AdjacencyMatrix : IEnumerable<BitSpan>
 
         this.rows = rows;
         this.cols = (cols + (ULongBits - 1)) / ULongBits;
-        this.bits = new RawArray<ulong>(this.rows * this.cols);
+        this.bits = new RawArray<ulong>(this.rows * this.cols).Ptr;
     }
 
     [IgnoreWarning(1370)]
@@ -82,7 +86,7 @@ internal struct AdjacencyMatrix : IEnumerable<BitSpan>
         int word = column / ULongBits;
         int bit = column % ULongBits;
         var span = bspan.Span;
-        var bits = this.bits.Span;
+        var bits = Words;
 
         if (cols == 0)
             return;
@@ -151,7 +155,7 @@ internal struct AdjacencyMatrix : IEnumerable<BitSpan>
 
     public struct RowEnumerator(AdjacencyMatrix matrix) : IEnumerator<BitSpan>
     {
-        readonly MemorySpan<ulong> words = matrix.bits;
+        readonly MemorySpan<ulong> words = matrix.Words;
         readonly int cols = matrix.cols;
         int offset = -matrix.cols;
 

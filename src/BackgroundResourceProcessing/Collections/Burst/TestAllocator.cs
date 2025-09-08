@@ -41,8 +41,6 @@ public static unsafe class TestAllocator
     {
         if (BurstUtil.IsBurstCompiled)
             ThrowBurstException();
-        if (UnsafeUtil.ContainsReferences<T>())
-            ThrowTypeHasGcReferenceException<T>();
         AllocWrap(out T* ptr, count);
         return ptr;
     }

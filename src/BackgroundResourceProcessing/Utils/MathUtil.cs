@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Collections;
+using Unity.Burst;
 using UnityEngine;
 using static Unity.Burst.Intrinsics.X86.Bmi1;
 using static Unity.Burst.Intrinsics.X86.Fma;
@@ -10,6 +11,7 @@ using static Unity.Burst.Intrinsics.X86.Sse2;
 
 namespace BackgroundResourceProcessing.Utils;
 
+[BurstCompile]
 internal static class MathUtil
 {
     internal const double DEG2RAD = Math.PI / 180.0;
@@ -71,6 +73,7 @@ internal static class MathUtil
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [BurstCompile]
     internal static int TrailingZeroCount(ulong v)
     {
         if (IsBmi1Supported)
@@ -98,6 +101,7 @@ internal static class MathUtil
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [BurstCompile]
     internal static int PopCount(ulong x)
     {
         if (IsPopcntSupported)

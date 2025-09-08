@@ -2,8 +2,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
-using Unity.Collections;
+using Unity.Burst.CompilerServices;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
@@ -124,12 +125,15 @@ public struct RawIntMap<T>(int capacity) : IEnumerable<KeyValuePair<int, T>>
 
     public readonly int GetCount() => Count;
 
+    [IgnoreWarning(1370)]
     static void ThrowKeyNotFoundException(int key) =>
         throw new KeyNotFoundException($"key {key} not found in the map");
 
+    [IgnoreWarning(1370)]
     static void ThrowKeyOutOfBoundsException(int key) =>
         throw new IndexOutOfRangeException($"key {key} was outside of the int map range");
 
+    [IgnoreWarning(1370)]
     static void ThrowKeyExistsException(int key) =>
         throw new ArgumentException($"key {key} already exists in the map");
 
@@ -143,45 +147,37 @@ public struct RawIntMap<T>(int capacity) : IEnumerable<KeyValuePair<int, T>>
 
     readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    public struct Enumerator : IEnumerator<KeyValuePair<int, T>>
+    [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public struct Enumerator(RawIntMap<T> map, int offset = 0) : IEnumerator<KeyValuePair<int, T>>
     {
-        readonly RawIntMap<T> map;
-        int index;
+        readonly MemorySpan<Entry> span = map.items.Span;
+        int index = offset - 1;
 
         public readonly KeyValuePair<int, T> Current
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => new(index, map.items[index].Value);
+            get => new(index, span[index].Value);
         }
         readonly object IEnumerator.Current => Current;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Enumerator(RawIntMap<T> map)
-        {
-            this.map = map;
-            index = -1;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Enumerator(RawIntMap<T> map, int offset)
-        {
-            this.map = map;
-            index = offset - 1;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
-            while (++index < map.Capacity)
+            while (true)
             {
-                if (map.items[index].Present)
-                    return true;
+                index += 1;
+                if (index >= span.Length)
+                    return false;
+
+                if (span[index].Present)
+                    break;
             }
-            return false;
+
+            return true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Reset() => index = -1;
+        void IEnumerator.Reset() => throw new NotSupportedException();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly void Dispose() { }

@@ -101,7 +101,7 @@ internal struct GraphConverter
         if (!outputs.KeysEqual(other.outputs))
             return false;
 
-        return constraints.Equals(other.constraints);
+        return ConstraintEquals(in constraints, in other.constraints);
     }
 
     private static double GetPriorityWeight(int priority)
@@ -113,5 +113,28 @@ internal struct GraphConverter
         priority = Math.Max(Math.Min(priority, 10), -10);
 
         return Math.Pow(B, priority);
+    }
+
+    internal static bool ConstraintEquals(
+        in LinearMap<int, Constraint> a,
+        in LinearMap<int, Constraint> b
+    )
+    {
+        if (a.Count != b.Count)
+            return false;
+
+        for (int i = 0; i < a.Count; ++i)
+        {
+            ref var ae = ref a.GetEntryAtIndex(i);
+            if (!b.TryGetIndex(ae.Key, out var j))
+                return false;
+
+            ref var be = ref b.GetEntryAtIndex(j);
+
+            if (ae.Value != be.Value)
+                return false;
+        }
+
+        return true;
     }
 }

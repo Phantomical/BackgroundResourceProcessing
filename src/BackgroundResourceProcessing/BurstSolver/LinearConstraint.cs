@@ -1,6 +1,6 @@
 using System;
 using System.Text;
-using Unity.Collections;
+using Unity.Burst.CompilerServices;
 
 namespace BackgroundResourceProcessing.BurstSolver;
 
@@ -11,6 +11,27 @@ internal struct LinearConstraint : IComparable<LinearConstraint>
     public double constant;
 
     public LinearConstraint(LinearEquation variables, Relation relation, double constant)
+    {
+        ValidateVariable(in variables);
+
+        this.variables = variables;
+        this.relation = relation;
+        this.constant = constant;
+    }
+
+    public LinearConstraint(SimpleConstraint constraint)
+    {
+        var var = constraint.variable;
+
+        ValidateVariable(var);
+
+        constant = constraint.constant;
+        relation = constraint.relation;
+        variables = new(var.Index + 1) { var };
+    }
+
+    [IgnoreWarning(1370)]
+    private static void ValidateVariable(in LinearEquation variables)
     {
         foreach (var var in variables)
         {
@@ -23,26 +44,17 @@ internal struct LinearConstraint : IComparable<LinearConstraint>
                     $"Coefficient for variable x{var.Index} was infinite"
                 );
         }
-
-        this.variables = variables;
-        this.relation = relation;
-        this.constant = constant;
     }
 
-    public LinearConstraint(SimpleConstraint constraint)
+    [IgnoreWarning(1370)]
+    private static void ValidateVariable(Variable var)
     {
-        var var = constraint.variable;
-
         if (double.IsNaN(var.Coef))
             throw new InvalidCoefficientException($"Coefficient for variable x{var.Index} was NaN");
         if (double.IsPositiveInfinity(var.Coef) || double.IsNegativeInfinity(var.Coef))
             throw new InvalidCoefficientException(
                 $"Coefficient for variable x{var.Index} was infinite"
             );
-
-        constant = constraint.constant;
-        relation = constraint.relation;
-        variables = new(var.Index + 1) { var };
     }
 
     public readonly bool KnownInconsistent

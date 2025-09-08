@@ -1,4 +1,5 @@
 using System;
+using System.CodeDom;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -237,5 +238,27 @@ internal static class LinearMapExtensions
         foreach (var (key, value) in enumerable)
             map.AddUnchecked(key, value);
         return map;
+    }
+
+    internal static bool Equals<K, V>(in this LinearMap<K, V> a, in LinearMap<K, V> b)
+        where K : struct, IEquatable<K>
+        where V : struct, IEquatable<V>
+    {
+        if (a.Count != b.Count)
+            return false;
+
+        for (int i = 0; i < a.Count; ++i)
+        {
+            ref var ae = ref a.GetEntryAtIndex(i);
+            if (!b.TryGetIndex(ae.Key, out var j))
+                return false;
+
+            ref var be = ref b.GetEntryAtIndex(j);
+
+            if (!ae.Value.Equals(be.Value))
+                return false;
+        }
+
+        return true;
     }
 }

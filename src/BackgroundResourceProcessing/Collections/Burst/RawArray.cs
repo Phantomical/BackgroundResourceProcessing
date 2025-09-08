@@ -65,7 +65,10 @@ internal unsafe struct RawArray<T>() : IEnumerable<T>
             data = TestAllocator.Alloc<T>(length);
 
             if (options == NativeArrayOptions.ClearMemory)
-                new Span<T>(data, length).Fill(default);
+            {
+                for (int i = 0; i < Length; ++i)
+                    data[i] = default;
+            }
         }
         else
         {

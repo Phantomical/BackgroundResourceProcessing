@@ -772,7 +772,6 @@ public sealed class RawIntMapTests
     public void Values_EmptyMap_ReturnsEmptySequence()
     {
         var map = new RawIntMap<int>(10);
-
         var values = map.Values.ToList();
 
         Assert.AreEqual(0, values.Count);
