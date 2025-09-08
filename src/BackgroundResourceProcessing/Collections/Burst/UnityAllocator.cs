@@ -35,6 +35,10 @@ internal unsafe static class UnityAllocator
         if (ptr is null)
             return;
 
+        // Deallocations with the temp allocator are a no-op.
+        if (allocator == Allocator.Temp)
+            return;
+
         UnsafeUtility.Free(ptr, allocator);
     }
 

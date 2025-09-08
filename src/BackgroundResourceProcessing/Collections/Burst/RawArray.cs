@@ -12,12 +12,11 @@ namespace BackgroundResourceProcessing.Collections.Burst;
 
 [DebuggerDisplay("Length = {Length}")]
 [DebuggerTypeProxy(typeof(SpanDebugView<>))]
-internal unsafe struct RawArray<T>(Allocator allocator) : IEnumerable<T>, IDisposable
+internal unsafe struct RawArray<T>() : IEnumerable<T>
     where T : struct
 {
     T* data = null;
     uint length = 0;
-    readonly Allocator allocator = allocator;
 
     public readonly int Length
     {
@@ -25,7 +24,7 @@ internal unsafe struct RawArray<T>(Allocator allocator) : IEnumerable<T>, IDispo
         get => (int)length;
     }
     public readonly int Count => Length;
-    public readonly Allocator Allocator => allocator;
+
     public readonly MemorySpan<T> Span => (MemorySpan<T>)this;
     public readonly T* Ptr => data;
 
@@ -51,12 +50,8 @@ internal unsafe struct RawArray<T>(Allocator allocator) : IEnumerable<T>, IDispo
         }
     }
 
-    public RawArray(
-        int length,
-        Allocator allocator,
-        NativeArrayOptions options = NativeArrayOptions.ClearMemory
-    )
-        : this(allocator)
+    public RawArray(int length, NativeArrayOptions options = NativeArrayOptions.ClearMemory)
+        : this()
     {
         if (length < 0)
             ThrowLengthOutOfRange();
@@ -74,7 +69,7 @@ internal unsafe struct RawArray<T>(Allocator allocator) : IEnumerable<T>, IDispo
         }
         else
         {
-            data = UnityAllocator.Alloc<T>(length, allocator);
+            data = UnityAllocator.Alloc<T>(length, Allocator.Temp);
 
             if (options == NativeArrayOptions.ClearMemory)
                 UnityAllocator.Clear(data, length);
@@ -83,14 +78,14 @@ internal unsafe struct RawArray<T>(Allocator allocator) : IEnumerable<T>, IDispo
         this.length = (uint)length;
     }
 
-    public RawArray(MemorySpan<T> values, Allocator allocator)
-        : this(values.Length, allocator, NativeArrayOptions.UninitializedMemory)
+    public RawArray(MemorySpan<T> values)
+        : this(values.Length, NativeArrayOptions.UninitializedMemory)
     {
         values.CopyTo(Span);
     }
 
-    public RawArray(Span<T> values, Allocator allocator)
-        : this(values.Length, allocator, NativeArrayOptions.UninitializedMemory)
+    public RawArray(Span<T> values)
+        : this(values.Length, NativeArrayOptions.UninitializedMemory)
     {
         fixed (T* ptr = values)
         {
@@ -98,25 +93,9 @@ internal unsafe struct RawArray<T>(Allocator allocator) : IEnumerable<T>, IDispo
         }
     }
 
-    public readonly RawArray<T> Clone() => new(Span, Allocator);
+    public readonly RawArray<T> Clone() => new(Span);
 
-    public void Dispose()
-    {
-        if (data is null)
-            return;
-
-        ItemDisposer<T>.DisposeRange(Span);
-
-        if (BurstUtil.UseTestAllocator)
-            TestAllocator.Free(data);
-        else
-            UnityAllocator.Free(data, allocator);
-
-        data = null;
-        length = 0;
-    }
-
-    public void Fill(T item) => Span.Fill(item);
+    public readonly void Fill(T item) => Span.Fill(item);
 
     #region IEnumerable<T>
     public readonly Enumerator GetEnumerator() => new(this);

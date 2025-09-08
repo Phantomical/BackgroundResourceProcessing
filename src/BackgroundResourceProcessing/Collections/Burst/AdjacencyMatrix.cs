@@ -1,16 +1,14 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.BurstSolver;
-using TMPro;
 using Unity.Burst.CompilerServices;
-using Unity.Burst.Intrinsics;
 using Unity.Collections;
-using static Unity.Burst.Intrinsics.X86.Avx;
-using static Unity.Burst.Intrinsics.X86.Avx2;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
-internal struct AdjacencyMatrix : IDisposable
+internal struct AdjacencyMatrix : IEnumerable<BitSpan>
 {
     const int ULongBits = 64;
 
@@ -18,7 +16,6 @@ internal struct AdjacencyMatrix : IDisposable
     readonly int rows;
     readonly int cols;
 
-    public readonly Allocator Allocator => bits.Allocator;
     public readonly int Rows
     {
         [return: AssumeRange(0, int.MaxValue)]
@@ -62,7 +59,7 @@ internal struct AdjacencyMatrix : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private readonly void AssumeSize() => Hint.Assume(rows * cols < bits.Length);
 
-    public AdjacencyMatrix(int rows, int cols, Allocator allocator)
+    public AdjacencyMatrix(int rows, int cols)
     {
         if (rows < 0)
             ThrowNegativeRows();
@@ -71,10 +68,8 @@ internal struct AdjacencyMatrix : IDisposable
 
         this.rows = rows;
         this.cols = (cols + (ULongBits - 1)) / ULongBits;
-        this.bits = new RawArray<ulong>(this.rows * this.cols, allocator);
+        this.bits = new RawArray<ulong>(this.rows * this.cols);
     }
-
-    public void Dispose() => bits.Dispose();
 
     [IgnoreWarning(1370)]
     public readonly unsafe void RemoveUnequalColumns(BitSpan bspan, int column)
@@ -147,19 +142,32 @@ internal struct AdjacencyMatrix : IDisposable
     }
     #endregion
 
-    #region Extra Intrinsics
-    [IgnoreWarning(1370)]
-    static v256 mm256_not_si256(v256 x)
+    #region Enumerator
+    public readonly RowEnumerator GetEnumerator() => new(this);
+
+    readonly IEnumerator<BitSpan> IEnumerable<BitSpan>.GetEnumerator() => GetEnumerator();
+
+    readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+    public struct RowEnumerator(AdjacencyMatrix matrix) : IEnumerator<BitSpan>
     {
-        if (IsAvx2Supported)
+        readonly MemorySpan<ulong> words = matrix.bits;
+        readonly int cols = matrix.cols;
+        int offset = -matrix.cols;
+
+        public readonly BitSpan Current => new(words.Slice(offset, cols));
+        readonly object IEnumerator.Current => Current;
+
+        public bool MoveNext()
         {
-            var set = mm256_cmpeq_epi64(x, x);
-            return mm256_xor_si256(x, set);
+            offset += cols;
+            return offset < words.Length;
         }
-        else
-        {
-            throw new NotImplementedException();
-        }
+
+        public void Reset() => offset = -cols;
+
+        public void Dispose() { }
     }
+
     #endregion
 }

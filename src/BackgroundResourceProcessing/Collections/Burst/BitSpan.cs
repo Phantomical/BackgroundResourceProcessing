@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using BackgroundResourceProcessing.Utils;
-using JetBrains.Annotations;
 using Unity.Burst.CompilerServices;
 using static Unity.Burst.Intrinsics.X86.Bmi2;
 
@@ -11,7 +10,7 @@ namespace BackgroundResourceProcessing.Collections.Burst;
 
 [DebuggerDisplay("Capacity = {Capacity}")]
 [DebuggerTypeProxy(typeof(DebugView))]
-internal ref struct BitSpan(MemorySpan<ulong> bits)
+internal struct BitSpan(MemorySpan<ulong> bits)
 {
     const int ULongBits = 64;
 
@@ -108,6 +107,12 @@ internal ref struct BitSpan(MemorySpan<ulong> bits)
             bits[i] &= other.bits[i];
     }
 
+    public unsafe void AndWith(BitSliceX other)
+    {
+        fixed (ulong* words = other.Bits)
+            AndWith(new BitSpan(words, other.Bits.Length));
+    }
+
     public void OrWith(BitSpan other)
     {
         if (bits.Length != other.bits.Length)
@@ -117,6 +122,12 @@ internal ref struct BitSpan(MemorySpan<ulong> bits)
             bits[i] |= other.bits[i];
     }
 
+    public unsafe void OrWith(BitSliceX other)
+    {
+        fixed (ulong* words = other.Bits)
+            OrWith(new BitSpan(words, other.Bits.Length));
+    }
+
     public void XorWith(BitSpan other)
     {
         if (bits.Length != other.bits.Length)
@@ -124,6 +135,12 @@ internal ref struct BitSpan(MemorySpan<ulong> bits)
 
         for (int i = 0; i < bits.Length; ++i)
             bits[i] ^= other.bits[i];
+    }
+
+    public unsafe void XorWith(BitSliceX other)
+    {
+        fixed (ulong* words = other.Bits)
+            XorWith(new BitSpan(words, other.Bits.Length));
     }
 
     [IgnoreWarning(1370)]

@@ -24,13 +24,12 @@ namespace BackgroundResourceProcessing.Collections.Burst;
 /// </remarks>
 [DebuggerDisplay("Count = {Count}")]
 [DebuggerTypeProxy(typeof(SpanDebugView<>))]
-internal unsafe struct RawList<T>(Allocator allocator) : IDisposable, IEnumerable<T>
+internal unsafe struct RawList<T>() : IEnumerable<T>
     where T : struct
 {
     T* data = null;
     uint count = 0;
     uint capacity = 0;
-    readonly Allocator allocator = allocator;
 
     public readonly int Count
     {
@@ -43,7 +42,6 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable, IEnumerabl
         get => (int)capacity;
     }
     public readonly bool IsEmpty => Count == 0;
-    public readonly Allocator Allocator => allocator;
     public readonly MemorySpan<T> Span => new(data, Count);
     public readonly T* Ptr => data;
 
@@ -58,51 +56,29 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable, IEnumerabl
         }
     }
 
-    public RawList(int capacity, Allocator allocator)
-        : this(allocator)
+    public RawList(int capacity)
+        : this()
     {
         Reserve(capacity);
     }
 
-    public RawList(MemorySpan<T> data, Allocator allocator)
-        : this(data.Length, allocator)
+    public RawList(MemorySpan<T> data)
+        : this(data.Length)
     {
         AddRange(data);
     }
 
-    public RawList(Span<T> data, Allocator allocator)
-        : this(data.Length, allocator)
+    public RawList(Span<T> data)
+        : this(data.Length)
     {
         AddRange(data);
     }
 
     public RawList(RawList<T> list)
-        : this(list.Span, list.Allocator) { }
+        : this(list.Span) { }
 
     public RawList(RawArray<T> array)
-        : this(array.Span, array.Allocator) { }
-
-    public void Dispose()
-    {
-        if (data is null)
-            return;
-
-        try
-        {
-            ItemDisposer<T>.DisposeRange(Span);
-        }
-        finally
-        {
-            if (BurstUtil.UseTestAllocator)
-                TestAllocator.Free(data);
-            else
-                UnityAllocator.Free(data, allocator);
-
-            data = null;
-            capacity = 0;
-            count = 0;
-        }
-    }
+        : this(array.Span) { }
 
     public readonly RawList<T> Clone() => new(this);
 
@@ -161,7 +137,6 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable, IEnumerabl
 
     public void Clear()
     {
-        using var guard = ItemDisposer.Guard(Span);
         count = 0;
     }
 
@@ -218,8 +193,7 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable, IEnumerabl
 
         try
         {
-            if (newsize <= Count)
-                ItemDisposer<T>.DisposeRange(Span.Slice(newsize));
+            if (newsize <= Count) { }
             else if (options == NativeArrayOptions.UninitializedMemory) { }
             else if (BurstUtil.UseTestAllocator)
             {
@@ -245,7 +219,6 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable, IEnumerabl
         if (index >= count)
             return;
 
-        using var guard = ItemDisposer.Guard(Span.Slice(index));
         count = (uint)index;
     }
 
@@ -259,18 +232,22 @@ internal unsafe struct RawList<T>(Allocator allocator) : IDisposable, IEnumerabl
 
         if (BurstUtil.UseTestAllocator)
         {
-            data = TestAllocator.Realloc(data, capacity);
+            T* prev = data;
+            data = TestAllocator.Alloc<T>(capacity);
+
+            if (prev is not null)
+            {
+                for (int i = 0; i < Count; ++i)
+                    data[i] = prev[i];
+            }
         }
         else
         {
             T* prev = data;
-            data = UnityAllocator.Alloc<T>(capacity, allocator);
+            data = UnityAllocator.Alloc<T>(capacity, Allocator.Temp);
 
             if (prev is not null)
-            {
                 UnityAllocator.Copy(data, prev, Count);
-                UnityAllocator.Free(prev, allocator);
-            }
         }
 
         this.capacity = (uint)capacity;

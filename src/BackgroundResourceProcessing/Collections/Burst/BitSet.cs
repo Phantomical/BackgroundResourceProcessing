@@ -5,14 +5,13 @@ using Unity.Collections;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
-internal struct BitSet : IEnumerable<int>, IDisposable
+internal struct BitSet : IEnumerable<int>
 {
     const int ULongBits = 64;
 
     RawArray<ulong> bits;
 
     public readonly int Capacity => bits.Count * 64;
-    public readonly Allocator Allocator => bits.Allocator;
     public readonly BitSpan Span => new(bits.Span);
 
     public readonly bool this[int key]
@@ -25,20 +24,18 @@ internal struct BitSet : IEnumerable<int>, IDisposable
         }
     }
 
-    public BitSet(Allocator allocator) => bits = new(allocator);
+    public BitSet() => bits = new();
 
-    public BitSet(int capacity, Allocator allocator) => bits = new((capacity + 63) / 64, allocator);
+    public BitSet(int capacity) => bits = new((capacity + 63) / 64);
 
-    public BitSet(MemorySpan<ulong> span, Allocator allocator) => bits = new(span, allocator);
+    public BitSet(MemorySpan<ulong> span) => bits = new(span);
 
-    public BitSet(Span<ulong> span, Allocator allocator) => bits = new(span, allocator);
+    public BitSet(Span<ulong> span) => bits = new(span);
 
-    public BitSet(BitSpan span, Allocator allocator)
-        : this(span.Span, allocator) { }
+    public BitSet(BitSpan span)
+        : this(span.Span) { }
 
-    public void Dispose() => bits.Dispose();
-
-    public readonly BitSet Clone() => new(bits.Span, Allocator);
+    public readonly BitSet Clone() => new(bits.Span);
 
     public readonly bool Contains(int key) => Span.Contains(key);
 

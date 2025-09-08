@@ -15,38 +15,23 @@ namespace BackgroundResourceProcessing.Collections.Burst;
 
 public static unsafe class TestAllocator
 {
-    struct Allocation
-    {
-        public int size;
-        public Type elem;
-    }
+    static readonly ThreadLocal<List<IntPtr>> Allocations = new(() => []);
 
     public class AllocationException(string message) : Exception(message) { }
 
     public struct TestGuard : IDisposable
     {
-        public TestGuard()
-        {
-            Allocations.Value.Clear();
-        }
+        public TestGuard() { }
 
-        public void Dispose()
+        public readonly void Dispose()
         {
             var allocs = Allocations.Value;
-            if (allocs.Count == 0)
-                return;
+            foreach (var alloc in allocs)
+                Marshal.FreeHGlobal(alloc);
 
-            int count = allocs.Count;
-            int total = allocs.Values.Select(alloc => alloc.size).Sum();
             allocs.Clear();
-
-            throw new AllocationException(
-                $"test leaked {total} bytes of memory across {count} allocations"
-            );
         }
     }
-
-    static readonly ThreadLocal<Dictionary<IntPtr, Allocation>> Allocations = new(() => []);
 
     public static T* Alloc<T>(int count)
         where T : struct
@@ -70,90 +55,8 @@ public static unsafe class TestAllocator
             throw new ArgumentOutOfRangeException(nameof(count));
 
         IntPtr ptr = Marshal.AllocHGlobal(count * CSUnsafe.SizeOf<T>());
-        Allocations.Value.Add(ptr, new() { size = count * CSUnsafe.SizeOf<T>(), elem = typeof(T) });
+        Allocations.Value.Add(ptr);
         return (T*)ptr;
-    }
-
-    public static T* Realloc<T>(T* ptr, int newcount)
-        where T : struct
-    {
-        if (BurstUtil.IsBurstCompiled)
-            ThrowBurstException();
-        if (UnsafeUtil.ContainsReferences<T>())
-            ThrowTypeHasGcReferenceException<T>();
-        ReallocWrap(out var res, ptr, newcount);
-        return res;
-    }
-
-    [BurstDiscard]
-    static void ReallocWrap<T>(out T* res, T* ptr, int newcount)
-        where T : struct
-    {
-        res = ReallocImpl(ptr, newcount);
-    }
-
-    static T* ReallocImpl<T>(T* ptr, int newcount)
-        where T : struct
-    {
-        if (newcount < 0)
-            throw new ArgumentOutOfRangeException(nameof(newcount));
-        if (ptr is null)
-            return AllocImpl<T>(newcount);
-
-        var allocs = Allocations.Value;
-        if (!allocs.TryGetValue((IntPtr)ptr, out var alloc))
-            throw new AllocationException(
-                $"attempted to realloc pointer not previously allocated by the test allocator"
-            );
-
-        if (alloc.elem != typeof(T))
-            throw new AllocationException(
-                $"allocation with element type {alloc.elem.Name} reallocated as different type {typeof(T).Name}"
-            );
-
-        IntPtr newptr = Marshal.ReAllocHGlobal(
-            (IntPtr)ptr,
-            (IntPtr)(CSUnsafe.SizeOf<T>() * newcount)
-        );
-
-        allocs.Remove((IntPtr)ptr);
-        allocs.Add(newptr, new() { elem = alloc.elem, size = CSUnsafe.SizeOf<T>() * newcount });
-
-        return (T*)newptr;
-    }
-
-    public static void Free<T>(T* ptr)
-        where T : struct
-    {
-        if (BurstUtil.IsBurstCompiled)
-            ThrowBurstException();
-        if (UnsafeUtil.ContainsReferences<T>())
-            ThrowTypeHasGcReferenceException<T>();
-
-        FreeImpl(ptr);
-    }
-
-    [BurstDiscard]
-    static void FreeImpl<T>(T* ptr)
-        where T : struct
-    {
-        if (ptr is null)
-            return;
-
-        var allocs = Allocations.Value;
-        if (!allocs.TryGetValue((IntPtr)ptr, out var alloc))
-            throw new AllocationException(
-                $"attempted to free pointer not previously allocated by the test allocator"
-            );
-
-        if (alloc.elem != typeof(T))
-            throw new AllocationException(
-                $"allocation with element type {alloc.elem.Name} freed as different type {typeof(T).Name}"
-            );
-
-        allocs.Remove((IntPtr)ptr);
-
-        Marshal.FreeHGlobal((IntPtr)ptr);
     }
 
     [IgnoreWarning(1370)]

@@ -77,12 +77,11 @@ public sealed class RawListTest
     [TestMethod]
     public void Constructor_WithAllocator_CreatesEmptyList()
     {
-        using var list = new RawList<int>(Allocator.Temp);
+        var list = new RawList<int>();
 
         Assert.AreEqual(0, list.Count);
         Assert.IsTrue(list.Capacity >= 0);
         Assert.IsTrue(list.IsEmpty);
-        Assert.AreEqual(Allocator.Temp, list.Allocator);
     }
 
     [TestMethod]

@@ -2,40 +2,27 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.PerformanceData;
 using System.Runtime.CompilerServices;
-using SoftMasking.Samples;
 using Unity.Collections;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
 [DebuggerTypeProxy(typeof(RawIntMap<>.DebugView))]
 [DebuggerDisplay("Capacity = {Capacity}")]
-public struct RawIntMap<T>(int capacity, Allocator allocator)
-    : IEnumerable<KeyValuePair<int, T>>,
-        IDisposable
+public struct RawIntMap<T>(int capacity) : IEnumerable<KeyValuePair<int, T>>
     where T : struct
 {
-    struct Entry : IDisposable
+    struct Entry
     {
         public bool Present;
         public T Value;
-
-        public void Dispose()
-        {
-            if (Present)
-                ItemDisposer<T>.Dispose(ref Value);
-            Present = false;
-        }
     }
 
-    RawArray<Entry> items = new(capacity, allocator);
+    RawArray<Entry> items = new(capacity);
     int count = 0;
 
     public readonly int Count => count;
     public readonly int Capacity => items.Count;
-    public readonly Allocator Allocator => items.Allocator;
-
     public readonly KeyEnumerable Keys => new(this);
     public readonly ValueEnumerable Values => new(this);
 
@@ -88,7 +75,7 @@ public struct RawIntMap<T>(int capacity, Allocator allocator)
         if (key < 0 || key >= Capacity)
             ThrowKeyOutOfBoundsException(key);
 
-        using var prev = items[key];
+        var prev = items[key];
         if (!prev.Present)
             count += 1;
         items[key] = new Entry { Present = true, Value = value };
@@ -125,22 +112,15 @@ public struct RawIntMap<T>(int capacity, Allocator allocator)
             return false;
 
         count -= 1;
-        entry.Dispose();
         return true;
     }
 
     public void Clear()
     {
-        ItemDisposer<Entry>.DisposeRange(items);
         count = 0;
     }
 
     public readonly int GetCount() => Count;
-
-    public void Dispose()
-    {
-        items.Dispose();
-    }
 
     static void ThrowKeyNotFoundException(int key) =>
         throw new KeyNotFoundException($"key {key} not found in the map");

@@ -1,6 +1,6 @@
 namespace BackgroundResourceProcessing.Solver;
 
-public enum InventoryState
+public enum InventoryState : byte
 {
     /// <summary>
     /// There is no constraint on flow through this inventory.

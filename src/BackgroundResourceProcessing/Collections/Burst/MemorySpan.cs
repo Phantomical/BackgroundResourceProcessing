@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.BurstSolver;
-using KSP.UI.Screens.DebugToolbar.Screens.Serenity;
 using Unity.Burst.CompilerServices;
 using CSUnsafe = System.Runtime.CompilerServices.Unsafe;
 
@@ -145,7 +144,7 @@ internal readonly unsafe struct MemorySpan<T> : IEnumerable<T>
 
     public MemorySpan<T> Slice(int start, int length)
     {
-        if ((uint)start > Length || Length > (uint)(length - start))
+        if ((uint)start > Length || (uint)length > (Length - start))
             ThrowIndexOutOfRange();
 
         return new(data + start, length);

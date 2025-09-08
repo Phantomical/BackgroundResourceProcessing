@@ -1,46 +1,34 @@
 using System;
-using System.Runtime.CompilerServices;
 using System.Text;
 using BackgroundResourceProcessing.Utils;
 using Unity.Burst.CompilerServices;
-using Unity.Collections;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
-internal struct Matrix : IDisposable
+internal readonly unsafe struct Matrix
 {
-    RawArray<double> values;
-    uint rows;
-    uint cols;
+    readonly double* values;
+    readonly uint rows;
+    readonly uint cols;
 
     public readonly int Rows
     {
         [return: AssumeRange(0, int.MaxValue)]
-        get
-        {
-            AssumeSize();
-            return (int)rows;
-        }
+        get => (int)rows;
     }
     public readonly int Cols
     {
         [return: AssumeRange(0, int.MaxValue)]
-        get
-        {
-            AssumeSize();
-            return (int)cols;
-        }
+        get => (int)cols;
     }
-    public readonly Allocator Allocator => values.Allocator;
-    public readonly MemorySpan<double> Span => values.Span.Slice(0, Rows * Cols);
-    public readonly unsafe double* Ptr => values.Ptr;
+    public readonly MemorySpan<double> Span => new(values, Rows * Cols);
+    public readonly unsafe double* Ptr => values;
 
     public readonly MemorySpan<double> this[int r]
     {
         [IgnoreWarning(1370)]
         get
         {
-            AssumeSize();
             if (r < 0 || r >= Rows)
                 throw new IndexOutOfRangeException("row index was out of range");
 
@@ -71,25 +59,24 @@ internal struct Matrix : IDisposable
         if (values.Length < rows * cols)
             ThrowArrayTooSmallException();
 
-        this.values = values;
+        this.values = values.Ptr;
         this.rows = (uint)rows;
         this.cols = (uint)cols;
     }
 
-    public Matrix(int rows, int cols, Allocator allocator)
-        : this(new RawArray<double>(rows * cols, allocator), rows, cols) { }
+    public Matrix(int rows, int cols)
+        : this(new RawArray<double>(rows * cols), rows, cols) { }
 
     [IgnoreWarning(1370)]
     public readonly unsafe double* GetRowPtr(int r)
     {
-        AssumeSize();
         if (r < 0 || r >= Rows)
             throw new IndexOutOfRangeException("row index was out of range");
 
         return &Ptr[r * Cols];
     }
 
-    public void SwapRows(int r1, int r2)
+    public readonly void SwapRows(int r1, int r2)
     {
         if (r1 == r2)
             return;
@@ -101,7 +88,7 @@ internal struct Matrix : IDisposable
             (v2[i], v1[i]) = (v1[i], v2[i]);
     }
 
-    public void ScaleRow(int r, double scale)
+    public readonly void ScaleRow(int r, double scale)
     {
         if (scale == 1.0)
             return;
@@ -112,7 +99,7 @@ internal struct Matrix : IDisposable
     }
 
     [IgnoreWarning(1370)]
-    public void Reduce(int dst, int src, double scale)
+    public readonly void Reduce(int dst, int src, double scale)
     {
         if (dst == src)
             throw new ArgumentException("cannot row-reduce a row against itself");
@@ -126,7 +113,7 @@ internal struct Matrix : IDisposable
             vdst[i] = MathUtil.Fma(vsrc[i], scale, vdst[i]);
     }
 
-    public void InvScaleRow(int row, double scale)
+    public readonly void InvScaleRow(int row, double scale)
     {
         if (scale == 1.0)
             return;
@@ -138,7 +125,7 @@ internal struct Matrix : IDisposable
     }
 
     [IgnoreWarning(1370)]
-    public void ScaleReduce(int dst, int src, int pivot)
+    public readonly void ScaleReduce(int dst, int src, int pivot)
     {
         if (dst == src)
             throw new ArgumentException("cannot row-reduce a row against itself");
@@ -172,16 +159,6 @@ internal struct Matrix : IDisposable
             vdst[i] = r;
         }
     }
-
-    public void Dispose()
-    {
-        values.Dispose();
-        rows = 0;
-        cols = 0;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private readonly void AssumeSize() => Hint.Assume(rows * cols < values.Length);
 
     public override readonly string ToString()
     {

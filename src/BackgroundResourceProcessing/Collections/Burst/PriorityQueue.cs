@@ -9,7 +9,7 @@ using Unity.Collections.LowLevel.Unsafe;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
-internal struct PriorityQueue<T>(RawList<T> items) : IDisposable
+internal struct PriorityQueue<T>(RawList<T> items)
     where T : struct, IComparable<T>
 {
     RawList<T> items = items;
@@ -17,30 +17,24 @@ internal struct PriorityQueue<T>(RawList<T> items) : IDisposable
     public readonly int Count => items.Count;
     public readonly bool IsEmpty => Count == 0;
     public readonly int Capacity => items.Capacity;
-    public readonly Allocator Allocator => items.Allocator;
     public readonly MemorySpan<T> Span => items.Span;
 
-    public PriorityQueue(Allocator allocator)
-        : this(new RawList<T>(allocator)) { }
+    public PriorityQueue()
+        : this(new RawList<T>()) { }
 
-    public PriorityQueue(int capacity, Allocator allocator)
-        : this(new RawList<T>(capacity, allocator)) { }
+    public PriorityQueue(int capacity)
+        : this(new RawList<T>(capacity)) { }
 
-    public PriorityQueue(MemorySpan<T> items, Allocator allocator)
-        : this(new RawList<T>(items, allocator))
+    public PriorityQueue(MemorySpan<T> items)
+        : this(new RawList<T>(items))
     {
         Heapify();
     }
 
-    public PriorityQueue(T[] items, Allocator allocator)
-        : this(new RawList<T>(items, allocator))
+    public PriorityQueue(T[] items)
+        : this(new RawList<T>(items))
     {
         Heapify();
-    }
-
-    public void Dispose()
-    {
-        items.Dispose();
     }
 
     public void Enqueue(T item)
@@ -167,7 +161,6 @@ internal struct PriorityQueue<T>(RawList<T> items) : IDisposable
     [IgnoreWarning(1370)]
     private void RemoveAtIndex(int index)
     {
-        using var guard = ItemDisposer.Guard(items[index]);
         var last = items.Pop();
         if (index >= items.Count)
             return;
