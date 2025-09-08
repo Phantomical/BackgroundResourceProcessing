@@ -10,48 +10,34 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst;
 [TestClass]
 public sealed class BitSetTest
 {
-    TestAllocator.TestGuard? guard = null;
-
-    [TestInitialize]
-    public void Init()
-    {
-        guard = new TestAllocator.TestGuard();
-    }
-
     [TestCleanup]
     public void Cleanup()
     {
-        if (guard is null)
-            return;
-
-        guard.Value.Dispose();
-        guard = null;
+        TestAllocator.Cleanup();
     }
 
     [TestMethod]
-    public void Constructor_WithAllocator_CreatesEmptyBitSet()
+    public void Constructor_Default_CreatesEmptyBitSet()
     {
-        using var bitSet = new BitSet(Allocator.Temp);
+        var bitSet = new BitSet();
 
         Assert.AreEqual(0, bitSet.Capacity);
-        Assert.AreEqual(Allocator.Temp, bitSet.Allocator);
     }
 
     [TestMethod]
-    public void Constructor_WithCapacityAndAllocator_CreatesCorrectCapacity()
+    public void Constructor_WithCapacity_CreatesCorrectCapacity()
     {
         const int capacity = 128;
-        using var bitSet = new BitSet(capacity, Allocator.Temp);
+        var bitSet = new BitSet(capacity);
 
         Assert.IsTrue(bitSet.Capacity >= capacity);
-        Assert.AreEqual(Allocator.Temp, bitSet.Allocator);
     }
 
     [TestMethod]
-    public void Constructor_WithSpanAndAllocator_CreatesFromSpan()
+    public void Constructor_WithSpan_CreatesFromSpan()
     {
         var span = new ulong[] { 0xFF, 0x00 };
-        using var bitSet = new BitSet(span, Allocator.Temp);
+        var bitSet = new BitSet(span);
 
         Assert.AreEqual(128, bitSet.Capacity);
         Assert.IsTrue(bitSet[0]);
@@ -62,7 +48,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void Indexer_ValidIndex_SetsAndGetsCorrectly()
     {
-        using var bitSet = new BitSet(64, Allocator.Temp);
+        var bitSet = new BitSet(64);
 
         bitSet[0] = true;
         bitSet[31] = true;
@@ -78,7 +64,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void Indexer_NegativeIndex_ThrowsException()
     {
-        using var bitSet = new BitSet(64, Allocator.Temp);
+        var bitSet = new BitSet(64);
 
         Assert.ThrowsException<IndexOutOfRangeException>(() => _ = bitSet[-1]);
     }
@@ -86,7 +72,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void Indexer_IndexOutOfBounds_ThrowsException()
     {
-        using var bitSet = new BitSet(64, Allocator.Temp);
+        var bitSet = new BitSet(64);
 
         Assert.ThrowsException<IndexOutOfRangeException>(() => _ = bitSet[64]);
     }
@@ -94,7 +80,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void Indexer_SetNegativeIndex_ThrowsException()
     {
-        using var bitSet = new BitSet(64, Allocator.Temp);
+        var bitSet = new BitSet(64);
 
         Assert.ThrowsException<IndexOutOfRangeException>(() => bitSet[-1] = true);
     }
@@ -102,7 +88,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void Indexer_SetIndexOutOfBounds_ThrowsException()
     {
-        using var bitSet = new BitSet(64, Allocator.Temp);
+        var bitSet = new BitSet(64);
 
         Assert.ThrowsException<IndexOutOfRangeException>(() => bitSet[64] = true);
     }
@@ -110,7 +96,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void Add_ValidIndex_SetsBit()
     {
-        using var bitSet = new BitSet(64, Allocator.Temp);
+        var bitSet = new BitSet(64);
 
         bitSet.Add(5);
         bitSet.Add(31);
@@ -123,7 +109,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void Remove_ValidIndex_ClearsBit()
     {
-        using var bitSet = new BitSet(64, Allocator.Temp);
+        var bitSet = new BitSet(64);
         bitSet.Add(5);
         bitSet.Add(31);
 
@@ -136,7 +122,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void Contains_ValidIndex_ReturnsCorrectValue()
     {
-        using var bitSet = new BitSet(64, Allocator.Temp);
+        var bitSet = new BitSet(64);
         bitSet.Add(10);
 
         Assert.IsTrue(bitSet.Contains(10));
@@ -148,7 +134,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void Clear_PopulatedBitSet_ClearsAllBits()
     {
-        using var bitSet = new BitSet(64, Allocator.Temp);
+        var bitSet = new BitSet(64);
         bitSet.Add(0);
         bitSet.Add(31);
         bitSet.Add(63);
@@ -164,7 +150,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void Fill_EmptyBitSet_SetsAllBitsToTrue()
     {
-        using var bitSet = new BitSet(64, Allocator.Temp);
+        var bitSet = new BitSet(64);
 
         bitSet.Fill(true);
 
@@ -177,7 +163,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void Fill_PopulatedBitSet_SetsAllBitsToFalse()
     {
-        using var bitSet = new BitSet(64, Allocator.Temp);
+        var bitSet = new BitSet(64);
         bitSet.Add(10);
         bitSet.Add(20);
 
@@ -191,7 +177,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void GetCount_EmptyBitSet_ReturnsZero()
     {
-        using var bitSet = new BitSet(64, Allocator.Temp);
+        var bitSet = new BitSet(64);
 
         Assert.AreEqual(0, bitSet.GetCount());
     }
@@ -199,7 +185,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void GetCount_PopulatedBitSet_ReturnsCorrectCount()
     {
-        using var bitSet = new BitSet(128, Allocator.Temp);
+        var bitSet = new BitSet(128);
         bitSet.Add(0);
         bitSet.Add(31);
         bitSet.Add(63);
@@ -211,7 +197,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void ClearUpFrom_ValidIndex_ClearsBitsFromIndex()
     {
-        using var bitSet = new BitSet(128, Allocator.Temp);
+        var bitSet = new BitSet(128);
         bitSet.Fill(true);
 
         bitSet.ClearUpFrom(64);
@@ -225,7 +211,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void ClearUpFrom_NegativeIndex_ThrowsException()
     {
-        using var bitSet = new BitSet(64, Allocator.Temp);
+        var bitSet = new BitSet(64);
 
         Assert.ThrowsException<ArgumentOutOfRangeException>(() => bitSet.ClearUpFrom(-1));
     }
@@ -233,7 +219,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void ClearUpTo_ValidIndex_ClearsBitsUpToIndex()
     {
-        using var bitSet = new BitSet(128, Allocator.Temp);
+        var bitSet = new BitSet(128);
         bitSet.Fill(true);
 
         bitSet.ClearUpTo(64);
@@ -248,7 +234,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void ClearUpTo_NegativeIndex_ThrowsException()
     {
-        using var bitSet = new BitSet(64, Allocator.Temp);
+        var bitSet = new BitSet(64);
 
         Assert.ThrowsException<ArgumentOutOfRangeException>(() => bitSet.ClearUpTo(-1));
     }
@@ -256,7 +242,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void ClearOutsideRange_ValidRange_ClearsBitsOutsideRange()
     {
-        using var bitSet = new BitSet(128, Allocator.Temp);
+        var bitSet = new BitSet(128);
         bitSet.Fill(true);
 
         bitSet.ClearOutsideRange(32, 96);
@@ -273,7 +259,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void ClearOutsideRange_NegativeStart_ThrowsException()
     {
-        using var bitSet = new BitSet(64, Allocator.Temp);
+        var bitSet = new BitSet(64);
 
         Assert.ThrowsException<ArgumentOutOfRangeException>(() => bitSet.ClearOutsideRange(-1, 32));
     }
@@ -281,7 +267,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void ClearOutsideRange_EndLessThanStart_ThrowsException()
     {
-        using var bitSet = new BitSet(64, Allocator.Temp);
+        var bitSet = new BitSet(64);
 
         Assert.ThrowsException<ArgumentOutOfRangeException>(() => bitSet.ClearOutsideRange(32, 16));
     }
@@ -289,7 +275,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void ClearOutsideRange_EndExceedsCapacity_ThrowsException()
     {
-        using var bitSet = new BitSet(64, Allocator.Temp);
+        var bitSet = new BitSet(64);
 
         Assert.ThrowsException<ArgumentOutOfRangeException>(() => bitSet.ClearOutsideRange(0, 65));
     }
@@ -297,7 +283,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void SetUpTo_ValidIndex_SetsBitsUpToIndex()
     {
-        using var bitSet = new BitSet(128, Allocator.Temp);
+        var bitSet = new BitSet(128);
 
         bitSet.SetUpTo(64);
 
@@ -311,7 +297,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void SetUpTo_NegativeIndex_ThrowsException()
     {
-        using var bitSet = new BitSet(64, Allocator.Temp);
+        var bitSet = new BitSet(64);
 
         Assert.ThrowsException<ArgumentOutOfRangeException>(() => bitSet.SetUpTo(-1));
     }
@@ -319,7 +305,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void SetUpTo_IndexExceedsCapacity_ThrowsException()
     {
-        using var bitSet = new BitSet(64, Allocator.Temp);
+        var bitSet = new BitSet(64);
 
         Assert.ThrowsException<ArgumentOutOfRangeException>(() => bitSet.SetUpTo(65));
     }
@@ -327,8 +313,8 @@ public sealed class BitSetTest
     [TestMethod]
     public void CopyFrom_SameCapacity_CopiesAllBits()
     {
-        using var source = new BitSet(128, Allocator.Temp);
-        using var target = new BitSet(128, Allocator.Temp);
+        var source = new BitSet(128);
+        var target = new BitSet(128);
 
         source.Add(0);
         source.Add(31);
@@ -345,8 +331,8 @@ public sealed class BitSetTest
     [TestMethod]
     public void CopyFrom_DifferentCapacity_ThrowsException()
     {
-        using var source = new BitSet(64, Allocator.Temp);
-        using var target = new BitSet(128, Allocator.Temp);
+        var source = new BitSet(64);
+        var target = new BitSet(128);
 
         Assert.ThrowsException<ArgumentException>(() => target.CopyFrom(source));
     }
@@ -354,8 +340,8 @@ public sealed class BitSetTest
     [TestMethod]
     public void CopyInverseFrom_SameCapacity_CopiesInvertedBits()
     {
-        using var source = new BitSet(128, Allocator.Temp);
-        using var target = new BitSet(128, Allocator.Temp);
+        var source = new BitSet(128);
+        var target = new BitSet(128);
 
         source.Add(0);
         source.Add(31);
@@ -372,8 +358,8 @@ public sealed class BitSetTest
     [TestMethod]
     public void CopyInverseFrom_DifferentCapacity_ThrowsException()
     {
-        using var source = new BitSet(64, Allocator.Temp);
-        using var target = new BitSet(128, Allocator.Temp);
+        var source = new BitSet(64);
+        var target = new BitSet(128);
 
         Assert.ThrowsException<ArgumentException>(() => target.CopyInverseFrom(source));
     }
@@ -381,8 +367,8 @@ public sealed class BitSetTest
     [TestMethod]
     public void RemoveAll_SameCapacity_RemovesMatchingBits()
     {
-        using var target = new BitSet(128, Allocator.Temp);
-        using var toRemove = new BitSet(128, Allocator.Temp);
+        var target = new BitSet(128);
+        var toRemove = new BitSet(128);
 
         target.Add(0);
         target.Add(31);
@@ -404,8 +390,8 @@ public sealed class BitSetTest
     [TestMethod]
     public void RemoveAll_DifferentCapacity_ThrowsException()
     {
-        using var target = new BitSet(128, Allocator.Temp);
-        using var toRemove = new BitSet(64, Allocator.Temp);
+        var target = new BitSet(128);
+        var toRemove = new BitSet(64);
 
         Assert.ThrowsException<ArgumentException>(() => target.RemoveAll(toRemove));
     }
@@ -413,12 +399,12 @@ public sealed class BitSetTest
     [TestMethod]
     public void Clone_PopulatedBitSet_CreatesIndependentCopy()
     {
-        using var original = new BitSet(128, Allocator.Temp);
+        var original = new BitSet(128);
         original.Add(0);
         original.Add(63);
         original.Add(127);
 
-        using var clone = original.Clone();
+        var clone = original.Clone();
 
         Assert.AreEqual(original.Capacity, clone.Capacity);
         Assert.IsTrue(clone[0]);
@@ -433,7 +419,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void GetEnumerator_EmptyBitSet_IteratesZeroTimes()
     {
-        using var bitSet = new BitSet(64, Allocator.Temp);
+        var bitSet = new BitSet(64);
 
         List<int> result = bitSet.ToList();
 
@@ -443,7 +429,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void GetEnumerator_PopulatedBitSet_IteratesOverSetBits()
     {
-        using var bitSet = new BitSet(128, Allocator.Temp);
+        var bitSet = new BitSet(128);
         bitSet.Add(0);
         bitSet.Add(31);
         bitSet.Add(63);
@@ -457,7 +443,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void GetEnumerator_CrossingWordBoundaries_IteratesCorrectly()
     {
-        using var bitSet = new BitSet(192, Allocator.Temp);
+        var bitSet = new BitSet(192);
         bitSet.Add(63); // End of first word
         bitSet.Add(64); // Start of second word
         bitSet.Add(127); // End of second word
@@ -469,19 +455,9 @@ public sealed class BitSetTest
     }
 
     [TestMethod]
-    public void Dispose_ValidBitSet_DisposesWithoutException()
-    {
-        var bitSet = new BitSet(64, Allocator.Temp);
-        bitSet.Add(10);
-
-        // Should not throw
-        bitSet.Dispose();
-    }
-
-    [TestMethod]
     public void Span_Property_ReturnsCorrectSpan()
     {
-        using var bitSet = new BitSet(128, Allocator.Temp);
+        var bitSet = new BitSet(128);
         bitSet.Add(0);
         bitSet.Add(64);
 
@@ -495,7 +471,7 @@ public sealed class BitSetTest
     [TestMethod]
     public void BitSet_AcrossMultipleWords_WorksCorrectly()
     {
-        using var bitSet = new BitSet(256, Allocator.Temp);
+        var bitSet = new BitSet(256);
 
         // Test across 4 64-bit words
         bitSet.Add(0); // Word 0

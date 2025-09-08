@@ -19,18 +19,21 @@ public static unsafe class TestAllocator
 
     public class AllocationException(string message) : Exception(message) { }
 
-    public struct TestGuard : IDisposable
+    public struct TestGuard() : IDisposable
     {
-        public TestGuard() { }
-
         public readonly void Dispose()
         {
-            var allocs = Allocations.Value;
-            foreach (var alloc in allocs)
-                Marshal.FreeHGlobal(alloc);
-
-            allocs.Clear();
+            Cleanup();
         }
+    }
+
+    public static void Cleanup()
+    {
+        var allocs = Allocations.Value;
+        foreach (var alloc in allocs)
+            Marshal.FreeHGlobal(alloc);
+
+        allocs.Clear();
     }
 
     public static T* Alloc<T>(int count)
