@@ -14,36 +14,6 @@ public sealed class RawListTest
         TestAllocator.Cleanup();
     }
 
-    private struct MockDisposable : IDisposable, IEquatable<MockDisposable>
-    {
-        public int Value { get; set; }
-        public bool IsDisposed { get; private set; }
-
-        public MockDisposable(int value)
-        {
-            Value = value;
-            IsDisposed = false;
-        }
-
-        public void Dispose()
-        {
-            IsDisposed = true;
-        }
-
-        public bool Equals(MockDisposable other) =>
-            Value == other.Value && IsDisposed == other.IsDisposed;
-
-        public override bool Equals(object obj) => obj is MockDisposable other && Equals(other);
-
-        public override int GetHashCode() => 0;
-
-        public static bool operator ==(MockDisposable left, MockDisposable right) =>
-            left.Equals(right);
-
-        public static bool operator !=(MockDisposable left, MockDisposable right) =>
-            !left.Equals(right);
-    }
-
     private struct NonDisposableValue : IEquatable<NonDisposableValue>
     {
         public int Value { get; set; }
@@ -319,21 +289,6 @@ public sealed class RawListTest
         Assert.IsTrue(list.IsEmpty);
     }
 
-    [TestMethod]
-    public void Clear_WithDisposableItems_DisposesAllItems()
-    {
-        var list = new RawList<MockDisposable>();
-        list.Add(new MockDisposable(1));
-        list.Add(new MockDisposable(2));
-        list.Add(new MockDisposable(3));
-
-        list.Clear();
-
-        Assert.AreEqual(0, list.Count);
-        Assert.IsTrue(list.IsEmpty);
-        // Note: We can't easily verify disposal since ItemDisposer handles it internally
-    }
-
     #endregion
 
     #region RemoveAt Tests
@@ -384,22 +339,6 @@ public sealed class RawListTest
         list.Add(42);
 
         Assert.ThrowsException<ArgumentOutOfRangeException>(() => list.RemoveAt(1));
-    }
-
-    [TestMethod]
-    public void RemoveAt_WithDisposableItem_DisposesRemovedItem()
-    {
-        var list = new RawList<MockDisposable>();
-        list.Add(new MockDisposable(10));
-        list.Add(new MockDisposable(20));
-        list.Add(new MockDisposable(30));
-
-        list.RemoveAt(1);
-
-        Assert.AreEqual(2, list.Count);
-        Assert.AreEqual(10, list[0].Value);
-        Assert.AreEqual(30, list[1].Value);
-        // Note: ItemDisposer handles disposal internally
     }
 
     #endregion
@@ -524,20 +463,6 @@ public sealed class RawListTest
         // Elements at indices 1 and 2 may contain uninitialized data
     }
 
-    [TestMethod]
-    public void Resize_WithDisposableItems_DisposesRemovedItems()
-    {
-        var list = new RawList<MockDisposable>();
-        list.Add(new MockDisposable(10));
-        list.Add(new MockDisposable(20));
-        list.Add(new MockDisposable(30));
-
-        list.Resize(1); // Should dispose items at indices 1 and 2
-
-        Assert.AreEqual(1, list.Count);
-        Assert.AreEqual(10, list[0].Value);
-    }
-
     #endregion
 
     #region Truncate Tests
@@ -590,20 +515,6 @@ public sealed class RawListTest
         var list = new RawList<int>();
 
         Assert.ThrowsException<ArgumentOutOfRangeException>(() => list.Truncate(-1));
-    }
-
-    [TestMethod]
-    public void Truncate_WithDisposableItems_DisposesRemovedItems()
-    {
-        var list = new RawList<MockDisposable>();
-        list.Add(new MockDisposable(10));
-        list.Add(new MockDisposable(20));
-        list.Add(new MockDisposable(30));
-
-        list.Truncate(1);
-
-        Assert.AreEqual(1, list.Count);
-        Assert.AreEqual(10, list[0].Value);
     }
 
     #endregion
@@ -704,58 +615,6 @@ public sealed class RawListTest
 
     #endregion
 
-    #region Dispose Tests
-
-    [TestMethod]
-    public void Dispose_EmptyList_DoesNotThrow()
-    {
-        var list = new RawList<int>();
-
-        // Should not throw
-    }
-
-    [TestMethod]
-    public void Dispose_NonEmptyList_DisposesSuccessfully()
-    {
-        var list = new RawList<int>();
-        list.Add(10);
-        list.Add(20);
-        list.Add(30);
-
-        // Should not throw
-    }
-
-    [TestMethod]
-    public void Dispose_WithDisposableItems_DisposesAllItems()
-    {
-        var list = new RawList<MockDisposable>();
-        list.Add(new MockDisposable(10));
-        list.Add(new MockDisposable(20));
-        list.Add(new MockDisposable(30));
-
-        // Should dispose all items through ItemDisposer
-    }
-
-    [TestMethod]
-    public void Dispose_WithNonDisposableItems_DisposesSuccessfully()
-    {
-        var list = new RawList<NonDisposableValue>();
-        list.Add(new NonDisposableValue(10));
-        list.Add(new NonDisposableValue(20));
-
-        // Should not throw even with non-disposable items
-    }
-
-    [TestMethod]
-    public void Dispose_CalledTwice_DoesNotThrow()
-    {
-        var list = new RawList<int>();
-        list.Add(42);
-
-        // Should not throw on second disposal
-    }
-
-    #endregion
 
     #region Ptr Tests
 

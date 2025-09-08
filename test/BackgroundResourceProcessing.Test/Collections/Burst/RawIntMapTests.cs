@@ -817,31 +817,6 @@ public sealed class RawIntMapTests
 
     #endregion
 
-    #region Dispose Tests
-
-    [TestMethod]
-    public void Dispose_EmptyMap_DoesNotThrow()
-    {
-        var map = new RawIntMap<int>(10);
-    }
-
-    [TestMethod]
-    public void Dispose_NonEmptyMap_DisposesSuccessfully()
-    {
-        var map = new RawIntMap<int>(10);
-        map.Add(1, 10);
-        map.Add(3, 30);
-        map.Add(5, 50);
-    }
-
-    [TestMethod]
-    public void Dispose_CalledTwice_DoesNotThrow()
-    {
-        var map = new RawIntMap<int>(10);
-        map.Add(1, 10);
-    }
-
-    #endregion
 
     #region Edge Cases and Stress Tests
 

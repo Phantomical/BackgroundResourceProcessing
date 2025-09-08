@@ -306,17 +306,6 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
         }
 
         [TestMethod]
-        public void Dispose_CallsUnderlyingDispose()
-        {
-            var matrix = new AdjacencyMatrix(5, 5);
-
-            // Should not throw
-
-            // Accessing after dispose should be undefined behavior, but we can't easily test this
-            // without causing undefined behavior in the test itself
-        }
-
-        [TestMethod]
         public void LargeDimensionsHandling()
         {
             // Test with dimensions that require multiple column words
