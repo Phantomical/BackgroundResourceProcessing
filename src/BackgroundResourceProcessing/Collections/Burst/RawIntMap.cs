@@ -112,12 +112,14 @@ public struct RawIntMap<T>(int capacity) : IEnumerable<KeyValuePair<int, T>>
             return false;
 
         count -= 1;
+        entry.Present = false;
         return true;
     }
 
     public void Clear()
     {
         count = 0;
+        items.Fill(default);
     }
 
     public readonly int GetCount() => Count;
