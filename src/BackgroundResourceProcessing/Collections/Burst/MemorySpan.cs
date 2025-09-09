@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.BurstSolver;
+using Unity.Burst;
 using Unity.Burst.CompilerServices;
 using CSUnsafe = System.Runtime.CompilerServices.Unsafe;
 
@@ -23,9 +24,14 @@ internal readonly unsafe struct MemorySpan<T> : IEnumerable<T>
     public int Length
     {
         [return: AssumeRange(0, int.MaxValue)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => length;
     }
-    public bool IsEmpty => Length == 0;
+    public bool IsEmpty
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => Length == 0;
+    }
     public T* Data => data;
 
     public ref T this[int index]
@@ -114,26 +120,6 @@ internal readonly unsafe struct MemorySpan<T> : IEnumerable<T>
         return true;
     }
 
-    public static bool operator ==(MemorySpan<T> lhs, MemorySpan<T> rhs)
-    {
-        return lhs.Length == rhs.Length && lhs.data == rhs.data;
-    }
-
-    public static bool operator !=(MemorySpan<T> lhs, MemorySpan<T> rhs)
-    {
-        return !(lhs == rhs);
-    }
-
-    public override bool Equals(object obj)
-    {
-        return obj is MemorySpan<T> span && span == this;
-    }
-
-    public override int GetHashCode()
-    {
-        throw new NotSupportedException();
-    }
-
     public MemorySpan<T> Slice(int start)
     {
         if ((uint)start > Length)
@@ -207,66 +193,25 @@ internal sealed class SpanDebugView<T>(MemorySpan<T> span)
     public T[] Items { get; } = [.. span];
 }
 
+[BurstCompile]
 public static class MemorySpanExtensions
 {
-    static readonly Type[] BitwiseEquatableTypes =
-    [
-        typeof(byte),
-        typeof(sbyte),
-        typeof(short),
-        typeof(ushort),
-        typeof(int),
-        typeof(uint),
-        typeof(long),
-        typeof(ulong),
-    ];
-
-    private static class IsBitwiseEquatableData<T>
-    {
-        internal static readonly bool Comparable;
-
-        static IsBitwiseEquatableData()
-        {
-            Comparable = IsBitwiseComparableImpl();
-        }
-
-        static bool IsBitwiseComparableImpl()
-        {
-            if (BitwiseEquatableTypes.Contains(typeof(T)))
-                return true;
-
-            if (typeof(T).IsPointer)
-                return true;
-            if (typeof(T).IsEnum)
-                return true;
-
-            return false;
-        }
-    }
-
-    private static bool IsBitwiseEquatable<T>()
-    {
-        return IsBitwiseEquatableData<T>.Comparable;
-    }
-
-    internal static unsafe bool SequenceEqual<T>(this MemorySpan<T> lhs, MemorySpan<T> rhs)
-        where T : struct, IEquatable<T>
+    internal static unsafe bool SequenceEqual(this MemorySpan<ulong> lhs, MemorySpan<ulong> rhs)
     {
         if (lhs.Length != rhs.Length)
             return false;
 
         if (BurstUtil.IsBurstCompiled)
-        {
-            if (IsBitwiseEquatable<T>())
-                return UnityAllocator.Cmp(lhs.Data, rhs.Data, lhs.Length) == 0;
-        }
+            return UnityAllocator.Cmp(lhs.Data, rhs.Data, lhs.Length) == 0;
 
-        for (int i = 0; i < lhs.Length; ++i)
-        {
-            if (!lhs[i].Equals(rhs[i]))
-                return false;
-        }
-
-        return true;
+        ManagedSequenceEqual(lhs, rhs, out var equal);
+        return equal;
     }
+
+    [BurstDiscard]
+    static void ManagedSequenceEqual(
+        MemorySpan<ulong> lhs,
+        MemorySpan<ulong> rhs,
+        out bool equal
+    ) => equal = MemoryExtensions.SequenceEqual(lhs.AsSystemSpan(), rhs.AsSystemSpan());
 }

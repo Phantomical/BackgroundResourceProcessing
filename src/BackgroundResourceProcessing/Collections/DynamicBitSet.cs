@@ -7,6 +7,8 @@ using BackgroundResourceProcessing.Utils;
 
 namespace BackgroundResourceProcessing.Collections;
 
+[DebuggerDisplay("Capacity = {Capacity}")]
+[DebuggerTypeProxy(typeof(DebugView))]
 public class DynamicBitSet : IEnumerable<int>
 {
     const int ULongBits = 64;
@@ -211,9 +213,7 @@ public class DynamicBitSet : IEnumerable<int>
 
     private sealed class DebugView(DynamicBitSet set)
     {
-        private readonly DynamicBitSet set = set;
-
         [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
-        public int[] Items => [.. set];
+        public int[] Items { get; } = [.. set];
     }
 }

@@ -7,7 +7,7 @@ namespace BackgroundResourceProcessing.Collections.Burst;
 
 internal struct BitSet : IEnumerable<int>
 {
-    const int ULongBits = 64;
+    public const int ULongBits = 64;
 
     RawArray<ulong> bits;
 
@@ -26,7 +26,9 @@ internal struct BitSet : IEnumerable<int>
 
     public BitSet() => bits = new();
 
-    public BitSet(int capacity) => bits = new((capacity + 63) / 64);
+    public BitSet(int capacity) => bits = new(WordsRequired(capacity));
+
+    public unsafe BitSet(ulong* words, int length) => bits = new(words, length);
 
     public BitSet(MemorySpan<ulong> span) => bits = new(span);
 
@@ -34,6 +36,8 @@ internal struct BitSet : IEnumerable<int>
 
     public BitSet(BitSpan span)
         : this(span.Span) { }
+
+    public static int WordsRequired(int capacity) => (capacity + (ULongBits - 1)) / ULongBits;
 
     public readonly BitSet Clone() => new(bits.Span);
 

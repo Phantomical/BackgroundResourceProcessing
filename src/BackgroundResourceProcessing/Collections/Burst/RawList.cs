@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.BurstSolver;
 using Unity.Burst.CompilerServices;
 using Unity.Collections;
@@ -84,7 +85,7 @@ internal unsafe struct RawList<T>() : IEnumerable<T>
 
     public void Add(T elem)
     {
-        if (count == capacity)
+        if (Hint.Unlikely(count == capacity))
             Expand(16);
 
         data[count] = elem;
@@ -93,7 +94,7 @@ internal unsafe struct RawList<T>() : IEnumerable<T>
 
     public void AddRange(MemorySpan<T> values)
     {
-        if (Count + values.Length > Capacity)
+        if (Hint.Unlikely(Count + values.Length > Capacity))
             Expand(Count + values.Length);
 
         values.CopyTo(new MemorySpan<T>(data + Count, Capacity - Count));
@@ -188,7 +189,7 @@ internal unsafe struct RawList<T>() : IEnumerable<T>
     {
         if (newsize < 0)
             throw new ArgumentOutOfRangeException(nameof(newsize));
-        if (newsize > Capacity)
+        if (Hint.Unlikely(newsize > Capacity))
             Expand(newsize);
 
         try
@@ -227,8 +228,17 @@ internal unsafe struct RawList<T>() : IEnumerable<T>
     {
         if (capacity < 0)
             throw new ArgumentOutOfRangeException(nameof(capacity));
-        if (capacity <= this.capacity)
+        if (Hint.Likely(capacity <= this.capacity))
             return;
+
+        Grow(capacity);
+    }
+
+    [IgnoreWarning(1370)]
+    private void Grow(int capacity)
+    {
+        if (capacity <= Capacity)
+            throw new ArgumentOutOfRangeException(nameof(capacity));
 
         if (BurstUtil.UseTestAllocator)
         {

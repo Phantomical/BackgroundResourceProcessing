@@ -12,11 +12,11 @@ namespace BackgroundResourceProcessing.Collections.Burst;
 
 [DebuggerDisplay("Length = {Length}")]
 [DebuggerTypeProxy(typeof(SpanDebugView<>))]
-internal unsafe struct RawArray<T>() : IEnumerable<T>
+internal readonly unsafe struct RawArray<T>() : IEnumerable<T>
     where T : struct
 {
-    T* data = null;
-    uint length = 0;
+    readonly T* data = null;
+    readonly uint length = 0;
 
     public readonly int Length
     {
@@ -48,6 +48,19 @@ internal unsafe struct RawArray<T>() : IEnumerable<T>
 
             return ref data[index];
         }
+    }
+
+    public RawArray(T* data, int length)
+        : this()
+    {
+        if (length < 0)
+            ThrowLengthOutOfRange();
+
+        if (data == null && length != 0)
+            ThrowLengthOutOfRange();
+
+        this.data = data;
+        this.length = (uint)length;
     }
 
     public RawArray(int length, NativeArrayOptions options = NativeArrayOptions.ClearMemory)

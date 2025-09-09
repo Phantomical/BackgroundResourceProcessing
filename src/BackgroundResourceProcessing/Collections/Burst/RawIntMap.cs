@@ -2,24 +2,26 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq.Expressions;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using Unity.Burst.CompilerServices;
+
+#pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
 [DebuggerTypeProxy(typeof(RawIntMap<>.DebugView))]
 [DebuggerDisplay("Capacity = {Capacity}")]
-public struct RawIntMap<T>(int capacity) : IEnumerable<KeyValuePair<int, T>>
+public struct RawIntMap<T> : IEnumerable<KeyValuePair<int, T>>
     where T : struct
 {
-    struct Entry
+    public struct Entry
     {
         public bool Present;
         public T Value;
     }
 
-    RawArray<Entry> items = new(capacity);
+    RawArray<Entry> items;
     int count = 0;
 
     public readonly int Count => count;
@@ -40,6 +42,10 @@ public struct RawIntMap<T>(int capacity) : IEnumerable<KeyValuePair<int, T>>
             return ref items[key].Value;
         }
     }
+
+    public RawIntMap(int capacity) => items = new(capacity);
+
+    public unsafe RawIntMap(Entry* items, int capacity) => this.items = new(items, capacity);
 
     public readonly bool TryGetValue(int key, out T value)
     {

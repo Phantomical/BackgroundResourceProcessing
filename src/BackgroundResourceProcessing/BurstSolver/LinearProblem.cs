@@ -237,11 +237,15 @@ internal struct LinearProblem()
 
     #region Presolve
     [IgnoreWarning(1370)]
-    private void Presolve(ref LinearEquation func)
+    private unsafe void Presolve(ref LinearEquation func)
     {
         var matrix = BuildPresolveMatrix(in func);
-        var zeros = new BitSet(VariableCount);
-        var states = new RawList<ConstraintState>(matrix.Rows);
+
+        int words = BitSet.WordsRequired(VariableCount);
+        ulong* zerodata = stackalloc ulong[words];
+        ConstraintState* statedata = stackalloc ConstraintState[matrix.Rows];
+        var zeros = new BitSet(zerodata, words);
+        var states = new RawArray<ConstraintState>(statedata, matrix.Rows);
 
         var unsolvable = UnsolvableState.SOLVABLE;
         var changed = LinearPresolve.Presolve(
@@ -498,7 +502,7 @@ internal struct LinearProblem()
 
     #region Branch & Bound
     [IgnoreWarning(1371)]
-    private LinearSolution? SolveBranchAndBound(LinearEquation func)
+    private unsafe LinearSolution? SolveBranchAndBound(LinearEquation func)
     {
         Presolve(ref func);
         if (Unsolvable)
@@ -507,11 +511,14 @@ internal struct LinearProblem()
         if (simple.Count == 0 && constraints.Count == 0 && disjunctions.Count == 0)
             return ExtractEmptySolution();
 
-        var varMap = new RawIntMap<int>(VariableCount);
-        var binaryIndices = new RawIntMap<int>(VariableCount);
+        var varMapData = stackalloc RawIntMap<int>.Entry[VariableCount];
+        var binaryIndicesData = stackalloc RawIntMap<int>.Entry[VariableCount];
+
+        var varMap = new RawIntMap<int>(varMapData, VariableCount);
+        var binaryIndices = new RawIntMap<int>(binaryIndicesData, VariableCount);
 
         for (int i = 0; i < disjunctions.Count; ++i)
-            binaryIndices[disjunctions[i].variable.Index] = i;
+            binaryIndices.Add(disjunctions[i].variable.Index, i);
 
         // Do a depth-first search but order by score in order to break depth ties.
         var entries = new PriorityQueue<QueueEntry>(disjunctions.Count * 2 + 1);
@@ -725,11 +732,11 @@ internal struct LinearProblem()
 
                     // We arbitrarily pick lhs to be active when z is 0.
                     WriteConstraintToTableau(tableau, constraint.lhs, varMap, ref y);
-                    tableau[varMap[z.Index], y - 1] = -M * z.Coef;
+                    tableau[y - 1, varMap[z.Index]] = -M * z.Coef;
 
                     WriteConstraintToTableau(tableau, constraint.rhs, varMap, ref y);
-                    tableau[varMap[z.Index], y - 1] = M * z.Coef;
-                    tableau[tableau.Cols - 1, y - 1] += M;
+                    tableau[y - 1, varMap[z.Index]] = M * z.Coef;
+                    tableau[y - 1, tableau.Cols - 1] += M;
 
                     WriteConstraintToTableau(tableau, z, 1.0, varMap, ref y);
 
@@ -750,10 +757,10 @@ internal struct LinearProblem()
     )
     {
         foreach (var var in constraint.variables)
-            tableau[varMap[var.Index], y] = var.Coef;
+            tableau[y, varMap[var.Index]] = var.Coef;
 
-        tableau[varMap.Count + y - 1, y] = 1.0;
-        tableau[tableau.Cols - 1, y] = constraint.constant;
+        tableau[y, varMap.Count + y - 1] = 1.0;
+        tableau[y, tableau.Cols - 1] = constraint.constant;
         y += 1;
     }
 
@@ -765,9 +772,9 @@ internal struct LinearProblem()
         ref int y
     )
     {
-        tableau[varMap[var.Index], y] = var.Coef;
-        tableau[varMap.Count + y - 1, y] = 1.0;
-        tableau[tableau.Cols - 1, y] = constant;
+        tableau[y, varMap[var.Index]] = var.Coef;
+        tableau[y, varMap.Count + y - 1] = 1.0;
+        tableau[y, tableau.Cols - 1] = constant;
         y += 1;
     }
 
@@ -794,7 +801,7 @@ internal struct LinearProblem()
                     continue;
             }
 
-            varMap[i] = index++;
+            varMap.Add(i, index++);
         }
     }
 
@@ -825,7 +832,7 @@ internal struct LinearProblem()
             if (y == -1)
                 continue;
 
-            values[index] = tableau[tableau.Cols - 1, y];
+            values[index] = tableau[y, tableau.Cols - 1];
         }
 
         var soln = new LinearSolution(values);

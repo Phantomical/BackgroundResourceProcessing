@@ -40,8 +40,6 @@ internal struct ResourceGraph
         inventories = new(nInventories);
         converters = new(nConverters);
 
-        Dictionary<InventoryId, int> idMap = [];
-
         inputs = new AdjacencyMatrix(nConverters, nInventories);
         outputs = new AdjacencyMatrix(nConverters, nInventories);
         constraints = new AdjacencyMatrix(nConverters, nInventories);
@@ -86,7 +84,10 @@ internal struct ResourceGraph
         cspan.Dispose();
     }
 
-    private bool SatisfiesConstraints(Core.ResourceConverter rconv, ref GraphConverter gconv)
+    private readonly bool SatisfiesConstraints(
+        Core.ResourceConverter rconv,
+        ref GraphConverter gconv
+    )
     {
         gconv.constraints.Reserve(rconv.Required.Count);
 
@@ -116,10 +117,13 @@ internal struct ResourceGraph
     /// with an partially filled inventory results in a partially full
     /// inventory, which adds no constraints on resource flow.
     /// </remarks>
-    public void MergeEquivalentInventories()
+    public unsafe void MergeEquivalentInventories()
     {
-        BitSet removed = new(inputs.Cols);
-        BitSet equal = new(inputs.Cols);
+        int words = inputs.ColumnWords;
+        ulong* mem = stackalloc ulong[words * 2];
+
+        BitSet removed = new(mem, words);
+        BitSet equal = new(mem + words, words);
 
         // We need to save this at the start as we'll be removing
         // inventories as we go.

@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using Unity.Burst;
 using Unity.Burst.CompilerServices;
 
 namespace BackgroundResourceProcessing.BurstSolver;
@@ -31,6 +32,7 @@ internal struct LinearConstraint : IComparable<LinearConstraint>
     }
 
     [IgnoreWarning(1370)]
+    [BurstDiscard]
     private static void ValidateVariable(in LinearEquation variables)
     {
         foreach (var var in variables)
@@ -47,6 +49,7 @@ internal struct LinearConstraint : IComparable<LinearConstraint>
     }
 
     [IgnoreWarning(1370)]
+    [BurstDiscard]
     private static void ValidateVariable(Variable var)
     {
         if (double.IsNaN(var.Coef))

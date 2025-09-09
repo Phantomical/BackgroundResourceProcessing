@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Utils;
 using Unity.Burst.CompilerServices;
 using static Unity.Burst.Intrinsics.X86.Bmi2;
@@ -19,11 +20,13 @@ internal struct BitSpan(MemorySpan<ulong> bits)
     public readonly int Capacity
     {
         [return: AssumeRange(0, int.MaxValue)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => bits.Length * ULongBits;
     }
     public readonly int Words
     {
         [return: AssumeRange(0, int.MaxValue)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => bits.Length;
     }
 
@@ -31,6 +34,7 @@ internal struct BitSpan(MemorySpan<ulong> bits)
 
     public readonly bool this[int key]
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
             if (key < 0 || key >= Capacity)
@@ -41,6 +45,7 @@ internal struct BitSpan(MemorySpan<ulong> bits)
 
             return (bits[word] & (1ul << bit)) != 0;
         }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set
         {
             if (key < 0 || key >= Capacity)
@@ -100,10 +105,10 @@ internal struct BitSpan(MemorySpan<ulong> bits)
 
     public void AndWith(BitSpan other)
     {
-        if (bits.Length != other.bits.Length)
+        if (bits.Length < other.bits.Length)
             ThrowMismatchedSetCapacity();
 
-        for (int i = 0; i < bits.Length; ++i)
+        for (int i = 0; i < other.bits.Length; ++i)
             bits[i] &= other.bits[i];
     }
 
@@ -115,10 +120,10 @@ internal struct BitSpan(MemorySpan<ulong> bits)
 
     public void OrWith(BitSpan other)
     {
-        if (bits.Length != other.bits.Length)
+        if (bits.Length < other.bits.Length)
             ThrowMismatchedSetCapacity();
 
-        for (int i = 0; i < bits.Length; ++i)
+        for (int i = 0; i < other.bits.Length; ++i)
             bits[i] |= other.bits[i];
     }
 
@@ -130,10 +135,10 @@ internal struct BitSpan(MemorySpan<ulong> bits)
 
     public void XorWith(BitSpan other)
     {
-        if (bits.Length != other.bits.Length)
+        if (bits.Length < other.bits.Length)
             ThrowMismatchedSetCapacity();
 
-        for (int i = 0; i < bits.Length; ++i)
+        for (int i = 0; i < other.bits.Length; ++i)
             bits[i] ^= other.bits[i];
     }
 
@@ -280,10 +285,8 @@ internal struct BitSpan(MemorySpan<ulong> bits)
     }
 
     #region operators
-    public static bool operator ==(BitSpan a, BitSpan b)
-    {
-        return a.bits == b.bits;
-    }
+    public static bool operator ==(BitSpan a, BitSpan b) =>
+        MemorySpanExtensions.SequenceEqual(a.bits, b.bits);
 
     public static bool operator !=(BitSpan a, BitSpan b)
     {

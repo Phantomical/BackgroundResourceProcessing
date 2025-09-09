@@ -1,7 +1,11 @@
 using System;
+using Unity.Burst;
 using Unity.Burst.CompilerServices;
+using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
+using static Unity.Burst.Intrinsics.X86;
+using static Unity.Collections.LowLevel.Unsafe.UnsafeUtility;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
@@ -11,21 +15,26 @@ namespace BackgroundResourceProcessing.Collections.Burst;
 /// You can't directly call ECall methods from wihtin a test, but wrapping them
 /// is fine.
 /// </summary>
-internal unsafe static class UnityAllocator
+[BurstCompile]
+internal static unsafe class UnityAllocator
 {
+    private static int VectorAlign()
+    {
+        if (Avx.IsAvxSupported)
+            return sizeof(v256);
+        if (Sse.IsSseSupported)
+            return sizeof(v128);
+        return 1;
+    }
+
     [IgnoreWarning(1370)]
     public static T* Alloc<T>(int count, Allocator allocator)
         where T : struct
     {
-        if (count < 0)
+        if (count < 0 || count > int.MaxValue / sizeof(T))
             throw new ArgumentOutOfRangeException(nameof(count));
 
-        return (T*)
-            UnsafeUtility.Malloc(
-                UnsafeUtility.SizeOf<T>() * count,
-                UnsafeUtility.AlignOf<T>(),
-                allocator
-            );
+        return (T*)Malloc(sizeof(T) * count, Math.Max(AlignOf<T>(), VectorAlign()), allocator);
     }
 
     [IgnoreWarning(1370)]
@@ -43,13 +52,13 @@ internal unsafe static class UnityAllocator
     }
 
     [IgnoreWarning(1370)]
-    public static void Copy<T>(T* dst, T* src, int count)
+    public static void Copy<T>([NoAlias] T* dst, [NoAlias] T* src, int count)
         where T : struct
     {
         if (count < 0)
             throw new ArgumentOutOfRangeException(nameof(count));
 
-        UnsafeUtility.MemCpy(dst, src, UnsafeUtility.SizeOf<T>() * count);
+        MemCpy(dst, src, sizeof(T) * count);
     }
 
     [IgnoreWarning(1370)]
@@ -59,7 +68,7 @@ internal unsafe static class UnityAllocator
         if (count < 0)
             throw new ArgumentOutOfRangeException(nameof(count));
 
-        UnsafeUtility.MemClear(dst, UnsafeUtility.SizeOf<T>() * count);
+        MemClear(dst, sizeof(T) * count);
     }
 
     [IgnoreWarning(1370)]
@@ -69,7 +78,7 @@ internal unsafe static class UnityAllocator
         if (count < 0)
             throw new ArgumentOutOfRangeException(nameof(count));
 
-        UnsafeUtility.MemSet(dst, b, UnsafeUtility.SizeOf<T>() * count);
+        MemSet(dst, b, sizeof(T) * count);
     }
 
     [IgnoreWarning(1370)]
@@ -79,6 +88,6 @@ internal unsafe static class UnityAllocator
         if (count < 0)
             throw new ArgumentOutOfRangeException(nameof(count));
 
-        return UnsafeUtility.MemCmp(a, b, UnsafeUtility.SizeOf<T>() * count);
+        return MemCmp(a, b, sizeof(T) * count);
     }
 }

@@ -25,8 +25,8 @@ internal static class Solver
         int converterCount = processor.converters.Count;
         int inventoryCount = processor.inventories.Count;
 
-        var inventoryRates = new double[converterCount];
-        var converterRates = new double[inventoryCount];
+        var inventoryRates = new double[inventoryCount];
+        var converterRates = new double[converterCount];
 
         fixed (
             double* inv = inventoryRates,
@@ -44,11 +44,17 @@ internal static class Solver
     [BurstCompile]
     private static unsafe bool ComputeInventoryRates(
         ref ResourceGraph graph,
-        double* inventoryRates,
-        double* converterRates
+        double* _inventoryRates,
+        double* _converterRates
     )
     {
         var summaries = Summarize(in graph);
+
+        int converterCount = graph.converters.Count;
+        int inventoryCount = graph.inventories.Count;
+
+        MemorySpan<double> inventoryRates = new(_inventoryRates, inventoryCount);
+        MemorySpan<double> converterRates = new(_converterRates, converterCount);
 
         // Pre-processing: We can make final problem smaller (and thus
         // cheaper to solve) by combining together converters and
@@ -60,9 +66,6 @@ internal static class Solver
         // of variables that we need to feed to the simplex solver.
         graph.MergeEquivalentInventories();
         graph.MergeEquivalentConverters();
-
-        int converterCount = graph.converters.Count;
-        int inventoryCount = graph.inventories.Count;
 
         var converterMap = new RawIntMap<int>(converterCount);
         int index = 0;
@@ -419,12 +422,20 @@ internal static class Solver
             }
         }
 
+        foreach (var (convId, varId) in converterMap)
+        {
+            var rate = soln[rates[varId]];
+            var converter = graph.converters[convId];
+            foreach (var realId in new ClassEnumerator(graph.converterIds, converter.baseId))
+                converterRates[realId] = rate;
+        }
+
         return true;
     }
 
-    private static RawList<InventorySummary> Summarize(in ResourceGraph graph)
+    private static RawArray<InventorySummary> Summarize(in ResourceGraph graph)
     {
-        var summaries = new RawList<InventorySummary>(graph.inventories.Capacity);
+        var summaries = new RawArray<InventorySummary>(graph.inventories.Capacity);
         foreach (var (id, inventory) in graph.inventories)
             summaries[id] = new(inventory);
         return summaries;

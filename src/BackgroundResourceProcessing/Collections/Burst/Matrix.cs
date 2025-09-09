@@ -2,6 +2,10 @@ using System;
 using System.Text;
 using BackgroundResourceProcessing.Utils;
 using Unity.Burst.CompilerServices;
+using Unity.Burst.Intrinsics;
+using Unity.Mathematics;
+using static Unity.Burst.Intrinsics.X86.Avx;
+using static Unity.Burst.Intrinsics.X86.Avx2;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
@@ -132,13 +136,38 @@ internal readonly unsafe struct Matrix
         if (pivot < 0 || pivot >= Cols)
             throw new ArgumentOutOfRangeException("pivot index was outside of matrix");
 
-        var vdst = this[dst];
-        var vsrc = this[src];
+        var vdst = GetRowPtr(dst);
+        var vsrc = GetRowPtr(src);
         var scale = vdst[pivot];
         if (scale == 0.0)
             return;
 
-        for (int i = 0; i < vdst.Length; ++i)
+        int i = 0;
+        if (IsAvx2Supported)
+        {
+            v256 vscale = mm256_set1_pd(scale);
+            v256 epsilon = mm256_set1_pd(1e-9);
+
+            for (; i + 4 <= Cols; i += 4)
+            {
+                var d = mm256_loadu_pd(&vdst[i]);
+                var s = mm256_mul_pd(mm256_loadu_pd(&vsrc[i]), vscale);
+                var r = mm256_sub_pd(d, s);
+
+                var absd = mm256_abs_pd(d);
+                var abss = mm256_abs_pd(s);
+                var absr = mm256_abs_pd(r);
+                var rel = mm256_div_pd(absr, mm256_add_pd(abss, absd));
+
+                var mask1 = mm256_cmp_pd(absr, epsilon, (int)CMP.LT_OS);
+                var mask2 = mm256_cmp_pd(rel, epsilon, (int)CMP.LT_OS);
+                var mask = mm256_and_pd(mask1, mask2);
+
+                mm256_storeu_pd(&vdst[i], mm256_andnot_pd(mask, r));
+            }
+        }
+
+        for (; i < Cols; ++i)
         {
             var d = vdst[i];
             var s = vsrc[i] * scale;
@@ -197,4 +226,17 @@ internal readonly unsafe struct Matrix
     [IgnoreWarning(1370)]
     static void ThrowArrayTooSmallException() =>
         throw new ArgumentException("provided array is too small for matrix size");
+
+    [IgnoreWarning(1370)]
+    private static v256 mm256_abs_pd(v256 x)
+    {
+        if (IsAvx2Supported)
+        {
+            return mm256_andnot_pd(mm256_set1_pd(-0.0), x);
+        }
+        else
+        {
+            throw new NotSupportedException();
+        }
+    }
 }

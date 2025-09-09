@@ -157,7 +157,7 @@ internal static partial class Simplex
         int index = -1;
         double value = double.PositiveInfinity;
 
-        for (int y = 1; y < tableau.Cols; ++y)
+        for (int y = 1; y < tableau.Rows; ++y)
         {
             double* row = tableau.GetRowPtr(y);
             double den = row[pivot];
