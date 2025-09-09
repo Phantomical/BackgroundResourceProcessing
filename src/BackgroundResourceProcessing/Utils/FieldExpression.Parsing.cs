@@ -47,21 +47,109 @@ internal partial struct FieldExpression
         {
             var type = obj.GetType();
             Type[] ptypes = [.. parameters.Select(p => p.GetType())];
-            try
-            {
-                var member = type.GetMethod(method, Flags, null, ptypes, []);
-                if (member == null)
-                    throw new Exception(
-                        $"There is no method {type.Name}.{method}({string.Join(", ", ptypes.Select(t => t.Name))})"
-                    );
 
-                return member.Invoke(obj, parameters);
-            }
-            catch (Exception e)
+            // First try exact match
+            var member = type.GetMethod(method, Flags, null, ptypes, []);
+
+            // If no exact match, try to find compatible methods
+            if (member == null)
             {
-                LogUtil.Warn($"Invoking method {type.Name}.{method} threw an exception: {e}");
-                return null;
+                var methods = type.GetMethods(Flags).Where(m => m.Name == method);
+                foreach (var candidateMethod in methods)
+                {
+                    var candidateParams = candidateMethod.GetParameters();
+                    if (candidateParams.Length != parameters.Length)
+                        continue;
+
+                    bool compatible = true;
+                    object[] convertedParams = new object[parameters.Length];
+
+                    for (int i = 0; i < parameters.Length; i++)
+                    {
+                        var param = parameters[i];
+                        var targetType = candidateParams[i].ParameterType;
+
+                        if (param == null)
+                        {
+                            convertedParams[i] = null;
+                            continue;
+                        }
+
+                        var paramType = param.GetType();
+                        if (targetType.IsAssignableFrom(paramType))
+                        {
+                            convertedParams[i] = param;
+                        }
+                        else if (TryConvertParameter(param, targetType, out var converted))
+                        {
+                            convertedParams[i] = converted;
+                        }
+                        else
+                        {
+                            compatible = false;
+                            break;
+                        }
+                    }
+
+                    if (compatible)
+                    {
+                        member = candidateMethod;
+                        parameters = convertedParams;
+                        break;
+                    }
+                }
             }
+
+            if (member == null)
+                throw new Exception(
+                    $"There is no method {type.Name}.{method}({string.Join(", ", ptypes.Select(t => t.Name))})"
+                );
+
+            return member.Invoke(obj, parameters);
+        }
+
+        static bool TryConvertParameter(object param, Type targetType, out object converted)
+        {
+            converted = null;
+
+            if (param == null)
+            {
+                converted = null;
+                return !targetType.IsValueType || Nullable.GetUnderlyingType(targetType) != null;
+            }
+
+            var paramType = param.GetType();
+
+            // Handle numeric conversions
+            if (IsNumericType(paramType) && IsNumericType(targetType))
+            {
+                try
+                {
+                    converted = Convert.ChangeType(param, targetType);
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+
+            return false;
+        }
+
+        static bool IsNumericType(Type type)
+        {
+            return type == typeof(byte)
+                || type == typeof(sbyte)
+                || type == typeof(short)
+                || type == typeof(ushort)
+                || type == typeof(int)
+                || type == typeof(uint)
+                || type == typeof(long)
+                || type == typeof(ulong)
+                || type == typeof(float)
+                || type == typeof(double)
+                || type == typeof(decimal);
         }
 
         public static object DoIndexAccess(object obj, object index)
@@ -212,7 +300,7 @@ internal partial struct FieldExpression
             double? promoted = TryPromoteToDouble(obj);
             if (promoted == null)
                 throw new EvaluationException(
-                    $"A value of type {obj.GetType()} cannot be promoted to a double"
+                    $"A value of type {obj?.GetType()?.Name ?? "null"} cannot be promoted to a double"
                 );
 
             return (double)promoted;
@@ -866,7 +954,29 @@ internal partial struct FieldExpression
                     var field = Current;
                     lexer.MoveNext();
 
-                    return BuildFieldAccess(module, field.ToString());
+                    if (Current == TokenKind.LPAREN)
+                    {
+                        List<Expression> args = [];
+
+                        ExpectToken(TokenKind.LPAREN);
+                        while (true)
+                        {
+                            if (Current == TokenKind.RPAREN)
+                                break;
+
+                            args.Add(ParseExpression());
+
+                            if (Current == TokenKind.COMMA)
+                                lexer.MoveNext();
+                        }
+                        ExpectToken(TokenKind.RPAREN);
+
+                        return BuildMethodCall(module, field.ToString(), args);
+                    }
+                    else
+                    {
+                        return BuildFieldAccess(module, field.ToString());
+                    }
 
                 default:
                     return module;
