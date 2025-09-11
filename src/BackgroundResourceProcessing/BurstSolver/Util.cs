@@ -9,6 +9,8 @@ internal static class BurstUtil
 {
     internal class AssertionError(string message) : Exception(message) { }
 
+    internal static bool EnableBurst => DebugSettings.Instance?.EnableBurst ?? true;
+
     internal static bool IsBurstCompiled
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

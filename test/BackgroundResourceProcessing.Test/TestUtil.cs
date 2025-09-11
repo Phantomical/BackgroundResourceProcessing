@@ -138,6 +138,12 @@ namespace BackgroundResourceProcessing.Test
 #endif
         }
 
+        [AssemblyInitialize]
+        public static void AssemblySetup(TestContext testContext)
+        {
+            DebugSettings.Instance.ConfigureUnityExternal();
+        }
+
         [AssemblyCleanup()]
         public static void AssemblyCleanup()
         {
