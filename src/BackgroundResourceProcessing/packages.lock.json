@@ -17,6 +17,12 @@
           "Microsoft.NETFramework.ReferenceAssemblies.net481": "1.0.3"
         }
       },
+      "MustUseRetVal": {
+        "type": "Direct",
+        "requested": "[0.0.2, )",
+        "resolved": "0.0.2",
+        "contentHash": "vPxPjNkhnZXj3C8jMT3lbQI2QUmWGTEEb4ksDmTX9MHIf7fD4zANCMrRb7mldjQD5UHgXiag3McNECf6e+0+eg=="
+      },
       "Microsoft.NETFramework.ReferenceAssemblies.net481": {
         "type": "Transitive",
         "resolved": "1.0.3",

@@ -190,6 +190,11 @@
         "resolved": "3.6.4",
         "contentHash": "3nV+2CJluKmiJpCSqQfXu5idCq35+vqFywjScyauTIz0Zk7KJw7Qpzv8gtwow0To7pxIlIvwkq9rbMB+V6eOow=="
       },
+      "MustUseRetVal": {
+        "type": "Transitive",
+        "resolved": "0.0.2",
+        "contentHash": "vPxPjNkhnZXj3C8jMT3lbQI2QUmWGTEEb4ksDmTX9MHIf7fD4zANCMrRb7mldjQD5UHgXiag3McNECf6e+0+eg=="
+      },
       "Newtonsoft.Json": {
         "type": "Transitive",
         "resolved": "9.0.1",
@@ -284,7 +289,8 @@
         "type": "Project",
         "dependencies": {
           "JsonPoke": "[1.2.0, )",
-          "Microsoft.NETFramework.ReferenceAssemblies": "[1.0.3, )"
+          "Microsoft.NETFramework.ReferenceAssemblies": "[1.0.3, )",
+          "MustUseRetVal": "[0.0.2, )"
         }
       }
     },
