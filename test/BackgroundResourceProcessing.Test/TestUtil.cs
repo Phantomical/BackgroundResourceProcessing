@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using BackgroundResourceProcessing.BurstSolver;
+using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Utils;
 using KSPAchievements;
@@ -130,22 +131,18 @@ namespace BackgroundResourceProcessing.Test
 
             TypeRegistry.RegisterForTest([typeof(Setup).Assembly]);
 
+            DebugSettings.Instance.ConfigureUnityExternal();
             DebugSettings.Instance.DebugLogging = true;
 #if SOLVERTRACE
             DebugSettings.Instance.SolverTrace = true;
 #endif
         }
 
-        [AssemblyInitialize()]
-        public static void AssemblyInitialize(TestContext _)
-        {
-            BurstUtil.TestAllocatorOverride = true;
-        }
-
         [AssemblyCleanup()]
         public static void AssemblyCleanup()
         {
             sink.output.Close();
+            TestAllocator.Cleanup();
         }
     }
 }

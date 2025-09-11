@@ -40,7 +40,6 @@ internal static class BurstUtil
         }
     }
 
-    internal static bool TestAllocatorOverride = false;
     internal static bool UseTestAllocator
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -48,7 +47,8 @@ internal static class BurstUtil
         {
             [BurstDiscard]
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            static void Managed(ref bool use) => use = TestAllocatorOverride;
+            static void Managed(ref bool use) =>
+                use = DebugSettings.Instance?.UseTestAllocator ?? false;
 
             bool use = false;
             Managed(ref use);

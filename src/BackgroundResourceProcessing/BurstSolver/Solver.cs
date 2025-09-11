@@ -42,7 +42,7 @@ internal static class Solver
         )
         {
             bool res;
-            if (BurstUtil.UseTestAllocator)
+            if (DebugSettings.Instance?.EnableBurst ?? true)
             {
                 res = ComputeInventoryRates(
                     ref graph,

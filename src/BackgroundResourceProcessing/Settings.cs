@@ -43,6 +43,12 @@ public class DebugSettings : GameParameters.CustomParameterNode
     [GameParameters.CustomParameterUI("Enable Solution Cache")]
     public bool EnableSolutionCache = true;
 
+    /// <summary>
+    /// Setting this will automatically break unity code, since the test
+    /// allocator never actually frees anything.
+    /// </summary>
+    internal bool UseTestAllocator = false;
+
     public override bool Enabled(MemberInfo member, GameParameters parameters)
     {
         return member.Name switch
@@ -51,6 +57,16 @@ public class DebugSettings : GameParameters.CustomParameterNode
             "SolverTrace" => DebugLogging,
             _ => true,
         };
+    }
+
+    /// <summary>
+    /// Configure the debug settings to disable anything that cannot be used
+    /// when running outside of unity.
+    /// </summary>
+    internal void ConfigureUnityExternal()
+    {
+        EnableBurst = false;
+        UseTestAllocator = true;
     }
 }
 
