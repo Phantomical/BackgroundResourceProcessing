@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Utils;
 using Unity.Burst;
@@ -531,8 +532,12 @@ internal struct LinearProblem()
     [MustUseReturnValue]
     private unsafe Result<LinearSolution> SolveBranchAndBound(LinearEquation func)
     {
+        TraceInitialProblem(func);
+
         if (!Presolve(ref func).Match(out var err))
             return err;
+
+        TracePresolvedProblem(func);
 
         if (simple.Count == 0 && constraints.Count == 0 && disjunctions.Count == 0)
             return ExtractEmptySolution();
@@ -681,6 +686,20 @@ internal struct LinearProblem()
 
         TraceFinalSolution(soln.Value, best);
         return soln.Value;
+    }
+
+    [BurstDiscard]
+    private readonly void TraceInitialProblem(LinearEquation func)
+    {
+        if (BurstUtil.SolverTrace)
+            LogUtil.Log($"\nMaximize Z = {func}\nsubject to\n{this}");
+    }
+
+    [BurstDiscard]
+    private readonly void TracePresolvedProblem(LinearEquation func)
+    {
+        if (BurstUtil.SolverTrace)
+            LogUtil.Log($"After presolve:\nMaximize Z = {func}\nsubject to\n{this}");
     }
 
     [BurstDiscard]
@@ -915,6 +934,108 @@ internal struct LinearProblem()
         return row;
     }
     #endregion
+    #endregion
+
+    #region ToString
+    public readonly override string ToString()
+    {
+        StringBuilder builder = new();
+        foreach (var equality in equalities)
+        {
+            builder.Append(equality.ToRelationString("=="));
+            builder.Append('\n');
+        }
+
+        foreach (var simple in simple)
+        {
+            builder.Append(simple);
+            builder.Append('\n');
+        }
+
+        foreach (var constraint in constraints)
+        {
+            builder.Append(constraint.ToRelationString("<="));
+            builder.Append('\n');
+        }
+
+        foreach (var or in disjunctions)
+        {
+            builder.Append('(');
+            builder.Append(or.lhs.ToRelationString("<="));
+            builder.Append(" || ");
+            builder.Append(or.rhs.ToRelationString("<="));
+            builder.Append(")\n");
+        }
+
+        foreach (var sub in substitutions.Values)
+        {
+            builder.Append("sub ");
+            builder.Append(sub);
+            builder.AppendLine();
+        }
+
+        return builder.ToString();
+    }
+
+    private readonly string RenderChoices(BinaryChoice[] choices)
+    {
+        StringBuilder builder = new();
+
+        for (int i = 0; i < choices.Length; ++i)
+        {
+            if (i != 0)
+                builder.Append(", ");
+
+            var choice = choices[i] switch
+            {
+                BinaryChoice.Unknown => "U",
+                BinaryChoice.Left => "0",
+                BinaryChoice.Right => "1",
+                _ => "X",
+            };
+
+            builder.Append($"{disjunctions[i].variable}={choice}");
+        }
+
+        return builder.ToString();
+    }
+
+    internal static void RenderCoef(StringBuilder builder, double coef, string var, ref bool first)
+    {
+        if (coef == 0.0)
+            return;
+
+        if (Math.Abs(coef) != 1.0)
+        {
+            if (first)
+            {
+                builder.Append($"{coef:G3}");
+                first = false;
+            }
+            else if (coef < 0)
+                builder.Append($" - {-coef:G3}");
+            else
+                builder.Append($" + {coef:G3}");
+
+            builder.Append('*');
+            builder.Append(var);
+        }
+        else
+        {
+            if (first)
+            {
+                if (coef < 0.0)
+                    builder.Append('-');
+                first = false;
+            }
+            else if (coef < 0.0)
+                builder.Append(" - ");
+            else
+                builder.Append(" + ");
+
+            builder.Append(var);
+        }
+    }
     #endregion
 
     #region Internal Types
