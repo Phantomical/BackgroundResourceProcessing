@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using BackgroundResourceProcessing.Collections.Burst;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Unity.Collections;
 
 namespace BackgroundResourceProcessing.Test.Collections.Burst;
 
@@ -21,7 +22,7 @@ public sealed class MemorySpanTests
     [TestMethod]
     public void ForeachIteration_EmptySpan_DoesNotExecuteLoop()
     {
-        var array = new RawArray<int>(0);
+        var array = new RawArray<int>(0, AllocatorHandle.Temp);
         var span = new MemorySpan<int>(array);
         int iterationCount = 0;
 
@@ -36,7 +37,7 @@ public sealed class MemorySpanTests
     [TestMethod]
     public void ForeachIteration_SingleElement_IteratesOnce()
     {
-        var array = new RawArray<int>(1);
+        var array = new RawArray<int>(1, AllocatorHandle.Temp);
         array[0] = 42;
         var span = new MemorySpan<int>(array);
         int iterationCount = 0;
@@ -55,7 +56,7 @@ public sealed class MemorySpanTests
     [TestMethod]
     public void ForeachIteration_MultipleElements_IteratesInOrder()
     {
-        var array = new RawArray<int>(5);
+        var array = new RawArray<int>(5, AllocatorHandle.Temp);
         for (int i = 0; i < 5; i++)
             array[i] = i * 10;
 
@@ -74,7 +75,7 @@ public sealed class MemorySpanTests
     [TestMethod]
     public void ForeachIteration_ByReference_AllowsModification()
     {
-        var array = new RawArray<int>(3);
+        var array = new RawArray<int>(3, AllocatorHandle.Temp);
         array[0] = 1;
         array[1] = 2;
         array[2] = 3;
@@ -97,7 +98,7 @@ public sealed class MemorySpanTests
     [TestMethod]
     public void ManualEnumerator_EmptySpan_MoveNextReturnsFalse()
     {
-        var array = new RawArray<int>(0);
+        var array = new RawArray<int>(0, AllocatorHandle.Temp);
         var span = new MemorySpan<int>(array);
 
         using var enumerator = span.GetEnumerator();
@@ -109,7 +110,7 @@ public sealed class MemorySpanTests
     [TestMethod]
     public void ManualEnumerator_SingleElement_MoveNextOnceThenFalse()
     {
-        var array = new RawArray<int>(1);
+        var array = new RawArray<int>(1, AllocatorHandle.Temp);
         array[0] = 99;
         var span = new MemorySpan<int>(array);
 
@@ -126,7 +127,7 @@ public sealed class MemorySpanTests
     [TestMethod]
     public void ManualEnumerator_MultipleElements_IteratesCorrectly()
     {
-        var array = new RawArray<int>(4);
+        var array = new RawArray<int>(4, AllocatorHandle.Temp);
         array[0] = 10;
         array[1] = 20;
         array[2] = 30;
@@ -147,7 +148,7 @@ public sealed class MemorySpanTests
     [TestMethod]
     public void ManualEnumerator_CurrentByReference_AllowsModification()
     {
-        var array = new RawArray<int>(2);
+        var array = new RawArray<int>(2, AllocatorHandle.Temp);
         array[0] = 5;
         array[1] = 15;
         var span = new MemorySpan<int>(array);
@@ -167,7 +168,7 @@ public sealed class MemorySpanTests
     [TestMethod]
     public void ManualEnumerator_CallingCurrentBeforeMoveNext_ReturnsInvalidReference()
     {
-        var array = new RawArray<int>(1);
+        var array = new RawArray<int>(1, AllocatorHandle.Temp);
         array[0] = 42;
         var span = new MemorySpan<int>(array);
 
@@ -185,7 +186,7 @@ public sealed class MemorySpanTests
     [TestMethod]
     public void IEnumerableInterface_EmptySpan_WorksCorrectly()
     {
-        var array = new RawArray<int>(0);
+        var array = new RawArray<int>(0, AllocatorHandle.Temp);
         var span = new MemorySpan<int>(array);
         IEnumerable<int> enumerable = span;
 
@@ -197,7 +198,7 @@ public sealed class MemorySpanTests
     [TestMethod]
     public void IEnumerableInterface_WithElements_WorksCorrectly()
     {
-        var array = new RawArray<int>(3);
+        var array = new RawArray<int>(3, AllocatorHandle.Temp);
         array[0] = 100;
         array[1] = 200;
         array[2] = 300;
@@ -212,7 +213,7 @@ public sealed class MemorySpanTests
     [TestMethod]
     public void IEnumerableInterface_NonGeneric_WorksCorrectly()
     {
-        var array = new RawArray<int>(2);
+        var array = new RawArray<int>(2, AllocatorHandle.Temp);
         array[0] = 11;
         array[1] = 22;
         var span = new MemorySpan<int>(array);
@@ -236,7 +237,7 @@ public sealed class MemorySpanTests
     [TestMethod]
     public void SlicedSpan_StartIndex_IteratesFromCorrectPosition()
     {
-        var array = new RawArray<int>(5);
+        var array = new RawArray<int>(5, AllocatorHandle.Temp);
         for (int i = 0; i < 5; i++)
             array[i] = i + 1; // 1, 2, 3, 4, 5
 
@@ -255,7 +256,7 @@ public sealed class MemorySpanTests
     [TestMethod]
     public void SlicedSpan_StartAndLength_IteratesCorrectSubset()
     {
-        var array = new RawArray<int>(6);
+        var array = new RawArray<int>(6, AllocatorHandle.Temp);
         for (int i = 0; i < 6; i++)
             array[i] = (i + 1) * 10; // 10, 20, 30, 40, 50, 60
 
@@ -274,7 +275,7 @@ public sealed class MemorySpanTests
     [TestMethod]
     public void SlicedSpan_EmptySlice_DoesNotIterate()
     {
-        var array = new RawArray<int>(3);
+        var array = new RawArray<int>(3, AllocatorHandle.Temp);
         array[0] = 1;
         array[1] = 2;
         array[2] = 3;
@@ -293,7 +294,7 @@ public sealed class MemorySpanTests
     [TestMethod]
     public void SlicedSpan_SingleElementSlice_IteratesOnce()
     {
-        var array = new RawArray<int>(5);
+        var array = new RawArray<int>(5, AllocatorHandle.Temp);
         for (int i = 0; i < 5; i++)
             array[i] = i * 5;
 
@@ -317,7 +318,7 @@ public sealed class MemorySpanTests
     [TestMethod]
     public void EnumeratorReset_ThrowsNotSupportedException()
     {
-        var array = new RawArray<int>(1);
+        var array = new RawArray<int>(1, AllocatorHandle.Temp);
         var span = new MemorySpan<int>(array);
 
         IEnumerator<int> enumerator = span.GetEnumerator();
@@ -328,7 +329,7 @@ public sealed class MemorySpanTests
     [TestMethod]
     public void EnumeratorDispose_DoesNotThrow()
     {
-        var array = new RawArray<int>(2);
+        var array = new RawArray<int>(2, AllocatorHandle.Temp);
         var span = new MemorySpan<int>(array);
 
         var enumerator = span.GetEnumerator();
@@ -341,7 +342,7 @@ public sealed class MemorySpanTests
     [TestMethod]
     public void MultipleEnumerators_WorkIndependently()
     {
-        var array = new RawArray<int>(3);
+        var array = new RawArray<int>(3, AllocatorHandle.Temp);
         array[0] = 10;
         array[1] = 20;
         array[2] = 30;
@@ -369,7 +370,7 @@ public sealed class MemorySpanTests
     [TestMethod]
     public void EnumeratorAfterSpanSlice_IteratesCorrectly()
     {
-        var array = new RawArray<int>(4);
+        var array = new RawArray<int>(4, AllocatorHandle.Temp);
         for (int i = 0; i < 4; i++)
             array[i] = i + 1;
 
@@ -394,7 +395,7 @@ public sealed class MemorySpanTests
     [TestMethod]
     public void Iteration_ByteType_WorksCorrectly()
     {
-        var array = new RawArray<byte>(4);
+        var array = new RawArray<byte>(4, AllocatorHandle.Temp);
         array[0] = 0xFF;
         array[1] = 0x80;
         array[2] = 0x40;
@@ -413,7 +414,7 @@ public sealed class MemorySpanTests
     [TestMethod]
     public void Iteration_CustomStruct_WorksCorrectly()
     {
-        var array = new RawArray<TestStruct>(3);
+        var array = new RawArray<TestStruct>(3, AllocatorHandle.Temp);
         array[0] = new TestStruct { Value = 10, Flag = true };
         array[1] = new TestStruct { Value = 20, Flag = false };
         array[2] = new TestStruct { Value = 30, Flag = true };
@@ -439,7 +440,7 @@ public sealed class MemorySpanTests
     [TestMethod]
     public void CollectionExpression_WorksRight()
     {
-        var array = new RawArray<int>(5)
+        var array = new RawArray<int>(5, AllocatorHandle.Temp)
         {
             [0] = 1,
             [1] = 2,

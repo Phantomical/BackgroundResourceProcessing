@@ -18,39 +18,6 @@ namespace BackgroundResourceProcessing.Collections.Burst;
 [BurstCompile]
 internal static unsafe class UnityAllocator
 {
-    private static int VectorAlign()
-    {
-        if (Avx.IsAvxSupported)
-            return sizeof(v256);
-        if (Sse.IsSseSupported)
-            return sizeof(v128);
-        return 1;
-    }
-
-    [IgnoreWarning(1370)]
-    public static T* Alloc<T>(int count, Allocator allocator)
-        where T : struct
-    {
-        if (count < 0 || count > int.MaxValue / sizeof(T))
-            throw new ArgumentOutOfRangeException(nameof(count));
-
-        return (T*)Malloc(sizeof(T) * count, Math.Max(AlignOf<T>(), VectorAlign()), allocator);
-    }
-
-    [IgnoreWarning(1370)]
-    public static void Free<T>(T* ptr, Allocator allocator)
-        where T : struct
-    {
-        if (ptr is null)
-            return;
-
-        // Deallocations with the temp allocator are a no-op.
-        if (allocator == Allocator.Temp)
-            return;
-
-        UnsafeUtility.Free(ptr, allocator);
-    }
-
     [IgnoreWarning(1370)]
     public static void Copy<T>([NoAlias] T* dst, [NoAlias] T* src, int count)
         where T : struct

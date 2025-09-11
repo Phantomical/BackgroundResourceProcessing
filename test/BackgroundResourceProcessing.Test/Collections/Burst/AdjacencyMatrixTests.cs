@@ -15,7 +15,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
         [TestMethod]
         public void Constructor_ValidDimensions_CreatesMatrix()
         {
-            var matrix = new AdjacencyMatrix(5, 10);
+            var matrix = new AdjacencyMatrix(5, 10, AllocatorHandle.Temp);
 
             Assert.AreEqual(5, matrix.Rows);
             Assert.AreEqual(64, matrix.Cols); // Rounded up to next multiple of 64
@@ -25,7 +25,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
         [TestMethod]
         public void Constructor_LargeDimensions_CalculatesCorrectColumnWords()
         {
-            var matrix = new AdjacencyMatrix(5, 128);
+            var matrix = new AdjacencyMatrix(5, 128, AllocatorHandle.Temp);
 
             Assert.AreEqual(5, matrix.Rows);
             Assert.AreEqual(128, matrix.Cols);
@@ -35,19 +35,23 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
         [TestMethod]
         public void Constructor_NegativeRows_ThrowsException()
         {
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => new AdjacencyMatrix(-1, 5));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() =>
+                new AdjacencyMatrix(-1, 5, AllocatorHandle.Temp)
+            );
         }
 
         [TestMethod]
         public void Constructor_NegativeCols_ThrowsException()
         {
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => new AdjacencyMatrix(5, -1));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() =>
+                new AdjacencyMatrix(5, -1, AllocatorHandle.Temp)
+            );
         }
 
         [TestMethod]
         public void Constructor_ZeroDimensions_CreatesEmptyMatrix()
         {
-            var matrix = new AdjacencyMatrix(0, 0);
+            var matrix = new AdjacencyMatrix(0, 0, AllocatorHandle.Temp);
 
             Assert.AreEqual(0, matrix.Rows);
             Assert.AreEqual(0, matrix.Cols);
@@ -57,7 +61,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
         [TestMethod]
         public void Indexer_SingleElement_GetSet()
         {
-            var matrix = new AdjacencyMatrix(3, 3);
+            var matrix = new AdjacencyMatrix(3, 3, AllocatorHandle.Temp);
 
             // Initially false
             Assert.IsFalse(matrix[1, 2]);
@@ -74,7 +78,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
         [TestMethod]
         public void Indexer_MultipleElements_Independent()
         {
-            var matrix = new AdjacencyMatrix(3, 3);
+            var matrix = new AdjacencyMatrix(3, 3, AllocatorHandle.Temp);
 
             matrix[0, 0] = true;
             matrix[1, 1] = true;
@@ -90,7 +94,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
         [TestMethod]
         public void RowIndexer_OutOfRange_ThrowsException()
         {
-            var matrix = new AdjacencyMatrix(3, 3);
+            var matrix = new AdjacencyMatrix(3, 3, AllocatorHandle.Temp);
 
             Assert.ThrowsException<IndexOutOfRangeException>(() =>
             {
@@ -106,7 +110,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
         [TestMethod]
         public void RowIndexer_ValidRange_ReturnsBitSpan()
         {
-            var matrix = new AdjacencyMatrix(3, 65);
+            var matrix = new AdjacencyMatrix(3, 65, AllocatorHandle.Temp);
 
             var row0 = matrix[0];
             var row1 = matrix[1];
@@ -120,7 +124,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
         [TestMethod]
         public void ElementIndexer_OutOfRange_ThrowsException()
         {
-            var matrix = new AdjacencyMatrix(3, 3);
+            var matrix = new AdjacencyMatrix(3, 3, AllocatorHandle.Temp);
 
             Assert.ThrowsException<IndexOutOfRangeException>(() =>
             {
@@ -136,7 +140,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
         [TestMethod]
         public void Bits_Property_ReturnsCorrectBitSpan()
         {
-            var matrix = new AdjacencyMatrix(2, 65);
+            var matrix = new AdjacencyMatrix(2, 65, AllocatorHandle.Temp);
 
             var bits = matrix.Bits;
             Assert.AreEqual(matrix.Rows * matrix.ColumnWords, bits.Words);
@@ -145,8 +149,11 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
         [TestMethod]
         public void SetEqualColumns_EmptyMatrix_SetsAllBitsTrue()
         {
-            var matrix = new AdjacencyMatrix(0, 5);
-            var bitSet = new BackgroundResourceProcessing.Collections.Burst.BitSet(matrix.Cols);
+            var matrix = new AdjacencyMatrix(0, 5, AllocatorHandle.Temp);
+            var bitSet = new BackgroundResourceProcessing.Collections.Burst.BitSet(
+                matrix.Cols,
+                AllocatorHandle.Temp
+            );
             var span = bitSet.Span;
 
             matrix.SetEqualColumns(span, 2);
@@ -162,8 +169,11 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
         [TestMethod]
         public void SetEqualColumns_WithData_FindsEqualColumns()
         {
-            var matrix = new AdjacencyMatrix(3, 5);
-            var bitSet = new BackgroundResourceProcessing.Collections.Burst.BitSet(matrix.Cols);
+            var matrix = new AdjacencyMatrix(3, 5, AllocatorHandle.Temp);
+            var bitSet = new BackgroundResourceProcessing.Collections.Burst.BitSet(
+                matrix.Cols,
+                AllocatorHandle.Temp
+            );
             var span = bitSet.Span;
 
             // Set up matrix where columns 0 and 2 match column 1
@@ -204,9 +214,10 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
         [TestMethod]
         public void RemoveUnequalColumns_InvalidSpanSize_ThrowsException()
         {
-            var matrix = new AdjacencyMatrix(3, 5);
+            var matrix = new AdjacencyMatrix(3, 5, AllocatorHandle.Temp);
             var wrongBitSet = new BackgroundResourceProcessing.Collections.Burst.BitSet(
-                matrix.Cols + 320
+                matrix.Cols + 320,
+                AllocatorHandle.Temp
             ); // Much larger wrong size (5 words * 64 bits)
             var wrongSpan = wrongBitSet.Span;
 
@@ -224,8 +235,11 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
         [TestMethod]
         public void RemoveUnequalColumns_InvalidColumn_ThrowsException()
         {
-            var matrix = new AdjacencyMatrix(3, 5);
-            var bitSet = new BackgroundResourceProcessing.Collections.Burst.BitSet(matrix.Cols);
+            var matrix = new AdjacencyMatrix(3, 5, AllocatorHandle.Temp);
+            var bitSet = new BackgroundResourceProcessing.Collections.Burst.BitSet(
+                matrix.Cols,
+                AllocatorHandle.Temp
+            );
             var span = bitSet.Span;
 
             try
@@ -252,8 +266,11 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
         [TestMethod]
         public void RemoveUnequalColumns_SingleColumnWord_WorksCorrectly()
         {
-            var matrix = new AdjacencyMatrix(3, 32); // Single column word
-            var bitSet = new BackgroundResourceProcessing.Collections.Burst.BitSet(matrix.Cols);
+            var matrix = new AdjacencyMatrix(3, 32, AllocatorHandle.Temp); // Single column word
+            var bitSet = new BackgroundResourceProcessing.Collections.Burst.BitSet(
+                matrix.Cols,
+                AllocatorHandle.Temp
+            );
             var span = bitSet.Span;
 
             // Initialize span with all bits set
@@ -277,8 +294,11 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
         [TestMethod]
         public void RemoveUnequalColumns_MultipleColumnWords_WorksCorrectly()
         {
-            var matrix = new AdjacencyMatrix(2, 128); // Multiple column words
-            var bitSet = new BackgroundResourceProcessing.Collections.Burst.BitSet(matrix.Cols); // Use matrix column words * 64 bits per word
+            var matrix = new AdjacencyMatrix(2, 128, AllocatorHandle.Temp); // Multiple column words
+            var bitSet = new BackgroundResourceProcessing.Collections.Burst.BitSet(
+                matrix.Cols,
+                AllocatorHandle.Temp
+            ); // Use matrix column words * 64 bits per word
             var span = bitSet.Span;
 
             // Initialize span with all bits set
@@ -309,7 +329,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
         public void LargeDimensionsHandling()
         {
             // Test with dimensions that require multiple column words
-            var matrix = new AdjacencyMatrix(10, 200);
+            var matrix = new AdjacencyMatrix(10, 200, AllocatorHandle.Temp);
 
             Assert.AreEqual(10, matrix.Rows);
             Assert.AreEqual(256, matrix.Cols); // Rounded up to next multiple of 64

@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using BackgroundResourceProcessing.Collections.Burst;
 using Unity.Burst;
 using Unity.Burst.CompilerServices;
 
@@ -20,7 +21,7 @@ internal struct LinearConstraint : IComparable<LinearConstraint>
         this.constant = constant;
     }
 
-    public LinearConstraint(SimpleConstraint constraint)
+    public LinearConstraint(SimpleConstraint constraint, AllocatorHandle allocator)
     {
         var var = constraint.variable;
 
@@ -28,7 +29,7 @@ internal struct LinearConstraint : IComparable<LinearConstraint>
 
         constant = constraint.constant;
         relation = constraint.relation;
-        variables = new(var.Index + 1) { var };
+        variables = new(var.Index + 1, allocator) { var };
     }
 
     [IgnoreWarning(1370)]

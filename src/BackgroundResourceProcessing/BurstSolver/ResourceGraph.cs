@@ -22,27 +22,27 @@ internal struct ResourceGraph
     public RawArray<int> inventoryIds;
     public RawArray<int> converterIds;
 
-    public ResourceGraph(ResourceProcessor processor)
+    public ResourceGraph(ResourceProcessor processor, AllocatorHandle allocator)
     {
         using var _span = new TraceSpan("new ResourceGraph");
 
         var nInventories = processor.inventories.Count;
         var nConverters = processor.converters.Count;
 
-        inventoryIds = new(nInventories);
-        converterIds = new(nConverters);
+        inventoryIds = new(nInventories, allocator);
+        converterIds = new(nConverters, allocator);
 
         for (int i = 0; i < nInventories; ++i)
             inventoryIds[i] = i;
         for (int i = 0; i < nConverters; ++i)
             converterIds[i] = i;
 
-        inventories = new(nInventories);
-        converters = new(nConverters);
+        inventories = new(nInventories, allocator);
+        converters = new(nConverters, allocator);
 
-        inputs = new AdjacencyMatrix(nConverters, nInventories);
-        outputs = new AdjacencyMatrix(nConverters, nInventories);
-        constraints = new AdjacencyMatrix(nConverters, nInventories);
+        inputs = new AdjacencyMatrix(nConverters, nInventories, allocator);
+        outputs = new AdjacencyMatrix(nConverters, nInventories, allocator);
+        constraints = new AdjacencyMatrix(nConverters, nInventories, allocator);
 
         var ispan = new TraceSpan("Inventories");
         for (int i = 0; i < nInventories; ++i)
@@ -56,7 +56,7 @@ internal struct ResourceGraph
         for (int i = 0; i < nConverters; ++i)
         {
             var converter = processor.converters[i];
-            var conv = new GraphConverter(i, converter);
+            var conv = new GraphConverter(i, converter, allocator);
 
             if (!SatisfiesConstraints(converter, ref conv))
                 continue;

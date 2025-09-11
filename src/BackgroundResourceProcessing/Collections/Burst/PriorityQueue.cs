@@ -1,5 +1,6 @@
 using System;
 using Unity.Burst.CompilerServices;
+using Unity.Collections;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
@@ -13,20 +14,20 @@ internal struct PriorityQueue<T>(RawList<T> items)
     public readonly int Capacity => items.Capacity;
     public readonly MemorySpan<T> Span => items.Span;
 
-    public PriorityQueue()
-        : this(new RawList<T>()) { }
+    public PriorityQueue(AllocatorHandle allocator)
+        : this(new RawList<T>(allocator)) { }
 
-    public PriorityQueue(int capacity)
-        : this(new RawList<T>(capacity)) { }
+    public PriorityQueue(int capacity, AllocatorHandle allocator)
+        : this(new RawList<T>(capacity, allocator)) { }
 
-    public PriorityQueue(MemorySpan<T> items)
-        : this(new RawList<T>(items))
+    public PriorityQueue(MemorySpan<T> items, AllocatorHandle allocator)
+        : this(new RawList<T>(items, allocator))
     {
         Heapify();
     }
 
-    public PriorityQueue(T[] items)
-        : this(new RawList<T>(items))
+    public PriorityQueue(T[] items, AllocatorHandle allocator)
+        : this(new RawList<T>(items, allocator))
     {
         Heapify();
     }

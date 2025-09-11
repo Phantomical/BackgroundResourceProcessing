@@ -13,27 +13,29 @@ using ConstraintState = BackgroundResourceProcessing.Solver.LinearPresolve.Const
 namespace BackgroundResourceProcessing.BurstSolver;
 
 [BurstCompile]
-internal struct LinearProblem()
+internal struct LinearProblem(AllocatorHandle allocator)
 {
     const double M = 1e9;
 
     // The number of linear variables that have been created.
     public int VariableCount { get; private set; } = 0;
 
+    readonly AllocatorHandle Allocator => constraints.Allocator;
+
     // Constraints in standard form (Ax <= b)
-    RawList<SolverConstraint> constraints = new(32);
+    RawList<SolverConstraint> constraints = new(32, allocator);
 
     // Constraints that are known to only involve 1 variable.
-    RawList<SimpleSolverConstraint> simple = new(32);
+    RawList<SimpleSolverConstraint> simple = new(32, allocator);
 
     // Equalities in equation form.
-    RawList<SolverConstraint> equalities = new(32);
+    RawList<SolverConstraint> equalities = new(32, allocator);
 
-    RawList<OrConstraint> disjunctions = new(32);
+    RawList<OrConstraint> disjunctions = new(32, allocator);
 
     RawIntMap<LinearEquality> substitutions = default;
 
-    RawArray<double> cachedTableauMemory = new();
+    RawArray<double> cachedTableauMemory = default;
 
     #region Variable Creation
     public Variable CreateVariable()
@@ -95,7 +97,7 @@ internal struct LinearProblem()
                 equalities.Add(
                     new SolverConstraint
                     {
-                        variables = new(constraint.variable),
+                        variables = new(constraint.variable, Allocator),
                         constant = constraint.constant,
                     }
                 );
@@ -188,7 +190,13 @@ internal struct LinearProblem()
 
     public void AddOrConstraint(SimpleConstraint a, LinearConstraint b)
     {
-        AddOrConstraint(new LinearConstraint(a), b);
+        if (b.KnownInconsistent)
+        {
+            AddConstraint(a);
+            return;
+        }
+
+        AddOrConstraint(new LinearConstraint(a, Allocator), b);
     }
     #endregion
 
@@ -296,7 +304,7 @@ internal struct LinearProblem()
         var nCons = constraints.Count + simple.Count;
         var nDisj = disjunctions.Count;
 
-        substitutions = new(VariableCount);
+        substitutions = new(VariableCount, allocator);
         equalities.Clear();
         simple.Clear();
         constraints.Clear();
@@ -328,7 +336,7 @@ internal struct LinearProblem()
         }
 
         var oldD = disjunctions;
-        disjunctions = new(disjunctions.Count);
+        disjunctions = new(disjunctions.Count, Allocator);
         for (int j = 0; j < nDisj; ++j, i += 2)
         {
             var lhs = matrix[i];
@@ -465,7 +473,11 @@ internal struct LinearProblem()
 
         FOUND_SECOND:
         constraints.Add(
-            new SolverConstraint() { variables = new LinearEquation(coefs), constant = constant }
+            new SolverConstraint()
+            {
+                variables = new LinearEquation(coefs, Allocator),
+                constant = constant,
+            }
         );
 
         return Result.Ok;
@@ -512,7 +524,7 @@ internal struct LinearProblem()
 
         FOUND_SECOND:
 
-        var eqn = new LinearEquation(VariableCount);
+        var eqn = new LinearEquation(VariableCount, Allocator);
         for (int x = i; x < coefs.Length; ++x)
         {
             if (row[x] != 0.0)
@@ -557,13 +569,13 @@ internal struct LinearProblem()
             binaryIndices.Add(disjunctions[i].variable.Index, i);
 
         // Do a depth-first search but order by score in order to break depth ties.
-        var entries = new PriorityQueue<QueueEntry>(disjunctions.Count * 2 + 1);
+        var entries = new PriorityQueue<QueueEntry>(disjunctions.Count * 2 + 1, Allocator);
         entries.Enqueue(
             new()
             {
                 score = double.NegativeInfinity,
                 depth = 0,
-                choices = new RawArray<BinaryChoice>(disjunctions.Count),
+                choices = new RawArray<BinaryChoice>(disjunctions.Count, Allocator),
             }
         );
 
@@ -596,7 +608,7 @@ internal struct LinearProblem()
 
             BuildVarMap(ref varMap, entry.choices, binaryIndices);
             var tableau = BuildSimplexTableau(func, entry.choices, varMap);
-            var selected = new BitSet(tableau.Cols);
+            var selected = new BitSet(tableau.Cols, Allocator);
 
             if (!Simplex.SolveTableau(tableau, selected).Match(out err))
             {
@@ -867,11 +879,11 @@ internal struct LinearProblem()
         BitSpan selected
     )
     {
-        var inverse = new RawIntMap<int>(tableau.Cols);
+        var inverse = new RawIntMap<int>(tableau.Cols, Allocator);
         foreach (var (src, tgt) in varMap)
             inverse.Add(tgt, src);
 
-        var values = new RawArray<double>(VariableCount);
+        var values = new RawArray<double>(VariableCount, Allocator);
 
         foreach (var x in selected)
         {
@@ -911,7 +923,7 @@ internal struct LinearProblem()
 
     private readonly LinearSolution ExtractEmptySolution()
     {
-        var values = new RawArray<double>(VariableCount);
+        var values = new RawArray<double>(VariableCount, Allocator);
         var soln = new LinearSolution(values);
 
         foreach (var (index, sub) in substitutions)
@@ -955,7 +967,7 @@ internal struct LinearProblem()
         {
             if (presolve)
                 length *= 2;
-            cachedTableauMemory = new(length, NativeArrayOptions.UninitializedMemory);
+            cachedTableauMemory = new(length, Allocator, NativeArrayOptions.UninitializedMemory);
         }
 
         var matrix = new Matrix(cachedTableauMemory, rows, cols);

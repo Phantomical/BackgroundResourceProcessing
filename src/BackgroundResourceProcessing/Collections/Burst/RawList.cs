@@ -25,12 +25,13 @@ namespace BackgroundResourceProcessing.Collections.Burst;
 /// </remarks>
 [DebuggerDisplay("Count = {Count}")]
 [DebuggerTypeProxy(typeof(SpanDebugView<>))]
-internal unsafe struct RawList<T>() : IEnumerable<T>
+internal unsafe struct RawList<T>(AllocatorHandle allocator) : IEnumerable<T>
     where T : struct
 {
     T* data = null;
     uint count = 0;
     uint capacity = 0;
+    AllocatorHandle allocator = allocator;
 
     public readonly int Count
     {
@@ -42,6 +43,7 @@ internal unsafe struct RawList<T>() : IEnumerable<T>
         [return: AssumeRange(0, int.MaxValue)]
         get => (int)capacity;
     }
+    public readonly AllocatorHandle Allocator => allocator;
     public readonly bool IsEmpty => Count == 0;
     public readonly MemorySpan<T> Span => new(data, Count);
     public readonly T* Ptr => data;
@@ -57,29 +59,29 @@ internal unsafe struct RawList<T>() : IEnumerable<T>
         }
     }
 
-    public RawList(int capacity)
-        : this()
+    public RawList(int capacity, AllocatorHandle allocator)
+        : this(allocator)
     {
         Reserve(capacity);
     }
 
-    public RawList(MemorySpan<T> data)
-        : this(data.Length)
+    public RawList(MemorySpan<T> data, AllocatorHandle allocator)
+        : this(data.Length, allocator)
     {
         AddRange(data);
     }
 
-    public RawList(Span<T> data)
-        : this(data.Length)
+    public RawList(Span<T> data, AllocatorHandle allocator)
+        : this(data.Length, allocator)
     {
         AddRange(data);
     }
 
     public RawList(RawList<T> list)
-        : this(list.Span) { }
+        : this(list.Span, list.Allocator) { }
 
     public RawList(RawArray<T> array)
-        : this(array.Span) { }
+        : this(array.Span, array.Allocator) { }
 
     public readonly RawList<T> Clone() => new(this);
 
@@ -240,24 +242,20 @@ internal unsafe struct RawList<T>() : IEnumerable<T>
         if (capacity <= Capacity)
             throw new ArgumentOutOfRangeException(nameof(capacity));
 
-        if (BurstUtil.UseTestAllocator)
-        {
-            T* prev = data;
-            data = TestAllocator.Alloc<T>(capacity);
+        T* prev = data;
+        data = Allocator.Allocate<T>(capacity);
 
-            if (prev is not null)
+        if (prev is not null)
+        {
+            if (Count > 0)
             {
-                for (int i = 0; i < Count; ++i)
-                    data[i] = prev[i];
-            }
-        }
-        else
-        {
-            T* prev = data;
-            data = UnityAllocator.Alloc<T>(capacity, Allocator.Temp);
+                var src = new MemorySpan<T>(prev, Count);
+                var dst = new MemorySpan<T>(data, Count);
 
-            if (prev is not null)
-                UnityAllocator.Copy(data, prev, Count);
+                src.CopyTo(dst);
+            }
+
+            Allocator.Free(prev);
         }
 
         this.capacity = (uint)capacity;

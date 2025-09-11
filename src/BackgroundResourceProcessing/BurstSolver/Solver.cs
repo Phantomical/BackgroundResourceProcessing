@@ -22,14 +22,18 @@ internal static class Solver
     unsafe delegate Result ComputeInventoryRatesDelegate(
         ref ResourceGraph graph,
         double* inventoryRates,
-        double* converterRates
+        double* converterRates,
+        ref AllocatorHandle allocator
     );
 
     public static unsafe SolverSolution ComputeInventoryRates(ResourceProcessor processor)
     {
         using var span = new TraceSpan("ResourceProcessor.ComputeInventoryRates");
 
-        var graph = new ResourceGraph(processor);
+        using var arena = new BurstAllocator();
+        AllocatorHandle handle = new(&arena);
+
+        var graph = new ResourceGraph(processor, handle);
         int converterCount = processor.converters.Count;
         int inventoryCount = processor.inventories.Count;
 
@@ -47,7 +51,8 @@ internal static class Solver
                 res = ComputeInventoryRates(
                     ref graph,
                     new(inv, inventoryCount),
-                    new(conv, converterCount)
+                    new(conv, converterCount),
+                    handle
                 );
             }
             else
@@ -57,7 +62,7 @@ internal static class Solver
                         ComputeInventoryRatesBurst
                     );
 
-                res = ComputeRatesFp.Value.Invoke(ref graph, inv, conv);
+                res = ComputeRatesFp.Value.Invoke(ref graph, inv, conv, ref handle);
             }
 
             if (!res.Match(out var err))
@@ -71,23 +76,26 @@ internal static class Solver
     private static unsafe Result ComputeInventoryRatesBurst(
         ref ResourceGraph graph,
         double* inventoryRates,
-        double* converterRates
+        double* converterRates,
+        ref AllocatorHandle allocator
     )
     {
         return ComputeInventoryRates(
             ref graph,
             new(inventoryRates, graph.inventories.Count),
-            new(converterRates, graph.converters.Count)
+            new(converterRates, graph.converters.Count),
+            allocator
         );
     }
 
     private static unsafe Result ComputeInventoryRates(
         ref ResourceGraph graph,
         MemorySpan<double> inventoryRates,
-        MemorySpan<double> converterRates
+        MemorySpan<double> converterRates,
+        AllocatorHandle allocator
     )
     {
-        var summaries = Summarize(in graph);
+        var summaries = Summarize(in graph, allocator);
 
         int converterCount = converterRates.Length;
         int inventoryCount = inventoryRates.Length;
@@ -103,31 +111,31 @@ internal static class Solver
         graph.MergeEquivalentInventories();
         graph.MergeEquivalentConverters();
 
-        var converterMap = new RawIntMap<int>(converterCount);
+        var converterMap = new RawIntMap<int>(converterCount, allocator);
         int index = 0;
         foreach (var converterId in graph.converters.Keys)
             converterMap.Add(converterId, index++);
 
-        var problem = new LinearProblem();
+        var problem = new LinearProblem(allocator);
         var rates = problem.CreateVariables(graph.converters.Count);
 
         foreach (var rate in rates)
             problem.AddConstraint(rate <= 1.0);
 
         // The equation for the actual rates of the inventory
-        RawIntMap<LinearEquation> iRates = new(inventoryCount);
+        RawIntMap<LinearEquation> iRates = new(inventoryCount, allocator);
 
         // The equation for the inventory rate, but not including any
         // outputs with dumpExcess = true
-        RawIntMap<LinearEquation> dRates = new(inventoryCount);
+        RawIntMap<LinearEquation> dRates = new(inventoryCount, allocator);
 
         // Scratch space used for building constraint totals.
-        LinearMap<int, LinearEquation> constraintEqs = [];
+        LinearMap<int, LinearEquation> constraintEqs = new(16, allocator);
 
-        RawList<int> connected = new(16);
+        RawList<int> connected = new(16, allocator);
 
         // The object function that we are optimizing.
-        LinearEquation func = new(problem.VariableCount);
+        LinearEquation func = new(problem.VariableCount, allocator);
 
         foreach (var converterId in graph.converters.Keys)
         {
@@ -167,7 +175,7 @@ internal static class Solver
                     // to introduce any new variables.
                     var invId = connected[0];
                     if (!iRates.ContainsKey(invId))
-                        iRates.Add(invId, new LinearEquation(problem.VariableCount * 2));
+                        iRates.Add(invId, new LinearEquation(problem.VariableCount * 2, allocator));
                     iRates[invId].Sub(rate);
 
                     if (dRates.ContainsKey(invId))
@@ -180,14 +188,14 @@ internal static class Solver
                     // inventory and allow the solver to determine where they
                     // should flow.
                     var rateVars = problem.CreateVariables(connected.Count);
-                    var rateEq = new LinearEquation(problem.VariableCount);
+                    var rateEq = new LinearEquation(problem.VariableCount, allocator);
                     rateEq.Sub(rate);
 
                     for (int i = 0; i < connected.Count; ++i)
                     {
                         var invId = connected[i];
                         if (!iRates.ContainsKey(invId))
-                            iRates.Add(invId, new(problem.VariableCount * 2));
+                            iRates.Add(invId, new(problem.VariableCount * 2, allocator));
                         ref var invRate = ref iRates[invId];
                         var rateVar = rateVars[i];
 
@@ -234,7 +242,7 @@ internal static class Solver
                     // to introduce any new variables.
                     var invId = connected[0];
                     if (!iRates.ContainsKey(invId))
-                        iRates.Add(invId, new(problem.VariableCount * 2));
+                        iRates.Add(invId, new(problem.VariableCount * 2, allocator));
                     ref var invRate = ref iRates[invId];
                     if (output.DumpExcess)
                     {
@@ -253,14 +261,14 @@ internal static class Solver
                     // inventory and allow the solver to determine where they
                     // should flow.
                     var rateVars = problem.CreateVariables(connected.Count);
-                    var rateEq = new LinearEquation(problem.VariableCount);
+                    var rateEq = new LinearEquation(problem.VariableCount, allocator);
                     rateEq.Sub(rate);
 
                     for (int i = 0; i < connected.Count; ++i)
                     {
                         var invId = connected[i];
                         if (!iRates.ContainsKey(invId))
-                            iRates.Add(invId, new(problem.VariableCount * 2));
+                            iRates.Add(invId, new(problem.VariableCount * 2, allocator));
                         ref var invRate = ref iRates[invId];
                         var rateVar = rateVars[i];
 
@@ -317,7 +325,10 @@ internal static class Solver
                 if (!constraintEqs.TryGetIndex(inventory.resourceId, out var idx))
                 {
                     idx = constraintEqs.Count;
-                    constraintEqs.AddUnchecked(inventory.resourceId, new(problem.VariableCount));
+                    constraintEqs.AddUnchecked(
+                        inventory.resourceId,
+                        new(problem.VariableCount, allocator)
+                    );
                 }
 
                 ref var eq = ref constraintEqs.GetAtIndex(idx);
@@ -467,9 +478,12 @@ internal static class Solver
         return Result.Ok;
     }
 
-    private static RawArray<InventorySummary> Summarize(in ResourceGraph graph)
+    private static RawArray<InventorySummary> Summarize(
+        in ResourceGraph graph,
+        AllocatorHandle allocator
+    )
     {
-        var summaries = new RawArray<InventorySummary>(graph.inventories.Capacity);
+        var summaries = new RawArray<InventorySummary>(graph.inventories.Capacity, allocator);
         foreach (var (id, inventory) in graph.inventories)
             summaries[id] = new(inventory);
         return summaries;

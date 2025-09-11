@@ -15,7 +15,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void Constructor_Default_CreatesEmptyQueue()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
 
         Assert.AreEqual(0, queue.Count);
         Assert.IsTrue(queue.IsEmpty);
@@ -26,7 +26,7 @@ public class PriorityQueueTests
     public void Constructor_WithCapacity_CreatesQueueWithCapacity()
     {
         const int capacity = 10;
-        var queue = new PriorityQueue<int>(capacity);
+        var queue = new PriorityQueue<int>(capacity, AllocatorHandle.Temp);
 
         Assert.AreEqual(0, queue.Count);
         Assert.IsTrue(queue.IsEmpty);
@@ -37,7 +37,7 @@ public class PriorityQueueTests
     public void Constructor_WithArray_CreatesHeapifiedQueue()
     {
         int[] values = { 5, 2, 8, 1, 9, 3 };
-        var queue = new PriorityQueue<int>(values);
+        var queue = new PriorityQueue<int>(values, AllocatorHandle.Temp);
 
         Assert.AreEqual(6, queue.Count);
         Assert.IsFalse(queue.IsEmpty);
@@ -55,7 +55,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void Enqueue_SingleItem_IncreasesCount()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
 
         queue.Enqueue(42);
 
@@ -66,7 +66,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void Enqueue_MultipleItems_MaintainsMinHeapProperty()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
 
         queue.Enqueue(5);
         queue.Enqueue(2);
@@ -90,7 +90,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void Enqueue_ExceedsCapacity_ExpandsAutomatically()
     {
-        var queue = new PriorityQueue<int>(2);
+        var queue = new PriorityQueue<int>(2, AllocatorHandle.Temp);
         var initialCapacity = queue.Capacity;
 
         queue.Enqueue(3);
@@ -106,7 +106,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void Dequeue_EmptyQueue_ThrowsInvalidOperationException()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
 
         Assert.ThrowsException<InvalidOperationException>(() => queue.Dequeue());
     }
@@ -114,7 +114,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void Dequeue_NonEmptyQueue_ReturnsMinimumElementAndReducesCount()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
         queue.Enqueue(5);
         queue.Enqueue(2);
         queue.Enqueue(8);
@@ -130,7 +130,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void TryDequeue_EmptyQueue_ReturnsFalse()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
 
         var result = queue.TryDequeue(out var item);
 
@@ -141,7 +141,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void TryDequeue_NonEmptyQueue_ReturnsMinimumElementAndReducesCount()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
         queue.Enqueue(5);
         queue.Enqueue(2);
         queue.Enqueue(8);
@@ -157,7 +157,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void Peek_EmptyQueue_ThrowsInvalidOperationException()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
 
         Assert.ThrowsException<InvalidOperationException>(() => queue.Peek());
     }
@@ -165,7 +165,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void Peek_NonEmptyQueue_ReturnsMinimumElementWithoutRemoval()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
         queue.Enqueue(5);
         queue.Enqueue(2);
         queue.Enqueue(8);
@@ -183,7 +183,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void TryPeek_EmptyQueue_ReturnsFalse()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
 
         var result = queue.TryPeek(out var item);
 
@@ -194,7 +194,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void TryPeek_NonEmptyQueue_ReturnsMinimumElementWithoutRemoval()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
         queue.Enqueue(5);
         queue.Enqueue(2);
         queue.Enqueue(8);
@@ -210,7 +210,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void Count_EmptyQueue_ReturnsZero()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
 
         Assert.AreEqual(0, queue.Count);
     }
@@ -218,7 +218,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void Count_AfterEnqueueOperations_ReturnsCorrectCount()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
 
         Assert.AreEqual(0, queue.Count);
 
@@ -235,7 +235,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void Count_AfterDequeueOperations_ReturnsCorrectCount()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
         queue.Enqueue(3);
         queue.Enqueue(1);
         queue.Enqueue(2);
@@ -255,7 +255,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void IsEmpty_EmptyQueue_ReturnsTrue()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
 
         Assert.IsTrue(queue.IsEmpty);
     }
@@ -263,7 +263,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void IsEmpty_NonEmptyQueue_ReturnsFalse()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
         queue.Enqueue(42);
 
         Assert.IsFalse(queue.IsEmpty);
@@ -272,7 +272,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void IsEmpty_AfterDequeueingAllElements_ReturnsTrue()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
         queue.Enqueue(1);
         queue.Enqueue(2);
 
@@ -285,7 +285,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void Capacity_InitialCapacity_IsNonNegative()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
 
         Assert.IsTrue(queue.Capacity >= 0);
     }
@@ -294,7 +294,7 @@ public class PriorityQueueTests
     public void Capacity_WithSpecifiedCapacity_IsAtLeastSpecified()
     {
         const int requestedCapacity = 10;
-        var queue = new PriorityQueue<int>(requestedCapacity);
+        var queue = new PriorityQueue<int>(requestedCapacity, AllocatorHandle.Temp);
 
         Assert.IsTrue(queue.Capacity >= requestedCapacity);
     }
@@ -302,7 +302,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void Span_EmptyQueue_ReturnsEmptySpan()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
 
         var span = queue.Span;
 
@@ -312,7 +312,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void Span_NonEmptyQueue_ReturnsCorrectSpan()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
         queue.Enqueue(5);
         queue.Enqueue(2);
         queue.Enqueue(8);
@@ -327,7 +327,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void Span_CanModifyData()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
         queue.Enqueue(5);
         queue.Enqueue(2);
 
@@ -340,7 +340,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void PriorityOrdering_WithCustomComparableStruct_WorksCorrectly()
     {
-        var queue = new PriorityQueue<Priority>();
+        var queue = new PriorityQueue<Priority>(AllocatorHandle.Temp);
 
         queue.Enqueue(new Priority { Value = 5 });
         queue.Enqueue(new Priority { Value = 1 });
@@ -360,7 +360,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void LargeDataSet_MaintainsCorrectOrdering()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
         const int count = 1000;
         var random = new Random(42); // Fixed seed for reproducible test
 
@@ -388,7 +388,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void StressTest_MixedOperations_MaintainsConsistency()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
         var random = new Random(123);
         var referenceList = new List<int>();
 
@@ -423,7 +423,7 @@ public class PriorityQueueTests
     [TestMethod]
     public void HeapProperty_AfterMultipleOperations_IsAlwaysMaintained()
     {
-        var queue = new PriorityQueue<int>();
+        var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
         var random = new Random(456);
 
         // Add initial elements

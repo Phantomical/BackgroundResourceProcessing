@@ -36,17 +36,17 @@ internal struct LinearEquation(RawList<double> values)
     public LinearEquation()
         : this([]) { }
 
-    public LinearEquation(int capacity)
-        : this(new RawList<double>(capacity)) { }
+    public LinearEquation(int capacity, AllocatorHandle allocator)
+        : this(new RawList<double>(capacity, allocator)) { }
 
-    public LinearEquation(Variable var)
-        : this(var.Index + 1)
+    public LinearEquation(Variable var, AllocatorHandle allocator)
+        : this(var.Index + 1, allocator)
     {
         Add(var);
     }
 
-    public LinearEquation(MemorySpan<double> values)
-        : this(new RawList<double>(values)) { }
+    public LinearEquation(MemorySpan<double> values, AllocatorHandle allocator)
+        : this(new RawList<double>(values, allocator)) { }
 
     public void Add(Variable var)
     {

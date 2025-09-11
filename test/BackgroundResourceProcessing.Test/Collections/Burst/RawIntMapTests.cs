@@ -42,7 +42,7 @@ public sealed class RawIntMapTests
     public void Constructor_WithCapacity_CreatesMapWithCapacity()
     {
         const int capacity = 10;
-        var map = new RawIntMap<int>(capacity);
+        var map = new RawIntMap<int>(capacity, AllocatorHandle.Temp);
 
         Assert.AreEqual(capacity, map.Capacity);
     }
@@ -50,7 +50,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Constructor_Default_CreatesEmptyMap()
     {
-        var map = new RawIntMap<int>();
+        var map = new RawIntMap<int>(0, AllocatorHandle.Temp);
 
         Assert.AreEqual(0, map.Capacity);
     }
@@ -62,7 +62,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Add_ValidKey_AddsValue()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         map.Add(5, 42);
 
@@ -74,7 +74,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Add_MultipleValidKeys_AddsAllValues()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         map.Add(1, 10);
         map.Add(3, 30);
@@ -92,7 +92,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Add_NegativeKey_ThrowsIndexOutOfRangeException()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         Assert.ThrowsException<IndexOutOfRangeException>(() => map.Add(-1, 42));
     }
@@ -100,7 +100,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Add_KeyOutOfBounds_ThrowsIndexOutOfRangeException()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         Assert.ThrowsException<IndexOutOfRangeException>(() => map.Add(10, 42));
     }
@@ -108,7 +108,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Add_DuplicateKey_ThrowsArgumentException()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
         map.Add(5, 42);
 
         Assert.ThrowsException<ArgumentException>(() => map.Add(5, 99));
@@ -121,7 +121,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Set_ValidKey_SetsValue()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         map.Set(5, 42);
 
@@ -133,7 +133,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Set_ExistingKey_OverwritesValue()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
         map.Add(5, 42);
 
         map.Set(5, 99);
@@ -146,7 +146,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Set_NegativeKey_ThrowsIndexOutOfRangeException()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         Assert.ThrowsException<IndexOutOfRangeException>(() => map.Set(-1, 42));
     }
@@ -154,7 +154,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Set_KeyOutOfBounds_ThrowsIndexOutOfRangeException()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         Assert.ThrowsException<IndexOutOfRangeException>(() => map.Set(10, 42));
     }
@@ -166,7 +166,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Indexer_ValidKey_ReturnsValue()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
         map.Add(5, 42);
 
         var result = map[5];
@@ -177,7 +177,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Indexer_ValidKey_CanModifyValue()
     {
-        var map = new RawIntMap<TestValue>(10);
+        var map = new RawIntMap<TestValue>(10, AllocatorHandle.Temp);
         map.Add(5, new TestValue(42));
 
         map[5] = new TestValue(99);
@@ -188,7 +188,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Indexer_KeyNotPresent_ThrowsKeyNotFoundException()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         Assert.ThrowsException<KeyNotFoundException>(() => _ = map[5]);
     }
@@ -196,7 +196,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Indexer_NegativeKey_ThrowsIndexOutOfRangeException()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         Assert.ThrowsException<IndexOutOfRangeException>(() => _ = map[-1]);
     }
@@ -204,7 +204,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Indexer_KeyOutOfBounds_ThrowsIndexOutOfRangeException()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         Assert.ThrowsException<IndexOutOfRangeException>(() => _ = map[10]);
     }
@@ -216,7 +216,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void TryGetValue_ValidKey_ReturnsTrue()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
         map.Add(5, 42);
 
         bool result = map.TryGetValue(5, out int value);
@@ -228,7 +228,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void TryGetValue_KeyNotPresent_ReturnsFalse()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         bool result = map.TryGetValue(5, out int value);
 
@@ -239,7 +239,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void TryGetValue_NegativeKey_ReturnsFalse()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         bool result = map.TryGetValue(-1, out int value);
 
@@ -250,7 +250,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void TryGetValue_KeyOutOfBounds_ReturnsFalse()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         bool result = map.TryGetValue(10, out int value);
 
@@ -265,7 +265,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void ContainsKey_ValidKey_ReturnsTrue()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
         map.Add(5, 42);
 
         Assert.IsTrue(map.ContainsKey(5));
@@ -274,7 +274,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void ContainsKey_KeyNotPresent_ReturnsFalse()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         Assert.IsFalse(map.ContainsKey(5));
     }
@@ -282,7 +282,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void ContainsKey_NegativeKey_ReturnsFalse()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         Assert.IsFalse(map.ContainsKey(-1));
     }
@@ -290,7 +290,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void ContainsKey_KeyOutOfBounds_ReturnsFalse()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         Assert.IsFalse(map.ContainsKey(10));
     }
@@ -302,7 +302,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Remove_ValidKey_RemovesKeyAndReturnsTrue()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
         map.Add(5, 42);
 
         bool result = map.Remove(5);
@@ -315,7 +315,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Remove_KeyNotPresent_ReturnsFalse()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         bool result = map.Remove(5);
 
@@ -325,7 +325,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Remove_NegativeKey_ReturnsFalse()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         bool result = map.Remove(-1);
 
@@ -335,7 +335,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Remove_KeyOutOfBounds_ReturnsFalse()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         bool result = map.Remove(10);
 
@@ -345,7 +345,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Remove_MultipleKeys_RemovesCorrectKeys()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
         map.Add(1, 10);
         map.Add(3, 30);
         map.Add(5, 50);
@@ -365,7 +365,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Clear_EmptyMap_RemainsEmpty()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         map.Clear();
 
@@ -375,7 +375,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Clear_NonEmptyMap_RemovesAllEntries()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
         map.Add(1, 10);
         map.Add(3, 30);
         map.Add(5, 50);
@@ -395,7 +395,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void GetCount_EmptyMap_ReturnsZero()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         Assert.AreEqual(0, map.GetCount());
     }
@@ -403,7 +403,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void GetCount_WithEntries_ReturnsCorrectCount()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
         map.Add(1, 10);
         map.Add(3, 30);
         map.Add(5, 50);
@@ -414,7 +414,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void GetCount_AfterRemoval_ReturnsCorrectCount()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
         map.Add(1, 10);
         map.Add(3, 30);
         map.Add(5, 50);
@@ -431,7 +431,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Count_EmptyMap_ReturnsZero()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         Assert.AreEqual(0, map.Count);
     }
@@ -439,7 +439,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Count_AfterAdd_IncrementsCorrectly()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         Assert.AreEqual(0, map.Count);
 
@@ -456,7 +456,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Count_AfterSet_OnNewKey_IncrementsCorrectly()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         Assert.AreEqual(0, map.Count);
 
@@ -470,7 +470,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Count_AfterSet_OnExistingKey_RemainsUnchanged()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
         map.Add(5, 50);
 
         Assert.AreEqual(1, map.Count);
@@ -485,7 +485,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Count_AfterRemove_DecrementsCorrectly()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
         map.Add(1, 10);
         map.Add(3, 30);
         map.Add(5, 50);
@@ -505,7 +505,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Count_AfterRemove_NonExistentKey_RemainsUnchanged()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
         map.Add(5, 50);
 
         Assert.AreEqual(1, map.Count);
@@ -520,7 +520,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Count_AfterTryRemove_Success_DecrementsCorrectly()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
         map.Add(2, 20);
         map.Add(4, 40);
         map.Add(6, 60);
@@ -536,7 +536,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Count_AfterTryRemove_Failure_RemainsUnchanged()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
         map.Add(5, 50);
 
         Assert.AreEqual(1, map.Count);
@@ -550,7 +550,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Count_AfterClear_ReturnsZero()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
         map.Add(1, 10);
         map.Add(3, 30);
         map.Add(5, 50);
@@ -564,7 +564,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Count_AfterClear_EmptyMap_RemainsZero()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         Assert.AreEqual(0, map.Count);
 
@@ -575,7 +575,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Count_ComplexModificationSequence_TracksCorrectly()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         // Start empty
         Assert.AreEqual(0, map.Count);
@@ -622,7 +622,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Count_WithBoundaryKeys_TracksCorrectly()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         // Test with key 0 (lower boundary)
         map.Add(0, 100);
@@ -643,7 +643,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Count_ConsistentWithEnumerationCount()
     {
-        var map = new RawIntMap<int>(20);
+        var map = new RawIntMap<int>(20, AllocatorHandle.Temp);
 
         // Add entries at various positions
         map.Add(0, 10);
@@ -668,7 +668,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Count_AfterFailedOperations_RemainsCorrect()
     {
-        var map = new RawIntMap<int>(5);
+        var map = new RawIntMap<int>(5, AllocatorHandle.Temp);
         map.Add(2, 20);
 
         Assert.AreEqual(1, map.Count);
@@ -719,7 +719,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void GetEnumerator_EmptyMap_ReturnsEmptySequence()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         var items = map.ToList();
 
@@ -729,7 +729,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void GetEnumerator_WithEntries_ReturnsCorrectKeyValuePairs()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
         map.Add(1, 10);
         map.Add(3, 30);
         map.Add(7, 70);
@@ -745,7 +745,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Keys_EmptyMap_ReturnsEmptySequence()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
         var keys = map.Keys.ToList();
 
@@ -755,7 +755,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Keys_WithEntries_ReturnsCorrectKeys()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
         map.Add(1, 10);
         map.Add(3, 30);
         map.Add(7, 70);
@@ -771,7 +771,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Values_EmptyMap_ReturnsEmptySequence()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
         var values = map.Values.ToList();
 
         Assert.AreEqual(0, values.Count);
@@ -780,7 +780,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void Values_WithEntries_ReturnsCorrectValues()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
         map.Add(1, 10);
         map.Add(3, 30);
         map.Add(7, 70);
@@ -796,7 +796,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void GetEnumeratorAt_ValidOffset_StartsFromCorrectPosition()
     {
-        var map = new RawIntMap<int>(10);
+        var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
         map.Add(1, 10);
         map.Add(3, 30);
         map.Add(7, 70);
@@ -822,7 +822,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void StressTest_ManyOperations_MaintainsConsistency()
     {
-        var map = new RawIntMap<int>(1000);
+        var map = new RawIntMap<int>(1000, AllocatorHandle.Temp);
 
         // Add many items
         for (int i = 0; i < 500; i++)
@@ -858,7 +858,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void LargeCapacity_WorksCorrectly()
     {
-        var map = new RawIntMap<int>(10000);
+        var map = new RawIntMap<int>(10000, AllocatorHandle.Temp);
 
         // Add sparse items
         for (int i = 0; i < 100; i++)
@@ -881,7 +881,7 @@ public sealed class RawIntMapTests
     [TestMethod]
     public void EnumerationOrder_ConsistentAcrossMultipleCalls()
     {
-        var map = new RawIntMap<int>(20);
+        var map = new RawIntMap<int>(20, AllocatorHandle.Temp);
         map.Add(5, 50);
         map.Add(15, 150);
         map.Add(2, 20);

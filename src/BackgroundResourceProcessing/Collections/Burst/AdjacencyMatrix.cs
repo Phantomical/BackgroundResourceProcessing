@@ -63,7 +63,7 @@ internal unsafe struct AdjacencyMatrix : IEnumerable<BitSpan>
         }
     }
 
-    public AdjacencyMatrix(int rows, int cols)
+    public AdjacencyMatrix(int rows, int cols, AllocatorHandle allocator)
     {
         if (rows < 0)
             ThrowNegativeRows();
@@ -72,7 +72,7 @@ internal unsafe struct AdjacencyMatrix : IEnumerable<BitSpan>
 
         this.rows = rows;
         this.cols = (cols + (ULongBits - 1)) / ULongBits;
-        this.bits = new RawArray<ulong>(this.rows * this.cols).Ptr;
+        this.bits = new RawArray<ulong>(this.rows * this.cols, allocator).Ptr;
     }
 
     [IgnoreWarning(1370)]

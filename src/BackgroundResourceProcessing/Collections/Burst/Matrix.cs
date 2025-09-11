@@ -68,8 +68,8 @@ internal readonly unsafe struct Matrix
         this.cols = (uint)cols;
     }
 
-    public Matrix(int rows, int cols)
-        : this(new RawArray<double>(rows * cols), rows, cols) { }
+    public Matrix(int rows, int cols, AllocatorHandle allocator)
+        : this(new RawArray<double>(rows * cols, allocator), rows, cols) { }
 
     [IgnoreWarning(1370)]
     public readonly unsafe double* GetRowPtr(int r)

@@ -68,11 +68,8 @@ internal struct LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>
         this.entries = entries;
     }
 
-    public LinearMap()
-        : this([]) { }
-
-    public LinearMap(int capacity)
-        : this(new RawList<Entry>(capacity)) { }
+    public LinearMap(int capacity, AllocatorHandle allocator)
+        : this(new RawList<Entry>(capacity, allocator)) { }
 
     public readonly bool ContainsKey(K key) => TryGetIndex(key, out var _);
 
@@ -220,21 +217,24 @@ internal struct LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>
 
 internal static class LinearMapExtensions
 {
-    internal static LinearMap<K, V> Create<K, V>(SortedMap<K, V> map)
+    internal static LinearMap<K, V> Create<K, V>(SortedMap<K, V> map, AllocatorHandle allocator)
         where K : struct, IEquatable<K>, IComparable<K>
         where V : struct
     {
-        var res = new LinearMap<K, V>(map.Count);
+        var res = new LinearMap<K, V>(map.Count, allocator);
         foreach (var (key, value) in map)
             res.AddUnchecked(key, value);
         return res;
     }
 
-    internal static LinearMap<K, V> Create<K, V>(IEnumerable<KeyValuePair<K, V>> enumerable)
+    internal static LinearMap<K, V> Create<K, V>(
+        IEnumerable<KeyValuePair<K, V>> enumerable,
+        AllocatorHandle allocator
+    )
         where K : struct, IEquatable<K>, IComparable<K>
         where V : struct
     {
-        var map = new LinearMap<K, V>(enumerable.Count());
+        var map = new LinearMap<K, V>(enumerable.Count(), allocator);
         foreach (var (key, value) in enumerable)
             map.AddUnchecked(key, value);
         return map;

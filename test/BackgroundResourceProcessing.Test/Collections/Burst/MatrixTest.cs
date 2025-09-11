@@ -17,7 +17,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void Constructor_ValidDimensions_CreatesMatrix()
     {
-        var matrix = new Matrix(2, 3);
+        var matrix = new Matrix(2, 3, AllocatorHandle.Temp);
 
         Assert.AreEqual(2, matrix.Rows);
         Assert.AreEqual(3, matrix.Cols);
@@ -26,7 +26,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void Constructor_ZeroDimensions_CreatesEmptyMatrix()
     {
-        var matrix = new Matrix(0, 0);
+        var matrix = new Matrix(0, 0, AllocatorHandle.Temp);
 
         Assert.AreEqual(0, matrix.Rows);
         Assert.AreEqual(0, matrix.Cols);
@@ -35,19 +35,23 @@ public sealed class MatrixTest
     [TestMethod]
     public void Constructor_NegativeRows_ThrowsArgumentOutOfRangeException()
     {
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => new Matrix(-1, 3));
+        Assert.ThrowsException<ArgumentOutOfRangeException>(() =>
+            new Matrix(-1, 3, AllocatorHandle.Temp)
+        );
     }
 
     [TestMethod]
     public void Constructor_NegativeCols_ThrowsArgumentOutOfRangeException()
     {
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => new Matrix(2, -1));
+        Assert.ThrowsException<ArgumentOutOfRangeException>(() =>
+            new Matrix(2, -1, AllocatorHandle.Temp)
+        );
     }
 
     [TestMethod]
     public void Constructor_ArrayTooSmall_ThrowsArgumentException()
     {
-        var array = new RawArray<double>(5);
+        var array = new RawArray<double>(5, AllocatorHandle.Temp);
 
         Assert.ThrowsException<ArgumentException>(() => new Matrix(array, 2, 3));
     }
@@ -55,7 +59,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void Indexer_ValidIndices_SetsAndGetsValues()
     {
-        var matrix = new Matrix(2, 3);
+        var matrix = new Matrix(2, 3, AllocatorHandle.Temp);
 
         matrix[0, 0] = 1.0;
         matrix[1, 2] = 5.0;
@@ -68,7 +72,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void Indexer_NegativeRowIndex_ThrowsIndexOutOfRangeException()
     {
-        var matrix = new Matrix(2, 3);
+        var matrix = new Matrix(2, 3, AllocatorHandle.Temp);
 
         Assert.ThrowsException<IndexOutOfRangeException>(() => _ = matrix[-1, 0]);
         Assert.ThrowsException<IndexOutOfRangeException>(() => matrix[-1, 0] = 1.0);
@@ -77,7 +81,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void Indexer_NegativeColIndex_ThrowsIndexOutOfRangeException()
     {
-        var matrix = new Matrix(2, 3);
+        var matrix = new Matrix(2, 3, AllocatorHandle.Temp);
 
         Assert.ThrowsException<IndexOutOfRangeException>(() => _ = matrix[0, -1]);
         Assert.ThrowsException<IndexOutOfRangeException>(() => matrix[0, -1] = 1.0);
@@ -86,7 +90,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void Indexer_RowOutOfBounds_ThrowsIndexOutOfRangeException()
     {
-        var matrix = new Matrix(2, 3);
+        var matrix = new Matrix(2, 3, AllocatorHandle.Temp);
 
         Assert.ThrowsException<IndexOutOfRangeException>(() => _ = matrix[2, 0]);
         Assert.ThrowsException<IndexOutOfRangeException>(() => matrix[2, 0] = 1.0);
@@ -95,7 +99,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void Indexer_ColOutOfBounds_ThrowsIndexOutOfRangeException()
     {
-        var matrix = new Matrix(2, 3);
+        var matrix = new Matrix(2, 3, AllocatorHandle.Temp);
 
         Assert.ThrowsException<IndexOutOfRangeException>(() => _ = matrix[0, 3]);
         Assert.ThrowsException<IndexOutOfRangeException>(() => matrix[0, 3] = 1.0);
@@ -104,7 +108,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void RowIndexer_ValidIndex_ReturnsCorrectSpan()
     {
-        var matrix = new Matrix(2, 3);
+        var matrix = new Matrix(2, 3, AllocatorHandle.Temp);
         matrix[1, 0] = 1.0;
         matrix[1, 1] = 2.0;
         matrix[1, 2] = 3.0;
@@ -120,7 +124,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void RowIndexer_ModifySpan_ModifiesOriginalMatrix()
     {
-        var matrix = new Matrix(2, 3);
+        var matrix = new Matrix(2, 3, AllocatorHandle.Temp);
 
         var row = matrix[0];
         row[1] = 42.0;
@@ -131,7 +135,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void RowIndexer_NegativeIndex_ThrowsIndexOutOfRangeException()
     {
-        var matrix = new Matrix(2, 3);
+        var matrix = new Matrix(2, 3, AllocatorHandle.Temp);
 
         Assert.ThrowsException<IndexOutOfRangeException>(() =>
         {
@@ -142,7 +146,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void RowIndexer_IndexOutOfBounds_ThrowsIndexOutOfRangeException()
     {
-        var matrix = new Matrix(2, 3);
+        var matrix = new Matrix(2, 3, AllocatorHandle.Temp);
 
         Assert.ThrowsException<IndexOutOfRangeException>(() =>
         {
@@ -153,7 +157,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void SwapRows_ValidIndices_SwapsRowsCorrectly()
     {
-        var matrix = new Matrix(3, 3);
+        var matrix = new Matrix(3, 3, AllocatorHandle.Temp);
 
         // Set up first row: [1, 2, 3]
         matrix[0, 0] = 1.0;
@@ -181,7 +185,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void SwapRows_SameRow_NoChange()
     {
-        var matrix = new Matrix(2, 2);
+        var matrix = new Matrix(2, 2, AllocatorHandle.Temp);
         matrix[0, 0] = 1.0;
         matrix[0, 1] = 2.0;
 
@@ -194,7 +198,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void ScaleRow_ValidScale_ScalesAllElementsInRow()
     {
-        var matrix = new Matrix(2, 3);
+        var matrix = new Matrix(2, 3, AllocatorHandle.Temp);
         matrix[0, 0] = 2.0;
         matrix[0, 1] = 4.0;
         matrix[0, 2] = 6.0;
@@ -209,7 +213,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void ScaleRow_ScaleOne_NoChange()
     {
-        var matrix = new Matrix(2, 2);
+        var matrix = new Matrix(2, 2, AllocatorHandle.Temp);
         matrix[0, 0] = 3.0;
         matrix[0, 1] = 7.0;
 
@@ -222,7 +226,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void ScaleRow_ScaleZero_SetsRowToZero()
     {
-        var matrix = new Matrix(2, 2);
+        var matrix = new Matrix(2, 2, AllocatorHandle.Temp);
         matrix[0, 0] = 5.0;
         matrix[0, 1] = 10.0;
 
@@ -235,7 +239,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void Reduce_ValidRows_PerformsRowReduction()
     {
-        var matrix = new Matrix(2, 3);
+        var matrix = new Matrix(2, 3, AllocatorHandle.Temp);
 
         // Destination row: [2, 4, 6]
         matrix[0, 0] = 2.0;
@@ -263,7 +267,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void Reduce_ScaleZero_NoChange()
     {
-        var matrix = new Matrix(2, 2);
+        var matrix = new Matrix(2, 2, AllocatorHandle.Temp);
         matrix[0, 0] = 3.0;
         matrix[0, 1] = 7.0;
         matrix[1, 0] = 1.0;
@@ -278,7 +282,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void Reduce_SameRow_ThrowsArgumentException()
     {
-        var matrix = new Matrix(2, 2);
+        var matrix = new Matrix(2, 2, AllocatorHandle.Temp);
 
         Assert.ThrowsException<ArgumentException>(() => matrix.Reduce(0, 0, 1.0));
     }
@@ -286,7 +290,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void InvScaleRow_ValidScale_DividesAllElementsInRow()
     {
-        var matrix = new Matrix(2, 3);
+        var matrix = new Matrix(2, 3, AllocatorHandle.Temp);
         matrix[0, 0] = 4.0;
         matrix[0, 1] = 8.0;
         matrix[0, 2] = 12.0;
@@ -301,7 +305,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void InvScaleRow_ScaleOne_NoChange()
     {
-        var matrix = new Matrix(2, 2);
+        var matrix = new Matrix(2, 2, AllocatorHandle.Temp);
         matrix[0, 0] = 3.0;
         matrix[0, 1] = 7.0;
 
@@ -314,7 +318,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void ScaleReduce_ValidParameters_PerformsScaleReduction()
     {
-        var matrix = new Matrix(3, 3);
+        var matrix = new Matrix(3, 3, AllocatorHandle.Temp);
 
         // Set up matrix for pivot-based reduction
         matrix[0, 0] = 4.0; // dst row: [4, 8, 12]
@@ -343,7 +347,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void ScaleReduce_ZeroPivotValue_NoChange()
     {
-        var matrix = new Matrix(2, 2);
+        var matrix = new Matrix(2, 2, AllocatorHandle.Temp);
         matrix[0, 0] = 0.0;
         matrix[0, 1] = 5.0;
         matrix[1, 0] = 3.0;
@@ -359,7 +363,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void ScaleReduce_SameRow_ThrowsArgumentException()
     {
-        var matrix = new Matrix(2, 2);
+        var matrix = new Matrix(2, 2, AllocatorHandle.Temp);
 
         Assert.ThrowsException<ArgumentException>(() => matrix.ScaleReduce(0, 0, 0));
     }
@@ -367,7 +371,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void ScaleReduce_InvalidPivot_ThrowsArgumentOutOfRangeException()
     {
-        var matrix = new Matrix(2, 3);
+        var matrix = new Matrix(2, 3, AllocatorHandle.Temp);
 
         Assert.ThrowsException<ArgumentOutOfRangeException>(() => matrix.ScaleReduce(0, 1, 3));
         Assert.ThrowsException<ArgumentOutOfRangeException>(() => matrix.ScaleReduce(0, 1, -1));
@@ -376,7 +380,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void ScaleReduce_NumericalAccuracy_TruncatesSmallValues()
     {
-        var matrix = new Matrix(2, 2);
+        var matrix = new Matrix(2, 2, AllocatorHandle.Temp);
 
         // Set up values that will result in very small differences
         matrix[0, 0] = 1.0;
@@ -395,7 +399,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void ToString_SmallMatrix_FormatsCorrectly()
     {
-        var matrix = new Matrix(2, 2);
+        var matrix = new Matrix(2, 2, AllocatorHandle.Temp);
         matrix[0, 0] = 1.23;
         matrix[0, 1] = 4.56;
         matrix[1, 0] = 7.89;
@@ -414,7 +418,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void ToString_EmptyMatrix_ReturnsEmptyString()
     {
-        var matrix = new Matrix(0, 0);
+        var matrix = new Matrix(0, 0, AllocatorHandle.Temp);
 
         string result = matrix.ToString();
 
@@ -424,7 +428,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void Span_Property_ReturnsCorrectSpan()
     {
-        var matrix = new Matrix(2, 2);
+        var matrix = new Matrix(2, 2, AllocatorHandle.Temp);
         matrix[0, 0] = 1.0;
         matrix[1, 1] = 2.0;
 
@@ -438,7 +442,7 @@ public sealed class MatrixTest
     [TestMethod]
     public void MatrixIndexing_RowMajorOrder_MapsCorrectly()
     {
-        var matrix = new Matrix(2, 3);
+        var matrix = new Matrix(2, 3, AllocatorHandle.Temp);
 
         // Test that indices map to row-major order in the underlying array
         matrix[0, 1] = 42.0; // Should be at index 1

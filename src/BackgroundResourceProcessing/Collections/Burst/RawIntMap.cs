@@ -43,7 +43,7 @@ public struct RawIntMap<T> : IEnumerable<KeyValuePair<int, T>>
         }
     }
 
-    public RawIntMap(int capacity) => items = new(capacity);
+    public RawIntMap(int capacity, AllocatorHandle allocator) => items = new(capacity, allocator);
 
     public unsafe RawIntMap(Entry* items, int capacity) => this.items = new(items, capacity);
 

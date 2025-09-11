@@ -27,7 +27,7 @@ internal struct GraphConverter
     /// </summary>
     public LinearMap<int, Constraint> constraints;
 
-    public GraphConverter(int id, Core.ResourceConverter converter)
+    public GraphConverter(int id, Core.ResourceConverter converter, AllocatorHandle allocator)
     {
         baseId = id;
         weight = GetPriorityWeight(converter.Priority);
@@ -36,15 +36,17 @@ internal struct GraphConverter
             converter.Inputs.Select(entry => new KeyValuePair<int, GraphRatio>(
                 entry.Key,
                 new(entry.Value)
-            ))
+            )),
+            allocator
         );
         outputs = LinearMapExtensions.Create(
             converter.Outputs.Select(entry => new KeyValuePair<int, GraphRatio>(
                 entry.Key,
                 new(entry.Value)
-            ))
+            )),
+            allocator
         );
-        constraints = new(converter.Required.Count);
+        constraints = new(converter.Required.Count, allocator);
     }
 
     [IgnoreWarning(1370)]

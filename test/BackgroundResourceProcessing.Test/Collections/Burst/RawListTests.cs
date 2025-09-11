@@ -35,7 +35,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Constructor_WithAllocator_CreatesEmptyList()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
 
         Assert.AreEqual(0, list.Count);
         Assert.IsTrue(list.Capacity >= 0);
@@ -46,7 +46,7 @@ public sealed class RawListTest
     public void Constructor_WithCapacityAndAllocator_CreatesListWithCapacity()
     {
         const int capacity = 10;
-        var list = new RawList<int>(capacity);
+        var list = new RawList<int>(capacity, AllocatorHandle.Temp);
 
         Assert.AreEqual(0, list.Count);
         Assert.IsTrue(list.Capacity >= capacity);
@@ -58,7 +58,7 @@ public sealed class RawListTest
     {
         Assert.ThrowsException<ArgumentOutOfRangeException>(() =>
         {
-            var list = new RawList<int>(-1);
+            var list = new RawList<int>(-1, AllocatorHandle.Temp);
         });
     }
 
@@ -69,7 +69,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Add_SingleItem_IncreasesCount()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
 
         list.Add(42);
 
@@ -81,7 +81,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Add_MultipleItems_PreservesOrder()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
 
         list.Add(1);
         list.Add(2);
@@ -96,7 +96,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Add_ExceedsCapacity_ExpandsAutomatically()
     {
-        var list = new RawList<int>(1);
+        var list = new RawList<int>(1, AllocatorHandle.Temp);
         var originalCapacity = list.Capacity;
 
         list.Add(1);
@@ -115,7 +115,7 @@ public sealed class RawListTest
     [TestMethod]
     public void AddRange_EmptySpan_DoesNotChangeList()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
 
         list.AddRange(new int[] { });
 
@@ -126,7 +126,7 @@ public sealed class RawListTest
     [TestMethod]
     public void AddRange_ValidSpan_AddsAllElements()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         int[] values = [10, 20, 30];
 
         list.AddRange(values);
@@ -140,7 +140,7 @@ public sealed class RawListTest
     [TestMethod]
     public void AddRange_ExceedsCapacity_ExpandsAutomatically()
     {
-        var list = new RawList<int>(2);
+        var list = new RawList<int>(2, AllocatorHandle.Temp);
         int[] values = [1, 2, 3, 4, 5];
 
         list.AddRange(values);
@@ -160,7 +160,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Push_SingleItem_AddsItemToEnd()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
 
         list.Push(42);
 
@@ -171,7 +171,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Pop_EmptyList_ThrowsInvalidOperationException()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
 
         Assert.ThrowsException<InvalidOperationException>(() => list.Pop());
     }
@@ -179,7 +179,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Pop_NonEmptyList_ReturnsLastItemAndReducesCount()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(10);
         list.Add(20);
         list.Add(30);
@@ -193,7 +193,7 @@ public sealed class RawListTest
     [TestMethod]
     public void TryPop_EmptyList_ReturnsFalse()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
 
         bool result = list.TryPop(out int item);
 
@@ -204,7 +204,7 @@ public sealed class RawListTest
     [TestMethod]
     public void TryPop_NonEmptyList_ReturnsLastItemAndReducesCount()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(10);
         list.Add(20);
         list.Add(30);
@@ -223,7 +223,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Indexer_ValidIndex_ReturnsCorrectItem()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(10);
         list.Add(20);
 
@@ -234,7 +234,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Indexer_NegativeIndex_ThrowsIndexOutOfRangeException()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(42);
 
         Assert.ThrowsException<IndexOutOfRangeException>(() => _ = list[-1]);
@@ -243,7 +243,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Indexer_IndexOutOfBounds_ThrowsIndexOutOfRangeException()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(42);
 
         Assert.ThrowsException<IndexOutOfRangeException>(() => _ = list[1]);
@@ -252,7 +252,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Indexer_CanModifyExistingItem()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(10);
 
         list[0] = 99;
@@ -267,7 +267,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Clear_EmptyList_RemainsEmpty()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
 
         list.Clear();
 
@@ -278,7 +278,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Clear_NonEmptyList_MakesListEmpty()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(1);
         list.Add(2);
         list.Add(3);
@@ -296,7 +296,7 @@ public sealed class RawListTest
     [TestMethod]
     public void RemoveAt_ValidIndex_RemovesItemAndShiftsElements()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(10);
         list.Add(20);
         list.Add(30);
@@ -311,7 +311,7 @@ public sealed class RawListTest
     [TestMethod]
     public void RemoveAt_LastIndex_RemovesItemWithoutShifting()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(10);
         list.Add(20);
         list.Add(30);
@@ -326,7 +326,7 @@ public sealed class RawListTest
     [TestMethod]
     public void RemoveAt_NegativeIndex_ThrowsArgumentOutOfRangeException()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(42);
 
         Assert.ThrowsException<ArgumentOutOfRangeException>(() => list.RemoveAt(-1));
@@ -335,7 +335,7 @@ public sealed class RawListTest
     [TestMethod]
     public void RemoveAt_IndexOutOfBounds_ThrowsArgumentOutOfRangeException()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(42);
 
         Assert.ThrowsException<ArgumentOutOfRangeException>(() => list.RemoveAt(1));
@@ -348,7 +348,7 @@ public sealed class RawListTest
     [TestMethod]
     public void RemoveAtSwapBack_ValidIndex_RemovesItemAndSwapsWithLast()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(10);
         list.Add(20);
         list.Add(30);
@@ -363,7 +363,7 @@ public sealed class RawListTest
     [TestMethod]
     public void RemoveAtSwapBack_LastIndex_RemovesItemWithoutSwapping()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(10);
         list.Add(20);
         list.Add(30);
@@ -378,7 +378,7 @@ public sealed class RawListTest
     [TestMethod]
     public void RemoveAtSwapBack_NegativeIndex_ThrowsArgumentOutOfRangeException()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(42);
 
         Assert.ThrowsException<ArgumentOutOfRangeException>(() => list.RemoveAtSwapBack(-1));
@@ -387,7 +387,7 @@ public sealed class RawListTest
     [TestMethod]
     public void RemoveAtSwapBack_IndexOutOfBounds_ThrowsArgumentOutOfRangeException()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(42);
 
         Assert.ThrowsException<ArgumentOutOfRangeException>(() => list.RemoveAtSwapBack(1));
@@ -400,7 +400,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Resize_ToLargerSize_IncreasesCount()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(10);
         list.Add(20);
 
@@ -417,7 +417,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Resize_ToSmallerSize_DecreasesCount()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(10);
         list.Add(20);
         list.Add(30);
@@ -432,7 +432,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Resize_ToZero_MakesListEmpty()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(10);
         list.Add(20);
 
@@ -445,7 +445,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Resize_WithNegativeSize_ThrowsArgumentOutOfRangeException()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
 
         Assert.ThrowsException<ArgumentOutOfRangeException>(() => list.Resize(-1));
     }
@@ -453,7 +453,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Resize_WithUninitializedMemory_DoesNotClearNewElements()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(10);
 
         list.Resize(3, NativeArrayOptions.UninitializedMemory);
@@ -470,7 +470,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Truncate_ValidIndex_ReducesCountToIndex()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(10);
         list.Add(20);
         list.Add(30);
@@ -485,7 +485,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Truncate_ToZero_MakesListEmpty()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(10);
         list.Add(20);
 
@@ -498,7 +498,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Truncate_BeyondCount_DoesNotChangeList()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(10);
         list.Add(20);
 
@@ -512,7 +512,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Truncate_NegativeIndex_ThrowsArgumentOutOfRangeException()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
 
         Assert.ThrowsException<ArgumentOutOfRangeException>(() => list.Truncate(-1));
     }
@@ -524,7 +524,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Reserve_ValidCapacity_IncreasesCapacity()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         var originalCapacity = list.Capacity;
 
         list.Reserve(100);
@@ -536,7 +536,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Reserve_SmallerThanCurrentCapacity_DoesNotChangeCapacity()
     {
-        var list = new RawList<int>(10);
+        var list = new RawList<int>(10, AllocatorHandle.Temp);
         var originalCapacity = list.Capacity;
 
         list.Reserve(5);
@@ -547,7 +547,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Reserve_NegativeCapacity_ThrowsArgumentOutOfRangeException()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
 
         Assert.ThrowsException<ArgumentOutOfRangeException>(() => list.Reserve(-1));
     }
@@ -555,7 +555,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Reserve_PreservesExistingData()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(10);
         list.Add(20);
         list.Add(30);
@@ -575,7 +575,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Span_EmptyList_ReturnsEmptySpan()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
 
         var span = list.Span;
 
@@ -585,7 +585,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Span_NonEmptyList_ReturnsCorrectSpan()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(10);
         list.Add(20);
         list.Add(30);
@@ -601,7 +601,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Span_CanModifyData()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(10);
         list.Add(20);
 
@@ -621,7 +621,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Ptr_EmptyList_ReturnsValidPointer()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
 
         unsafe
         {
@@ -634,7 +634,7 @@ public sealed class RawListTest
     [TestMethod]
     public void Ptr_NonEmptyList_ReturnsValidPointer()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(42);
 
         unsafe
@@ -652,7 +652,7 @@ public sealed class RawListTest
     [TestMethod]
     public void StressTest_ManyOperations_MaintainsConsistency()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
 
         // Add many items
         for (int i = 0; i < 1000; i++)
@@ -680,7 +680,7 @@ public sealed class RawListTest
     [TestMethod]
     public void LargeCapacityReservation_WorksCorrectly()
     {
-        var list = new RawList<int>();
+        var list = new RawList<int>(AllocatorHandle.Temp);
 
         list.Reserve(10000);
 
