@@ -16,17 +16,17 @@ internal struct GraphConverter
     /// <summary>
     /// The input resources for this converter and their rates.
     /// </summary>
-    public LinearMap<int, GraphRatio> inputs;
+    public SortedLinearMap<int, GraphRatio> inputs;
 
     /// <summary>
     /// The output resources for this converter and their rates.
     /// </summary>
-    public LinearMap<int, GraphRatio> outputs;
+    public SortedLinearMap<int, GraphRatio> outputs;
 
     /// <summary>
     /// Resources for which this converter is at capacity.
     /// </summary>
-    public LinearMap<int, Constraint> constraints;
+    public SortedLinearMap<int, Constraint> constraints;
 
     public GraphConverter(int id, Core.ResourceConverter converter, AllocatorHandle allocator)
     {
@@ -38,12 +38,12 @@ internal struct GraphConverter
         constraints = new(converter.Required.Count, allocator);
     }
 
-    private static LinearMap<int, GraphRatio> CreateRatioMap(
+    private static SortedLinearMap<int, GraphRatio> CreateRatioMap(
         Collections.SortedMap<int, ResourceRatio> map,
         AllocatorHandle allocator
     )
     {
-        LinearMap<int, GraphRatio> res = new(map.Count, allocator);
+        SortedLinearMap<int, GraphRatio> res = new(map.Count, allocator);
         foreach (var (resourceId, ratio) in map)
             res.AddUnchecked(resourceId, new(ratio));
         return res;
@@ -118,8 +118,8 @@ internal struct GraphConverter
     }
 
     internal static bool ConstraintEquals(
-        in LinearMap<int, Constraint> a,
-        in LinearMap<int, Constraint> b
+        in SortedLinearMap<int, Constraint> a,
+        in SortedLinearMap<int, Constraint> b
     )
     {
         if (a.Count != b.Count)
@@ -128,10 +128,7 @@ internal struct GraphConverter
         for (int i = 0; i < a.Count; ++i)
         {
             ref var ae = ref a.GetEntryAtIndex(i);
-            if (!b.TryGetIndex(ae.Key, out var j))
-                return false;
-
-            ref var be = ref b.GetEntryAtIndex(j);
+            ref var be = ref b.GetEntryAtIndex(i);
 
             if (ae.Value != be.Value)
                 return false;

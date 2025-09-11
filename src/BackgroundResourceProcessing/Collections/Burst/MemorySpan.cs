@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.BurstSolver;
 using Unity.Burst;
 using Unity.Burst.CompilerServices;
+using Unity.Collections;
 using CSUnsafe = System.Runtime.CompilerServices.Unsafe;
 
 #pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
@@ -220,5 +221,18 @@ public static class MemorySpanExtensions
         }
 
         return true;
+    }
+
+    internal static unsafe void Sort<T>(this MemorySpan<T> span)
+        where T : unmanaged, IComparable<T>
+    {
+        NativeSortExtension.Sort(span.Data, span.Length);
+    }
+
+    internal static unsafe void Sort<T, U>(this MemorySpan<T> span, U comparer)
+        where T : unmanaged
+        where U : IComparer<T>
+    {
+        NativeSortExtension.Sort(span.Data, span.Length, comparer);
     }
 }

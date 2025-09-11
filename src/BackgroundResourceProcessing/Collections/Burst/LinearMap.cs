@@ -1,15 +1,13 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using Unity.Burst.CompilerServices;
-using Unity.Collections;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
 internal struct LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>
-    where K : struct, IEquatable<K>
-    where V : struct
+    where K : unmanaged, IEquatable<K>
+    where V : unmanaged
 {
     public struct Entry(K key, V value)
     {
@@ -38,9 +36,9 @@ internal struct LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>
 
     public readonly int Count => entries.Count;
     public readonly int Capacity => entries.Capacity;
+    public readonly MemorySpan<Entry> Entries => entries.Span;
 
-    [Obsolete]
-    public readonly Allocator Allocator => Allocator.Temp;
+    public readonly AllocatorHandle Allocator => entries.Allocator;
     public readonly bool IsEmpty => Count == 0;
 
     public readonly KeyEnumerable Keys => new(this);
@@ -217,8 +215,8 @@ internal struct LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>
 internal static class LinearMapExtensions
 {
     internal static LinearMap<K, V> Create<K, V>(SortedMap<K, V> map, AllocatorHandle allocator)
-        where K : struct, IEquatable<K>, IComparable<K>
-        where V : struct
+        where K : unmanaged, IEquatable<K>, IComparable<K>
+        where V : unmanaged
     {
         var res = new LinearMap<K, V>(map.Count, allocator);
         foreach (var (key, value) in map)
@@ -227,8 +225,8 @@ internal static class LinearMapExtensions
     }
 
     internal static bool Equals<K, V>(in this LinearMap<K, V> a, in LinearMap<K, V> b)
-        where K : struct, IEquatable<K>
-        where V : struct, IEquatable<V>
+        where K : unmanaged, IEquatable<K>
+        where V : unmanaged, IEquatable<V>
     {
         if (a.Count != b.Count)
             return false;

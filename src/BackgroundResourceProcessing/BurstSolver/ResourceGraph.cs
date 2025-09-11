@@ -1,9 +1,7 @@
 using System;
-using System.Collections.Generic;
 using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
-using Unity.Collections;
 using static BackgroundResourceProcessing.Collections.KeyValuePairExt;
 
 namespace BackgroundResourceProcessing.BurstSolver;
