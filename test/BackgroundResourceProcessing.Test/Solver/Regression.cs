@@ -149,5 +149,24 @@ namespace BackgroundResourceProcessing.Test.Solver
 
             Assert.AreNotEqual(0.0, changepoint);
         }
+
+        [TestMethod]
+        public void TestCrashCreateSimplexTableau()
+        {
+            var processor = TestUtil.LoadVessel("regression/crash-create-simplex-tableau.cfg");
+            processor.ComputeRates();
+        }
+
+        [TestMethod]
+        public void TestZeroRankFunction()
+        {
+            var processor = TestUtil.LoadVessel("regression/crash-create-simplex-tableau.cfg");
+            processor.ComputeRates();
+
+            Assert.IsTrue(
+                processor.converters.Any(converter => converter.Rate != 0.0),
+                "at least some converters should be running"
+            );
+        }
     }
 }

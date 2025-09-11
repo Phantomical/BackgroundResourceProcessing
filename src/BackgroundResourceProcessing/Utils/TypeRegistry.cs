@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using BackgroundResourceProcessing.Behaviour;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Converter;
@@ -138,15 +139,15 @@ internal static class TypeRegistry
         BackgroundInventory.LoadAll();
     }
 
-    internal static void RegisterForTest()
+    internal static void RegisterForTest(IEnumerable<Assembly> assemblies = null)
     {
-        var assembly = typeof(TypeRegistry).Assembly;
+        assemblies ??= [];
 
         ConverterBehaviour.RegisterAll(
-            assembly
-                .GetTypes()
-                .Where(type => type.IsSubclassOf(typeof(ConverterBehaviour)))
-                .Where(type => !type.IsAbstract)
+            assemblies
+                .Concat([typeof(TypeRegistry).Assembly])
+                .SelectMany(assembly => assembly.GetTypes())
+                .Where(type => type.IsSubclassOf(typeof(ConverterBehaviour)) && !type.IsAbstract)
         );
     }
 }

@@ -128,7 +128,7 @@ namespace BackgroundResourceProcessing.Test
             sink = new TestLogSink(Path.Combine(TestUtil.ProjectDirectory, "bin/test-output.log"));
             LogUtil.Sink = sink;
 
-            TypeRegistry.RegisterForTest();
+            TypeRegistry.RegisterForTest([typeof(Setup).Assembly]);
 
             DebugSettings.Instance.DebugLogging = true;
 #if SOLVERTRACE
