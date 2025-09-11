@@ -919,7 +919,7 @@ internal struct LinearProblem()
 
         for (int i = 0; i < tableau.Rows; ++i)
         {
-            var elem = tableau[column, i];
+            var elem = tableau[i, column];
             if (elem == 0.0)
                 continue;
             if (elem != 1.0)
