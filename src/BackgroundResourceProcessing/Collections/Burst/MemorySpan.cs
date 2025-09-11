@@ -203,15 +203,18 @@ public static class MemorySpanExtensions
 
         if (BurstUtil.IsBurstCompiled)
             return UnityAllocator.Cmp(lhs.Data, rhs.Data, lhs.Length) == 0;
-
-        ManagedSequenceEqual(lhs, rhs, out var equal);
-        return equal;
+        else
+            return SequenceEqualManaged(lhs.Data, rhs.Data, (uint)lhs.Length);
     }
 
-    [BurstDiscard]
-    static void ManagedSequenceEqual(
-        MemorySpan<ulong> lhs,
-        MemorySpan<ulong> rhs,
-        out bool equal
-    ) => equal = MemoryExtensions.SequenceEqual(lhs.AsSystemSpan(), rhs.AsSystemSpan());
+    static unsafe bool SequenceEqualManaged(ulong* lhs, ulong* rhs, uint length)
+    {
+        for (uint i = 0; i < length; ++i)
+        {
+            if (lhs[i] != rhs[i])
+                return false;
+        }
+
+        return true;
+    }
 }
