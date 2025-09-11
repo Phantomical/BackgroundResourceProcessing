@@ -176,6 +176,10 @@ internal static class LinearPresolve
         if (stop >= tableau.Rows)
             ThrowStopIndexOutOfRange();
 
+        double** avx2_row = stackalloc double*[4];
+        double* avx2_f = stackalloc double[4];
+        var avx2_vf = stackalloc v256[4];
+
         for (int pc = 0, pr = 0; pc < tableau.Cols && pr < stop; ++pc)
         {
             int rmax = -1;
@@ -209,9 +213,9 @@ internal static class LinearPresolve
                 int r = 0;
                 for (; r + 4 <= tableau.Rows; r += 4)
                 {
-                    double** row = stackalloc double*[4];
-                    double* f = stackalloc double[4];
-                    var vf = stackalloc v256[4];
+                    double** row = avx2_row;
+                    double* f = avx2_f;
+                    var vf = avx2_vf;
 
                     for (int i = 0; i < 4; ++i)
                     {
