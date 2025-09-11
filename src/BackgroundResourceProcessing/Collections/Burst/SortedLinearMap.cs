@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Unity.Collections;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
@@ -11,6 +12,8 @@ namespace BackgroundResourceProcessing.Collections.Burst;
 /// </summary>
 /// <typeparam name="K"></typeparam>
 /// <typeparam name="V"></typeparam>
+[DebuggerDisplay("Count = {Count}")]
+[DebuggerTypeProxy(typeof(DictionaryDebugView<,>))]
 internal struct SortedLinearMap<K, V>(LinearMap<K, V> map) : IEnumerable<KeyValuePair<K, V>>
     where K : unmanaged, IEquatable<K>, IComparable<K>
     where V : unmanaged

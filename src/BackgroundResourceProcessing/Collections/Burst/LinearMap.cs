@@ -1,10 +1,13 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Unity.Burst.CompilerServices;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
+[DebuggerDisplay("Count = {Count}")]
+[DebuggerTypeProxy(typeof(DictionaryDebugView<,>))]
 internal struct LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>
     where K : unmanaged, IEquatable<K>
     where V : unmanaged

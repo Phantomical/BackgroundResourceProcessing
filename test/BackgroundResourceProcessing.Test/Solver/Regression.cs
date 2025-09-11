@@ -168,5 +168,16 @@ namespace BackgroundResourceProcessing.Test.Solver
                 "at least some converters should be running"
             );
         }
+
+        [TestMethod]
+        public void TestBoiloffUnexpected()
+        {
+            var processor = TestUtil.LoadVessel("regression/boiloff-unexpected.cfg");
+            processor.ComputeRates();
+
+            var h2 = processor.GetResourceStates()["LqdHydrogen"];
+
+            Assert.AreEqual(0.0, h2.rate, "LH2 rate should be 0");
+        }
     }
 }

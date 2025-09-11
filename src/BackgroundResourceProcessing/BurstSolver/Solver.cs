@@ -353,51 +353,51 @@ internal static class Solver
                         break;
                 }
             }
+        }
 
-            foreach (var inventoryId in graph.inventories.Keys)
+        foreach (var inventoryId in graph.inventories.Keys)
+        {
+            ref var inventory = ref graph.inventories[inventoryId];
+
+            // The inventory is unconstrained. There is nothing we need to
+            // do here, any rate is acceptable.
+            if (inventory.state == InventoryState.Unconstrained)
+                continue;
+
+            // This inventory has no converters interacting with it. It will
+            // have a rate of 0 and that is always acceptable.
+            if (!iRates.TryGetValue(inventoryId, out var iRate))
+                continue;
+
+            LinearEquation? dRate = null;
+            if (dRates.TryGetValue(inventoryId, out var _dRate))
+                dRate = _dRate;
+
+            if (dRate == null && inventory.state == InventoryState.Zero)
             {
-                ref var inventory = ref graph.inventories[inventoryId];
-
-                // The inventory is unconstrained. There is nothing we need to
-                // do here, any rate is acceptable.
-                if (inventory.state == InventoryState.Unconstrained)
-                    continue;
-
-                // This inventory has no converters interacting with it. It will
-                // have a rate of 0 and that is always acceptable.
-                if (!iRates.TryGetValue(inventoryId, out var iRate))
-                    continue;
-
-                LinearEquation? dRate = null;
-                if (dRates.TryGetValue(inventoryId, out var _dRate))
-                    dRate = _dRate;
-
-                if (dRate == null && inventory.state == InventoryState.Zero)
-                {
-                    // We can special-case zero-sized inventories to make them
-                    // easier to solve via the simplex algorithm.
-                    //
-                    // This only applies if none of the outputs involved have
-                    // dumpExcess set to true, as in that case the rate can
-                    // actually vary.
-                    problem.AddConstraint(iRate == 0.0);
-                    continue;
-                }
-
-                // Full inventories are constrained to have their rate <= 0
+                // We can special-case zero-sized inventories to make them
+                // easier to solve via the simplex algorithm.
                 //
-                // However, if certain converter outputs have dumpExcess == true
-                // then that is not included in the constraint.
-                if ((inventory.state & InventoryState.Full) == InventoryState.Full)
-                    problem.AddConstraint((dRate ?? iRate) <= 0.0);
-
-                // Empty inventories are constrained to have their rate >= 0.
-                //
-                // However, if certain converter outputs have dumpExcess == true
-                // then that is not included in the constraint.
-                if ((inventory.state & InventoryState.Empty) == InventoryState.Empty)
-                    problem.AddConstraint(iRate >= 0.0);
+                // This only applies if none of the outputs involved have
+                // dumpExcess set to true, as in that case the rate can
+                // actually vary.
+                problem.AddConstraint(iRate == 0.0);
+                continue;
             }
+
+            // Full inventories are constrained to have their rate <= 0
+            //
+            // However, if certain converter outputs have dumpExcess == true
+            // then that is not included in the constraint.
+            if ((inventory.state & InventoryState.Full) == InventoryState.Full)
+                problem.AddConstraint((dRate ?? iRate) <= 0.0);
+
+            // Empty inventories are constrained to have their rate >= 0.
+            //
+            // However, if certain converter outputs have dumpExcess == true
+            // then that is not included in the constraint.
+            if ((inventory.state & InventoryState.Empty) == InventoryState.Empty)
+                problem.AddConstraint(iRate >= 0.0);
         }
 
         if (!problem.Maximize(func).Match(out var soln, out var err))

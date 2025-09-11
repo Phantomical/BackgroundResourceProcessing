@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using Unity.Burst.CompilerServices;
 
@@ -10,8 +9,8 @@ using Unity.Burst.CompilerServices;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
+[DebuggerDisplay("Count = {Count}")]
 [DebuggerTypeProxy(typeof(RawIntMap<>.DebugView))]
-[DebuggerDisplay("Capacity = {Capacity}")]
 public struct RawIntMap<T> : IEnumerable<KeyValuePair<int, T>>
     where T : struct
 {
@@ -285,9 +284,6 @@ public struct RawIntMap<T> : IEnumerable<KeyValuePair<int, T>>
     }
     #endregion
 
-    private sealed class DebugView(RawIntMap<T> map)
-    {
-        [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
-        public KeyValuePair<int, T>[] Items { get; } = [.. map];
-    }
+    private sealed class DebugView(IEnumerable<KeyValuePair<int, T>> pairs)
+        : DictionaryDebugView<int, T>(pairs) { }
 }

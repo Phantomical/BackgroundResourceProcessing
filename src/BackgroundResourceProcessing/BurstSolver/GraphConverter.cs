@@ -148,4 +148,12 @@ internal struct GraphConverter
 
         return true;
     }
+
+    public override readonly string ToString()
+    {
+        var inputs = this.inputs.Keys.Select(ResourceNames.GetResourceName);
+        var outputs = this.outputs.Keys.Select(ResourceNames.GetResourceName);
+
+        return $"{string.Join(",", inputs)} => {string.Join(",", outputs)}";
+    }
 }
