@@ -26,6 +26,7 @@ internal struct SortedLinearMap<K, V>(LinearMap<K, V> map) : IEnumerable<KeyValu
 
     public readonly LinearMap<K, V>.KeyEnumerable Keys => map.Keys;
     public readonly LinearMap<K, V>.ValueEnumerable Values => map.Values;
+    public readonly MemorySpan<LinearMap<K, V>.Entry> Entries => map.Entries;
 
     public SortedLinearMap(int capacity, AllocatorHandle allocator)
         : this(new LinearMap<K, V>(capacity, allocator)) { }

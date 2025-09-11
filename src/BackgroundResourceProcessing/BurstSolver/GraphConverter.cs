@@ -117,7 +117,7 @@ internal struct GraphConverter
         return Math.Pow(B, priority);
     }
 
-    internal static bool ConstraintEquals(
+    internal static unsafe bool ConstraintEquals(
         in SortedLinearMap<int, Constraint> a,
         in SortedLinearMap<int, Constraint> b
     )
@@ -125,11 +125,23 @@ internal struct GraphConverter
         if (a.Count != b.Count)
             return false;
 
+        // Constraint is an int so the array is densely packed here and we can
+        // just use memcmp for bursted code.
+        if (BurstUtil.IsBurstCompiled)
+        {
+            var ae = a.Entries;
+            var be = b.Entries;
+
+            return UnityAllocator.Cmp(ae.Data, be.Data, ae.Length) == 0;
+        }
+
         for (int i = 0; i < a.Count; ++i)
         {
             ref var ae = ref a.GetEntryAtIndex(i);
             ref var be = ref b.GetEntryAtIndex(i);
 
+            if (ae.Key != be.Key)
+                return false;
             if (ae.Value != be.Value)
                 return false;
         }
