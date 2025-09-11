@@ -709,7 +709,7 @@ internal struct LinearProblem()
         var tableau = new Matrix(constraintCount + 1, varMap.GetCount() + constraintCount + 1);
 
         foreach (var var in func)
-            tableau[varMap[var.Index], 0] = -var.Coef;
+            tableau[0, varMap[var.Index]] = -var.Coef;
 
         int y = 1;
         foreach (var constraint in simple)
