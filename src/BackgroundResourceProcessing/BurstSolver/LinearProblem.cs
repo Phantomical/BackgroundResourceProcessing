@@ -1,9 +1,11 @@
 using System;
+using System.Runtime.CompilerServices;
 using System.Text;
 using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Utils;
 using Unity.Burst;
 using Unity.Burst.CompilerServices;
+using Unity.Collections;
 using static BackgroundResourceProcessing.BurstSolver.LinearPresolve;
 using static BackgroundResourceProcessing.Collections.KeyValuePairExt;
 using ConstraintState = BackgroundResourceProcessing.Solver.LinearPresolve.ConstraintState;
@@ -30,6 +32,8 @@ internal struct LinearProblem()
     RawList<OrConstraint> disjunctions = new(32);
 
     RawIntMap<LinearEquality> substitutions = default;
+
+    RawArray<double> cachedTableauMemory = new();
 
     #region Variable Creation
     public Variable CreateVariable()
@@ -368,11 +372,12 @@ internal struct LinearProblem()
         return Result.Ok;
     }
 
-    private readonly Matrix BuildPresolveMatrix(in LinearEquation func)
+    private Matrix BuildPresolveMatrix(in LinearEquation func)
     {
-        var matrix = new Matrix(
+        var matrix = GetCachedMatrix(
             equalities.Count + simple.Count + constraints.Count + disjunctions.Count * 2 + 1,
-            VariableCount + 1
+            VariableCount + 1,
+            presolve: true
         );
 
         int i = 0;
@@ -717,7 +722,7 @@ internal struct LinearProblem()
     }
 
     [IgnoreWarning(1370)]
-    private readonly Matrix BuildSimplexTableau(
+    private Matrix BuildSimplexTableau(
         LinearEquation func,
         MemorySpan<BinaryChoice> choices,
         RawIntMap<int> varMap
@@ -727,7 +732,7 @@ internal struct LinearProblem()
         foreach (var choice in choices)
             constraintCount += choice == BinaryChoice.Unknown ? 3 : 1;
 
-        var tableau = new Matrix(constraintCount + 1, varMap.GetCount() + constraintCount + 1);
+        var tableau = GetCachedMatrix(constraintCount + 1, varMap.GetCount() + constraintCount + 1);
 
         foreach (var var in func)
             tableau[0, varMap[var.Index]] = -var.Coef;
@@ -934,6 +939,28 @@ internal struct LinearProblem()
         }
 
         return row;
+    }
+    #endregion
+
+    #region Matrix Cache
+    /// <summary>
+    /// Generally, the presolve matrix will be larger than any of the matrices
+    /// used as part of the branch and bound steps. We can reuse it if so.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private Matrix GetCachedMatrix(int rows, int cols, bool presolve = false)
+    {
+        int length = rows * cols;
+        if (cachedTableauMemory.Count < length)
+        {
+            if (presolve)
+                length *= 2;
+            cachedTableauMemory = new(length, NativeArrayOptions.UninitializedMemory);
+        }
+
+        var matrix = new Matrix(cachedTableauMemory, rows, cols);
+        matrix.Span.Clear();
+        return matrix;
     }
     #endregion
     #endregion
