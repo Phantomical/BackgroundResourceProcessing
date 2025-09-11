@@ -705,13 +705,15 @@ internal struct LinearProblem()
     [BurstDiscard]
     private static void TraceStepSolution(LinearSolution soln, double score)
     {
-        LogUtil.Log($"Step solution {soln} with score {score}");
+        if (BurstUtil.SolverTrace)
+            LogUtil.Log($"Step solution {soln} with score {score}");
     }
 
     [BurstDiscard]
     private static void TraceFinalSolution(LinearSolution soln, double score)
     {
-        LogUtil.Log($"Final solution {soln} with score {score}");
+        if (BurstUtil.SolverTrace)
+            LogUtil.Log($"Final solution {soln} with score {score}");
     }
 
     [IgnoreWarning(1370)]
