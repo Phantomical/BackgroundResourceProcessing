@@ -2,6 +2,7 @@ using System;
 using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Solver;
+using BackgroundResourceProcessing.Utils;
 using Unity.Burst;
 using Unity.Burst.CompilerServices;
 using Unity.Burst.Intrinsics;
@@ -50,21 +51,20 @@ internal static class LinearPresolve
     }
 #endif
 
-    internal static bool Presolve(
-        Collections.Burst.Matrix matrix,
+    [MustUseReturnValue]
+    internal static Result<bool> Presolve(
+        Matrix matrix,
         BitSpan zeros,
         int equalities,
-        int inequalities,
-        ref UnsolvableState unsolvable
+        int inequalities
     )
     {
         if (Trace)
             TraceInitialMatrix(matrix);
 
-        if (!InferZeros(matrix, zeros, equalities, inequalities, ref unsolvable) && equalities == 0)
-            return false;
-
-        if (unsolvable == UnsolvableState.UNSOLVABLE)
+        if (!InferZeros(matrix, zeros, equalities, inequalities).Match(out var found, out var err))
+            return err;
+        if (!found && equalities == 0)
             return false;
 
         do
@@ -76,17 +76,20 @@ internal static class LinearPresolve
 
             if (Trace)
                 TraceMatrix(matrix);
-        } while (InferZeros(matrix, zeros, equalities, inequalities, ref unsolvable));
+
+            if (!InferZeros(matrix, zeros, equalities, inequalities).Match(out found, out err))
+                return err;
+        } while (found);
 
         return true;
     }
 
-    private static unsafe bool InferZeros(
-        in Collections.Burst.Matrix matrix,
+    [MustUseReturnValue]
+    private static unsafe Result<bool> InferZeros(
+        in Matrix matrix,
         BitSpan zeros,
         [AssumeRange(0, int.MaxValue)] int equalities,
-        [AssumeRange(0, int.MaxValue)] int inequalities,
-        ref UnsolvableState unsolvable
+        [AssumeRange(0, int.MaxValue)] int inequalities
     )
     {
         int ineqStop = equalities + inequalities;
@@ -106,20 +109,20 @@ internal static class LinearPresolve
                 if (zero)
                 {
                     if (constant != 0.0)
-                        return SetUnsolvable(ref unsolvable);
+                        return BurstError.Unsolvable();
                     continue;
                 }
                 else if (negative)
                 {
                     if (constant > 0.0)
-                        return SetUnsolvable(ref unsolvable);
+                        return BurstError.Unsolvable();
                     if (constant < 0.0)
                         continue;
                 }
                 else if (positive)
                 {
                     if (constant < 0.0)
-                        return SetUnsolvable(ref unsolvable);
+                        return BurstError.Unsolvable();
                     if (constant > 0.0)
                         continue;
                 }
@@ -133,13 +136,13 @@ internal static class LinearPresolve
                 if (zero)
                 {
                     if (constant < 0.0)
-                        return SetUnsolvable(ref unsolvable);
+                        return BurstError.Unsolvable();
                     continue;
                 }
                 else if (positive)
                 {
                     if (constant < 0.0)
-                        return SetUnsolvable(ref unsolvable);
+                        return BurstError.Unsolvable();
                     if (constant > 0.0)
                         continue;
                 }
@@ -166,7 +169,7 @@ internal static class LinearPresolve
     }
 
     private static unsafe void PartialRowReduce(
-        in Collections.Burst.Matrix tableau,
+        in Matrix tableau,
         [AssumeRange(0, int.MaxValue)] int stop
     )
     {
@@ -434,19 +437,19 @@ internal static class LinearPresolve
     }
 
     [BurstDiscard]
-    private static unsafe void TraceInferZeros(in Collections.Burst.Matrix tableau)
+    private static unsafe void TraceInferZeros(in Matrix tableau)
     {
         LogUtil.Log($"Presolve matrix after InferZeros:\n{tableau}");
     }
 
     [BurstDiscard]
-    private static unsafe void TraceInitialMatrix(in Collections.Burst.Matrix tableau)
+    private static unsafe void TraceInitialMatrix(in Matrix tableau)
     {
         LogUtil.Log($"Initial presolve matrix:\n{tableau}");
     }
 
     [BurstDiscard]
-    private static unsafe void TraceMatrix(in Collections.Burst.Matrix tableau)
+    private static unsafe void TraceMatrix(in Matrix tableau)
     {
         LogUtil.Log($"Presolve matrix after RowReduce:\n{tableau}");
     }

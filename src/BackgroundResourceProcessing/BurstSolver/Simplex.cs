@@ -10,6 +10,7 @@
 using System;
 using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Collections.Burst;
+using BackgroundResourceProcessing.Utils;
 using Unity.Burst;
 using Unity.Burst.CompilerServices;
 using Unity.Burst.Intrinsics;
@@ -47,7 +48,8 @@ internal static partial class Simplex
 #endif
 
     [IgnoreWarning(1370)]
-    public static unsafe bool SolveTableau(Matrix tableau, BitSpan selected)
+    [MustUseReturnValue]
+    public static unsafe Result SolveTableau(Matrix tableau, BitSpan selected)
     {
         if (selected.Capacity < tableau.Cols - 1)
             throw new ArgumentException("selected was too small for tableau");
@@ -60,7 +62,7 @@ internal static partial class Simplex
 
             int index = SelectRow(tableau, pivot);
             if (index < 0)
-                return false;
+                return BurstError.Unsolvable();
 
             if (Trace)
                 TracePivot(pivot, index, tableau);
@@ -80,7 +82,7 @@ internal static partial class Simplex
         if (Trace)
             TraceFinal(tableau);
 
-        return true;
+        return Result.Ok;
     }
 
     private static unsafe int SelectPivot(

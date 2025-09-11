@@ -1,8 +1,8 @@
 using System;
 using BackgroundResourceProcessing.Collections.Burst;
+using BackgroundResourceProcessing.Utils;
 using Unity.Burst;
 using Unity.Burst.CompilerServices;
-using Unity.Collections;
 using static BackgroundResourceProcessing.BurstSolver.LinearPresolve;
 using static BackgroundResourceProcessing.Collections.KeyValuePairExt;
 using ConstraintState = BackgroundResourceProcessing.Solver.LinearPresolve.ConstraintState;
@@ -16,8 +16,6 @@ internal struct LinearProblem()
 
     // The number of linear variables that have been created.
     public int VariableCount { get; private set; } = 0;
-
-    bool Unsolvable = false;
 
     // Constraints in standard form (Ax <= b)
     RawList<SolverConstraint> constraints = new(32);
@@ -158,17 +156,12 @@ internal struct LinearProblem()
         var ai = a.KnownInconsistent;
         var bi = b.KnownInconsistent;
 
-        if (ai && bi)
-        {
-            Unsolvable = true;
-            return;
-        }
-        if (ai)
+        if (bi)
         {
             AddConstraint(a);
             return;
         }
-        if (bi)
+        if (ai)
         {
             AddConstraint(b);
             return;
@@ -195,31 +188,24 @@ internal struct LinearProblem()
     #endregion
 
     #region Maximize
-    [BurstCompile]
-    public LinearSolution? Maximize(LinearEquation func)
+    [MustUseReturnValue]
+    public Result<LinearSolution> Maximize(LinearEquation func)
     {
-        if (Unsolvable)
-            return null;
+        if (!SolveBranchAndBound(func).Match(out var soln, out var err))
+            return err;
 
-        var nsoln = SolveBranchAndBound(func);
-        if (nsoln is null)
-            return null;
-
-        var soln = nsoln.Value;
-
-        if (!BurstUtil.IsBurstCompiled)
-        {
-            // This isn't strictly necessary but it is cheap and has proven to
-            // be incredibly useful for catching bugs so I've enabled it
-            // unconditionally.
-            CheckSolution(soln);
-        }
+        // This isn't strictly necessary but it is cheap and has proven to
+        // be incredibly useful for catching bugs so I've enabled it
+        // unconditionally.
+        if (!CheckSolution(soln).Match(out err))
+            return err;
 
         return soln;
     }
 
     [IgnoreWarning(1370)]
-    private readonly void CheckSolution(LinearSolution soln, double tol = 1e-6)
+    [MustUseReturnValue]
+    private readonly Result CheckSolution(LinearSolution soln, double tol = 1e-6)
     {
         foreach (var constraint in constraints)
         {
@@ -229,15 +215,55 @@ internal struct LinearProblem()
             if (value <= constant + tol)
                 continue;
 
-            throw new Exception(
-                $"LP solver solution did not satisfy constraint:\n    constraint: {constraint.ToRelationString("<=")} (got {value})\n    solution: {soln}"
-            );
+            if (!BurstUtil.IsBurstCompiled)
+                ThrowCheckSolutionFailure(soln, constraint, value);
+            return BurstError.SolutionDidNotSatisfyConstraints();
         }
+
+        foreach (var constraint in simple)
+        {
+            double value = soln.Evaluate(constraint.variable);
+            double constant = constraint.constant;
+
+            if (value <= constant + tol)
+                continue;
+
+            if (!BurstUtil.IsBurstCompiled)
+                ThrowCheckSolutionFailure(soln, constraint, value);
+            return BurstError.SolutionDidNotSatisfyConstraints();
+        }
+
+        return Result.Ok;
     }
+
+    [BurstDiscard]
+    private static void ThrowCheckSolutionFailure(
+        LinearSolution soln,
+        SolverConstraint constraint,
+        double value
+    ) =>
+        throw new Exception(
+            "LP solver solution did not satisfy constraint:\n"
+                + $"    constraint: {constraint} (got {value})\n"
+                + $"    solution: {soln}"
+        );
+
+    [BurstDiscard]
+    private static void ThrowCheckSolutionFailure(
+        LinearSolution soln,
+        SimpleSolverConstraint constraint,
+        double value
+    ) =>
+        throw new Exception(
+            "LP solver solution did not satisfy constraint:\n"
+                + $"    constraint: {constraint} (got {value})\n"
+                + $"    solution: {soln}"
+        );
 
     #region Presolve
     [IgnoreWarning(1370)]
-    private unsafe void Presolve(ref LinearEquation func)
+    [MustUseReturnValue]
+    private unsafe Result Presolve(ref LinearEquation func)
     {
         var matrix = BuildPresolveMatrix(in func);
 
@@ -247,18 +273,17 @@ internal struct LinearProblem()
         var zeros = new BitSet(zerodata, words);
         var states = new RawArray<ConstraintState>(statedata, matrix.Rows);
 
-        var unsolvable = UnsolvableState.SOLVABLE;
-        var changed = LinearPresolve.Presolve(
+        var result = LinearPresolve.Presolve(
             matrix,
             zeros,
             equalities.Count,
-            constraints.Count + simple.Count,
-            ref unsolvable
+            constraints.Count + simple.Count
         );
+        if (!result.Match(out var changed, out var err))
+            return err;
 
-        Unsolvable |= unsolvable == UnsolvableState.UNSOLVABLE;
         if (!changed)
-            return;
+            return Result.Ok;
 
         InferStates(in matrix, states.Span, equalities.Count);
 
@@ -278,27 +303,23 @@ internal struct LinearProblem()
         for (; i < nEqs; ++i)
         {
             if (states[i] == ConstraintState.UNSOLVABLE)
-            {
-                Unsolvable = true;
-                return;
-            }
+                return BurstError.Unsolvable();
             if (states[i] == ConstraintState.VACUOUS)
                 continue;
 
-            AddEquality(matrix[i]);
+            if (!AddEquality(matrix[i]).Match(out err))
+                return err;
         }
 
         for (; i < nEqs + nCons; ++i)
         {
             if (states[i] == ConstraintState.UNSOLVABLE)
-            {
-                Unsolvable = true;
-                return;
-            }
+                return BurstError.Unsolvable();
             if (states[i] == ConstraintState.VACUOUS)
                 continue;
 
-            AddConstraint(matrix[i]);
+            if (!AddConstraint(matrix[i]).Match(out err))
+                return err;
         }
 
         var oldD = disjunctions;
@@ -313,10 +334,7 @@ internal struct LinearProblem()
             var rstate = states[i + 1];
 
             if (lstate == ConstraintState.UNSOLVABLE && rstate == ConstraintState.UNSOLVABLE)
-            {
-                Unsolvable = true;
-                return;
-            }
+                return BurstError.Unsolvable();
 
             // If any of them are vacuous then the whole constraint is unconditionally
             // satisfiable and we don't need to worry about it.
@@ -325,12 +343,14 @@ internal struct LinearProblem()
 
             if (lstate == ConstraintState.UNSOLVABLE)
             {
-                AddConstraint(rhs);
+                if (!AddConstraint(rhs).Match(out err))
+                    return err;
                 continue;
             }
             if (rstate == ConstraintState.UNSOLVABLE)
             {
-                AddConstraint(lhs);
+                if (!AddConstraint(lhs).Match(out err))
+                    return err;
                 continue;
             }
 
@@ -344,7 +364,7 @@ internal struct LinearProblem()
 
         func.Set(matrix[matrix.Rows - 1].Slice(0, matrix.Cols - 1));
 
-        return;
+        return Result.Ok;
     }
 
     private readonly Matrix BuildPresolveMatrix(in LinearEquation func)
@@ -402,7 +422,8 @@ internal struct LinearProblem()
     }
 
     [IgnoreWarning(1370)]
-    private void AddConstraint(MemorySpan<double> row)
+    [MustUseReturnValue]
+    private Result AddConstraint(MemorySpan<double> row)
     {
         var coefs = row.Slice(0, row.Length - 1);
         var constant = row[row.Length - 1];
@@ -414,8 +435,8 @@ internal struct LinearProblem()
         }
 
         if (constant < 0.0)
-            Unsolvable = true;
-        return;
+            return BurstError.Unsolvable();
+        return Result.Ok;
 
         FOUND_FIRST:
         int index = i;
@@ -434,16 +455,19 @@ internal struct LinearProblem()
                 constant = constant / coefs[index],
             }
         );
-        return;
+        return Result.Ok;
 
         FOUND_SECOND:
         constraints.Add(
             new SolverConstraint() { variables = new LinearEquation(coefs), constant = constant }
         );
+
+        return Result.Ok;
     }
 
     [IgnoreWarning(1370)]
-    private void AddEquality(MemorySpan<double> row)
+    [MustUseReturnValue]
+    private Result AddEquality(MemorySpan<double> row)
     {
         var coefs = row.Slice(0, row.Length - 1);
         var constant = row[row.Length - 1];
@@ -455,8 +479,8 @@ internal struct LinearProblem()
         }
 
         if (constant != 0.0)
-            Unsolvable = true;
-        return;
+            return BurstError.Unsolvable();
+        return Result.Ok;
 
         FOUND_FIRST:
         int index = i;
@@ -478,7 +502,7 @@ internal struct LinearProblem()
                 constant = constant / coefs[index],
             }
         );
-        return;
+        return Result.Ok;
 
         FOUND_SECOND:
 
@@ -497,16 +521,18 @@ internal struct LinearProblem()
                 constant = constant / row[index],
             }
         );
+
+        return Result.Ok;
     }
     #endregion
 
     #region Branch & Bound
     [IgnoreWarning(1371)]
-    private unsafe LinearSolution? SolveBranchAndBound(LinearEquation func)
+    [MustUseReturnValue]
+    private unsafe Result<LinearSolution> SolveBranchAndBound(LinearEquation func)
     {
-        Presolve(ref func);
-        if (Unsolvable)
-            return null;
+        if (!Presolve(ref func).Match(out var err))
+            return err;
 
         if (simple.Count == 0 && constraints.Count == 0 && disjunctions.Count == 0)
             return ExtractEmptySolution();
@@ -562,13 +588,15 @@ internal struct LinearProblem()
             var tableau = BuildSimplexTableau(func, entry.choices, varMap);
             var selected = new BitSet(tableau.Cols);
 
-            bool solvable = Simplex.SolveTableau(tableau, selected);
-            if (!solvable)
+            if (!Simplex.SolveTableau(tableau, selected).Match(out err))
             {
                 // Some variable choices may not be solvable. That's not an
                 // issue, it just means that we don't need to consider
                 // any more changes here.
-                continue;
+                if (err == Error.Unsolvable)
+                    continue;
+
+                return err;
             }
 
             var score = tableau[0, tableau.Cols - 1];
@@ -648,8 +676,11 @@ internal struct LinearProblem()
             }
         }
 
-        TraceFinalSolution(soln, best);
-        return soln;
+        if (soln is null)
+            return BurstError.Unsolvable();
+
+        TraceFinalSolution(soln.Value, best);
+        return soln.Value;
     }
 
     [BurstDiscard]
@@ -659,10 +690,8 @@ internal struct LinearProblem()
     }
 
     [BurstDiscard]
-    private static void TraceFinalSolution(LinearSolution? soln, double score)
+    private static void TraceFinalSolution(LinearSolution soln, double score)
     {
-        if (soln is null)
-            return;
         LogUtil.Log($"Final solution {soln} with score {score}");
     }
 

@@ -19,7 +19,7 @@ internal static class Solver
 {
     static unsafe FunctionPointer<ComputeInventoryRatesDelegate>? ComputeRatesFp = null;
 
-    unsafe delegate bool ComputeInventoryRatesDelegate(
+    unsafe delegate Result ComputeInventoryRatesDelegate(
         ref ResourceGraph graph,
         double* inventoryRates,
         double* converterRates
@@ -41,7 +41,7 @@ internal static class Solver
                 conv = converterRates
         )
         {
-            bool res;
+            Result res;
             if (DebugSettings.Instance?.EnableBurst ?? true)
             {
                 res = ComputeInventoryRates(
@@ -59,15 +59,16 @@ internal static class Solver
 
                 res = ComputeRatesFp.Value.Invoke(ref graph, inv, conv);
             }
-            if (!res)
-                throw new UnsolvableProblemException();
+
+            if (!res.Match(out var err))
+                err.ThrowRepresentativeError();
         }
 
         return new() { converterRates = converterRates, inventoryRates = inventoryRates };
     }
 
     [BurstCompile]
-    private static unsafe bool ComputeInventoryRatesBurst(
+    private static unsafe Result ComputeInventoryRatesBurst(
         ref ResourceGraph graph,
         double* inventoryRates,
         double* converterRates
@@ -80,7 +81,7 @@ internal static class Solver
         );
     }
 
-    private static unsafe bool ComputeInventoryRates(
+    private static unsafe Result ComputeInventoryRates(
         ref ResourceGraph graph,
         MemorySpan<double> inventoryRates,
         MemorySpan<double> converterRates
@@ -388,10 +389,8 @@ internal static class Solver
             }
         }
 
-        var nsoln = problem.Maximize(func);
-        if (nsoln is null)
-            return false;
-        var soln = nsoln.Value;
+        if (!problem.Maximize(func).Match(out var soln, out var err))
+            return err;
 
         foreach (var (invId, iRate) in iRates)
         {
@@ -465,7 +464,7 @@ internal static class Solver
                 converterRates[realId] = rate;
         }
 
-        return true;
+        return Result.Ok;
     }
 
     private static RawArray<InventorySummary> Summarize(in ResourceGraph graph)
