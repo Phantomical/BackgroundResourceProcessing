@@ -17,6 +17,14 @@ namespace BackgroundResourceProcessing.BurstSolver;
 [BurstCompile]
 internal static class Solver
 {
+    static unsafe FunctionPointer<ComputeInventoryRatesDelegate>? ComputeRatesFp = null;
+
+    unsafe delegate bool ComputeInventoryRatesDelegate(
+        ref ResourceGraph graph,
+        double* inventoryRates,
+        double* converterRates
+    );
+
     public static unsafe SolverSolution ComputeInventoryRates(ResourceProcessor processor)
     {
         using var span = new TraceSpan("ResourceProcessor.ComputeInventoryRates");
@@ -33,7 +41,24 @@ internal static class Solver
                 conv = converterRates
         )
         {
-            bool res = ComputeInventoryRates(ref graph, inv, conv);
+            bool res;
+            if (BurstUtil.UseTestAllocator)
+            {
+                res = ComputeInventoryRates(
+                    ref graph,
+                    new(inv, inventoryCount),
+                    new(conv, converterCount)
+                );
+            }
+            else
+            {
+                ComputeRatesFp ??=
+                    BurstCompiler.CompileFunctionPointer<ComputeInventoryRatesDelegate>(
+                        ComputeInventoryRatesBurst
+                    );
+
+                res = ComputeRatesFp.Value.Invoke(ref graph, inv, conv);
+            }
             if (!res)
                 throw new UnsolvableProblemException();
         }
@@ -42,19 +67,29 @@ internal static class Solver
     }
 
     [BurstCompile]
+    private static unsafe bool ComputeInventoryRatesBurst(
+        ref ResourceGraph graph,
+        double* inventoryRates,
+        double* converterRates
+    )
+    {
+        return ComputeInventoryRates(
+            ref graph,
+            new(inventoryRates, graph.inventories.Count),
+            new(converterRates, graph.converters.Count)
+        );
+    }
+
     private static unsafe bool ComputeInventoryRates(
         ref ResourceGraph graph,
-        double* _inventoryRates,
-        double* _converterRates
+        MemorySpan<double> inventoryRates,
+        MemorySpan<double> converterRates
     )
     {
         var summaries = Summarize(in graph);
 
-        int converterCount = graph.converters.Count;
-        int inventoryCount = graph.inventories.Count;
-
-        MemorySpan<double> inventoryRates = new(_inventoryRates, inventoryCount);
-        MemorySpan<double> converterRates = new(_converterRates, converterCount);
+        int converterCount = converterRates.Length;
+        int inventoryCount = inventoryRates.Length;
 
         // Pre-processing: We can make final problem smaller (and thus
         // cheaper to solve) by combining together converters and
