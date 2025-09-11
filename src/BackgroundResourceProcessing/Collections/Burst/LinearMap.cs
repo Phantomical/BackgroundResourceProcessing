@@ -1,5 +1,4 @@
 using System;
-using System.CodeDom;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -225,19 +224,6 @@ internal static class LinearMapExtensions
         foreach (var (key, value) in map)
             res.AddUnchecked(key, value);
         return res;
-    }
-
-    internal static LinearMap<K, V> Create<K, V>(
-        IEnumerable<KeyValuePair<K, V>> enumerable,
-        AllocatorHandle allocator
-    )
-        where K : struct, IEquatable<K>, IComparable<K>
-        where V : struct
-    {
-        var map = new LinearMap<K, V>(enumerable.Count(), allocator);
-        foreach (var (key, value) in enumerable)
-            map.AddUnchecked(key, value);
-        return map;
     }
 
     internal static bool Equals<K, V>(in this LinearMap<K, V> a, in LinearMap<K, V> b)

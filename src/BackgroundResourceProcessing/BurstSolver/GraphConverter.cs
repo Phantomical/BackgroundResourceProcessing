@@ -4,6 +4,7 @@ using System.Linq;
 using BackgroundResourceProcessing.Collections.Burst;
 using Unity.Burst.CompilerServices;
 using Unity.Collections;
+using static BackgroundResourceProcessing.Collections.KeyValuePairExt;
 
 namespace BackgroundResourceProcessing.BurstSolver;
 
@@ -32,21 +33,20 @@ internal struct GraphConverter
         baseId = id;
         weight = GetPriorityWeight(converter.Priority);
 
-        inputs = LinearMapExtensions.Create(
-            converter.Inputs.Select(entry => new KeyValuePair<int, GraphRatio>(
-                entry.Key,
-                new(entry.Value)
-            )),
-            allocator
-        );
-        outputs = LinearMapExtensions.Create(
-            converter.Outputs.Select(entry => new KeyValuePair<int, GraphRatio>(
-                entry.Key,
-                new(entry.Value)
-            )),
-            allocator
-        );
+        inputs = CreateRatioMap(converter.Inputs, allocator);
+        outputs = CreateRatioMap(converter.Outputs, allocator);
         constraints = new(converter.Required.Count, allocator);
+    }
+
+    private static LinearMap<int, GraphRatio> CreateRatioMap(
+        Collections.SortedMap<int, ResourceRatio> map,
+        AllocatorHandle allocator
+    )
+    {
+        LinearMap<int, GraphRatio> res = new(map.Count, allocator);
+        foreach (var (resourceId, ratio) in map)
+            res.AddUnchecked(resourceId, new(ratio));
+        return res;
     }
 
     [IgnoreWarning(1370)]
