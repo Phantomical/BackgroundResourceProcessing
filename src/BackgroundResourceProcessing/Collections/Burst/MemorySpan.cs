@@ -46,8 +46,10 @@ internal readonly unsafe struct MemorySpan<T> : IEnumerable<T>
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public MemorySpan() { }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public MemorySpan(T* data, int length)
     {
         if (length < 0)
@@ -57,9 +59,11 @@ internal readonly unsafe struct MemorySpan<T> : IEnumerable<T>
         this.length = length;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public MemorySpan(RawArray<T> array)
         : this(array.Ptr, array.Length) { }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public MemorySpan(RawList<T> array)
         : this(array.Ptr, array.Count) { }
 

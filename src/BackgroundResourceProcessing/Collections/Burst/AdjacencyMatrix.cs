@@ -81,7 +81,7 @@ internal unsafe struct AdjacencyMatrix : IEnumerable<BitSpan>
         if (bspan.Words != ColumnWords)
             throw new ArgumentException("span capacity did not match matrix columns");
         if (column < 0 || column >= Cols)
-            throw new ArgumentOutOfRangeException("column index was out of range");
+            throw new ArgumentOutOfRangeException(nameof(column), "column index was out of range");
 
         int word = column / ULongBits;
         int bit = column % ULongBits;

@@ -84,10 +84,7 @@ internal struct ResourceGraph
         cspan.Dispose();
     }
 
-    private readonly bool SatisfiesConstraints(
-        Core.ResourceConverter rconv,
-        ref GraphConverter gconv
-    )
+    private static bool SatisfiesConstraints(Core.ResourceConverter rconv, ref GraphConverter gconv)
     {
         gconv.constraints.Reserve(rconv.Required.Count);
 

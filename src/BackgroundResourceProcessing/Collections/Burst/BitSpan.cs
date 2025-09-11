@@ -99,9 +99,9 @@ internal struct BitSpan(MemorySpan<ulong> bits)
 
     public bool Remove(int key) => this[key] = false;
 
-    public void Clear() => Fill(false);
+    public readonly void Clear() => bits.Clear();
 
-    public void Fill(bool value) => bits.Fill(value ? ulong.MaxValue : 0);
+    public readonly void Fill(bool value) => bits.Fill(value ? ulong.MaxValue : 0);
 
     public void AndWith(BitSpan other)
     {

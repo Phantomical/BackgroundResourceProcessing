@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using System.Text;
 using BackgroundResourceProcessing.Utils;
 using Unity.Burst.CompilerServices;
@@ -18,39 +19,47 @@ internal readonly unsafe struct Matrix
     public readonly int Rows
     {
         [return: AssumeRange(0, int.MaxValue)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => (int)rows;
     }
     public readonly int Cols
     {
         [return: AssumeRange(0, int.MaxValue)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => (int)cols;
     }
-    public readonly MemorySpan<double> Span => new(values, Rows * Cols);
+    public readonly MemorySpan<double> Span
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => new(values, Rows * Cols);
+    }
     public readonly unsafe double* Ptr => values;
 
     public readonly MemorySpan<double> this[int r]
     {
         [IgnoreWarning(1370)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
             if (r < 0 || r >= Rows)
-                throw new IndexOutOfRangeException("row index was out of range");
+                ThrowRowOutOfRangeException();
 
-            return Span.Slice(r * Cols, Cols);
+            return new MemorySpan<double>(values + r * Cols, Cols);
         }
     }
 
     public readonly ref double this[int r, int c]
     {
         [IgnoreWarning(1370)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
             if (r < 0 || r >= Rows)
-                throw new IndexOutOfRangeException("row index was out of range");
+                ThrowRowOutOfRangeException();
             if (c < 0 || c >= Cols)
-                throw new IndexOutOfRangeException("column index was out of range");
+                ThrowColOutOfRangeException();
 
-            return ref this[r][c];
+            return ref values[r * Cols + c];
         }
     }
 
@@ -72,10 +81,11 @@ internal readonly unsafe struct Matrix
         : this(new RawArray<double>(rows * cols, allocator), rows, cols) { }
 
     [IgnoreWarning(1370)]
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly unsafe double* GetRowPtr(int r)
     {
         if (r < 0 || r >= Rows)
-            throw new IndexOutOfRangeException("row index was out of range");
+            ThrowRowOutOfRangeException();
 
         return &Ptr[r * Cols];
     }
@@ -226,6 +236,14 @@ internal readonly unsafe struct Matrix
     [IgnoreWarning(1370)]
     static void ThrowArrayTooSmallException() =>
         throw new ArgumentException("provided array is too small for matrix size");
+
+    [IgnoreWarning(1370)]
+    static void ThrowRowOutOfRangeException() =>
+        throw new IndexOutOfRangeException("row index was out of range");
+
+    [IgnoreWarning(1370)]
+    static void ThrowColOutOfRangeException() =>
+        throw new IndexOutOfRangeException("column index was out of range");
 
     [IgnoreWarning(1370)]
     private static v256 mm256_abs_pd(v256 x)
