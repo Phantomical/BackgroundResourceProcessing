@@ -455,6 +455,32 @@ public sealed class BitSetTest
     }
 
     [TestMethod]
+    public void GetEnumeratorAt_DoesNotIncludeBitsBelow()
+    {
+        var bitSet = new BitSet(128, AllocatorHandle.Temp) { 0, 31, 63, 127 };
+
+        AssertUtils.SequenceEqual([31, 63, 127], bitSet.GetEnumeratorAt(31));
+        AssertUtils.SequenceEqual([63, 127], bitSet.GetEnumeratorAt(32));
+    }
+
+    [TestMethod]
+    public void GetEnumeratorAt_LowerBoundary()
+    {
+        var bitSet = new BitSet(128, AllocatorHandle.Temp) { 0, 32, 64, 96 };
+
+        AssertUtils.SequenceEqual([32, 64, 96], bitSet.GetEnumeratorAt(32));
+        AssertUtils.SequenceEqual([64, 96], bitSet.GetEnumeratorAt(64));
+    }
+
+    [TestMethod]
+    public void GetEnumeratorAt_OutOfBounds()
+    {
+        var bitSet = new BitSet(128, AllocatorHandle.Temp) { 0, 32, 64, 96 };
+
+        AssertUtils.SequenceEqual([], bitSet.GetEnumeratorAt(128));
+    }
+
+    [TestMethod]
     public void Span_Property_ReturnsCorrectSpan()
     {
         var bitSet = new BitSet(128, AllocatorHandle.Temp);

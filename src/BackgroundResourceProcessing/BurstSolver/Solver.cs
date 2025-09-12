@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
@@ -10,7 +11,6 @@ using Unity.Burst;
 using static BackgroundResourceProcessing.Collections.KeyValuePairExt;
 using InventoryState = BackgroundResourceProcessing.Solver.InventoryState;
 using SolverSolution = BackgroundResourceProcessing.Solver.SolverSolution;
-using UnsolvableProblemException = BackgroundResourceProcessing.Solver.UnsolvableProblemException;
 
 namespace BackgroundResourceProcessing.BurstSolver;
 

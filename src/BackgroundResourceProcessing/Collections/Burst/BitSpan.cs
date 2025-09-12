@@ -334,11 +334,13 @@ internal struct BitSpan(MemorySpan<ulong> bits) : IEnumerable<int>
     #region IEnumerator<T>
     public readonly Enumerator GetEnumerator() => new(this);
 
+    public readonly Enumerator GetEnumeratorAt(int index) => new(this, index);
+
     readonly IEnumerator<int> IEnumerable<int>.GetEnumerator() => GetEnumerator();
 
     readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    public struct Enumerator(BitSpan set) : IEnumerator<int>
+    public struct Enumerator(BitSpan set) : IEnumerator<int>, IEnumerable<int>
     {
         readonly MemorySpan<ulong> words = set.bits;
         int index = -1;
@@ -347,6 +349,16 @@ internal struct BitSpan(MemorySpan<ulong> bits) : IEnumerable<int>
 
         public readonly int Current => index * ULongBits + bit;
         readonly object IEnumerator.Current => Current;
+
+        public Enumerator(BitSpan set, int offset)
+            : this(set)
+        {
+            index = offset / ULongBits;
+            bit = offset % ULongBits;
+
+            if (index < words.Length)
+                word = words[index] & ~((1ul << bit) - 1);
+        }
 
         public bool MoveNext()
         {
@@ -369,7 +381,13 @@ internal struct BitSpan(MemorySpan<ulong> bits) : IEnumerable<int>
 
         void IEnumerator.Reset() => throw new NotSupportedException();
 
-        public void Dispose() { }
+        public readonly void Dispose() { }
+
+        public readonly Enumerator GetEnumerator() => this;
+
+        readonly IEnumerator<int> IEnumerable<int>.GetEnumerator() => GetEnumerator();
+
+        readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
     #endregion
 

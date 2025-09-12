@@ -75,6 +75,8 @@ internal struct BitSet : IEnumerable<int>
     #region IEnumerator<T>
     public readonly BitSpan.Enumerator GetEnumerator() => new(this);
 
+    public readonly BitSpan.Enumerator GetEnumeratorAt(int index) => new(this, index);
+
     readonly IEnumerator<int> IEnumerable<int>.GetEnumerator() => GetEnumerator();
 
     readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();

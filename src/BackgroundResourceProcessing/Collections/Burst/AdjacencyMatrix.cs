@@ -269,17 +269,12 @@ internal unsafe struct AdjacencyMatrix : IEnumerable<BitSpan>
             ulong* eqr = &equal.bits[r1 * equal.ColumnWords];
 
             var rWord = r1 / ULongBits;
-            var span = new BitSpan(new MemorySpan<ulong>(&eqr[rWord], equal.ColumnWords - rWord));
+            var span = new BitSpan(new MemorySpan<ulong>(eqr, equal.ColumnWords));
 
             var row1 = &bits[r1 * ColumnWords];
 
-            foreach (int r2 in span)
+            foreach (int r2 in span.GetEnumeratorAt(r1 + 1))
             {
-                if (r2 <= r1)
-                    continue;
-
-                BurstUtil.Assume(r2 < equal.Cols);
-
                 var row2 = &bits[r2 * ColumnWords];
 
                 for (int i = 0; i < ColumnWords; ++i)
