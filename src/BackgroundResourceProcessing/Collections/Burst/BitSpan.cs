@@ -9,7 +9,7 @@ using static Unity.Burst.Intrinsics.X86.Bmi2;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
-[DebuggerDisplay("Capacity = {Capacity}")]
+[DebuggerDisplay("Count = {Count}/{Capacity}")]
 [DebuggerTypeProxy(typeof(DebugView))]
 internal struct BitSpan(MemorySpan<ulong> bits) : IEnumerable<int>
 {
@@ -28,6 +28,16 @@ internal struct BitSpan(MemorySpan<ulong> bits) : IEnumerable<int>
         [return: AssumeRange(0, int.MaxValue)]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => bits.Length;
+    }
+    public readonly int Count
+    {
+        get
+        {
+            int count = 0;
+            foreach (ulong word in bits)
+                count += MathUtil.PopCount(word);
+            return count;
+        }
     }
 
     public readonly MemorySpan<ulong> Span => bits;
@@ -146,6 +156,28 @@ internal struct BitSpan(MemorySpan<ulong> bits) : IEnumerable<int>
     {
         fixed (ulong* words = other.Bits)
             XorWith(new BitSpan(words, other.Bits.Length));
+    }
+
+    public unsafe void Assign(BitSliceX other)
+    {
+        fixed (ulong* words = other.Bits)
+            Assign(new BitSpan(words, other.Bits.Length));
+    }
+
+    public unsafe void Assign(ulong[] other)
+    {
+        var length = Math.Min(bits.Length, other.Length);
+
+        for (int i = 0; i < length; ++i)
+            bits[i] = other[i];
+    }
+
+    public void Assign(BitSpan other)
+    {
+        var length = Math.Min(bits.Length, other.bits.Length);
+
+        for (int i = 0; i < length; ++i)
+            bits[i] = other.bits[i];
     }
 
     [IgnoreWarning(1370)]

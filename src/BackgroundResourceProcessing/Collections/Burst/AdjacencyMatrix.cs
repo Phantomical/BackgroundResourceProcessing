@@ -258,13 +258,13 @@ internal unsafe struct AdjacencyMatrix : IEnumerable<BitSpan>
 
         Hint.Assume(equal.bits + equal.cols * equal.rows < bits || bits + cols * rows < equal.bits);
 
-        ulong* mergedData = stackalloc ulong[equal.ColumnWords];
-        BitSpan merged = new(mergedData, equal.ColumnWords);
+        // ulong* mergedData = stackalloc ulong[equal.ColumnWords];
+        // BitSpan merged = new(mergedData, equal.ColumnWords);
 
         for (int r1 = 0; r1 < Rows; ++r1)
         {
-            if (merged[r1])
-                continue;
+            // if (merged[r1])
+            //     continue;
 
             ulong* eqr = &equal.bits[r1 * equal.ColumnWords];
 
@@ -288,7 +288,7 @@ internal unsafe struct AdjacencyMatrix : IEnumerable<BitSpan>
                         goto NOT_EQUAL;
                 }
 
-                merged[r2] = true;
+                // merged[r2] = true;
                 continue;
 
                 NOT_EQUAL:

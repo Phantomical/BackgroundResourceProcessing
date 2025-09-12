@@ -73,7 +73,8 @@ internal class ResourceProcessor
         {
             ResourceInventory inventory = new();
             inventory.Load(iNode);
-            inventoryIds.Add(inventory.Id, inventories.Count);
+            if (!inventoryIds.TryAddExt(inventory.Id, inventories.Count))
+                throw new Exception($"An inventory with id {inventory.Id} has already been added");
             inventories.Add(inventory);
         }
 

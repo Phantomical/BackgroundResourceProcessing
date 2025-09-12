@@ -62,8 +62,8 @@ internal struct ResourceGraph
                 continue;
 
             converters.Add(i, conv);
-            inputs[i].OrWith(converter.Pull.SubSlice(nInventories));
-            outputs[i].OrWith(converter.Push.SubSlice(nInventories));
+            inputs[i].Assign(converter.Pull.Bits);
+            outputs[i].Assign(converter.Push.Bits);
 
             if (!conv.constraints.IsEmpty)
             {
@@ -202,8 +202,8 @@ internal struct ResourceGraph
         equal.FillUpperDiagonal();
 
         inputs.RemoveUnequalRows(equal);
-        outputs.RemoveUnequalRows(outputs);
-        constraints.RemoveUnequalRows(constraints);
+        outputs.RemoveUnequalRows(equal);
+        constraints.RemoveUnequalRows(equal);
 
         for (int converterId = 0; converterId < equal.Rows; converterId++)
         {

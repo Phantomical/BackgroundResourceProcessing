@@ -5,15 +5,16 @@ using System.Diagnostics;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
-[DebuggerDisplay("Capacity = {Capacity}")]
+[DebuggerDisplay("Count = {Count}/{Capacity}")]
 [DebuggerTypeProxy(typeof(BitSpan.DebugView))]
 internal struct BitSet : IEnumerable<int>
 {
     public const int ULongBits = 64;
 
-    RawArray<ulong> bits;
+    readonly RawArray<ulong> bits;
 
     public readonly int Capacity => bits.Count * 64;
+    public readonly int Count => Span.Count;
     public readonly BitSpan Span => new(bits.Span);
     public readonly AllocatorHandle Allocator => bits.Allocator;
 

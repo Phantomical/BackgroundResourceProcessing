@@ -144,6 +144,8 @@ public class DynamicBitSet : IEnumerable<int>
         return new BitSliceX(new Span<ulong>(words).Slice(0, length));
     }
 
+    internal BitSliceX AsSlice() => new(new Span<ulong>(words));
+
     public DynamicBitSet Clone()
     {
         return new((ulong[])words.Clone());
