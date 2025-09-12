@@ -11,7 +11,7 @@ namespace BackgroundResourceProcessing.Collections.Burst;
 
 [DebuggerDisplay("Capacity = {Capacity}")]
 [DebuggerTypeProxy(typeof(DebugView))]
-internal struct BitSpan(MemorySpan<ulong> bits)
+internal struct BitSpan(MemorySpan<ulong> bits) : IEnumerable<int>
 {
     const int ULongBits = 64;
 
@@ -302,32 +302,36 @@ internal struct BitSpan(MemorySpan<ulong> bits)
     #region IEnumerator<T>
     public readonly Enumerator GetEnumerator() => new(this);
 
+    readonly IEnumerator<int> IEnumerable<int>.GetEnumerator() => GetEnumerator();
+
+    readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
     public struct Enumerator(BitSpan set) : IEnumerator<int>
     {
-        MemorySpan<ulong>.Enumerator words = set.bits.GetEnumerator();
-        BitEnumerator bits = default;
-        int wordIndex = -1;
+        readonly MemorySpan<ulong> words = set.bits;
+        int index = -1;
+        int bit = -1;
+        ulong word = 0;
 
-        public readonly int Current => bits.Current;
+        public readonly int Current => index * ULongBits + bit;
         readonly object IEnumerator.Current => Current;
 
         public bool MoveNext()
         {
-            if (bits.MoveNext())
-                return true;
-
             while (true)
             {
-                if (!words.MoveNext())
-                    return false;
-                wordIndex++;
-                ulong word = words.Current;
                 if (word != 0)
                 {
-                    int index = wordIndex * ULongBits;
-                    bits = new BitEnumerator(index, word);
-                    return bits.MoveNext();
+                    bit = MathUtil.TrailingZeroCount(word);
+                    word ^= 1ul << bit;
+                    return true;
                 }
+
+                index += 1;
+                if (index >= words.Length)
+                    return false;
+
+                word = words[index];
             }
         }
 
@@ -337,8 +341,11 @@ internal struct BitSpan(MemorySpan<ulong> bits)
     }
     #endregion
 
-    private sealed class DebugView(BitSpan span)
+    internal sealed class DebugView(BitSpan span)
     {
+        public DebugView(BitSet set)
+            : this(set.Span) { }
+
         [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
         public int[] Items { get; } = [.. span];
     }

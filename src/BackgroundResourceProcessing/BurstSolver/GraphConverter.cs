@@ -96,7 +96,7 @@ internal struct GraphConverter
         a.Ratio += b.Ratio;
     }
 
-    public readonly bool CanMergeWith(GraphConverter other)
+    public readonly bool CanMergeWith(in GraphConverter other)
     {
         if (!inputs.KeysEqual(other.inputs))
             return false;

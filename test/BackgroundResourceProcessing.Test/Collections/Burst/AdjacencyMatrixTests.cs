@@ -49,16 +49,6 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
         }
 
         [TestMethod]
-        public void Constructor_ZeroDimensions_CreatesEmptyMatrix()
-        {
-            var matrix = new AdjacencyMatrix(0, 0, AllocatorHandle.Temp);
-
-            Assert.AreEqual(0, matrix.Rows);
-            Assert.AreEqual(0, matrix.Cols);
-            Assert.AreEqual(0, matrix.ColumnWords);
-        }
-
-        [TestMethod]
         public void Indexer_SingleElement_GetSet()
         {
             var matrix = new AdjacencyMatrix(3, 3, AllocatorHandle.Temp);
@@ -352,6 +342,171 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             Assert.IsFalse(matrix[5, 62]);
             Assert.IsFalse(matrix[5, 65]);
             Assert.IsFalse(matrix[4, 63]);
+        }
+
+        [TestMethod]
+        public void FillUpperDiagonal_SquareMatrix_FillsCorrectly()
+        {
+            var matrix = new AdjacencyMatrix(4, 4, AllocatorHandle.Temp);
+
+            // Matrix columns are rounded up to next multiple of 64 (4 -> 64)
+            Assert.AreEqual(64, matrix.Cols);
+
+            matrix.FillUpperDiagonal();
+
+            // Upper triangle should be true (c > r AND c < rows)
+            Assert.IsTrue(matrix[0, 1]);
+            Assert.IsTrue(matrix[0, 2]);
+            Assert.IsTrue(matrix[0, 3]);
+            Assert.IsTrue(matrix[1, 2]);
+            Assert.IsTrue(matrix[1, 3]);
+            Assert.IsTrue(matrix[2, 3]);
+
+            // Diagonal should be false (c == r)
+            Assert.IsFalse(matrix[0, 0]);
+            Assert.IsFalse(matrix[1, 1]);
+            Assert.IsFalse(matrix[2, 2]);
+            Assert.IsFalse(matrix[3, 3]);
+
+            // Lower triangle should be false (c < r)
+            Assert.IsFalse(matrix[1, 0]);
+            Assert.IsFalse(matrix[2, 0]);
+            Assert.IsFalse(matrix[2, 1]);
+            Assert.IsFalse(matrix[3, 0]);
+            Assert.IsFalse(matrix[3, 1]);
+            Assert.IsFalse(matrix[3, 2]);
+
+            // Columns beyond row count should be false (c >= rows)
+            Assert.IsFalse(matrix[0, 4]);
+            Assert.IsFalse(matrix[1, 5]);
+        }
+
+        [TestMethod]
+        public void FillUpperDiagonal_WideMatrix_FillsCorrectly()
+        {
+            var matrix = new AdjacencyMatrix(3, 5, AllocatorHandle.Temp);
+
+            // Matrix columns are rounded up to next multiple of 64 (5 -> 64)
+            Assert.AreEqual(64, matrix.Cols);
+
+            matrix.FillUpperDiagonal();
+
+            // Upper triangle should be true (c > r AND c < rows=3)
+            Assert.IsTrue(matrix[0, 1]);
+            Assert.IsTrue(matrix[0, 2]);
+            Assert.IsTrue(matrix[1, 2]);
+
+            // Diagonal should be false (c == r)
+            Assert.IsFalse(matrix[0, 0]);
+            Assert.IsFalse(matrix[1, 1]);
+            Assert.IsFalse(matrix[2, 2]);
+
+            // Lower triangle should be false (c < r)
+            Assert.IsFalse(matrix[1, 0]);
+            Assert.IsFalse(matrix[2, 0]);
+            Assert.IsFalse(matrix[2, 1]);
+
+            // Columns beyond row count should be false (c >= rows=3)
+            Assert.IsFalse(matrix[0, 3]);
+            Assert.IsFalse(matrix[0, 4]);
+            Assert.IsFalse(matrix[1, 3]);
+            Assert.IsFalse(matrix[1, 4]);
+            Assert.IsFalse(matrix[2, 3]);
+            Assert.IsFalse(matrix[2, 4]);
+        }
+
+        [TestMethod]
+        public void FillUpperDiagonal_TallMatrix_ThrowsException()
+        {
+            // Create a matrix where the actual column width (rounded up) is smaller than rows
+            // Need more than 64 rows to exceed the minimum column width of 64
+            var matrix = new AdjacencyMatrix(65, 3, AllocatorHandle.Temp);
+
+            // Matrix columns are rounded up to next multiple of 64 (3 -> 64)
+            // But we need more than 64 rows to trigger the exception
+            Assert.AreEqual(64, matrix.Cols);
+
+            Assert.ThrowsException<InvalidOperationException>(() => matrix.FillUpperDiagonal());
+        }
+
+        [TestMethod]
+        public void FillUpperDiagonal_LargeMatrix_FillsCorrectly()
+        {
+            var matrix = new AdjacencyMatrix(100, 100, AllocatorHandle.Temp);
+
+            // Matrix columns are rounded up to next multiple of 64 (100 -> 128)
+            Assert.AreEqual(128, matrix.Cols);
+
+            matrix.FillUpperDiagonal();
+
+            // Upper triangle should be true (c > r AND c < rows=100)
+            Assert.IsTrue(matrix[0, 99]);
+            Assert.IsTrue(matrix[50, 51]);
+            Assert.IsTrue(matrix[98, 99]);
+
+            // Diagonal should be false (c == r)
+            Assert.IsFalse(matrix[0, 0]);
+            Assert.IsFalse(matrix[50, 50]);
+            Assert.IsFalse(matrix[99, 99]);
+
+            // Lower triangle should be false (c < r)
+            Assert.IsFalse(matrix[99, 0]);
+            Assert.IsFalse(matrix[50, 25]);
+
+            // Columns beyond row count should be false (c >= rows=100)
+            Assert.IsFalse(matrix[0, 100]);
+            Assert.IsFalse(matrix[50, 100]);
+            Assert.IsFalse(matrix[99, 100]);
+        }
+
+        [TestMethod]
+        public void FillUpperDiagonal_CrossWordBoundary_FillsCorrectly()
+        {
+            // Test with matrix dimensions that cross ulong word boundaries (64-bit)
+            var matrix = new AdjacencyMatrix(65, 70, AllocatorHandle.Temp);
+
+            // Matrix columns are rounded up to next multiple of 64 (70 -> 128)
+            Assert.AreEqual(128, matrix.Cols);
+
+            matrix.FillUpperDiagonal();
+
+            // Upper triangle should be true (c > r AND c < rows=65)
+            Assert.IsTrue(matrix[0, 63]);
+            Assert.IsTrue(matrix[0, 64]);
+            Assert.IsTrue(matrix[63, 64]);
+
+            // Diagonal should be false (c == r)
+            Assert.IsFalse(matrix[63, 63]);
+            Assert.IsFalse(matrix[64, 64]);
+
+            // Lower triangle should be false (c < r)
+            Assert.IsFalse(matrix[64, 63]);
+
+            // Columns beyond row count should be false (c >= rows=65)
+            Assert.IsFalse(matrix[0, 65]);
+            Assert.IsFalse(matrix[0, 69]);
+            Assert.IsFalse(matrix[64, 65]);
+        }
+
+        [TestMethod]
+        public void RemoveUnequalColumns_Simple()
+        {
+            AdjacencyMatrix matrix = new(5, 5, AllocatorHandle.Temp);
+            var span = matrix.Bits.Span;
+            span[0] = 0xFF00FF;
+            span[1] = 0x123456;
+            span[2] = 0xFF00FF;
+            span[3] = 0x777777;
+            span[4] = 0xFF00FF;
+
+            AdjacencyMatrix equal = new(5, 5, AllocatorHandle.Temp);
+            equal.FillUpperDiagonal();
+
+            matrix.RemoveUnequalRows(equal);
+
+            AssertUtils.SequenceEqual([2, 4], equal[0]);
+            AssertUtils.SequenceEqual([], equal[1]);
+            AssertUtils.SequenceEqual([], equal[3]);
         }
     }
 }

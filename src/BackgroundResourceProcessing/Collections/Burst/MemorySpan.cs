@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.BurstSolver;
+using KSPAchievements;
 using Unity.Burst;
 using Unity.Burst.CompilerServices;
 using Unity.Collections;
@@ -73,6 +74,9 @@ internal readonly unsafe struct MemorySpan<T> : IEnumerable<T>
     public static implicit operator MemorySpan<T>(RawList<T> list) => new(list);
 
     public Span<T> AsSystemSpan() => new(data, length);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly ref T GetUnchecked(int key) => ref data[key];
 
     public void Clear()
     {

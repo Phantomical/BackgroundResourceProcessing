@@ -80,4 +80,14 @@ internal static class BurstUtil
         item = default;
         return value;
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void Assume(bool cond)
+    {
+#if DEBUG
+        if (!cond)
+            throw new AssertionError("assume condition was false");
+#endif
+        Hint.Assume(cond);
+    }
 }

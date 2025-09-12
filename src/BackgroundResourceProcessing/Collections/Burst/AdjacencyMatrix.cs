@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.BurstSolver;
 using BackgroundResourceProcessing.Utils;
+using Unity.Burst;
 using Unity.Burst.CompilerServices;
 using Unity.Burst.Intrinsics;
 using static Unity.Burst.Intrinsics.X86.Avx;
@@ -13,6 +14,7 @@ using static Unity.Burst.Intrinsics.X86.Sse2;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
+[BurstCompile]
 internal unsafe struct AdjacencyMatrix : IEnumerable<BitSpan>
 {
     const int ULongBits = 64;
@@ -202,6 +204,96 @@ internal unsafe struct AdjacencyMatrix : IEnumerable<BitSpan>
                         span[c] &= row[c] ^ invmask;
                 }
                 break;
+        }
+    }
+
+    /// <summary>
+    /// Set all the indices with r > c to 1, making sure to unset any with r >= columns.
+    /// </summary>
+    [IgnoreWarning(1370)]
+    public unsafe void FillUpperDiagonal()
+    {
+        if (Cols < Rows)
+            throw new InvalidOperationException(
+                "cannot fill the upper diagonal on a matrix that is taller than it is wide"
+            );
+
+        int rowWords = (Rows + (ULongBits - 1)) / ULongBits;
+        int lastWord = Rows / ULongBits;
+        int lastBit = Rows % ULongBits;
+        ulong himask = (1ul << lastBit) - 1;
+
+        for (int r = 0; r < Rows; ++r)
+        {
+            ulong* row = &bits[r * ColumnWords];
+            int word = r / ULongBits;
+            int bit = r % ULongBits;
+            ulong lomask = ulong.MaxValue << bit << 1;
+
+            row[word] = lomask;
+
+            for (int i = word + 1; i < rowWords; ++i)
+                row[i] = ulong.MaxValue;
+
+            row[lastWord] &= himask;
+        }
+    }
+
+    /// <summary>
+    /// Unset any bits in <paramref name="equal"/> whose for which row1 != row2 in the
+    /// current matrix.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// This method only partially removes unequal rows:
+    /// - Bits below the diagonal (i.e. r2 &lt;= r1) will not be modified.
+    /// - Rows that are equal to another one with a smaller index are left in an
+    ///   indeterminate state.
+    /// </remarks>
+    [IgnoreWarning(1370)]
+    public readonly unsafe void RemoveUnequalRows(AdjacencyMatrix equal)
+    {
+        if (equal.Cols < Rows || equal.Rows < Rows)
+            throw new ArgumentException("equal matrix was too small", nameof(equal));
+
+        Hint.Assume(equal.bits + equal.cols * equal.rows < bits || bits + cols * rows < equal.bits);
+
+        ulong* mergedData = stackalloc ulong[equal.ColumnWords];
+        BitSpan merged = new(mergedData, equal.ColumnWords);
+
+        for (int r1 = 0; r1 < Rows; ++r1)
+        {
+            if (merged[r1])
+                continue;
+
+            ulong* eqr = &equal.bits[r1 * equal.ColumnWords];
+
+            var rWord = r1 / ULongBits;
+            var span = new BitSpan(new MemorySpan<ulong>(&eqr[rWord], equal.ColumnWords - rWord));
+
+            var row1 = &bits[r1 * ColumnWords];
+
+            foreach (int r2 in span)
+            {
+                if (r2 <= r1)
+                    continue;
+
+                BurstUtil.Assume(r2 < equal.Cols);
+
+                var row2 = &bits[r2 * ColumnWords];
+
+                for (int i = 0; i < ColumnWords; ++i)
+                {
+                    if (row1[i] != row2[i])
+                        goto NOT_EQUAL;
+                }
+
+                merged[r2] = true;
+                continue;
+
+                NOT_EQUAL:
+                equal[r1, r2] = false;
+            }
         }
     }
 

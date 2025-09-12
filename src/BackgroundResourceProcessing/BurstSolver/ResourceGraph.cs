@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
+using Unity.Burst.CompilerServices;
 using static BackgroundResourceProcessing.Collections.KeyValuePairExt;
 
 namespace BackgroundResourceProcessing.BurstSolver;
@@ -129,7 +130,7 @@ internal struct ResourceGraph
         {
             if (!inventories.ContainsKey(inventoryId))
                 continue;
-            ref var inventory = ref inventories[inventoryId];
+            ref var inventory = ref inventories.GetUnchecked(inventoryId);
 
             // This ensures that the only bits are set are those that:
             // - Are in the range (inventoryId, inventoryCount), and,
@@ -146,7 +147,7 @@ internal struct ResourceGraph
 
             foreach (var otherId in equal)
             {
-                var otherInv = inventories[otherId];
+                var otherInv = inventories.GetUnchecked(otherId);
                 if (inventory.resourceId != otherInv.resourceId)
                 {
                     equal[otherId] = false;
@@ -197,11 +198,49 @@ internal struct ResourceGraph
     /// </remarks>
     public unsafe void MergeEquivalentConverters()
     {
+        AdjacencyMatrix equal = new(inputs.Rows, inputs.Rows, inventoryIds.Allocator);
+        equal.FillUpperDiagonal();
+
+        inputs.RemoveUnequalRows(equal);
+        outputs.RemoveUnequalRows(outputs);
+        constraints.RemoveUnequalRows(constraints);
+
+        for (int converterId = 0; converterId < equal.Rows; converterId++)
+        {
+            if (!converters.ContainsKey(converterId))
+                continue;
+            ref var converter = ref converters.GetUnchecked(converterId);
+            var row = equal[converterId];
+
+            foreach (var otherId in row)
+            {
+                if (!converters.ContainsKey(otherId))
+                    continue;
+                ref var other = ref converters.GetUnchecked(otherId);
+
+                if (!converter.CanMergeWith(in other))
+                    continue;
+
+                inputs[otherId].Clear();
+                outputs[otherId].Clear();
+                constraints[otherId].Clear();
+
+                converter.Merge(other);
+                converterIds[otherId] = converterId;
+                converters.Remove(otherId);
+            }
+        }
+
+        /*
         foreach (var converterId in converters.Keys)
         {
             if (!converters.ContainsKey(converterId))
                 continue;
-            ref var converter = ref converters[converterId];
+            ref var converter = ref converters.GetUnchecked(converterId);
+
+            BurstUtil.Assume(converterId < inputs.Rows);
+            BurstUtil.Assume(converterId < outputs.Rows);
+            BurstUtil.Assume(converterId < constraints.Rows);
 
             var inputEdges = inputs[converterId];
             var outputEdges = outputs[converterId];
@@ -213,6 +252,10 @@ internal struct ResourceGraph
 
             foreach (var (otherId, otherConverter) in converters.GetEnumeratorAt(converterId + 1))
             {
+                BurstUtil.Assume(otherId < inputs.Rows);
+                BurstUtil.Assume(otherId < outputs.Rows);
+                BurstUtil.Assume(otherId < constraints.Rows);
+
                 var otherInputs = inputs[otherId];
                 var otherOutputs = outputs[otherId];
                 var otherConstraints = constraints[otherId];
@@ -238,9 +281,10 @@ internal struct ResourceGraph
                 converterIds[otherId] = converterId;
                 converters.Remove(otherId);
 
-                LOOP_END:
+            LOOP_END:
                 ;
             }
         }
+        */
     }
 }

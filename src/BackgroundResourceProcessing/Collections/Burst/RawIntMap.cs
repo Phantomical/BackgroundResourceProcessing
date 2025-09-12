@@ -59,6 +59,17 @@ public struct RawIntMap<T> : IEnumerable<KeyValuePair<int, T>>
         return entry.Present;
     }
 
+    public readonly unsafe ref T GetUnchecked(int key)
+    {
+#if DEBUG
+        Debug.Assert(key >= 0);
+        Debug.Assert(key < Capacity);
+        Debug.Assert(items[key].Present);
+#endif
+
+        return ref items.Ptr[key].Value;
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly bool ContainsKey(int key)
     {
@@ -174,7 +185,7 @@ public struct RawIntMap<T> : IEnumerable<KeyValuePair<int, T>>
                 if (index >= span.Length)
                     return false;
 
-                if (span[index].Present)
+                if (span.GetUnchecked(index).Present)
                     break;
             }
 

@@ -1,10 +1,12 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Unity.Collections;
+using System.Diagnostics;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
+[DebuggerDisplay("Capacity = {Capacity}")]
+[DebuggerTypeProxy(typeof(BitSpan.DebugView))]
 internal struct BitSet : IEnumerable<int>
 {
     public const int ULongBits = 64;
@@ -70,45 +72,10 @@ internal struct BitSet : IEnumerable<int>
     public readonly BitSet Clone() => new(Span.Span, Allocator);
 
     #region IEnumerator<T>
-    public readonly Enumerator GetEnumerator() => new(this);
+    public readonly BitSpan.Enumerator GetEnumerator() => new(this);
 
     readonly IEnumerator<int> IEnumerable<int>.GetEnumerator() => GetEnumerator();
 
     readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-    public struct Enumerator(BitSet set) : IEnumerator<int>
-    {
-        RawArray<ulong>.Enumerator words = set.bits.GetEnumerator();
-        BitEnumerator bits = default;
-        int wordIndex = -1;
-
-        public readonly int Current => bits.Current;
-        readonly object IEnumerator.Current => Current;
-
-        public bool MoveNext()
-        {
-            if (bits.MoveNext())
-                return true;
-
-            while (true)
-            {
-                if (!words.MoveNext())
-                    return false;
-                wordIndex++;
-                ulong word = words.Current;
-                if (word != 0)
-                {
-                    int index = wordIndex * ULongBits;
-                    bits = new BitEnumerator(index, word);
-                    return bits.MoveNext();
-                }
-            }
-        }
-
-        void IEnumerator.Reset() => throw new NotSupportedException();
-
-        public void Dispose() { }
-    }
-
     #endregion
 }

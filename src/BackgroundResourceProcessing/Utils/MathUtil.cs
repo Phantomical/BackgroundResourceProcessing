@@ -1,11 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using BackgroundResourceProcessing.BurstSolver;
 using BackgroundResourceProcessing.Collections;
 using Unity.Burst;
-using Unity.Burst.Intrinsics;
-using Unity.Collections;
 using UnityEngine;
 using static Unity.Burst.Intrinsics.X86.Bmi1;
 using static Unity.Burst.Intrinsics.X86.Fma;
@@ -76,6 +73,7 @@ internal static class MathUtil
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [BurstCompile]
     internal static int TrailingZeroCount(ulong v)
     {
         if (IsBmi1Supported)
