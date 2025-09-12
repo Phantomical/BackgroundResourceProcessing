@@ -95,6 +95,7 @@ internal static class Solver
         AllocatorHandle allocator
     )
     {
+        Error err;
         var summaries = Summarize(in graph, allocator);
 
         int converterCount = converterRates.Length;
@@ -120,7 +121,10 @@ internal static class Solver
         var rates = problem.CreateVariables(graph.converters.Count);
 
         foreach (var rate in rates)
-            problem.AddConstraint(rate <= 1.0);
+        {
+            if (!problem.AddConstraint(rate <= 1.0).Match(out err))
+                return err;
+        }
 
         // The equation for the actual rates of the inventory
         RawIntMap<LinearEquation> iRates = new(inventoryCount, allocator);
@@ -165,7 +169,8 @@ internal static class Solver
                 {
                     // The converter has no inventories attached to this
                     // input. This means its rate must be 0.
-                    problem.AddConstraint(alpha == 0);
+                    if (!problem.AddConstraint(alpha == 0).Match(out err))
+                        return err;
                 }
                 else if (connected.Count == 1)
                 {
@@ -207,7 +212,8 @@ internal static class Solver
                     }
 
                     // sum(rateVars) == rate
-                    problem.AddConstraint(rateEq == 0.0);
+                    if (!problem.AddConstraint(rateEq == 0.0).Match(out err))
+                        return err;
                 }
             }
 
@@ -231,7 +237,8 @@ internal static class Solver
                         // The converter has no inventories attached to this
                         // output. This means its rate must be 0 unless
                         // dumpExcess is true.
-                        problem.AddConstraint(rate == 0);
+                        if (!problem.AddConstraint(rate == 0).Match(out err))
+                            return err;
                     }
                 }
                 else if (connected.Count == 1)
@@ -286,7 +293,8 @@ internal static class Solver
                     }
 
                     // sum(rateVars) == rate
-                    problem.AddConstraint(rateEq == 0.0);
+                    if (!problem.AddConstraint(rateEq == 0.0).Match(out err))
+                        return err;
                 }
             }
         }
@@ -346,10 +354,12 @@ internal static class Solver
                 switch (constraint)
                 {
                     case Constraint.AT_LEAST:
-                        problem.AddOrConstraint(alpha <= 0.0, total >= 0.0);
+                        if (!problem.AddOrConstraint(alpha <= 0.0, total >= 0.0).Match(out err))
+                            return err;
                         break;
                     case Constraint.AT_MOST:
-                        problem.AddOrConstraint(alpha <= 0.0, total <= 0.0);
+                        if (!problem.AddOrConstraint(alpha <= 0.0, total <= 0.0).Match(out err))
+                            return err;
                         break;
                 }
             }
@@ -381,7 +391,8 @@ internal static class Solver
                 // This only applies if none of the outputs involved have
                 // dumpExcess set to true, as in that case the rate can
                 // actually vary.
-                problem.AddConstraint(iRate == 0.0);
+                if (!problem.AddConstraint(iRate == 0.0).Match(out err))
+                    return err;
                 continue;
             }
 
@@ -390,17 +401,23 @@ internal static class Solver
             // However, if certain converter outputs have dumpExcess == true
             // then that is not included in the constraint.
             if ((inventory.state & InventoryState.Full) == InventoryState.Full)
-                problem.AddConstraint((dRate ?? iRate) <= 0.0);
+            {
+                if (!problem.AddConstraint((dRate ?? iRate) <= 0.0).Match(out err))
+                    return err;
+            }
 
             // Empty inventories are constrained to have their rate >= 0.
             //
             // However, if certain converter outputs have dumpExcess == true
             // then that is not included in the constraint.
             if ((inventory.state & InventoryState.Empty) == InventoryState.Empty)
-                problem.AddConstraint(iRate >= 0.0);
+            {
+                if (!problem.AddConstraint(iRate >= 0.0).Match(out err))
+                    return err;
+            }
         }
 
-        if (!problem.Maximize(func).Match(out var soln, out var err))
+        if (!problem.Maximize(func).Match(out var soln, out err))
             return err;
 
         foreach (var (invId, iRate) in iRates)

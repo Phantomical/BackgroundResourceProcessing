@@ -61,26 +61,10 @@ internal struct LinearConstraint : IComparable<LinearConstraint>
             );
     }
 
-    public readonly bool KnownInconsistent
-    {
-        get
-        {
-            if (variables.Count == 0)
-            {
-                switch (relation)
-                {
-                    case Relation.Equal:
-                        return !(0 == constant);
-                    case Relation.LEqual:
-                        return !(0 <= constant);
-                    case Relation.GEqual:
-                        return !(0 >= constant);
-                }
-            }
+    public readonly unsafe ConstraintState GetState() =>
+        LinearPresolve.InferState(variables.Span, constant, relation);
 
-            return false;
-        }
-    }
+    public readonly bool KnownInconsistent => GetState() == ConstraintState.UNSOLVABLE;
 
     public readonly LinearConstraint Clone()
     {

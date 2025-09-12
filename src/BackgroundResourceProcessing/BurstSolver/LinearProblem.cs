@@ -8,7 +8,6 @@ using Unity.Burst.CompilerServices;
 using Unity.Collections;
 using static BackgroundResourceProcessing.BurstSolver.LinearPresolve;
 using static BackgroundResourceProcessing.Collections.KeyValuePairExt;
-using ConstraintState = BackgroundResourceProcessing.Solver.LinearPresolve.ConstraintState;
 
 namespace BackgroundResourceProcessing.BurstSolver;
 
@@ -65,8 +64,19 @@ internal struct LinearProblem(AllocatorHandle allocator)
     /// Note that this method takes ownership of the constraint. If you don't
     /// want that then make sure to clone the constraint first.
     /// </remarks>
-    public void AddConstraint(LinearConstraint constraint)
+    [MustUseReturnValue]
+    public Result AddConstraint(LinearConstraint constraint)
     {
+        switch (constraint.GetState())
+        {
+            case ConstraintState.VACUOUS:
+                return Result.Ok;
+            case ConstraintState.UNSOLVABLE:
+                return BurstError.Unsolvable();
+            case ConstraintState.VALID:
+                break;
+        }
+
         switch (constraint.relation)
         {
             case Relation.Equal:
@@ -78,6 +88,8 @@ internal struct LinearProblem(AllocatorHandle allocator)
                 constraints.Add(StandardizeConstraint(constraint));
                 break;
         }
+
+        return Result.Ok;
     }
 
     /// <summary>
@@ -88,12 +100,22 @@ internal struct LinearProblem(AllocatorHandle allocator)
     /// Note that this method takes ownership of the constraint. If you don't
     /// want that then make sure to clone the constraint first.
     /// </remarks>
-    public void AddConstraint(SimpleConstraint constraint)
+    [MustUseReturnValue]
+    public Result AddConstraint(SimpleConstraint constraint)
     {
+        switch (constraint.GetState())
+        {
+            case ConstraintState.VACUOUS:
+                return Result.Ok;
+            case ConstraintState.UNSOLVABLE:
+                return BurstError.Unsolvable();
+            case ConstraintState.VALID:
+                break;
+        }
+
         switch (constraint.relation)
         {
             case Relation.Equal:
-
                 equalities.Add(
                     new SolverConstraint
                     {
@@ -108,6 +130,8 @@ internal struct LinearProblem(AllocatorHandle allocator)
                 simple.Add(StandardizeConstraint(constraint));
                 break;
         }
+
+        return Result.Ok;
     }
 
     [IgnoreWarning(1370)]
@@ -158,21 +182,18 @@ internal struct LinearProblem(AllocatorHandle allocator)
     /// </summary>
     /// <param name="a"></param>
     /// <param name="b"></param>
-    public void AddOrConstraint(LinearConstraint a, LinearConstraint b)
+    [MustUseReturnValue]
+    public Result AddOrConstraint(LinearConstraint a, LinearConstraint b)
     {
-        var ai = a.KnownInconsistent;
-        var bi = b.KnownInconsistent;
+        var acs = a.GetState();
+        var bcs = b.GetState();
 
-        if (bi)
-        {
-            AddConstraint(a);
-            return;
-        }
-        if (ai)
-        {
-            AddConstraint(b);
-            return;
-        }
+        if (acs == ConstraintState.VACUOUS || bcs == ConstraintState.VACUOUS)
+            return Result.Ok;
+        if (acs == ConstraintState.UNSOLVABLE)
+            return AddConstraint(b);
+        if (bcs == ConstraintState.UNSOLVABLE)
+            return AddConstraint(a);
 
         var z = CreateVariable();
         var lhs = StandardizeConstraint(a);
@@ -186,17 +207,24 @@ internal struct LinearProblem(AllocatorHandle allocator)
                 rhs = rhs,
             }
         );
+
+        return Result.Ok;
     }
 
-    public void AddOrConstraint(SimpleConstraint a, LinearConstraint b)
+    [MustUseReturnValue]
+    public Result AddOrConstraint(SimpleConstraint a, LinearConstraint b)
     {
-        if (b.KnownInconsistent)
-        {
-            AddConstraint(a);
-            return;
-        }
+        var acs = a.GetState();
+        var bcs = b.GetState();
 
-        AddOrConstraint(new LinearConstraint(a, Allocator), b);
+        if (acs == ConstraintState.VACUOUS || bcs == ConstraintState.VACUOUS)
+            return Result.Ok;
+        if (acs == ConstraintState.UNSOLVABLE)
+            return AddConstraint(b);
+        if (bcs == ConstraintState.UNSOLVABLE)
+            return AddConstraint(a);
+
+        return AddOrConstraint(new LinearConstraint(a, Allocator), b);
     }
     #endregion
 
@@ -606,6 +634,8 @@ internal struct LinearProblem(AllocatorHandle allocator)
                 }
             }
 
+            TraceChoiceVariables(entry.choices);
+
             BuildVarMap(ref varMap, entry.choices, binaryIndices);
             var tableau = BuildSimplexTableau(func, entry.choices, varMap);
             var selected = new BitSet(tableau.Cols, Allocator);
@@ -717,6 +747,15 @@ internal struct LinearProblem(AllocatorHandle allocator)
     {
         if (BurstUtil.SolverTrace)
             LogUtil.Log($"After presolve:\nMaximize Z = {func}\nsubject to\n{this}");
+    }
+
+    [BurstDiscard]
+    private readonly void TraceChoiceVariables(MemorySpan<BinaryChoice> choices)
+    {
+        if (!BurstUtil.SolverTrace)
+            return;
+
+        LogUtil.Log($"Solving relaxation with choice variables: {RenderChoices(choices)}");
     }
 
     [BurstDiscard]
@@ -1018,7 +1057,7 @@ internal struct LinearProblem(AllocatorHandle allocator)
         return builder.ToString();
     }
 
-    private readonly string RenderChoices(BinaryChoice[] choices)
+    private readonly string RenderChoices(MemorySpan<BinaryChoice> choices)
     {
         StringBuilder builder = new();
 

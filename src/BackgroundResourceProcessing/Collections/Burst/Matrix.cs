@@ -63,6 +63,18 @@ internal readonly unsafe struct Matrix
         }
     }
 
+    public Matrix(double* values, int rows, int cols)
+    {
+        if (rows < 0)
+            ThrowNegativeRowsException();
+        if (cols < 0)
+            ThrowNegativeColsException();
+
+        this.values = values;
+        this.rows = (uint)rows;
+        this.cols = (uint)cols;
+    }
+
     public Matrix(RawArray<double> values, int rows, int cols)
     {
         if (rows < 0)

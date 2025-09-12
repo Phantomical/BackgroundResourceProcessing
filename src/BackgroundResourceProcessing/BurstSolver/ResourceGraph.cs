@@ -1,9 +1,7 @@
 using System;
-using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
-using Unity.Burst.CompilerServices;
 using static BackgroundResourceProcessing.Collections.KeyValuePairExt;
 
 namespace BackgroundResourceProcessing.BurstSolver;
@@ -91,11 +89,11 @@ internal struct ResourceGraph
         foreach (var (resource, required) in rconv.Required)
         {
             var state = required.State;
-            if (state == ConstraintState.UNSET)
+            if (state == Core.ConstraintState.UNSET)
                 throw new Exception("Converter ConstraintState was UNSET");
-            if (state == ConstraintState.DISABLED)
+            if (state == Core.ConstraintState.DISABLED)
                 return false;
-            if (state == ConstraintState.BOUNDARY)
+            if (state == Core.ConstraintState.BOUNDARY)
                 gconv.constraints.AddUnchecked(resource, required.Constraint);
         }
 

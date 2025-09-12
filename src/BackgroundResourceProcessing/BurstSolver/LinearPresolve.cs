@@ -10,7 +10,6 @@ using static Unity.Burst.Intrinsics.X86.Avx;
 using static Unity.Burst.Intrinsics.X86.Avx2;
 using static Unity.Burst.Intrinsics.X86.Fma;
 using static Unity.Burst.Intrinsics.X86.Sse2;
-using ConstraintState = BackgroundResourceProcessing.Solver.LinearPresolve.ConstraintState;
 
 namespace BackgroundResourceProcessing.BurstSolver;
 
@@ -398,45 +397,68 @@ internal static class LinearPresolve
         {
             double* row = matrix.GetRowPtr(y);
             double constant = row[matrix.Cols - 1];
+            Relation relation = y < equalities ? Relation.Equal : Relation.LEqual;
 
-            ComputeRowBounds(row, matrix.Cols - 1, out var positive, out var negative);
-            bool zero = positive && negative;
+            states[y] = InferState(new(row, matrix.Cols - 1), constant, relation);
+        }
+    }
 
-            if (zero)
+    internal static unsafe ConstraintState InferState(
+        MemorySpan<double> coefs,
+        double constant,
+        Relation relation
+    )
+    {
+        ComputeRowBounds(coefs.Data, coefs.Length, out var positive, out var negative);
+        bool zero = positive && negative;
+
+        if (relation == Relation.GEqual)
+            (positive, negative) = (negative, positive);
+
+        if (zero)
+        {
+            if (relation == Relation.Equal)
             {
-                if (y < equalities)
-                {
-                    if (constant == 0.0)
-                        states[y] = ConstraintState.VACUOUS;
-                    else
-                        states[y] = ConstraintState.UNSOLVABLE;
-                }
+                if (constant == 0.0)
+                    return ConstraintState.VACUOUS;
                 else
-                {
-                    if (constant >= 0.0)
-                        states[y] = ConstraintState.VACUOUS;
-                    else
-                        states[y] = ConstraintState.UNSOLVABLE;
-                }
-            }
-            else if (negative)
-            {
-                if (constant >= 0.0)
-                    states[y] = ConstraintState.VACUOUS;
-                else
-                    states[y] = ConstraintState.VALID;
-            }
-            else if (positive)
-            {
-                if (constant < 0.0)
-                    states[y] = ConstraintState.UNSOLVABLE;
-                else
-                    states[y] = ConstraintState.VALID;
+                    return ConstraintState.UNSOLVABLE;
             }
             else
             {
-                states[y] = ConstraintState.VALID;
+                if (constant >= 0.0)
+                    return ConstraintState.VACUOUS;
+                else
+                    return ConstraintState.UNSOLVABLE;
             }
+        }
+        else if (negative)
+        {
+            if (relation == Relation.Equal)
+            {
+                if (constant > 0.0)
+                    return ConstraintState.UNSOLVABLE;
+                else
+                    return ConstraintState.VALID;
+            }
+            else
+            {
+                if (constant >= 0.0)
+                    return ConstraintState.VACUOUS;
+                else
+                    return ConstraintState.VALID;
+            }
+        }
+        else if (positive)
+        {
+            if (constant < 0.0)
+                return ConstraintState.UNSOLVABLE;
+            else
+                return ConstraintState.VALID;
+        }
+        else
+        {
+            return ConstraintState.VALID;
         }
     }
 

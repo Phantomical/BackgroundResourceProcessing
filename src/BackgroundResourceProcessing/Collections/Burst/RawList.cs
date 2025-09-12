@@ -77,6 +77,9 @@ internal unsafe struct RawList<T>(AllocatorHandle allocator) : IEnumerable<T>
         AddRange(data);
     }
 
+    public RawList(T[] data, AllocatorHandle allocator)
+        : this((Span<T>)data, allocator) { }
+
     public RawList(RawList<T> list)
         : this(list.Span, list.Allocator) { }
 
