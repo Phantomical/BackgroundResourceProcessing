@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using BackgroundResourceProcessing.BurstSolver;
 using BackgroundResourceProcessing.Collections;
 using Unity.Burst;
+using Unity.Burst.Intrinsics;
+using Unity.Collections;
 using UnityEngine;
 using static Unity.Burst.Intrinsics.X86.Bmi1;
 using static Unity.Burst.Intrinsics.X86.Fma;
@@ -73,7 +76,6 @@ internal static class MathUtil
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    [BurstCompile]
     internal static int TrailingZeroCount(ulong v)
     {
         if (IsBmi1Supported)
@@ -101,7 +103,6 @@ internal static class MathUtil
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    [BurstCompile]
     internal static int PopCount(ulong x)
     {
         if (IsPopcntSupported)
@@ -111,6 +112,22 @@ internal static class MathUtil
         x = (x & 0x3333333333333333) + ((x >> 2) & 0x3333333333333333);
         x = (x + (x >> 4)) & 0xF0F0F0F0F0F0F0F;
         return (int)((x * 0x101010101010101) >> 56);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static uint NextPowerOf2(uint x)
+    {
+        if (x == 0)
+            return 1;
+        return 1u << (32 - Unity.Mathematics.math.lzcnt(x - 1));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static ulong NextPowerOf2(ulong x)
+    {
+        if (x == 0)
+            return 1;
+        return 1ul << (64 - Unity.Mathematics.math.lzcnt(x - 1));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -3,8 +3,13 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.BurstSolver;
+using BackgroundResourceProcessing.Utils;
 using Unity.Burst.CompilerServices;
-using Unity.Collections;
+using Unity.Burst.Intrinsics;
+using static Unity.Burst.Intrinsics.X86.Avx;
+using static Unity.Burst.Intrinsics.X86.Avx2;
+using static Unity.Burst.Intrinsics.X86.Sse;
+using static Unity.Burst.Intrinsics.X86.Sse2;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
@@ -71,7 +76,7 @@ internal unsafe struct AdjacencyMatrix : IEnumerable<BitSpan>
             ThrowNegativeCols();
 
         this.rows = rows;
-        this.cols = (cols + (ULongBits - 1)) / ULongBits;
+        this.cols = (int)MathUtil.NextPowerOf2((uint)((cols + (ULongBits - 1)) / ULongBits));
         this.bits = new RawArray<ulong>(this.rows * this.cols, allocator).Ptr;
     }
 
@@ -87,36 +92,199 @@ internal unsafe struct AdjacencyMatrix : IEnumerable<BitSpan>
         int bit = column % ULongBits;
         var span = bspan.Span;
         var bits = Words;
+        ulong* data = Bits.Span.Data;
 
-        if (cols == 0)
-            return;
-        // We specialize for 1 column words, since that is an extraordinarily common case
-        // and it is rather easy to vectorize.
-        if (cols == 1)
+        Hint.Assume(word < cols);
+        Hint.Assume(((uint)cols & ((uint)cols - 1)) == 0);
+
+        // We specialize for column words <= 4, since this covers the vast majority
+        // of all KSP vessels and this one method is ~30% of the solver runtime.
+        switch (cols)
         {
-            ulong set = span[0];
-            foreach (ulong w in bits)
-            {
-                // mask is 0 if bit is 1, ~0 otherwise
-                var invmask = ((w >> bit) & 1ul) - 1ul;
-                var equal = w ^ invmask;
+            case 0:
+                break;
 
-                set &= equal;
+            case 1:
+            {
+                ulong set = span[0];
+                foreach (ulong w in bits)
+                {
+                    // mask is 0 if bit is 1, ~0 otherwise
+                    var invmask = ((w >> bit) & 1ul) - 1ul;
+                    var equal = w ^ invmask;
+
+                    set &= equal;
+                }
+                span[0] = set;
+                break;
             }
-            span[0] = set;
+
+            case 2:
+                if (IsSse2Supported)
+                {
+                    v128 set = loadu_si128(span.Data);
+                    v128 ones = set1_epi64x(1);
+                    v128 vbit = set1_epi64x(bit);
+
+                    for (int i = 0; i < Rows; i += 2)
+                    {
+                        var vrow = loadu_si128(&data[i * ColumnWords]);
+                        var vword =
+                            word == 0
+                                ? shuffle_epi32(vrow, SHUFFLE(0, 1, 0, 1))
+                                : shuffle_epi32(vrow, SHUFFLE(2, 3, 2, 3));
+                        // ulong invmask = ((row[word] >> bit) & 1) - 1;
+                        var vinvmask = sub_epi64(and_si128(srl_epi64(vword, vbit), ones), ones);
+
+                        set = and_si128(set, xor_si128(vinvmask, vrow));
+                    }
+
+                    storeu_si128(span.Data, set);
+                    break;
+                }
+
+                goto default;
+
+            case 4:
+                if (IsAvx2Supported)
+                {
+                    v256 set = mm256_loadu_si256(span.Data);
+                    v256 ones = mm256_set1_epi64x(1);
+                    v128 vbit = set1_epi64x(bit);
+
+                    for (int i = 0; i < Rows; ++i)
+                    {
+                        ulong* row = &data[i * ColumnWords];
+                        ulong invmask = ((row[word] >> bit) & 1) - 1;
+                        var vinvmask = mm256_set1_epi64x((long)invmask);
+
+                        set = mm256_and_si256(
+                            set,
+                            mm256_xor_si256(vinvmask, mm256_loadu_si256(row))
+                        );
+                    }
+
+                    mm256_storeu_si256(span.Data, set);
+                    break;
+                }
+                else if (IsSse2Supported)
+                {
+                    v128 setlo = loadu_si128(&span.Data[0]);
+                    v128 sethi = loadu_si128(&span.Data[2]);
+                    v128 ones = set1_epi64x(1);
+                    v128 vbit = set1_epi64x(bit);
+
+                    for (int i = 0; i < Rows; ++i)
+                    {
+                        ulong* row = &data[i * ColumnWords];
+                        ulong invmask = ((row[word] >> bit) & 1) - 1;
+                        var vinvmask = set1_epi64x(word);
+
+                        setlo = and_si128(setlo, xor_si128(vinvmask, loadu_si128(&row[0])));
+                        sethi = and_si128(sethi, xor_si128(vinvmask, loadu_si128(&row[2])));
+                    }
+
+                    storeu_si128(&span.Data[0], setlo);
+                    storeu_si128(&span.Data[2], sethi);
+                    break;
+                }
+
+                goto default;
+
+            default:
+                for (int r = 0; r < Rows; ++r)
+                {
+                    ulong* row = &data[r * ColumnWords];
+                    // mask is 0 if bit is 1, ~0 otherwise
+                    ulong invmask = ((row[word] >> bit) & 1) - 1;
+
+                    for (int c = 0; c < span.Length; ++c)
+                        span[c] &= row[c] ^ invmask;
+                }
+                break;
+        }
+    }
+
+    private interface IShuffleMask
+    {
+        int Shuffle { get; }
+    }
+
+    struct Shuffle0() : IShuffleMask
+    {
+        public readonly int Shuffle => SHUFFLE(0, 1, 0, 1);
+    }
+
+    struct Shuffle1() : IShuffleMask
+    {
+        public readonly int Shuffle => SHUFFLE(2, 3, 2, 3);
+    }
+
+    private readonly unsafe bool RemoveUnequalColumns_Variant2<T>(ulong* span, int bit, T provider)
+        where T : unmanaged, IShuffleMask
+    {
+        ulong* data = Bits.Span.Data;
+
+        if (IsAvx2Supported)
+        {
+            v128 hset = loadu_si128(span);
+            v256 set = mm256_set_m128i(hset, hset);
+            v256 ones = mm256_set1_epi64x(1);
+            v128 vbit = set1_epi64x(bit);
+
+            int i = 0;
+            for (i = 0; i + 4 <= ColumnWords; i += 4)
+            {
+                var vrow = mm256_loadu_si256(&data[i]);
+                var vword = mm256_shuffle_epi32(vrow, provider.Shuffle);
+                // ulong invmask = ((row[word] >> bit) & 1) - 1;
+                var vinvmask = mm256_sub_epi64(
+                    mm256_and_si256(mm256_srl_epi64(vword, vbit), ones),
+                    ones
+                );
+
+                set = mm256_and_si256(set, mm256_xor_si256(vinvmask, vrow));
+            }
+
+            hset = and_si128(mm256_extractf128_si256(set, 0), mm256_extractf128_si256(set, 1));
+
+            if (i < ColumnWords)
+            {
+                v128 hones = set1_epi64x(1);
+                var vrow = loadu_si128(&data[i]);
+                var vword = shuffle_epi32(vrow, provider.Shuffle);
+                // ulong invmask = ((row[word] >> bit) & 1) - 1;
+                var vinvmask = sub_epi64(and_si128(srl_epi64(vword, vbit), hones), hones);
+
+                hset = and_si128(hset, xor_si128(vinvmask, vrow));
+            }
+
+            storeu_si128(span, hset);
+        }
+        else if (IsSse2Supported)
+        {
+            v128 set = loadu_si128(span);
+            v128 ones = set1_epi64x(1);
+            v128 vbit = set1_epi64x(bit);
+
+            for (int i = 0; i < ColumnWords; i += 2)
+            {
+                var vrow = loadu_si128(&data[i]);
+                var vword = shuffle_epi32(vrow, provider.Shuffle);
+                // ulong invmask = ((row[word] >> bit) & 1) - 1;
+                var vinvmask = sub_epi64(and_si128(srl_epi64(vword, vbit), ones), ones);
+
+                set = and_si128(set, xor_si128(vinvmask, vrow));
+            }
+
+            storeu_si128(span, set);
         }
         else
         {
-            for (int r = 0; r < Rows; ++r)
-            {
-                var row = this[r].Span;
-                // mask is 0 if bit is 1, ~0 otherwise
-                ulong invmask = ((row[word] >> bit) & 1) - 1;
-
-                for (int c = 0; c < span.Length; ++c)
-                    span[c] &= row[c] ^ invmask;
-            }
+            return false;
         }
+
+        return true;
     }
 
     public readonly void SetEqualColumns(BitSpan span, int column)
