@@ -56,5 +56,50 @@ public class SolverConstraintTests
 
         Assert.AreEqual(0.5, processor.converters[0].Rate);
     }
+
+    [TestMethod]
+    public void TestAtLeastEnabled()
+    {
+        var processor = TestUtil.LoadVessel("constraint/at-least-enabled.cfg");
+        processor.ComputeRates();
+
+        Assert.AreEqual(1.0, processor.converters[0].Rate);
+    }
+
+    [TestMethod]
+    public void TestAtLeastDisabled()
+    {
+        var processor = TestUtil.LoadVessel("constraint/at-least-disabled.cfg");
+        processor.ComputeRates();
+
+        Assert.AreEqual(0.0, processor.converters[0].Rate);
+    }
+
+    [TestMethod]
+    public void TestAtLeastBoundaryDisabled()
+    {
+        var processor = TestUtil.LoadVessel("constraint/at-least-boundary-disabled.cfg");
+        processor.ComputeRates();
+
+        Assert.AreEqual(0.0, processor.converters[0].Rate);
+    }
+
+    [TestMethod]
+    public void TestAtLeastBoundaryEnabled()
+    {
+        var processor = TestUtil.LoadVessel("constraint/at-least-boundary-enabled.cfg");
+        processor.ComputeRates();
+
+        Assert.AreEqual(1.0, processor.converters[0].Rate);
+    }
+
+    [TestMethod]
+    public void TestAtLeastBoundaryPartial()
+    {
+        var processor = TestUtil.LoadVessel("constraint/at-least-boundary-partial.cfg");
+        processor.ComputeRates();
+
+        Assert.AreEqual(0.5, processor.converters[0].Rate);
+    }
     #endregion
 }
