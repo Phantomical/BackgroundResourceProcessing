@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
@@ -194,7 +195,7 @@ internal struct ResourceGraph
     ///   an unconstrained inventory.
     /// </para>
     /// </remarks>
-    public void MergeEquivalentConverters()
+    public unsafe void MergeEquivalentConverters()
     {
         foreach (var converterId in converters.Keys)
         {
@@ -206,18 +207,25 @@ internal struct ResourceGraph
             var outputEdges = outputs[converterId];
             var constraintEdges = constraints[converterId];
 
+            ulong* aie = inputEdges.Span.Data;
+            ulong* aoe = outputEdges.Span.Data;
+            ulong* ace = constraintEdges.Span.Data;
+
             foreach (var (otherId, otherConverter) in converters.GetEnumeratorAt(converterId + 1))
             {
                 var otherInputs = inputs[otherId];
                 var otherOutputs = outputs[otherId];
                 var otherConstraints = constraints[otherId];
 
-                if (inputEdges != otherInputs)
-                    continue;
-                if (outputEdges != otherOutputs)
-                    continue;
-                if (constraintEdges != otherConstraints)
-                    continue;
+                ulong* bie = otherInputs.Span.Data;
+                ulong* boe = otherOutputs.Span.Data;
+                ulong* bce = otherConstraints.Span.Data;
+
+                for (int i = 0; i < inputs.ColumnWords; ++i)
+                {
+                    if (aie[i] != bie[i] || aoe[i] != boe[i] || ace[i] != bce[i])
+                        goto LOOP_END;
+                }
 
                 if (!converter.CanMergeWith(otherConverter))
                     continue;
@@ -229,6 +237,9 @@ internal struct ResourceGraph
                 converter.Merge(otherConverter);
                 converterIds[otherId] = converterId;
                 converters.Remove(otherId);
+
+                LOOP_END:
+                ;
             }
         }
     }
