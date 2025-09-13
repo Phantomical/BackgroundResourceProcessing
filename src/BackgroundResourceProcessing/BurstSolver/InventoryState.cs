@@ -1,4 +1,4 @@
-namespace BackgroundResourceProcessing.Solver;
+namespace BackgroundResourceProcessing.BurstSolver;
 
 public enum InventoryState : byte
 {

@@ -36,6 +36,9 @@ internal struct LinearEquation(RawList<double> values)
     public LinearEquation()
         : this([]) { }
 
+    public LinearEquation(AllocatorHandle allocator)
+        : this(new RawList<double>(allocator)) { }
+
     public LinearEquation(int capacity, AllocatorHandle allocator)
         : this(new RawList<double>(capacity, allocator)) { }
 
@@ -307,12 +310,7 @@ internal struct LinearEquation(RawList<double> values)
         StringBuilder builder = new();
         bool first = true;
         foreach (var (index, coef) in this)
-            BackgroundResourceProcessing.Solver.LinearProblem.RenderCoef(
-                builder,
-                coef,
-                new Variable(index).ToString(),
-                ref first
-            );
+            LinearProblem.RenderCoef(builder, coef, new Variable(index).ToString(), ref first);
 
         if (first)
             builder.Append("0");

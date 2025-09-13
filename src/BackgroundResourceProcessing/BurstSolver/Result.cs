@@ -46,6 +46,14 @@ internal readonly struct Result
         return IsErr;
     }
 
+    public readonly void Unwrap()
+    {
+        if (err == Error.Success)
+            return;
+
+        err.ThrowRepresentativeError();
+    }
+
     [IgnoreWarning(1370)]
     static void ThrowNotErr() =>
         throw new InvalidOperationException(
@@ -160,6 +168,15 @@ internal readonly struct Result<T>
         err = this.err;
 
         return IsOk;
+    }
+
+    public readonly T Unwrap()
+    {
+        if (Match(out var ok, out var err))
+            return ok;
+
+        err.ThrowRepresentativeError();
+        throw new NotImplementedException();
     }
 
     [IgnoreWarning(1370)]

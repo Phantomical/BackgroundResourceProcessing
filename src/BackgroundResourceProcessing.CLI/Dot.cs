@@ -1,13 +1,16 @@
 using System;
+using System.Drawing.Text;
 using System.IO;
 using System.Linq;
-using BackgroundResourceProcessing.Collections;
+using BackgroundResourceProcessing.BurstSolver;
+using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Core;
-using BackgroundResourceProcessing.Solver;
 using CommandLine;
 using DotNetGraph.Compilation;
 using DotNetGraph.Core;
 using DotNetGraph.Extensions;
+using static BackgroundResourceProcessing.Collections.KeyValuePairExt;
+using InventoryState = BackgroundResourceProcessing.BurstSolver.InventoryState;
 
 namespace BackgroundResourceProcessing.CLI
 {
@@ -39,8 +42,9 @@ namespace BackgroundResourceProcessing.CLI
         {
             Program.Setup(options);
 
+            var allocator = AllocatorHandle.Invalid;
             var processor = Program.LoadVessel(options.ShipPath);
-            var graph = new ResourceGraph(processor);
+            var graph = new ResourceGraph(processor, allocator);
 
             switch (options.Minimize)
             {
@@ -143,21 +147,58 @@ namespace BackgroundResourceProcessing.CLI
             graph.CompileAsync(context).Wait();
         }
 
-        private static string InventoryStateIdent(Solver.InventoryState state)
+        private static string InventoryStateIdent(InventoryState state)
         {
-            switch (state)
+            return state switch
             {
-                case Solver.InventoryState.Unconstrained:
-                    return "U";
-                case Solver.InventoryState.Empty:
-                    return "E";
-                case Solver.InventoryState.Full:
-                    return "F";
-                case Solver.InventoryState.Zero:
-                    return "0";
-                default:
-                    return "invalid";
-            }
+                InventoryState.Unconstrained => "U",
+                InventoryState.Empty => "E",
+                InventoryState.Full => "F",
+                InventoryState.Zero => "0",
+                _ => "invalid",
+            };
+        }
+    }
+}
+
+static class AdjacencyMatrixExt
+{
+    public static ConverterToInventoryEdges ConverterToInventoryEdges(
+        this AdjacencyMatrix matrix
+    ) => new(matrix);
+}
+
+struct ConverterToInventoryEdges(AdjacencyMatrix matrix)
+{
+    AdjacencyMatrix.RowEnumerator rows = new(matrix);
+    BitSpan.Enumerator inner = default;
+
+    public readonly Edge Current => new(rows.Index, inner.Current);
+
+    public readonly ConverterToInventoryEdges GetEnumerator() => this;
+
+    public bool MoveNext()
+    {
+        while (true)
+        {
+            if (inner.MoveNext())
+                return true;
+            if (!rows.MoveNext())
+                return true;
+
+            inner = new(rows.Current);
+        }
+    }
+
+    internal struct Edge(int converter, int inventory)
+    {
+        public int Converter = converter;
+        public int Inventory = inventory;
+
+        public readonly void Deconstruct(out int converter, out int inventory)
+        {
+            converter = Converter;
+            inventory = Inventory;
         }
     }
 }

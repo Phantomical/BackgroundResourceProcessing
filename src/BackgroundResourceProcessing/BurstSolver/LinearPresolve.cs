@@ -1,7 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Collections.Burst;
-using BackgroundResourceProcessing.Solver;
 using BackgroundResourceProcessing.Utils;
 using Unity.Burst;
 using Unity.Burst.CompilerServices;

@@ -339,14 +339,14 @@ public class ResourceInventory
         node.TryGetValue("originalAmount", ref OriginalAmount);
     }
 
-    internal Solver.InventoryState GetInventoryState()
+    internal BurstSolver.InventoryState GetInventoryState()
     {
-        var state = Solver.InventoryState.Unconstrained;
+        var state = BurstSolver.InventoryState.Unconstrained;
 
         if (Full)
-            state |= Solver.InventoryState.Full;
+            state |= BurstSolver.InventoryState.Full;
         if (Empty)
-            state |= Solver.InventoryState.Empty;
+            state |= BurstSolver.InventoryState.Empty;
 
         return state;
     }

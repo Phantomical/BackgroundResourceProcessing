@@ -161,10 +161,10 @@ public readonly unsafe struct AllocatorHandle
 
         if (!Match(out var allocator, out var handle))
             return handle->Allocate<T>(count);
-        if (allocator == Allocator.Invalid)
-            throw new InvalidOperationException("cannot allocate using the invalid allocator");
         if (BurstUtil.UseTestAllocator)
             return TestAllocator.Alloc<T>(count);
+        if (allocator == Allocator.Invalid)
+            throw new InvalidOperationException("cannot allocate using the invalid allocator");
 
         return AllocateUnity<T>(count, allocator);
     }

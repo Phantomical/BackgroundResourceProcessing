@@ -417,6 +417,8 @@ internal unsafe struct AdjacencyMatrix : IEnumerable<BitSpan>
         public readonly BitSpan Current => new(words.Slice(offset, cols));
         readonly object IEnumerator.Current => Current;
 
+        public readonly int Index => offset / cols;
+
         public bool MoveNext()
         {
             offset += cols;

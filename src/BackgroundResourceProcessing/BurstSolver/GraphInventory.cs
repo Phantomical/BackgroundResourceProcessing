@@ -1,10 +1,7 @@
-namespace BackgroundResourceProcessing.BurstSolver;
-
 using System;
-using System.Diagnostics;
-using BackgroundResourceProcessing.Core;
 using Unity.Burst.CompilerServices;
-using InventoryState = BackgroundResourceProcessing.Solver.InventoryState;
+
+namespace BackgroundResourceProcessing.BurstSolver;
 
 internal struct GraphInventory
 {
@@ -15,9 +12,9 @@ internal struct GraphInventory
     public double maxAmount;
 
     // For debugging purposes only.
-    private readonly string ResourceName => ResourceNames.GetResourceName(resourceId);
+    internal readonly string resourceName => ResourceNames.GetResourceName(resourceId);
 
-    public GraphInventory(ResourceInventory inventory, int id)
+    public GraphInventory(Core.ResourceInventory inventory, int id)
     {
         resourceId = inventory.ResourceId;
         baseId = id;
@@ -50,6 +47,6 @@ internal struct GraphInventory
 
     public override readonly string ToString()
     {
-        return $"[{state}, {ResourceName}, {amount:F}/{maxAmount:F}]";
+        return $"[{state}, {resourceName}, {amount:F}/{maxAmount:F}]";
     }
 }

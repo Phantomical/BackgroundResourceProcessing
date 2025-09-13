@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using BackgroundResourceProcessing.Solver;
 using Unity.Burst.CompilerServices;
 
 namespace BackgroundResourceProcessing.BurstSolver;

@@ -1,13 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using BackgroundResourceProcessing.BurstSolver;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Converter;
 using BackgroundResourceProcessing.Inventory;
-using BackgroundResourceProcessing.Solver;
 using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
 using Smooth.Collections;

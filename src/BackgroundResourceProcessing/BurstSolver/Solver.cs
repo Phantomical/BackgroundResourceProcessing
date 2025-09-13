@@ -8,8 +8,6 @@ using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
 using Unity.Burst;
 using static BackgroundResourceProcessing.Collections.KeyValuePairExt;
-using InventoryState = BackgroundResourceProcessing.Solver.InventoryState;
-using SolverSolution = BackgroundResourceProcessing.Solver.SolverSolution;
 
 namespace BackgroundResourceProcessing.BurstSolver;
 

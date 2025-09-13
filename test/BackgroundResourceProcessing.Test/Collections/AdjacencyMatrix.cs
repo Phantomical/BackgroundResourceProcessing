@@ -1,5 +1,4 @@
 using BackgroundResourceProcessing.Collections;
-using BackgroundResourceProcessing.Solver;
 using BackgroundResourceProcessing.Test;
 
 namespace BackgroundResourceProcessing.Text.Collections
@@ -57,32 +56,6 @@ namespace BackgroundResourceProcessing.Text.Collections
         {
             var matrix = new AdjacencyMatrix(128, 128);
             foreach (var row in matrix.GetRows()) { }
-        }
-
-        [TestMethod]
-        public void TestEdgeEnumerate()
-        {
-            AdjacencyMatrix matrix = new(128, 128);
-
-            matrix[5, 5] = true;
-            matrix[127, 127] = true;
-            matrix[7, 89] = true;
-
-            List<AdjacencyMatrixExt.Edge> edges = [];
-            AdjacencyMatrixExt.Edge[] expected = [new(5, 5), new(7, 89), new(127, 127)];
-
-            int index = 0;
-            foreach (var edge in matrix.ConverterToInventoryEdges())
-            {
-                edges.Add(edge);
-                if (index++ > 5)
-                    break;
-            }
-
-            Assert.IsTrue(
-                Enumerable.SequenceEqual(expected, edges),
-                "[" + string.Join(", ", edges.Select(e => $"({e.Converter}, {e.Inventory})")) + "]"
-            );
         }
     }
 }

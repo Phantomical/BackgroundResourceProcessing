@@ -1,97 +1,89 @@
-using BackgroundResourceProcessing.Solver;
+using BackgroundResourceProcessing.Collections.Burst;
 
 namespace BackgroundResourceProcessing.Test.Solver
 {
     [TestClass]
     public sealed class RegressionTests
     {
+        [TestCleanup]
+        public void Cleanup()
+        {
+            TestAllocator.Cleanup();
+        }
+
         [TestMethod]
         public void TestCrashSplitOutput()
         {
             var processor = TestUtil.LoadVessel("regression/crash-split-output.cfg");
-            var solver = new BackgroundResourceProcessing.Solver.Solver();
+            processor.ComputeRates();
 
-            var rates = solver.ComputeInventoryRates(processor);
-
-            Assert.AreNotEqual(0.0, rates.converterRates[12]);
+            Assert.AreNotEqual(0.0, processor.converters[12].Rate);
         }
 
         [TestMethod]
         public void TestCrashBadVariableSelection()
         {
             var processor = TestUtil.LoadVessel("regression/crash-bad-var-selection.cfg");
-            var solver = new BackgroundResourceProcessing.Solver.Solver();
-
-            solver.ComputeInventoryRates(processor);
+            processor.ComputeRates();
         }
 
         [TestMethod]
         public void TestCrashSelectedSlack()
         {
             var processor = TestUtil.LoadVessel("regression/crash-selected-slack.cfg");
-            var solver = new BackgroundResourceProcessing.Solver.Solver();
-
-            solver.ComputeInventoryRates(processor);
+            processor.ComputeRates();
         }
 
         [TestMethod]
         public void TestFullDumpExcess()
         {
             var processor = TestUtil.LoadVessel("regression/crash-full-dump-excess.cfg");
-            var solver = new BackgroundResourceProcessing.Solver.Solver();
-
-            solver.ComputeInventoryRates(processor);
+            processor.ComputeRates();
         }
 
         [TestMethod]
         public void TestDisjunctionInstability()
         {
             var processor = TestUtil.LoadVessel("regression/disjunction-instability.cfg");
-            var solver = new BackgroundResourceProcessing.Solver.Solver();
-
-            var rates = solver.ComputeInventoryRates(processor);
+            processor.ComputeRates();
 
             // The first inventory here has ElectricCharge and its rate of
             // change should be exactly 0.
-            Assert.AreEqual(0.0, rates.inventoryRates[0], 0.0);
+            Assert.AreEqual(0.0, processor.converters[0].Rate, 0.0);
         }
 
         [TestMethod]
         public void TestUnderflowInstability()
         {
             var processor = TestUtil.LoadVessel("regression/underflow-instability.cfg");
-            var solver = new BackgroundResourceProcessing.Solver.Solver();
-
-            var rates = solver.ComputeInventoryRates(processor);
+            processor.ComputeRates();
 
             // All inventories in this test case should have a rate of 0.
-            for (int i = 0; i < rates.inventoryRates.Length; ++i)
-                Assert.AreEqual(0.0, rates.inventoryRates[i], 0.0);
+            for (int i = 0; i < processor.inventories.Count; ++i)
+                Assert.AreEqual(0.0, processor.inventories[i].Rate);
         }
 
         [TestMethod]
         public void TestZeroRates()
         {
             var processor = TestUtil.LoadVessel("regression/zero-rates.cfg");
-            var solver = new BackgroundResourceProcessing.Solver.Solver();
-            var rates = solver.ComputeInventoryRates(processor);
+            processor.ComputeRates();
 
-            Assert.AreNotEqual(0.0, rates.inventoryRates[2]);
+            Assert.AreNotEqual(0.0, processor.inventories[2].Rate);
         }
 
         [TestMethod]
         public void TestFertilizerOutOfThinAir()
         {
             var processor = TestUtil.LoadVessel("regression/fertilizer-out-of-thin-air.cfg");
-            var solver = new BackgroundResourceProcessing.Solver.Solver();
-            var rates = solver.ComputeInventoryRates(processor);
+            processor.ComputeRates();
 
             for (int i = 0; i < processor.inventories.Count; ++i)
             {
                 if (processor.inventories[i].ResourceName != "Fertilizer")
                     continue;
 
-                Assert.AreEqual(0.0, rates.inventoryRates[i]);
+                Assert.AreEqual(0.0, processor.inventories[i].Rate);
             }
         }
 
@@ -99,8 +91,7 @@ namespace BackgroundResourceProcessing.Test.Solver
         public void TestBoiloffIgnored()
         {
             var processor = TestUtil.LoadVessel("regression/boiloff-ignored.cfg");
-            var solver = new BackgroundResourceProcessing.Solver.Solver();
-            var rates = solver.ComputeInventoryRates(processor);
+            processor.ComputeRates();
 
             for (int i = 0; i < processor.converters.Count; ++i)
             {
@@ -111,7 +102,7 @@ namespace BackgroundResourceProcessing.Test.Solver
                 if (!converter.Inputs.ContainsKey("BRPCryoTankBoiloff".GetHashCode()))
                     continue;
 
-                Assert.AreNotEqual(0.0, rates.converterRates[i]);
+                Assert.AreNotEqual(0.0, converter.Rate);
             }
         }
 
@@ -119,8 +110,7 @@ namespace BackgroundResourceProcessing.Test.Solver
         public void TestBoiloffEcIgnored()
         {
             var processor = TestUtil.LoadVessel("regression/boiloff-ec-ignored.cfg");
-            var solver = new BackgroundResourceProcessing.Solver.Solver();
-            var rates = solver.ComputeInventoryRates(processor);
+            processor.ComputeRates();
 
             for (int i = 0; i < processor.inventories.Count; ++i)
             {
@@ -128,7 +118,7 @@ namespace BackgroundResourceProcessing.Test.Solver
                 if (inventory.ResourceName != "ElectricCharge")
                     continue;
 
-                Assert.AreNotEqual(0.0, rates.inventoryRates[i]);
+                Assert.AreNotEqual(0.0, inventory.Rate);
             }
         }
 
@@ -136,8 +126,7 @@ namespace BackgroundResourceProcessing.Test.Solver
         public void TestCrashBadBchoiceAccess()
         {
             var processor = TestUtil.LoadVessel("regression/crash-bad-bchoice-access.cfg");
-            var solver = new BackgroundResourceProcessing.Solver.Solver();
-            solver.ComputeInventoryRates(processor);
+            processor.ComputeRates();
         }
 
         [TestMethod]
