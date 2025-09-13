@@ -2,10 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Collections;
+using Unity.Burst;
 using UnityEngine;
+using static Unity.Burst.Intrinsics.X86.Bmi1;
+using static Unity.Burst.Intrinsics.X86.Fma;
+using static Unity.Burst.Intrinsics.X86.Popcnt;
+using static Unity.Burst.Intrinsics.X86.Sse2;
 
 namespace BackgroundResourceProcessing.Utils;
 
+[BurstCompile]
 internal static class MathUtil
 {
     internal const double DEG2RAD = Math.PI / 180.0;
@@ -67,8 +73,12 @@ internal static class MathUtil
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    [BurstCompile]
     internal static int TrailingZeroCount(ulong v)
     {
+        if (IsBmi1Supported)
+            return (int)tzcnt_u64(v);
+
         int c = 64;
 
         v &= (ulong)-(long)v;
@@ -93,10 +103,38 @@ internal static class MathUtil
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static int PopCount(ulong x)
     {
+        if (IsPopcntSupported)
+            return popcnt_u64(x);
+
         x -= (x >> 1) & 0x5555555555555555;
         x = (x & 0x3333333333333333) + ((x >> 2) & 0x3333333333333333);
         x = (x + (x >> 4)) & 0xF0F0F0F0F0F0F0F;
         return (int)((x * 0x101010101010101) >> 56);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static uint NextPowerOf2(uint x)
+    {
+        if (x == 0)
+            return 1;
+        return 1u << (32 - Unity.Mathematics.math.lzcnt(x - 1));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static ulong NextPowerOf2(ulong x)
+    {
+        if (x == 0)
+            return 1;
+        return 1ul << (64 - Unity.Mathematics.math.lzcnt(x - 1));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static double Fma(double a, double b, double c)
+    {
+        if (IsFmaSupported)
+            return cvtsd_f64(fmadd_sd(set_sd(a), set_sd(b), set_sd(c)));
+        else
+            return a * b + c;
     }
 
     /// <summary>

@@ -4,6 +4,7 @@
 
     <DebugType>portable</DebugType>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
 
     <GenerateKSPAssemblyAttribute>true</GenerateKSPAssemblyAttribute>
     <GenerateKSPAssemblyDependencyAttributes>true</GenerateKSPAssemblyDependencyAttributes>
@@ -15,6 +16,7 @@
     <!-- <PackageReference Include="System.Memory" Version="4.6.3" /> -->
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" />
     <PackageReference Include="JsonPoke" Version="1.2.0" />
+    <PackageReference Include="MustUseRetVal" Version="0.0.2" />
 
     <KSPVersionFile Include=".">
       <Destination>$(GameDataOutDir)/BackgroundResourceProcessing.version</Destination>
@@ -26,6 +28,14 @@
     <Reference Include="BackgroundResourceProcessing.System.Memory">
       <HintPath>$(SolutionDir)/deps/BackgroundResourceProcessing.System.Memory.dll</HintPath>
       <Private>true</Private>
+    </Reference>
+
+    <Reference Include="0Harmony.dll">
+      <HintPath>$(DepSet1)\000_Harmony\0Harmony.dll</HintPath>
+      <Private>false</Private>
+      <CKANIdentifier>Harmony2</CKANIdentifier>
+      <KSPAssemblyName>HarmonyKSP</KSPAssemblyName>
+      <KSPAssemblyVersion>1.0.0</KSPAssemblyVersion>
     </Reference>
 
     <InternalsVisibleTo Include="BackgroundResourceProcessing.Test" />

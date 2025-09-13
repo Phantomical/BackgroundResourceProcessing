@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Utils;
 using CommandLine;
@@ -21,6 +22,9 @@ namespace BackgroundResourceProcessing.CLI
     {
         static int Main(string[] args)
         {
+            DebugSettings.Instance.ConfigureUnityExternal();
+            using var guard = new TestAllocator.TestGuard();
+
             try
             {
                 return Parser

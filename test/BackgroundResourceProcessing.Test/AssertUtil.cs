@@ -30,6 +30,20 @@ public static class AssertUtils
         );
     }
 
+    public static void SequenceEqual<T>(
+        IEnumerable<T> expected,
+        IEnumerable<T> actual,
+        string message
+    )
+    {
+        Assert.AreEqual(
+            expected,
+            actual,
+            new SequenceEqualityComparer<T>(),
+            $"{message}: [{string.Join(", ", expected)}] != [{string.Join(", ", actual)}]"
+        );
+    }
+
     private class SequenceEqualityComparer<T> : IEqualityComparer<IEnumerable<T>>
     {
         public bool Equals(IEnumerable<T> x, IEnumerable<T> y)

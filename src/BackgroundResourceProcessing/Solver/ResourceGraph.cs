@@ -7,7 +7,6 @@ using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
-using BackgroundResourceProcessing.Utils;
 
 namespace BackgroundResourceProcessing.Solver;
 

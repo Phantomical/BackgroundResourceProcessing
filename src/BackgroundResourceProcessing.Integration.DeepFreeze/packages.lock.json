@@ -21,11 +21,17 @@
         "resolved": "1.0.3",
         "contentHash": "Vv/20vgHS7VglVOVh8J3Iz/MA+VYKVRp9f7r2qiKBMuzviTOmocG70yq0Q8T5OTmCONkEAIJwETD1zhEfLkAXQ=="
       },
+      "MustUseRetVal": {
+        "type": "Transitive",
+        "resolved": "0.0.2",
+        "contentHash": "vPxPjNkhnZXj3C8jMT3lbQI2QUmWGTEEb4ksDmTX9MHIf7fD4zANCMrRb7mldjQD5UHgXiag3McNECf6e+0+eg=="
+      },
       "backgroundresourceprocessing": {
         "type": "Project",
         "dependencies": {
           "JsonPoke": "[1.2.0, )",
-          "Microsoft.NETFramework.ReferenceAssemblies": "[1.0.3, )"
+          "Microsoft.NETFramework.ReferenceAssemblies": "[1.0.3, )",
+          "MustUseRetVal": "[0.0.2, )"
         }
       }
     }

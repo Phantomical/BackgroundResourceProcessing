@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using BackgroundResourceProcessing.Collections.Burst;
 
 namespace BackgroundResourceProcessing.Utils;
 
@@ -156,62 +157,7 @@ internal ref struct HashCode(uint seed)
 
     public void AddAll<T>(T[] items)
     {
-        var length = items.Length;
-        int index = 0;
-
-        if (length < 4)
-        {
-            switch (length)
-            {
-                case 3:
-                    Add(items[index++]);
-                    goto case 2;
-                case 2:
-                    Add(items[index++]);
-                    goto case 1;
-                case 1:
-                    Add(items[index++]);
-                    goto case 0;
-                case 0:
-                    Add(length);
-                    break;
-            }
-
-            return;
-        }
-
-        switch (pos)
-        {
-            case 3:
-                Add(items[index++]);
-                goto case 2;
-            case 2:
-                Add(items[index++]);
-                goto case 1;
-            case 1:
-                Add(items[index++]);
-                break;
-        }
-
-        pos = 0;
-        for (; index + 3 < length; index += 4)
-            AddAligned(items[index], items[index + 1], items[index + 2], items[index + 3]);
-
-        switch (length - index)
-        {
-            case 3:
-                Add(items[index++]);
-                goto case 2;
-            case 2:
-                Add(items[index++]);
-                goto case 1;
-            case 1:
-                Add(items[index++]);
-                goto case 0;
-            case 0:
-                Add(length);
-                break;
-        }
+        AddAll((Span<T>)items);
     }
 
     public void AddAll<T>(List<T> items)
@@ -340,6 +286,9 @@ internal ref struct HashCode(uint seed)
                 break;
         }
     }
+
+    public void AddAll<T>(MemorySpan<T> items)
+        where T : struct => AddAll(items.AsSystemSpan());
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override readonly int GetHashCode()

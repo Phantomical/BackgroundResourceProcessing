@@ -163,7 +163,6 @@ public class ResourceConverter(ConverterBehaviour behaviour)
     {
         node.TryGetDouble("nextChangepoint", ref NextChangepoint);
         node.TryGetValue("rate", ref Rate);
-        node.TryGetValue("priority", ref Priority);
 
         uint flightId = 0;
         if (node.TryGetValue("flightId", ref flightId))
@@ -196,6 +195,12 @@ public class ResourceConverter(ConverterBehaviour behaviour)
             LogUtil.Error($"Failed to load ConverterBehaviour {name}: {e}");
 
             NextChangepoint = double.PositiveInfinity;
+        }
+
+        if (!node.TryGetValue("priority", ref Priority))
+        {
+            if (Behaviour?.Priority != null)
+                Priority = (int)Behaviour.Priority;
         }
 
         Outputs.Clear();
