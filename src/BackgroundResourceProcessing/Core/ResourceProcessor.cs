@@ -169,8 +169,6 @@ internal class ResourceProcessor
         }
 
         var soln = BurstSolver.Solver.ComputeInventoryRates(this);
-        // var solver = new Solver.Solver();
-        // var soln = solver.ComputeInventoryRates(this);
 
         if (DebugSettings.Instance?.EnableSolutionCache ?? true)
             SolverCache.Add(hash, new() { Solution = soln, Processor = new(this) });
