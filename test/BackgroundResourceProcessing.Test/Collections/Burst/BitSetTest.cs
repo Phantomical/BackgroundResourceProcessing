@@ -213,7 +213,7 @@ public sealed class BitSetTest
     {
         var bitSet = new BitSet(64, AllocatorHandle.Temp);
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => bitSet.ClearUpFrom(-1));
+        Assert.ThrowsException<IndexOutOfRangeException>(() => bitSet.ClearUpFrom(-1));
     }
 
     [TestMethod]
@@ -236,7 +236,7 @@ public sealed class BitSetTest
     {
         var bitSet = new BitSet(64, AllocatorHandle.Temp);
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => bitSet.ClearUpTo(-1));
+        Assert.ThrowsException<IndexOutOfRangeException>(() => bitSet.ClearUpTo(-1));
     }
 
     [TestMethod]
@@ -261,7 +261,7 @@ public sealed class BitSetTest
     {
         var bitSet = new BitSet(64, AllocatorHandle.Temp);
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => bitSet.ClearOutsideRange(-1, 32));
+        Assert.ThrowsException<IndexOutOfRangeException>(() => bitSet.ClearOutsideRange(-1, 32));
     }
 
     [TestMethod]
@@ -269,7 +269,7 @@ public sealed class BitSetTest
     {
         var bitSet = new BitSet(64, AllocatorHandle.Temp);
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => bitSet.ClearOutsideRange(32, 16));
+        Assert.ThrowsException<IndexOutOfRangeException>(() => bitSet.ClearOutsideRange(32, 16));
     }
 
     [TestMethod]
@@ -277,7 +277,7 @@ public sealed class BitSetTest
     {
         var bitSet = new BitSet(64, AllocatorHandle.Temp);
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => bitSet.ClearOutsideRange(0, 65));
+        Assert.ThrowsException<IndexOutOfRangeException>(() => bitSet.ClearOutsideRange(0, 65));
     }
 
     [TestMethod]
@@ -299,7 +299,7 @@ public sealed class BitSetTest
     {
         var bitSet = new BitSet(64, AllocatorHandle.Temp);
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => bitSet.SetUpTo(-1));
+        Assert.ThrowsException<IndexOutOfRangeException>(() => bitSet.SetUpTo(-1));
     }
 
     [TestMethod]
@@ -307,7 +307,7 @@ public sealed class BitSetTest
     {
         var bitSet = new BitSet(64, AllocatorHandle.Temp);
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => bitSet.SetUpTo(65));
+        Assert.ThrowsException<IndexOutOfRangeException>(() => bitSet.SetUpTo(65));
     }
 
     [TestMethod]

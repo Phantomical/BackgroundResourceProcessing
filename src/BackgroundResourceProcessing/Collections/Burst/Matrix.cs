@@ -157,7 +157,7 @@ internal readonly unsafe struct Matrix
         if (dst == src)
             throw new ArgumentException("cannot row-reduce a row against itself");
         if (pivot < 0 || pivot >= Cols)
-            throw new ArgumentOutOfRangeException("pivot index was outside of matrix");
+            BurstCrashHandler.Crash(Error.Matrix_PivotOutOfRange, pivot);
 
         var vdst = GetRowPtr(dst);
         var vsrc = GetRowPtr(src);

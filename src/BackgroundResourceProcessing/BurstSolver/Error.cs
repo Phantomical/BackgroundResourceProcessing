@@ -135,8 +135,7 @@ internal static class BurstError
             Error.RawList_PopEmpty => new InvalidOperationException(
                 "cannot pop an item from an empty list"
             ),
-            Error.RawList_IndexOutOfRange => new ArgumentOutOfRangeException(
-                "index",
+            Error.RawList_IndexOutOfRange => new IndexOutOfRangeException(
                 $"list index was out of range (index {param})"
             ),
             Error.RawList_SizeIsNegative => new ArgumentOutOfRangeException(

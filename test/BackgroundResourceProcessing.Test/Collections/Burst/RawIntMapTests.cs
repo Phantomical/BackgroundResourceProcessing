@@ -94,7 +94,7 @@ public sealed class RawIntMapTests
     {
         var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
-        Assert.ThrowsException<IndexOutOfRangeException>(() => map.Add(-1, 42));
+        Assert.ThrowsException<KeyNotFoundException>(() => map.Add(-1, 42));
     }
 
     [TestMethod]
@@ -102,7 +102,7 @@ public sealed class RawIntMapTests
     {
         var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
-        Assert.ThrowsException<IndexOutOfRangeException>(() => map.Add(10, 42));
+        Assert.ThrowsException<KeyNotFoundException>(() => map.Add(10, 42));
     }
 
     [TestMethod]
@@ -148,7 +148,7 @@ public sealed class RawIntMapTests
     {
         var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
-        Assert.ThrowsException<IndexOutOfRangeException>(() => map.Set(-1, 42));
+        Assert.ThrowsException<KeyNotFoundException>(() => map.Set(-1, 42));
     }
 
     [TestMethod]
@@ -156,7 +156,7 @@ public sealed class RawIntMapTests
     {
         var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
-        Assert.ThrowsException<IndexOutOfRangeException>(() => map.Set(10, 42));
+        Assert.ThrowsException<KeyNotFoundException>(() => map.Set(10, 42));
     }
 
     #endregion
@@ -198,7 +198,7 @@ public sealed class RawIntMapTests
     {
         var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
-        Assert.ThrowsException<IndexOutOfRangeException>(() => _ = map[-1]);
+        Assert.ThrowsException<KeyNotFoundException>(() => _ = map[-1]);
     }
 
     [TestMethod]
@@ -206,7 +206,7 @@ public sealed class RawIntMapTests
     {
         var map = new RawIntMap<int>(10, AllocatorHandle.Temp);
 
-        Assert.ThrowsException<IndexOutOfRangeException>(() => _ = map[10]);
+        Assert.ThrowsException<KeyNotFoundException>(() => _ = map[10]);
     }
 
     #endregion
@@ -678,16 +678,16 @@ public sealed class RawIntMapTests
         Assert.AreEqual(1, map.Count);
 
         // Try operations with out-of-bounds keys (should fail but count unchanged)
-        Assert.ThrowsException<IndexOutOfRangeException>(() => map.Add(-1, 10));
+        Assert.ThrowsException<KeyNotFoundException>(() => map.Add(-1, 10));
         Assert.AreEqual(1, map.Count);
 
-        Assert.ThrowsException<IndexOutOfRangeException>(() => map.Add(5, 10));
+        Assert.ThrowsException<KeyNotFoundException>(() => map.Add(5, 10));
         Assert.AreEqual(1, map.Count);
 
-        Assert.ThrowsException<IndexOutOfRangeException>(() => map.Set(-1, 10));
+        Assert.ThrowsException<KeyNotFoundException>(() => map.Set(-1, 10));
         Assert.AreEqual(1, map.Count);
 
-        Assert.ThrowsException<IndexOutOfRangeException>(() => map.Set(10, 10));
+        Assert.ThrowsException<KeyNotFoundException>(() => map.Set(10, 10));
         Assert.AreEqual(1, map.Count);
 
         // Operations that don't throw but return false shouldn't change count

@@ -324,21 +324,21 @@ public sealed class RawListTest
     }
 
     [TestMethod]
-    public void RemoveAt_NegativeIndex_ThrowsArgumentOutOfRangeException()
+    public void RemoveAt_NegativeIndex_ThrowsIndexOutOfRangeException()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(42);
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => list.RemoveAt(-1));
+        Assert.ThrowsException<IndexOutOfRangeException>(() => list.RemoveAt(-1));
     }
 
     [TestMethod]
-    public void RemoveAt_IndexOutOfBounds_ThrowsArgumentOutOfRangeException()
+    public void RemoveAt_IndexOutOfBounds_ThrowsIndexOutOfRangeException()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(42);
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => list.RemoveAt(1));
+        Assert.ThrowsException<IndexOutOfRangeException>(() => list.RemoveAt(1));
     }
 
     #endregion
@@ -381,7 +381,7 @@ public sealed class RawListTest
         var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(42);
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => list.RemoveAtSwapBack(-1));
+        Assert.ThrowsException<IndexOutOfRangeException>(() => list.RemoveAtSwapBack(-1));
     }
 
     [TestMethod]
@@ -390,7 +390,7 @@ public sealed class RawListTest
         var list = new RawList<int>(AllocatorHandle.Temp);
         list.Add(42);
 
-        Assert.ThrowsException<ArgumentOutOfRangeException>(() => list.RemoveAtSwapBack(1));
+        Assert.ThrowsException<IndexOutOfRangeException>(() => list.RemoveAtSwapBack(1));
     }
 
     #endregion
