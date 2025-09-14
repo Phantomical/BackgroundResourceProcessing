@@ -39,11 +39,8 @@ internal struct GraphInventory
         baseId = Math.Min(baseId, other.baseId);
     }
 
-    [IgnoreWarning(1370)]
     private static void ThrowInvalidMergeException() =>
-        throw new InvalidOperationException(
-            $"Attempted to merge two inventories with different resources)"
-        );
+        BurstCrashHandler.Crash(Error.GraphInventory_DifferentResources);
 
     public override readonly string ToString()
     {

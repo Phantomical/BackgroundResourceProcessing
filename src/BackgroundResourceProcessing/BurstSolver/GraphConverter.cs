@@ -49,17 +49,12 @@ internal struct GraphConverter
         return res;
     }
 
-    [IgnoreWarning(1370)]
     public void Merge(in GraphConverter other)
     {
         if (inputs.Count != other.inputs.Count)
-            throw new InvalidOperationException(
-                "Attempted to merge converters with different input resources"
-            );
+            BurstCrashHandler.Crash(Error.GraphConverter_DifferentInputResources);
         if (outputs.Count != other.outputs.Count)
-            throw new InvalidOperationException(
-                "Attempted to merge converters with different output resources"
-            );
+            BurstCrashHandler.Crash(Error.GraphConverter_DifferentOutputResources);
 
         for (int i = 0; i < inputs.Count; ++i)
         {
@@ -67,9 +62,7 @@ internal struct GraphConverter
             ref var entry2 = ref other.inputs.GetEntryAtIndex(i);
 
             if (entry1.Key != entry2.Key)
-                throw new InvalidOperationException(
-                    "Attempted to merge converters with different input resources"
-                );
+                BurstCrashHandler.Crash(Error.GraphConverter_DifferentInputResources);
 
             Merge(ref entry1.Value, entry2.Value);
         }
@@ -80,9 +73,7 @@ internal struct GraphConverter
             ref var entry2 = ref other.outputs.GetEntryAtIndex(i);
 
             if (entry1.Key != entry2.Key)
-                throw new InvalidOperationException(
-                    "Attempted to merge converters with different input resources"
-                );
+                BurstCrashHandler.Crash(Error.GraphConverter_DifferentOutputResources);
 
             Merge(ref entry1.Value, entry2.Value);
         }

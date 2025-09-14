@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.CompilerServices;
 using System.Text;
+using BackgroundResourceProcessing.BurstSolver;
 using BackgroundResourceProcessing.Utils;
 using Unity.Burst.CompilerServices;
 using Unity.Burst.Intrinsics;
@@ -42,7 +43,7 @@ internal readonly unsafe struct Matrix
         get
         {
             if (r < 0 || r >= Rows)
-                ThrowRowOutOfRangeException();
+                BurstCrashHandler.Crash(Error.Matrix_RowOutOfRange, r);
 
             return new MemorySpan<double>(values + r * Cols, Cols);
         }
@@ -55,9 +56,9 @@ internal readonly unsafe struct Matrix
         get
         {
             if (r < 0 || r >= Rows)
-                ThrowRowOutOfRangeException();
+                BurstCrashHandler.Crash(Error.Matrix_RowOutOfRange, r);
             if (c < 0 || c >= Cols)
-                ThrowColOutOfRangeException();
+                BurstCrashHandler.Crash(Error.Matrix_ColOutOfRange, c);
 
             return ref values[r * Cols + c];
         }
@@ -66,9 +67,9 @@ internal readonly unsafe struct Matrix
     public Matrix(double* values, int rows, int cols)
     {
         if (rows < 0)
-            ThrowNegativeRowsException();
+            BurstCrashHandler.Crash(Error.Matrix_NegativeRows);
         if (cols < 0)
-            ThrowNegativeColsException();
+            BurstCrashHandler.Crash(Error.Matrix_NegativeCols);
 
         this.values = values;
         this.rows = (uint)rows;
@@ -78,11 +79,11 @@ internal readonly unsafe struct Matrix
     public Matrix(RawArray<double> values, int rows, int cols)
     {
         if (rows < 0)
-            ThrowNegativeRowsException();
+            BurstCrashHandler.Crash(Error.Matrix_NegativeRows);
         if (cols < 0)
-            ThrowNegativeColsException();
+            BurstCrashHandler.Crash(Error.Matrix_NegativeCols);
         if (values.Length < rows * cols)
-            ThrowArrayTooSmallException();
+            BurstCrashHandler.Crash(Error.Matrix_ArrayTooSmall);
 
         this.values = values.Ptr;
         this.rows = (uint)rows;
@@ -97,7 +98,7 @@ internal readonly unsafe struct Matrix
     public readonly unsafe double* GetRowPtr(int r)
     {
         if (r < 0 || r >= Rows)
-            ThrowRowOutOfRangeException();
+            BurstCrashHandler.Crash(Error.Matrix_RowOutOfRange, r);
 
         return &Ptr[r * Cols];
     }
@@ -238,24 +239,6 @@ internal readonly unsafe struct Matrix
 
         return builder.ToString();
     }
-
-    [IgnoreWarning(1370)]
-    static void ThrowNegativeRowsException() => throw new ArgumentOutOfRangeException("rows");
-
-    [IgnoreWarning(1370)]
-    static void ThrowNegativeColsException() => throw new ArgumentOutOfRangeException("cols");
-
-    [IgnoreWarning(1370)]
-    static void ThrowArrayTooSmallException() =>
-        throw new ArgumentException("provided array is too small for matrix size");
-
-    [IgnoreWarning(1370)]
-    static void ThrowRowOutOfRangeException() =>
-        throw new IndexOutOfRangeException("row index was out of range");
-
-    [IgnoreWarning(1370)]
-    static void ThrowColOutOfRangeException() =>
-        throw new IndexOutOfRangeException("column index was out of range");
 
     [IgnoreWarning(1370)]
     private static v256 mm256_abs_pd(v256 x)

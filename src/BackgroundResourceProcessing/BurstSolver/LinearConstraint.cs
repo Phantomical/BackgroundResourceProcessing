@@ -32,7 +32,6 @@ internal struct LinearConstraint : IComparable<LinearConstraint>
         variables = new(var.Index + 1, allocator) { var };
     }
 
-    [IgnoreWarning(1370)]
     [BurstDiscard]
     private static void ValidateVariable(in LinearEquation variables)
     {
@@ -49,7 +48,6 @@ internal struct LinearConstraint : IComparable<LinearConstraint>
         }
     }
 
-    [IgnoreWarning(1370)]
     [BurstDiscard]
     private static void ValidateVariable(Variable var)
     {

@@ -43,11 +43,10 @@ internal struct LinearProblem(AllocatorHandle allocator)
         return new(VariableCount - 1);
     }
 
-    [IgnoreWarning(1370)]
     public VariableSet CreateVariables(int count)
     {
         if (count < 0)
-            throw new ArgumentOutOfRangeException(nameof(count));
+            BurstCrashHandler.Crash(Error.LinearProblem_CreateVariables_CountIsNegative);
 
         var start = VariableCount;
         VariableCount += count;
@@ -72,7 +71,8 @@ internal struct LinearProblem(AllocatorHandle allocator)
             case ConstraintState.VACUOUS:
                 return Result.Ok;
             case ConstraintState.UNSOLVABLE:
-                return BurstError.Unsolvable();
+                BurstError.ThrowUnsolvable();
+                break;
             case ConstraintState.VALID:
                 break;
         }
@@ -148,11 +148,15 @@ internal struct LinearProblem(AllocatorHandle allocator)
                 return new(constraint);
 
             case Relation.Equal:
-                throw new ArgumentException("cannot standardize an equality constraint");
+                BurstCrashHandler.Crash(Error.LinearProblem_StandardizeConstraint_Equality);
+                break;
 
             default:
-                throw new InvalidOperationException("invalid constraint relation");
+                BurstCrashHandler.Crash(Error.LinearProblem_StandardizeConstraint_InvalidRelation);
+                break;
         }
+
+        throw new UnreachableCodeException();
     }
 
     [IgnoreWarning(1370)]
@@ -169,11 +173,15 @@ internal struct LinearProblem(AllocatorHandle allocator)
                 return new SimpleSolverConstraint(constraint);
 
             case Relation.Equal:
-                throw new ArgumentException("cannot standardize an equality constraint");
+                BurstCrashHandler.Crash(Error.LinearProblem_StandardizeConstraint_Equality);
+                break;
 
             default:
-                throw new InvalidOperationException("invalid constraint relation");
+                BurstCrashHandler.Crash(Error.LinearProblem_StandardizeConstraint_InvalidRelation);
+                break;
         }
+
+        throw new UnreachableCodeException();
     }
 
     /// <summary>
@@ -244,7 +252,6 @@ internal struct LinearProblem(AllocatorHandle allocator)
         return soln;
     }
 
-    [IgnoreWarning(1370)]
     [MustUseReturnValue]
     private readonly Result CheckSolution(LinearSolution soln, double tol = 1e-6)
     {
@@ -302,7 +309,6 @@ internal struct LinearProblem(AllocatorHandle allocator)
         );
 
     #region Presolve
-    [IgnoreWarning(1370)]
     [MustUseReturnValue]
     private unsafe Result Presolve(ref LinearEquation func)
     {
@@ -359,8 +365,7 @@ internal struct LinearProblem(AllocatorHandle allocator)
             if (states[i] == ConstraintState.VACUOUS)
                 continue;
 
-            if (!AddConstraint(matrix[i]).Match(out err))
-                return err;
+            AddConstraint(matrix[i]);
         }
 
         var oldD = disjunctions;
@@ -384,14 +389,12 @@ internal struct LinearProblem(AllocatorHandle allocator)
 
             if (lstate == ConstraintState.UNSOLVABLE)
             {
-                if (!AddConstraint(rhs).Match(out err))
-                    return err;
+                AddConstraint(rhs);
                 continue;
             }
             if (rstate == ConstraintState.UNSOLVABLE)
             {
-                if (!AddConstraint(lhs).Match(out err))
-                    return err;
+                AddConstraint(lhs);
                 continue;
             }
 
@@ -463,9 +466,7 @@ internal struct LinearProblem(AllocatorHandle allocator)
         row[row.Length - 1] = constant;
     }
 
-    [IgnoreWarning(1370)]
-    [MustUseReturnValue]
-    private Result AddConstraint(MemorySpan<double> row)
+    private void AddConstraint(MemorySpan<double> row)
     {
         var coefs = row.Slice(0, row.Length - 1);
         var constant = row[row.Length - 1];
@@ -477,8 +478,8 @@ internal struct LinearProblem(AllocatorHandle allocator)
         }
 
         if (constant < 0.0)
-            return BurstError.Unsolvable();
-        return Result.Ok;
+            BurstError.ThrowUnsolvable();
+        return;
 
         FOUND_FIRST:
         int index = i;
@@ -497,7 +498,7 @@ internal struct LinearProblem(AllocatorHandle allocator)
                 constant = constant / coefs[index],
             }
         );
-        return Result.Ok;
+        return;
 
         FOUND_SECOND:
         constraints.Add(
@@ -507,8 +508,6 @@ internal struct LinearProblem(AllocatorHandle allocator)
                 constant = constant,
             }
         );
-
-        return Result.Ok;
     }
 
     [IgnoreWarning(1370)]
@@ -640,15 +639,12 @@ internal struct LinearProblem(AllocatorHandle allocator)
             var tableau = BuildSimplexTableau(func, entry.choices, varMap);
             var selected = new BitSet(tableau.Cols, Allocator);
 
-            if (!Simplex.SolveTableau(tableau, selected).Match(out err))
+            if (!Simplex.SolveTableau(tableau, selected))
             {
                 // Some variable choices may not be solvable. That's not an
                 // issue, it just means that we don't need to consider
                 // any more changes here.
-                if (err == Error.Unsolvable)
-                    continue;
-
-                return err;
+                continue;
             }
 
             var score = tableau[0, tableau.Cols - 1];
@@ -892,7 +888,7 @@ internal struct LinearProblem(AllocatorHandle allocator)
     )
     {
         if (varMap.Capacity != VariableCount)
-            throw new ArgumentException("variable count was not the right length");
+            BurstCrashHandler.Crash(Error.LinearProblem_BuildVarMap_WrongVariableCount);
 
         varMap.Clear();
 

@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using BackgroundResourceProcessing.BurstSolver;
 using BackgroundResourceProcessing.Utils;
 using Unity.Burst.CompilerServices;
 using static Unity.Burst.Intrinsics.X86.Bmi2;
@@ -48,7 +49,7 @@ internal struct BitSpan(MemorySpan<ulong> bits) : IEnumerable<int>
         get
         {
             if (key < 0 || key >= Capacity)
-                ThrowIndexOutOfRangeException();
+                BurstCrashHandler.Crash(Error.BitSpan_IndexOutOfRange, key);
 
             var word = key / ULongBits;
             var bit = key % ULongBits;
@@ -59,7 +60,7 @@ internal struct BitSpan(MemorySpan<ulong> bits) : IEnumerable<int>
         set
         {
             if (key < 0 || key >= Capacity)
-                ThrowIndexOutOfRangeException();
+                BurstCrashHandler.Crash(Error.BitSpan_IndexOutOfRange, key);
 
             var word = key / ULongBits;
             var bit = key % ULongBits;
@@ -85,10 +86,6 @@ internal struct BitSpan(MemorySpan<ulong> bits) : IEnumerable<int>
         : this(set.Span.bits) { }
 
     public static implicit operator BitSpan(BitSet set) => new(set);
-
-    [IgnoreWarning(1370)]
-    static void ThrowIndexOutOfRangeException() =>
-        throw new IndexOutOfRangeException("index out of range for bitset");
 
     public readonly bool Contains(int key)
     {
@@ -116,7 +113,7 @@ internal struct BitSpan(MemorySpan<ulong> bits) : IEnumerable<int>
     public void AndWith(BitSpan other)
     {
         if (bits.Length < other.bits.Length)
-            ThrowMismatchedSetCapacity();
+            BurstCrashHandler.Crash(Error.BitSpan_MismatchedCapacities);
 
         for (int i = 0; i < other.bits.Length; ++i)
             bits[i] &= other.bits[i];
@@ -131,7 +128,7 @@ internal struct BitSpan(MemorySpan<ulong> bits) : IEnumerable<int>
     public void OrWith(BitSpan other)
     {
         if (bits.Length < other.bits.Length)
-            ThrowMismatchedSetCapacity();
+            BurstCrashHandler.Crash(Error.BitSpan_MismatchedCapacities);
 
         for (int i = 0; i < other.bits.Length; ++i)
             bits[i] |= other.bits[i];
@@ -146,7 +143,7 @@ internal struct BitSpan(MemorySpan<ulong> bits) : IEnumerable<int>
     public void XorWith(BitSpan other)
     {
         if (bits.Length < other.bits.Length)
-            ThrowMismatchedSetCapacity();
+            BurstCrashHandler.Crash(Error.BitSpan_MismatchedCapacities);
 
         for (int i = 0; i < other.bits.Length; ++i)
             bits[i] ^= other.bits[i];
@@ -180,15 +177,10 @@ internal struct BitSpan(MemorySpan<ulong> bits) : IEnumerable<int>
             bits[i] = other.bits[i];
     }
 
-    [IgnoreWarning(1370)]
-    static void ThrowMismatchedSetCapacity() =>
-        throw new ArgumentException("bitspan instances have different capacities");
-
-    [IgnoreWarning(1370)]
     public void ClearUpFrom(int index)
     {
         if (index < 0)
-            throw new ArgumentOutOfRangeException(nameof(index));
+            BurstCrashHandler.Crash(Error.BitSpan_IndexOutOfRange, index);
 
         var word = index / ULongBits;
         var bit = index % ULongBits;
@@ -203,11 +195,10 @@ internal struct BitSpan(MemorySpan<ulong> bits) : IEnumerable<int>
             bits[i] = 0;
     }
 
-    [IgnoreWarning(1370)]
     public void ClearUpTo(int index)
     {
         if (index < 0)
-            throw new ArgumentOutOfRangeException(nameof(index));
+            BurstCrashHandler.Crash(Error.BitSpan_IndexOutOfRange);
 
         var word = index / ULongBits;
         var bit = index % ULongBits;
@@ -228,11 +219,11 @@ internal struct BitSpan(MemorySpan<ulong> bits) : IEnumerable<int>
     public void ClearOutsideRange(int start, int end)
     {
         if (start < 0)
-            throw new ArgumentOutOfRangeException(nameof(start));
+            BurstCrashHandler.Crash(Error.BitSpan_IndexOutOfRange, start);
         if (end < start)
-            throw new ArgumentOutOfRangeException(nameof(end));
+            BurstCrashHandler.Crash(Error.BitSpan_IndexOutOfRange, end);
         if (end > Capacity)
-            throw new ArgumentOutOfRangeException(nameof(end));
+            BurstCrashHandler.Crash(Error.BitSpan_IndexOutOfRange, end);
 
         int sword = start / ULongBits;
         int eword = end / ULongBits;
@@ -259,11 +250,10 @@ internal struct BitSpan(MemorySpan<ulong> bits) : IEnumerable<int>
             bits[i] = 0;
     }
 
-    [IgnoreWarning(1370)]
     public void SetUpTo(int index)
     {
         if (index < 0 || index > Capacity)
-            throw new ArgumentOutOfRangeException(nameof(index));
+            BurstCrashHandler.Crash(Error.BitSpan_IndexOutOfRange);
 
         var word = index / ULongBits;
         var bit = index % ULongBits;
@@ -280,7 +270,7 @@ internal struct BitSpan(MemorySpan<ulong> bits) : IEnumerable<int>
     public void CopyFrom(BitSpan other)
     {
         if (other.bits.Length != bits.Length)
-            throw new ArgumentException("bitset capacities did not match");
+            BurstCrashHandler.Crash(Error.BitSpan_MismatchedCapacities);
 
         for (int i = 0; i < bits.Length; ++i)
             bits[i] = other.bits[i];
@@ -290,7 +280,7 @@ internal struct BitSpan(MemorySpan<ulong> bits) : IEnumerable<int>
     public void CopyInverseFrom(BitSpan other)
     {
         if (other.bits.Length != bits.Length)
-            throw new ArgumentException("bitset capacities did not match");
+            BurstCrashHandler.Crash(Error.BitSpan_MismatchedCapacities);
 
         for (int i = 0; i < bits.Length; ++i)
             bits[i] = ~other.bits[i];
@@ -300,7 +290,7 @@ internal struct BitSpan(MemorySpan<ulong> bits) : IEnumerable<int>
     public void RemoveAll(BitSpan other)
     {
         if (other.bits.Length != bits.Length)
-            throw new ArgumentException("bitset capacities did not match");
+            BurstCrashHandler.Crash(Error.BitSpan_MismatchedCapacities);
 
         for (int i = 0; i < bits.Length; ++i)
             bits[i] &= ~other.bits[i];

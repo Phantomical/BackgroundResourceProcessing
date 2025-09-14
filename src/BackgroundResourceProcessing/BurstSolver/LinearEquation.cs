@@ -113,13 +113,10 @@ internal struct LinearEquation(RawList<double> values)
 
     public void Clear() => values.Clear();
 
-    [IgnoreWarning(1370)]
     public readonly void CopyTo(MemorySpan<double> dst)
     {
         if (!Span.TryCopyTo(dst))
-            throw new InvalidOperationException(
-                "destination was too small to store all equation coefficients"
-            );
+            BurstCrashHandler.Crash(Error.LinearEquation_DestinationTooSmall);
     }
 
     public void Set(MemorySpan<double> values)

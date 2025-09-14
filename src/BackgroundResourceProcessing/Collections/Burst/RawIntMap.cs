@@ -3,7 +3,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using BackgroundResourceProcessing.BurstSolver;
+using BackgroundResourceProcessing.Shim;
 using Unity.Burst.CompilerServices;
+using UnityEngine.Assertions;
 
 #pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
 
@@ -59,12 +62,14 @@ public struct RawIntMap<T> : IEnumerable<KeyValuePair<int, T>>
         return entry.Present;
     }
 
+    [IgnoreWarning(1370)]
     public readonly unsafe ref T GetUnchecked(int key)
     {
 #if DEBUG
-        Debug.Assert(key >= 0);
-        Debug.Assert(key < Capacity);
-        Debug.Assert(items[key].Present);
+        if (key < 0 || key >= Capacity)
+            throw new InvalidOperationException("GetUnchecked key was out of range");
+        if (!items[key].Present)
+            throw new InvalidOperationException("GetUnchecked key was not present");
 #endif
 
         return ref items.Ptr[key].Value;
@@ -141,17 +146,14 @@ public struct RawIntMap<T> : IEnumerable<KeyValuePair<int, T>>
 
     public readonly int GetCount() => Count;
 
-    [IgnoreWarning(1370)]
     static void ThrowKeyNotFoundException(int key) =>
-        throw new KeyNotFoundException($"key {key} not found in the map");
+        BurstCrashHandler.Crash(Error.RawIntMap_KeyNotFound, key);
 
-    [IgnoreWarning(1370)]
     static void ThrowKeyOutOfBoundsException(int key) =>
-        throw new IndexOutOfRangeException($"key {key} was outside of the int map range");
+        BurstCrashHandler.Crash(Error.RawIntMap_KeyOutOfBounds, key);
 
-    [IgnoreWarning(1370)]
     static void ThrowKeyExistsException(int key) =>
-        throw new ArgumentException($"key {key} already exists in the map");
+        BurstCrashHandler.Crash(Error.RawIntMap_KeyExists, key);
 
     #region Enumerators
     public readonly Enumerator GetEnumerator() => new(this);

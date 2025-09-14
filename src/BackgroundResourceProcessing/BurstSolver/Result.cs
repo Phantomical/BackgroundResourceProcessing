@@ -54,11 +54,7 @@ internal readonly struct Result
         err.ThrowRepresentativeError();
     }
 
-    [IgnoreWarning(1370)]
-    static void ThrowNotErr() =>
-        throw new InvalidOperationException(
-            "attempted to get the Err variant of a result that was not Err"
-        );
+    static void ThrowNotErr() => BurstCrashHandler.Crash(Error.Result_UnwrapNotErr);
 }
 
 [DebuggerDisplay("{DebugDisplay}")]
@@ -160,7 +156,6 @@ internal readonly struct Result<T>
         return err != Error.Success;
     }
 
-    [IgnoreWarning(1370)]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Match(out T ok, out Error err)
     {
@@ -179,15 +174,7 @@ internal readonly struct Result<T>
         throw new NotImplementedException();
     }
 
-    [IgnoreWarning(1370)]
-    static void ThrowNotOk() =>
-        throw new InvalidOperationException(
-            "attempted to get the Ok variant of a result that was not Ok"
-        );
+    static void ThrowNotOk() => BurstCrashHandler.Crash(Error.Result_UnwrapNotOk);
 
-    [IgnoreWarning(1370)]
-    static void ThrowNotErr() =>
-        throw new InvalidOperationException(
-            "attempted to get the Err variant of a result that was not Err"
-        );
+    static void ThrowNotErr() => BurstCrashHandler.Crash(Error.Result_UnwrapNotErr);
 }

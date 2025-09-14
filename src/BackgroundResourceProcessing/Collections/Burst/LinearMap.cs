@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using BackgroundResourceProcessing.BurstSolver;
 using Unity.Burst.CompilerServices;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
@@ -53,7 +54,7 @@ internal struct LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>
         get
         {
             if (!TryGetIndex(key, out var index))
-                throw new KeyNotFoundException("key not found in the linear map");
+                BurstCrashHandler.Crash(Error.LinearMap_KeyNotFound);
 
             return ref entries[index].Value;
         }
@@ -110,7 +111,7 @@ internal struct LinearMap<K, V> : IEnumerable<KeyValuePair<K, V>>
     public void Add(K key, V value)
     {
         if (ContainsKey(key))
-            throw new ArgumentException("an item with the same key already exists in the map");
+            BurstCrashHandler.Crash(Error.LinearMap_KeyAlreadyExists);
         AddUnchecked(key, value);
     }
 

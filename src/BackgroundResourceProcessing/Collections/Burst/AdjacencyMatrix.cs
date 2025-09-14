@@ -52,7 +52,7 @@ internal unsafe struct AdjacencyMatrix : IEnumerable<BitSpan>
         get
         {
             if (r < 0 || r >= Rows)
-                ThrowRowOutOfRangeException();
+                BurstCrashHandler.Crash(Error.AdjacencyMatrix_RowIndexOutOfRange, r);
 
             return new(new MemorySpan<ulong>(&bits[r * cols], cols));
         }
@@ -73,22 +73,23 @@ internal unsafe struct AdjacencyMatrix : IEnumerable<BitSpan>
     public AdjacencyMatrix(int rows, int cols, AllocatorHandle allocator)
     {
         if (rows < 0)
-            ThrowNegativeRows();
+            BurstCrashHandler.Crash(Error.AdjacencyMatrix_RowSizeOutOfRange);
         if (cols < 0)
-            ThrowNegativeCols();
+            BurstCrashHandler.Crash(Error.AdjacencyMatrix_ColSizeOutOfRange);
 
         this.rows = rows;
         this.cols = (int)MathUtil.NextPowerOf2((uint)((cols + (ULongBits - 1)) / ULongBits));
         this.bits = new RawArray<ulong>(this.rows * this.cols, allocator).Ptr;
     }
 
-    [IgnoreWarning(1370)]
     public readonly unsafe void RemoveUnequalColumns(BitSpan bspan, int column)
     {
         if (bspan.Words != ColumnWords)
-            throw new ArgumentException("span capacity did not match matrix columns");
+            BurstCrashHandler.Crash(Error.AdjacencyMatrix_RemoveUnequalColumns_WrongSpanCapacity);
         if (column < 0 || column >= Cols)
-            throw new ArgumentOutOfRangeException(nameof(column), "column index was out of range");
+            BurstCrashHandler.Crash(
+                Error.AdjacencyMatrix_RemoveUnequalColumns_ColumnIndexOutOfRange
+            );
 
         int word = column / ULongBits;
         int bit = column % ULongBits;
@@ -214,9 +215,7 @@ internal unsafe struct AdjacencyMatrix : IEnumerable<BitSpan>
     public unsafe void FillUpperDiagonal()
     {
         if (Cols < Rows)
-            throw new InvalidOperationException(
-                "cannot fill the upper diagonal on a matrix that is taller than it is wide"
-            );
+            BurstCrashHandler.Crash(Error.AdjacencyMatrix_FillUpperDiagonal_WrongMatrixSize);
 
         int rowWords = (Rows + (ULongBits - 1)) / ULongBits;
         int lastWord = Rows / ULongBits;
@@ -254,7 +253,7 @@ internal unsafe struct AdjacencyMatrix : IEnumerable<BitSpan>
     public readonly unsafe void RemoveUnequalRows(AdjacencyMatrix equal)
     {
         if (equal.Cols < Rows || equal.Rows < Rows)
-            throw new ArgumentException("equal matrix was too small", nameof(equal));
+            BurstCrashHandler.Crash(Error.AdjacencyMatrix_RemoveUnequalRows_WrongMatrixSize);
 
         Hint.Assume(equal.bits + equal.cols * equal.rows < bits || bits + cols * rows < equal.bits);
 
@@ -379,27 +378,6 @@ internal unsafe struct AdjacencyMatrix : IEnumerable<BitSpan>
         span.Fill(true);
         RemoveUnequalColumns(span, column);
     }
-
-    #region Exception Methods
-    [IgnoreWarning(1370)]
-    static void ThrowRowOutOfRangeException() =>
-        throw new IndexOutOfRangeException("row index was out of range");
-
-    [IgnoreWarning(1370)]
-    static void ThrowNegativeRows() => throw new ArgumentOutOfRangeException("rows");
-
-    [IgnoreWarning(1370)]
-    static void ThrowNegativeCols() => throw new ArgumentOutOfRangeException("cols");
-
-    static void Assume(bool cond)
-    {
-        if (BurstUtil.IsBurstCompiled)
-            Hint.Assume(cond);
-
-        if (!cond)
-            throw new Exception("assumption failed");
-    }
-    #endregion
 
     #region Enumerator
     public readonly RowEnumerator GetEnumerator() => new(this);

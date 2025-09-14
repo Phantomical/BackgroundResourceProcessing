@@ -42,7 +42,7 @@ internal readonly unsafe struct MemorySpan<T> : IEnumerable<T>
         get
         {
             if ((uint)index >= (uint)Length)
-                ThrowIndexOutOfRange();
+                BurstCrashHandler.Crash(Error.MemorySpan_IndexOutOfRange, index);
 
             return ref data[index];
         }
@@ -55,7 +55,7 @@ internal readonly unsafe struct MemorySpan<T> : IEnumerable<T>
     public MemorySpan(T* data, int length)
     {
         if (length < 0)
-            ThrowLengthOutOfRange();
+            BurstCrashHandler.Crash(Error.MemorySpan_NegativeLength);
 
         this.data = data;
         this.length = length;
@@ -105,7 +105,7 @@ internal readonly unsafe struct MemorySpan<T> : IEnumerable<T>
     public void CopyTo(MemorySpan<T> dst)
     {
         if (!TryCopyTo(dst))
-            ThrowDestinationTooShort();
+            BurstCrashHandler.Crash(Error.MemorySpan_CopyTo_DestinationTooShort);
     }
 
     public bool TryCopyTo(MemorySpan<T> dst)
@@ -132,7 +132,7 @@ internal readonly unsafe struct MemorySpan<T> : IEnumerable<T>
     public MemorySpan<T> Slice(int start)
     {
         if ((uint)start > Length)
-            ThrowIndexOutOfRange();
+            BurstCrashHandler.Crash(Error.MemorySpan_IndexOutOfRange);
 
         return new(data + start, Length - start);
     }
@@ -140,7 +140,7 @@ internal readonly unsafe struct MemorySpan<T> : IEnumerable<T>
     public MemorySpan<T> Slice(int start, int length)
     {
         if ((uint)start > Length || (uint)length > (Length - start))
-            ThrowIndexOutOfRange();
+            BurstCrashHandler.Crash(Error.MemorySpan_IndexOutOfRange);
 
         return new(data + start, length);
     }
@@ -172,20 +172,6 @@ internal readonly unsafe struct MemorySpan<T> : IEnumerable<T>
         public void Dispose() { }
     }
 
-    #endregion
-
-    #region Exception Helpers
-    [IgnoreWarning(1370)]
-    static void ThrowIndexOutOfRange() =>
-        throw new IndexOutOfRangeException("span index was out of range");
-
-    [IgnoreWarning(1370)]
-    static void ThrowLengthOutOfRange() =>
-        throw new ArgumentOutOfRangeException("span length was negative");
-
-    [IgnoreWarning(1370)]
-    static void ThrowDestinationTooShort() =>
-        throw new ArgumentException("MemorySpan.CopyTo destination was too short");
     #endregion
 }
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using BackgroundResourceProcessing.BurstSolver;
 using Unity.Burst.CompilerServices;
 using Unity.Collections;
 
@@ -34,7 +35,7 @@ internal readonly unsafe struct RawArray<T>(AllocatorHandle allocator) : IEnumer
         get
         {
             if (index < 0 || index >= Length)
-                ThrowIndexOutOfRange();
+                BurstCrashHandler.Crash(Error.RawArray_IndexOutOfRange, index);
 
             return ref data[index];
         }
@@ -45,7 +46,7 @@ internal readonly unsafe struct RawArray<T>(AllocatorHandle allocator) : IEnumer
         get
         {
             if (index >= Length)
-                ThrowIndexOutOfRange();
+                BurstCrashHandler.Crash(Error.RawArray_IndexOutOfRange);
 
             return ref data[index];
         }
@@ -135,10 +136,6 @@ internal readonly unsafe struct RawArray<T>(AllocatorHandle allocator) : IEnumer
 
     [IgnoreWarning(1370)]
     static void ThrowLengthOutOfRange() => throw new ArgumentOutOfRangeException("length");
-
-    [IgnoreWarning(1370)]
-    static void ThrowIndexOutOfRange() =>
-        throw new IndexOutOfRangeException("array index out of range");
 
     private sealed class DebugView(RawArray<T> array)
     {

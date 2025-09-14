@@ -172,7 +172,7 @@ internal static class LinearPresolve
     )
     {
         if (stop >= tableau.Rows)
-            ThrowStopIndexOutOfRange();
+            ThrowStopIndexOutOfRange(stop);
 
         double** avx2_row = stackalloc double*[4];
         double* avx2_f = stackalloc double[4];
@@ -381,7 +381,6 @@ internal static class LinearPresolve
         }
     }
 
-    [IgnoreWarning(1370)]
     internal static unsafe void InferStates(
         in Matrix matrix,
         MemorySpan<ConstraintState> states,
@@ -389,7 +388,7 @@ internal static class LinearPresolve
     )
     {
         if (states.Length != matrix.Rows)
-            throw new ArgumentException("states span was not the same length as matrix rows");
+            BurstCrashHandler.Crash(Error.LinearPresolve_StatesSpanMismatch);
 
         int y = 0;
         for (; y < matrix.Rows; ++y)
@@ -479,23 +478,12 @@ internal static class LinearPresolve
         LogUtil.Log($"Presolve matrix after RowReduce:\n{tableau}");
     }
 
-    [IgnoreWarning(1370)]
-    private static void ThrowStopIndexOutOfRange() =>
-        throw new ArgumentOutOfRangeException("stop index was larger than the matrix height");
+    private static void ThrowStopIndexOutOfRange(int stop) =>
+        BurstCrashHandler.Crash(Error.LinearPresolve_StopIndexOutOfRange, stop);
 
     internal enum UnsolvableState
     {
         SOLVABLE,
         UNSOLVABLE,
-    }
-
-    private static bool SetUnsolvable(ref UnsolvableState unsolvable)
-    {
-        [BurstDiscard]
-        static void Managed() => throw new UnsolvableProblemException();
-
-        Managed();
-        unsolvable = UnsolvableState.UNSOLVABLE;
-        return false;
     }
 }

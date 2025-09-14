@@ -47,12 +47,11 @@ internal static partial class Simplex
     private static bool IsAvx2Supported => true;
 #endif
 
-    [IgnoreWarning(1370)]
     [MustUseReturnValue]
-    public static unsafe Result SolveTableau(Matrix tableau, BitSpan selected)
+    public static unsafe bool SolveTableau(Matrix tableau, BitSpan selected)
     {
         if (selected.Capacity < tableau.Cols - 1)
-            throw new ArgumentException("selected was too small for tableau");
+            BurstCrashHandler.Crash(Error.Simplex_SolveTableau_SelectedTooSmall);
 
         for (uint iter = 0; iter < MaxIterations; ++iter)
         {
@@ -62,7 +61,7 @@ internal static partial class Simplex
 
             int index = SelectRow(tableau, pivot);
             if (index < 0)
-                return BurstError.Unsolvable();
+                return false;
 
             if (Trace)
                 TracePivot(pivot, index, tableau);
@@ -82,7 +81,7 @@ internal static partial class Simplex
         if (Trace)
             TraceFinal(tableau);
 
-        return Result.Ok;
+        return true;
     }
 
     private static unsafe int SelectPivot(

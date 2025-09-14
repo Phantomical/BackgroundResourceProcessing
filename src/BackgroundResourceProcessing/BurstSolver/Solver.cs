@@ -20,12 +20,15 @@ internal static class Solver
         ref ResourceGraph graph,
         double* inventoryRates,
         double* converterRates,
-        ref AllocatorHandle allocator
+        AllocatorHandle* allocator
     );
 
     public static unsafe SolverSolution ComputeInventoryRates(ResourceProcessor processor)
     {
         using var span = new TraceSpan("ResourceProcessor.ComputeInventoryRates");
+        // This method does nothing but ensures that the static constructor for
+        // the crash handler is called.
+        BurstCrashHandler.Init();
 
         using var arena = new BurstAllocator();
         AllocatorHandle handle = new(&arena);
@@ -37,10 +40,8 @@ internal static class Solver
         var inventoryRates = new double[inventoryCount];
         var converterRates = new double[converterCount];
 
-        fixed (
-            double* inv = inventoryRates,
-                conv = converterRates
-        )
+        fixed (double* inv = inventoryRates)
+        fixed (double* conv = converterRates)
         {
             Result res;
             if (!BurstUtil.EnableBurst)
@@ -59,7 +60,7 @@ internal static class Solver
                         ComputeInventoryRatesBurst
                     );
 
-                res = ComputeRatesFp.Value.Invoke(ref graph, inv, conv, ref handle);
+                res = ComputeRatesFp.Value.Invoke(ref graph, inv, conv, &handle);
             }
 
             if (!res.Match(out var err))
@@ -74,14 +75,14 @@ internal static class Solver
         ref ResourceGraph graph,
         double* inventoryRates,
         double* converterRates,
-        ref AllocatorHandle allocator
+        AllocatorHandle* allocator
     )
     {
         return ComputeInventoryRates(
             ref graph,
             new(inventoryRates, graph.inventories.Count),
             new(converterRates, graph.converters.Count),
-            allocator
+            *allocator
         );
     }
 

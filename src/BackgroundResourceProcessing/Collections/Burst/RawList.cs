@@ -53,7 +53,7 @@ internal unsafe struct RawList<T>(AllocatorHandle allocator) : IEnumerable<T>
         get
         {
             if (index < 0 || index >= count)
-                ThrowIndexOutOfRange();
+                BurstCrashHandler.Crash(Error.RawList_IndexOutOfRange, index);
 
             return ref data[index];
         }
@@ -120,7 +120,7 @@ internal unsafe struct RawList<T>(AllocatorHandle allocator) : IEnumerable<T>
     public T Pop()
     {
         if (IsEmpty)
-            throw new InvalidOperationException("cannot pop an item from an empty list");
+            BurstCrashHandler.Crash(Error.RawList_PopEmpty);
 
         count -= 1;
         return data[count];
@@ -146,11 +146,10 @@ internal unsafe struct RawList<T>(AllocatorHandle allocator) : IEnumerable<T>
         count = 0;
     }
 
-    [IgnoreWarning(1370)]
     public T RemoveAt(int index)
     {
         if (index < 0 || index >= count)
-            throw new ArgumentOutOfRangeException(nameof(index));
+            BurstCrashHandler.Crash(Error.RawList_IndexOutOfRange, index);
 
         var item = this[index];
 
@@ -174,11 +173,10 @@ internal unsafe struct RawList<T>(AllocatorHandle allocator) : IEnumerable<T>
         return item;
     }
 
-    [IgnoreWarning(1370)]
     public T RemoveAtSwapBack(int index)
     {
         if (index < 0 || index >= count)
-            throw new ArgumentOutOfRangeException(nameof(index));
+            BurstCrashHandler.Crash(Error.RawList_IndexOutOfRange, index);
 
         var item = this[index];
 
@@ -189,11 +187,10 @@ internal unsafe struct RawList<T>(AllocatorHandle allocator) : IEnumerable<T>
         return item;
     }
 
-    [IgnoreWarning(1370)]
     public void Resize(int newsize, NativeArrayOptions options = NativeArrayOptions.ClearMemory)
     {
         if (newsize < 0)
-            throw new ArgumentOutOfRangeException(nameof(newsize));
+            BurstCrashHandler.Crash(Error.RawList_SizeIsNegative);
         if (Hint.Unlikely(newsize > Capacity))
             Expand(newsize);
 
@@ -217,33 +214,30 @@ internal unsafe struct RawList<T>(AllocatorHandle allocator) : IEnumerable<T>
         }
     }
 
-    [IgnoreWarning(1370)]
     public void Truncate(int index)
     {
         if (index < 0)
-            throw new ArgumentOutOfRangeException(nameof(index));
+            BurstCrashHandler.Crash(Error.RawList_Truncate_IndexIsNegative);
         if (index >= count)
             return;
 
         count = (uint)index;
     }
 
-    [IgnoreWarning(1370)]
     public void Reserve(int capacity)
     {
         if (capacity < 0)
-            throw new ArgumentOutOfRangeException(nameof(capacity));
+            BurstCrashHandler.Crash(Error.RawList_CapacityIsNegative);
         if (Hint.Likely(capacity <= this.capacity))
             return;
 
         Grow(capacity);
     }
 
-    [IgnoreWarning(1370)]
     private void Grow(int capacity)
     {
         if (capacity <= Capacity)
-            throw new ArgumentOutOfRangeException(nameof(capacity));
+            BurstCrashHandler.Crash(Error.RawList_CapacityIsNegative);
 
         T* prev = data;
         data = Allocator.Allocate<T>(capacity);
@@ -268,10 +262,6 @@ internal unsafe struct RawList<T>(AllocatorHandle allocator) : IEnumerable<T>
     {
         Reserve(Math.Max(Capacity * 2, newcap));
     }
-
-    [IgnoreWarning(1370)]
-    static void ThrowIndexOutOfRange() =>
-        throw new IndexOutOfRangeException("list index was out of range");
 
     private sealed class DebugView(RawList<T> list)
     {
