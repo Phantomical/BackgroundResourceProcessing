@@ -12,6 +12,9 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ## Unreleased
 
+### Added
+* Added support for PersistentThrust (v1.7.5 only).
+
 ## 0.1.14
 ### Fixed
 * Removed unintended debug logging from TAC-LS integration.

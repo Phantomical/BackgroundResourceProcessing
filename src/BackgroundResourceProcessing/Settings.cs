@@ -135,4 +135,11 @@ public class ModIntegrationSettings : GameParameters.CustomParameterNode
             + "Provides more accurate predictions for unloaded vessels."
     )]
     public bool EnableTACLSIntegration = true;
+
+    [GameParameters.CustomParameterUI(
+        "Enable Persistent Thrust Integration",
+        toolTip = "Patch Persistent Thrust's background processing to make use "
+            + "of Background Resource Processing"
+    )]
+    public bool EnablePersistentThrustIntegration = true;
 }

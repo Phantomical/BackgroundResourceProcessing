@@ -23,6 +23,7 @@
         { "name": "NearFutureElectrical-Core",         "suppress_recommendations": true },
         { "name": "NearFutureSolar-Core",              "suppress_recommendations": true },
         { "name": "NehemiahEngineeringOrbitalScience", "suppress_recommendations": true },
+        { "name": "PersistentThrust",                  "suppress_recommendations": true },
         { "name": "SpaceDust",                         "suppress_recommendations": true },
         { "name": "SystemHeat",                        "suppress_recommendations": true },
         { "name": "Snacks",                            "suppress_recommendations": true },

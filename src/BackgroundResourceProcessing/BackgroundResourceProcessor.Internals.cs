@@ -124,7 +124,7 @@ public sealed partial class BackgroundResourceProcessor
         ImmediateChangepointRequested = false;
 
         processor.RecordProtoInventories(vessel);
-        if (processor.UpdateState(changepoint, true))
+        if (UpdateState(changepoint, true))
             recompute = true;
         if (processor.UpdateBehaviours(state))
             recompute = true;
@@ -168,7 +168,7 @@ public sealed partial class BackgroundResourceProcessor
         ShadowState = Shadow.GetShadowState(vessel);
         var state = GetVesselState();
 
-        processor.UpdateState(state.CurrentTime, true);
+        UpdateState(state.CurrentTime, true);
         processor.UpdateConstraintState();
         processor.ForceUpdateBehaviours(state);
         processor.ComputeRates();
@@ -219,9 +219,10 @@ public sealed partial class BackgroundResourceProcessor
     {
         var currentTime = Planetarium.GetUniversalTime();
 
-        processor.UpdateState(currentTime, false);
+        UpdateState(currentTime, false);
         processor.ApplyInventories(Vessel);
-        onVesselRestore.Fire(this);
+        using (var eventspan = new TraceSpan("onVesselRestore"))
+            onVesselRestore.Fire(this);
         processor.ClearVesselState();
 
         ShadowState = null;
@@ -267,12 +268,39 @@ public sealed partial class BackgroundResourceProcessor
                 new() { CurrentTime = currentTime }
             );
         }
+
+        using var evtspan = new TraceSpan("onVesselChangepoint");
+        onVesselChangepoint.Fire(
+            this,
+            new ChangepointEvent()
+            {
+                LastChangepoint = LastChangepoint,
+                CurrentChangepoint = currentTime,
+            }
+        );
     }
 
     private void UpdateNextChangepoint(double currentTime)
     {
         processor.UpdateNextChangepoint(currentTime);
         IsDirty = false;
+
+        using (var tracespan = new TraceSpan("onAfterChangepointComputed"))
+            onAfterVesselChangepoint.Fire(this);
+    }
+
+    private bool UpdateState(double currentTime, bool updateSnapshots)
+    {
+        double lastUpdate = processor.lastUpdate;
+        bool result = processor.UpdateState(currentTime, updateSnapshots);
+
+        using (var evtspan = new TraceSpan("onStateUpdate"))
+            onStateUpdate.Fire(
+                this,
+                new() { LastChangepoint = lastUpdate, CurrentChangepoint = currentTime }
+            );
+
+        return result;
     }
 
     private void RegisterCallbacks()

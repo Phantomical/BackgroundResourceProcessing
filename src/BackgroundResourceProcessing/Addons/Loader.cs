@@ -46,6 +46,13 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
             [new DirectAssemblyDependency("NearFutureSolar", new(0, 4))]
         ),
         new(
+            "BackgroundResourceProcessing.Integration.PersistentThrust.17",
+            [
+                new DirectAssemblyDependency("PersistentThrust", new(1, 7, 5)),
+                new DirectAssemblyMaxVersion("PersistentThrust", new(1, 8)),
+            ]
+        ),
+        new(
             "BackgroundResourceProcessing.Integration.SpaceDust",
             [new DirectAssemblyDependency("SpaceDust", new(0, 5, 4))]
         ),
@@ -302,10 +309,8 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
     {
         if (existing.Major != required.Major)
             return false;
-        if (existing.Minor < required.Minor)
-            return false;
 
-        return true;
+        return existing >= required;
     }
 
     private class RegistryLoadingSystem() : LoadingSystem
@@ -389,6 +394,36 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
                     continue;
                 if (!IsVersionCompatible(asmName.Version, version))
                     continue;
+
+                return true;
+            }
+
+            return false;
+        }
+    }
+
+    private class DirectAssemblyMaxVersion(string name, Version version, bool inclusive = false)
+        : AssemblyDependency
+    {
+        public override bool IsSatisfied()
+        {
+            var domain = AppDomain.CurrentDomain;
+
+            foreach (var assembly in domain.GetAssemblies())
+            {
+                var asmName = assembly.GetName();
+                if (asmName.Name != name)
+                    continue;
+                if (inclusive)
+                {
+                    if (asmName.Version > version)
+                        continue;
+                }
+                else
+                {
+                    if (asmName.Version >= version)
+                        continue;
+                }
 
                 return true;
             }

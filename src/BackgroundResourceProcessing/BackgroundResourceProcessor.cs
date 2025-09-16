@@ -45,6 +45,35 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
     > onVesselChangepoint = new("onVesselChangepoint");
 
     /// <summary>
+    /// This event is fired after a changepoint complete, after the next
+    /// changepoint time has been computed.
+    /// </summary>
+    public static readonly EventData<BackgroundResourceProcessor> onAfterVesselChangepoint = new(
+        "onVesselChangepoint"
+    );
+
+    /// <summary>
+    /// This event is fired just after the vessel state is updated but before
+    /// any changepoint-related computations are done, if any.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// <para>
+    /// This allows you to look at the old rates on the inventories and
+    /// converters and use that. This is useful if you are tracking, for example,
+    /// total uptime of a converter.
+    /// </para>
+    ///
+    /// <para>
+    /// Like <see cref="onVesselRestore"/>, this will be called during vessel
+    /// load before Start is called on relevant components, so make sure to
+    /// register your event handler in <c>Awake</c>.
+    /// </para>
+    /// </remarks>
+    public static readonly EventData<BackgroundResourceProcessor, ChangepointEvent> onStateUpdate =
+        new("onStateUpdate");
+
+    /// <summary>
     /// This event is fired just after a vessel is recorded.
     /// </summary>
     ///
