@@ -66,7 +66,7 @@ namespace BackgroundResourceProcessing.CLI
                 foreach (var (resource, state) in processor.GetResourceStates())
                 {
                     LogUtil.Log(
-                        $"  rate {state.rate} with total {state.amount}/{state.maxAmount} {resource}"
+                        $"  {resource, -20} {$"{state.amount:F2}", 10} / {$"{state.maxAmount:F2}", 10} ({state.rate:G6}/s)"
                     );
                 }
 
