@@ -356,7 +356,10 @@ internal class ResourceProcessor
                         $"Found inventory with {res.Amount}/{res.MaxAmount} {res.ResourceName}"
                     );
 
-                    var inventory = new ResourceInventory(res, module);
+                    var inventory = new ResourceInventory(res, module)
+                    {
+                        MassIncludedInDryMass = adapter.InventoryMassIncludedInDryMass,
+                    };
                     inventoryIds.Add(inventory.Id, inventories.Count);
                     inventories.Add(inventory);
                 }

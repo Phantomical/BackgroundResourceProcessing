@@ -81,28 +81,19 @@ public sealed class BackgroundPersistentThrust : VesselModule
 
         var orbit = vessel.orbit;
 
-        double mass = DryMass;
-        double rate = 0.0;
-        foreach (var inventory in processor.Inventories)
-        {
-            var definition = PartResourceLibrary.Instance.resourceDefinitions[inventory.ResourceId];
-            if (definition == null)
-                continue;
-
-            mass += inventory.Amount * definition.density;
-            rate += inventory.Rate * definition.density;
-        }
+        var mass = processor.GetWetMass();
+        mass.amount += DryMass;
 
         double deltaV;
-        if (Math.Abs(rate) < 1e-9)
+        if (Math.Abs(mass.rate) < 1e-9)
         {
-            deltaV = Thrust / mass * dt;
+            deltaV = Thrust / mass.amount * dt;
         }
         else
         {
-            double m1 = mass + rate * (LastUpdate - processor.LastChangepoint);
-            double m2 = mass + rate * (time - processor.LastChangepoint);
-            deltaV = Thrust / rate * Math.Log(m2 / m1);
+            double m1 = mass.amount + mass.rate * (LastUpdate - processor.LastChangepoint);
+            double m2 = mass.amount + mass.rate * (time - processor.LastChangepoint);
+            deltaV = Thrust / mass.rate * Math.Log(m2 / m1);
         }
 
         LastUpdate = time;

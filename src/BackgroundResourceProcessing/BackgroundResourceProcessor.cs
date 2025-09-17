@@ -289,6 +289,51 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
         return state;
     }
 
+    /// <summary>
+    /// Get the total amount of wet mass that is stored within the simulation,
+    /// along with its rate and maximum storable wet mass.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// Due to how BRP ends up representing asteroid mass, this can actually
+    /// end up being negative if the mass removed from the asteroid outweighs
+    /// all other resources.
+    /// </remarks>
+    public InventoryState GetWetMass()
+    {
+        double mass = 0.0;
+        double rate = 0.0;
+        double total = 0.0;
+
+        foreach (var inventory in Inventories)
+        {
+            var definition = PartResourceLibrary.Instance.resourceDefinitions[inventory.ResourceId];
+            if (definition == null)
+                continue;
+
+            var density = definition.density;
+            var maxAmount = inventory.MaxAmount * density;
+
+            mass += inventory.Amount * density;
+            rate += inventory.Rate * density;
+
+            // The mass for an asteroid is already included if the vessel's dry
+            // mass so what we actually need to do is subtract what's missing
+            // from the wet mass.
+            if (inventory.MassIncludedInDryMass)
+                mass -= maxAmount;
+            else
+                total += maxAmount;
+        }
+
+        return new()
+        {
+            amount = mass,
+            maxAmount = total,
+            rate = rate,
+        };
+    }
+
     public VesselState GetVesselState() => GetVesselState(Planetarium.GetUniversalTime());
 
     /// <summary>

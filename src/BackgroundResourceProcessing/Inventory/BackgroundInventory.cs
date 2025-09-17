@@ -69,6 +69,20 @@ public abstract class BackgroundInventory : IRegistryItem
 
     private readonly BaseFieldList fields;
 
+    /// <summary>
+    /// Whether the contents of this inventory are already included in the dry
+    /// mass of the vessel. This ensures that vessel mass calculations take
+    /// this into account.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// The use cases for this are generally pretty niche. Only set this to true
+    /// if it is adapting for an amount that is included in part mass. The only
+    /// use for this in stock KSP is for asteroids and comets.
+    /// </remarks>
+    [KSPField]
+    public bool InventoryMassIncludedInDryMass = false;
+
     public BackgroundInventory()
     {
         fields = new(this);

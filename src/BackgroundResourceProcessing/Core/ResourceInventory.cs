@@ -224,6 +224,18 @@ public class ResourceInventory
     public double OriginalAmount;
 
     /// <summary>
+    /// Whether the mass of the resource contained within this inventory is
+    /// already included in the dry mass of the vessel.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// The use cases for this are pretty niche. However, if you have something
+    /// that is dynamically being adjusted for this already (e.g. asteroid mass)
+    /// then it can be useful.
+    /// </remarks>
+    public bool MassIncludedInDryMass = false;
+
+    /// <summary>
     /// A reference to the <c><see cref="ProtoPartResourceSnapshot"/></c>
     /// that this inventory corresponds to.
     /// </summary>
