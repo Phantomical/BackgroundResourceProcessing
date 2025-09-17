@@ -184,7 +184,7 @@ struct ConverterToInventoryEdges(AdjacencyMatrix matrix)
             if (inner.MoveNext())
                 return true;
             if (!rows.MoveNext())
-                return true;
+                return false;
 
             inner = new(rows.Current);
         }
