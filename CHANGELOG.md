@@ -14,6 +14,10 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ### Added
 * Added support for PersistentThrust (v1.7.5 only).
+* Added background behaviour for SystemHeat `ModuleSystemHeatFissionEngine`.
+
+### Changed
+* Optimized the solver to be about 5x faster.
 
 ## 0.1.14
 ### Fixed
