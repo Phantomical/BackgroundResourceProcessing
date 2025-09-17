@@ -12,6 +12,7 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ## Unreleased
 
+## 0.1.15
 ### Added
 * Added support for PersistentThrust (v1.7.5 only).
 * Added background behaviour for SystemHeat `ModuleSystemHeatFissionEngine`.
