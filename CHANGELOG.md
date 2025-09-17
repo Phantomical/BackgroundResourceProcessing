@@ -22,6 +22,8 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 ### Fixed
 * Fixed a bug where efficiency multipliers were not being applied to resource
   converters in the background.
+* Fixed a bug where efficiency multipliers were only being applied to resource
+  converter inputs.
 
 ## 0.1.14
 ### Fixed

@@ -204,7 +204,7 @@ public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
             for (int i = 0; i < recipe.Inputs.Count; ++i)
                 recipe.Inputs[i] = recipe.Inputs[i].WithMultiplier(bonus);
             for (int i = 0; i < recipe.Outputs.Count; ++i)
-                recipe.Inputs[i] = recipe.Inputs[i].WithMultiplier(bonus);
+                recipe.Outputs[i] = recipe.Outputs[i].WithMultiplier(bonus);
         }
 
         return recipe;
