@@ -13,6 +13,7 @@
             Include="$(ProjectDir)/../BackgroundResourceProcessing/BackgroundResourceProcessing.csproj">
             <KSPAssemblyName>BackgroundResourceProcessing</KSPAssemblyName>
             <KSPAssemblyVersion>$(Version)</KSPAssemblyVersion>
+            <Private>false</Private>
         </ProjectReference>
 
         <Reference Include="Kopernicus.dll">
