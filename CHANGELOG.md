@@ -24,6 +24,8 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
   converters in the background.
 * Fixed a bug where efficiency multipliers were only being applied to resource
   converter inputs.
+* Fixed a bug where EC usage of asteroid/comet drills was multiplied by the
+  drill efficiency when it wasn't supposed to.
 
 ## 0.1.14
 ### Fixed

@@ -239,6 +239,28 @@ public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
     }
 
     /// <summary>
+    /// Compute the configured efficiency bonus for the converter. This returns
+    /// a bonus even if <c>_preCalculateEfficiency</c> is true.
+    /// </summary>
+    /// <param name="module"></param>
+    /// <returns></returns>
+    protected double GetConfiguredEfficiencyBonus(T module)
+    {
+        double bonus;
+        if (OverrideEfficiency != null)
+            bonus = (double)OverrideEfficiency;
+        else if (UseCurrentEfficiency.Evaluate(module))
+            bonus = module.GetEfficiencyMultiplier();
+        else
+            bonus = GetOptimalEfficiencyBonus(module);
+
+        foreach (var multiplier in multipliers)
+            bonus *= multiplier.Evaluate(module);
+
+        return bonus;
+    }
+
+    /// <summary>
     /// Compute the optimal efficiency bonus for the converter.
     /// </summary>
     /// <param name="module"></param>

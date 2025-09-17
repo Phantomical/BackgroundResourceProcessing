@@ -20,35 +20,48 @@ public abstract class BackgroundSpaceObjectDrill<T> : BackgroundResourceConverte
     [KSPField]
     public string MassResourceName = "BRPSpaceObjectMass";
 
-    protected override ConstantConverter GetBaseRecipe(T module)
+    protected override ConstantConverter GetMultipliedRecipe(T module)
     {
-        var recipe = base.GetBaseRecipe(module);
+        var recipe = GetBaseRecipe(module);
 
         var potato = GetDrillPotato(module);
         if (potato == null)
             return null;
 
-        var resources = potato.FindModulesImplementing<ModuleSpaceObjectResource>();
         var massRate = 0.0;
         var usePreparedRecipe = UsePreparedRecipe.Evaluate(module);
+        if (usePreparedRecipe)
+        {
+            foreach (var output in recipe.Outputs)
+            {
+                var definition = PartResourceLibrary.Instance.GetDefinition(output.ResourceName);
+                if (definition == null)
+                    continue;
 
-        if (!usePreparedRecipe)
+                massRate += output.Ratio * definition.density;
+            }
+        }
+        else
+        {
+            var resources = potato.FindModulesImplementing<ModuleSpaceObjectResource>();
+            var efficiency = GetConfiguredEfficiencyBonus(module);
+
             recipe.Inputs.Add(GetPowerConsumption(module));
 
-        foreach (var resource in resources)
-        {
-            var definition = PartResourceLibrary.Instance.GetDefinition(resource.resourceName);
-            var ratio = new ResourceRatio
+            foreach (var resource in resources)
             {
-                ResourceName = resource.resourceName,
-                Ratio = resource.abundance,
-                DumpExcess = false,
-                FlowMode = ResourceFlowMode.NULL,
-            };
+                var definition = PartResourceLibrary.Instance.GetDefinition(resource.resourceName);
+                var ratio = new ResourceRatio
+                {
+                    ResourceName = resource.resourceName,
+                    Ratio = resource.abundance * efficiency,
+                    DumpExcess = false,
+                    FlowMode = ResourceFlowMode.NULL,
+                };
 
-            if (!usePreparedRecipe)
                 recipe.Outputs.Add(ratio);
-            massRate += resource.abundance * definition.density;
+                massRate += resource.abundance * definition.density * efficiency;
+            }
         }
 
         recipe.Inputs.Add(new(MassResourceName, massRate, false, ResourceFlowMode.NO_FLOW));
