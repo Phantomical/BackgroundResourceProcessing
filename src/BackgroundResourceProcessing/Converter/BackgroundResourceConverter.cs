@@ -220,7 +220,7 @@ public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
     {
         bool useEfficiencyBonus =
             !UsePreparedRecipe.Evaluate(module)
-            && (bool)PreCalculateEfficiencyField.GetValue(module);
+            || (bool)PreCalculateEfficiencyField.GetValue(module);
 
         double bonus;
         if (OverrideEfficiency != null)

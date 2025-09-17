@@ -19,6 +19,10 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 ### Changed
 * Optimized the solver to be about 5x faster.
 
+### Fixed
+* Fixed a bug where efficiency multipliers were not being applied to resource
+  converters in the background.
+
 ## 0.1.14
 ### Fixed
 * Removed unintended debug logging from TAC-LS integration.
