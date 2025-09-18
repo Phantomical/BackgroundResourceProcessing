@@ -11,6 +11,8 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 -->
 
 ## Unreleased
+### Changed
+* KSPBurst-Full is now marked as a recommended dependency.
 
 ## 0.1.15
 ### Added
