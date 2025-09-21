@@ -411,7 +411,8 @@ internal class ResourceProcessor
         foreach (var behaviour in behaviours.Converters)
         {
             behaviour.sourceModule = partModule.GetType().Name;
-            behaviour.sourcePart = part.name;
+            if (part != null)
+                behaviour.sourcePart = part.name;
             behaviour.Vessel = vessel;
 
             var converter = new ResourceConverter(behaviour)
