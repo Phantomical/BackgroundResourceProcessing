@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using Unity.Collections.LowLevel.Unsafe;
 
 namespace BackgroundResourceProcessing.Collections;
 
@@ -37,7 +36,7 @@ internal struct RefList<T> : IList<T>, ICollection<T>, IEnumerable<T>
     private RefList(T[] data, int count)
     {
         if (count > data.Length)
-            throw new ArgumentException(nameof(count), "count was out of range");
+            throw new ArgumentException("count was out of range", nameof(count));
 
         this.data = data;
         this.count = count;
