@@ -9,7 +9,7 @@
     <GenerateKSPAssemblyAttribute>true</GenerateKSPAssemblyAttribute>
     <GenerateKSPAssemblyDependencyAttributes>true</GenerateKSPAssemblyDependencyAttributes>
 
-    <KSPBinaryType>bin</KSPBinaryType>
+    <KSPBinaryType>binary</KSPBinaryType>
   </PropertyGroup>
 
   <ItemGroup>

@@ -11,6 +11,10 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 -->
 
 ## Unreleased
+## 0.1.17
+### Fixed
+* Ensured `BackgroundResourceProcessing.dll` is actually included in the release.
+
 ## 0.1.16
 ### Changed
 * KSPBurst-Full is now marked as a recommended dependency.
