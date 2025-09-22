@@ -11,8 +11,13 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 -->
 
 ## Unreleased
+## 0.1.16
 ### Changed
 * KSPBurst-Full is now marked as a recommended dependency.
+
+### Fixed
+* Fixed a nullref when a vessel is saved in a state where parts have been
+  destroyed.
 
 ## 0.1.15
 ### Added
