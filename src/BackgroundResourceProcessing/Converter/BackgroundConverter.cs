@@ -153,7 +153,7 @@ public abstract class BackgroundConverter : IRegistryItem
     /// </summary>
     /// <param name="module"></param>
     /// <param name="converter"></param>
-    public virtual void OnRestore(PartModule module, ResourceConverter converter) { }
+    public virtual void OnRestore(PartModule module, Core.ResourceConverter converter) { }
 
     /// <summary>
     /// Load your adapter from a <see cref="ConfigNode"/>.
@@ -312,7 +312,7 @@ public abstract class BackgroundConverter<T> : BackgroundConverter
         return base.GetModulePriority(module);
     }
 
-    public sealed override void OnRestore(PartModule module, ResourceConverter converter)
+    public sealed override void OnRestore(PartModule module, Core.ResourceConverter converter)
     {
         if (module is not T downcasted)
             LogUnexpectedType(module);
@@ -320,7 +320,7 @@ public abstract class BackgroundConverter<T> : BackgroundConverter
             OnRestore(downcasted, converter);
     }
 
-    public virtual void OnRestore(T module, ResourceConverter converter) { }
+    public virtual void OnRestore(T module, Core.ResourceConverter converter) { }
 
     private void LogUnexpectedType(PartModule module)
     {

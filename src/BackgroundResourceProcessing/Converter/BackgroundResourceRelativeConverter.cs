@@ -170,7 +170,7 @@ public class BackgroundResourceRelativeConverter : BackgroundConverter
         return behaviour;
     }
 
-    public override void OnRestore(PartModule module, ResourceConverter converter)
+    public override void OnRestore(PartModule module, Core.ResourceConverter converter)
     {
         lastUpdateField?.SetValue(module, Planetarium.GetUniversalTime());
     }

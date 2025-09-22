@@ -10,6 +10,7 @@ using BackgroundResourceProcessing.Inventory;
 using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
 using Smooth.Collections;
+using UnityEngine.Analytics;
 
 namespace BackgroundResourceProcessing.Core;
 
@@ -910,6 +911,35 @@ internal class ResourceProcessor
                         $"{adapter.GetType().Name}.UpdateResource threw an exception: {e}"
                     );
                 }
+            }
+        }
+
+        foreach (var converter in converters)
+        {
+            if (converter.FlightId is null || converter.ModuleId is null)
+                continue;
+
+            var flightId = converter.FlightId.Value;
+            var moduleId = converter.ModuleId.Value;
+
+            if (!parts.TryGetValue(flightId, out var part))
+                continue;
+
+            var module = part.Modules[moduleId];
+            if (module == null)
+                continue;
+
+            var adapter = BackgroundConverter.GetConverterForModule(module);
+            if (adapter == null)
+                continue;
+
+            try
+            {
+                adapter.OnRestore(module, converter);
+            }
+            catch (Exception e)
+            {
+                LogUtil.Error($"{adapter.GetType().Name}.OnRestore threw an exception: {e}");
             }
         }
     }

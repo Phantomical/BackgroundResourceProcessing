@@ -61,7 +61,7 @@ public class BackgroundNEScienceLab : BackgroundConverter<Lab>
         return behaviour;
     }
 
-    public override void OnRestore(Lab module, ResourceConverter converter) =>
+    public override void OnRestore(Lab module, Core.ResourceConverter converter) =>
         module.LastActive = Planetarium.GetUniversalTime();
 
     private static bool IsActive(Lab lab) => (bool)IsActiveMethod.Invoke(lab, []);

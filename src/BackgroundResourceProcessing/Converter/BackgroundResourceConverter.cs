@@ -78,7 +78,7 @@ public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
         return new(recipe);
     }
 
-    public override void OnRestore(T module, ResourceConverter converter)
+    public override void OnRestore(T module, Core.ResourceConverter converter)
     {
         LastUpdateTimeField.SetValue(module, Planetarium.GetUniversalTime());
     }

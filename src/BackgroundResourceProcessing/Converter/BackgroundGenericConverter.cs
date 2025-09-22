@@ -157,7 +157,7 @@ public class BackgroundGenericConverter : BackgroundConverter
         return new(behaviour);
     }
 
-    public override void OnRestore(PartModule module, ResourceConverter converter)
+    public override void OnRestore(PartModule module, Core.ResourceConverter converter)
     {
         lastUpdateMember?.SetValue(module, Planetarium.GetUniversalTime());
     }
