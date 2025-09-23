@@ -406,7 +406,7 @@ internal class ResourceProcessor
             return;
         }
 
-        if (behaviours == null || behaviours.Converters == null)
+        if (behaviours?.Converters == null)
             return;
 
         foreach (var behaviour in behaviours.Converters)
@@ -440,22 +440,25 @@ internal class ResourceProcessor
                     true
                 );
 
-                foreach (var resource in pull.set)
+                if (pull?.set is not null)
                 {
-                    var id = new InventoryId(resource);
-                    if (inventoryIds.TryGetValue(id, out var index))
-                        converter.Pull[index] = true;
+                    foreach (var resource in pull.set)
+                    {
+                        var id = new InventoryId(resource);
+                        if (inventoryIds.TryGetValue(id, out var index))
+                            converter.Pull[index] = true;
+                    }
                 }
 
-                if (behaviours.Pull == null)
-                    continue;
-
-                foreach (var module in behaviours.Pull)
+                if (behaviours.Pull is not null)
                 {
-                    var id = new InventoryId(module, ratio.ResourceName);
-                    if (!inventoryIds.TryGetValue(id, out var index))
-                        continue;
-                    converter.Pull[index] = true;
+                    foreach (var module in behaviours.Pull)
+                    {
+                        var id = new InventoryId(module, ratio.ResourceName);
+                        if (!inventoryIds.TryGetValue(id, out var index))
+                            continue;
+                        converter.Pull[index] = true;
+                    }
                 }
             }
 
@@ -469,22 +472,25 @@ internal class ResourceProcessor
                     true
                 );
 
-                foreach (var resource in push.set)
+                if (push?.set is not null)
                 {
-                    var id = new InventoryId(resource);
-                    if (inventoryIds.TryGetValue(id, out var index))
-                        converter.Push[index] = true;
+                    foreach (var resource in push.set)
+                    {
+                        var id = new InventoryId(resource);
+                        if (inventoryIds.TryGetValue(id, out var index))
+                            converter.Push[index] = true;
+                    }
                 }
 
-                if (behaviours.Push == null)
-                    continue;
-
-                foreach (var module in behaviours.Push)
+                if (behaviours.Push is not null)
                 {
-                    var id = new InventoryId(module, ratio.ResourceName);
-                    if (!inventoryIds.TryGetValue(id, out var index))
-                        continue;
-                    converter.Push[index] = true;
+                    foreach (var module in behaviours.Push)
+                    {
+                        var id = new InventoryId(module, ratio.ResourceName);
+                        if (!inventoryIds.TryGetValue(id, out var index))
+                            continue;
+                        converter.Push[index] = true;
+                    }
                 }
             }
 
@@ -500,22 +506,25 @@ internal class ResourceProcessor
                     true
                 );
 
-                foreach (var resource in attached.set)
+                if (attached?.set is not null)
                 {
-                    var id = new InventoryId(resource);
-                    if (inventoryIds.TryGetValue(id, out var index))
-                        converter.Constraint[index] = true;
+                    foreach (var resource in attached.set)
+                    {
+                        var id = new InventoryId(resource);
+                        if (inventoryIds.TryGetValue(id, out var index))
+                            converter.Constraint[index] = true;
+                    }
                 }
 
-                if (behaviours.Constraint == null)
-                    continue;
-
-                foreach (var module in behaviours.Constraint)
+                if (behaviours.Constraint is not null)
                 {
-                    var id = new InventoryId(module, req.ResourceName);
-                    if (!inventoryIds.TryGetValue(id, out var index))
-                        continue;
-                    converter.Constraint[index] = true;
+                    foreach (var module in behaviours.Constraint)
+                    {
+                        var id = new InventoryId(module, req.ResourceName);
+                        if (!inventoryIds.TryGetValue(id, out var index))
+                            continue;
+                        converter.Constraint[index] = true;
+                    }
                 }
             }
         }
