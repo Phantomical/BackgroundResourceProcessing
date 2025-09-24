@@ -1019,6 +1019,9 @@ internal class ResourceProcessor
         return clone;
     }
 
+    static readonly List<List<PartResource>> EmptyPartResourceList = [];
+    static readonly HashSet<PartResource> EmptyParseResourceSet = [];
+
     private PartSet.ResourcePrioritySet GetConnectedResources(
         Vessel vessel,
         Part part,
@@ -1036,8 +1039,8 @@ internal class ResourceProcessor
             case ResourceFlowMode.STAGE_PRIORITY_FLOW:
             case ResourceFlowMode.ALL_VESSEL_BALANCE:
             case ResourceFlowMode.STAGE_PRIORITY_FLOW_BALANCE:
-                if (part.vessel == null)
-                    return new();
+                if (part.vessel is null)
+                    return new() { lists = EmptyPartResourceList, set = EmptyParseResourceSet };
 
                 return vessel.resourcePartSet.GetResourceList(resourceId, pulling, false);
             case ResourceFlowMode.STACK_PRIORITY_SEARCH:
