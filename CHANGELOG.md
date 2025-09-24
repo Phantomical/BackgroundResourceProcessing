@@ -11,6 +11,13 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 -->
 
 ## Unreleased
+## 0.1.18
+### Added
+* Resources mined in the background will now count for ISRU contracts.
+
+### Fixed
+* Fixed another nullref exception when recording vessel state.
+
 ## 0.1.17
 ### Fixed
 * Ensured `BackgroundResourceProcessing.dll` is actually included in the release.
