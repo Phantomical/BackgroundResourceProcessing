@@ -1,11 +1,6 @@
 using System;
-using System.Collections.Generic;
-using System.Windows.Markup;
-using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Utils;
-using EdyCommonTools;
 using PersistentThrust;
-using Steamworks;
 using UnityEngine;
 
 namespace BackgroundResourceProcessing.Integration.PersistentThrust;

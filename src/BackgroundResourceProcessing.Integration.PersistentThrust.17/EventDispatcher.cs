@@ -32,13 +32,15 @@ public class EventHandler : MonoBehaviour
         }
 
         var module = processor.Vessel.FindVesselModuleImplementing<BackgroundPersistentThrust>();
-        module?.OnStateUpdate(processor, evt);
+        if (module != null)
+            module?.OnStateUpdate(processor, evt);
     }
 
     void OnVesselChangepoint(BackgroundResourceProcessor processor, ChangepointEvent evt)
     {
         var module = processor.Vessel.FindVesselModuleImplementing<BackgroundPersistentThrust>();
-        module?.OnVesselChangepoint(processor);
+        if (module != null)
+            module?.OnVesselChangepoint(processor);
     }
 
     void OnVesselRecord(BackgroundResourceProcessor processor)
@@ -46,6 +48,7 @@ public class EventHandler : MonoBehaviour
         var vessel = processor.Vessel;
         var module = vessel.FindVesselModuleImplementing<BackgroundPersistentThrust>();
 
-        module?.OnVesselRecord(processor);
+        if (module != null)
+            module?.OnVesselRecord(processor);
     }
 }
