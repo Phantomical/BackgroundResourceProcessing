@@ -449,7 +449,7 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
     )
     {
         if (double.IsNaN(amount))
-            throw new ArgumentException(nameof(amount), "amount added was NaN");
+            throw new ArgumentException("amount added was NaN", nameof(amount));
 
         if (vessel.loaded)
             return 0.0;
