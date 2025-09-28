@@ -20,12 +20,12 @@ internal readonly struct Orbit
     /// Eccentricity of the orbit (0 = circular, 0-1 = elliptical, 1 = parabolic, >1 = hyperbolic).
     /// </summary>
     public readonly double Eccentricity;
-    
+
     /// <summary>
     /// Inclination of the orbital plane relative to the reference plane (in radians).
     /// </summary>
     public readonly double Inclination;
-    
+
     /// <summary>
     /// Semi-major axis - half the longest diameter of the ellipse.
     /// </summary>
@@ -35,7 +35,7 @@ internal readonly struct Orbit
     /// Argument of periapsis - angle from ascending node to periapsis (in radians).
     /// </summary>
     public readonly double ArgumentOfPeriapsis;
-    
+
     /// <summary>
     /// Longitude of Ascending Node - angle from reference direction to ascending node (in radians).
     /// </summary>
@@ -45,7 +45,7 @@ internal readonly struct Orbit
     /// Epoch time when orbital elements are valid.
     /// </summary>
     public readonly double Epoch;
-    
+
     /// <summary>
     /// Orbital time at epoch.
     /// </summary>
@@ -55,12 +55,12 @@ internal readonly struct Orbit
     /// Mean motion - average angular velocity of the orbiting body (radians per second).
     /// </summary>
     public readonly double MeanMotion;
-    
+
     /// <summary>
     /// Mean anomaly at epoch - average angular position at epoch time.
     /// </summary>
     public readonly double MeanAnomalyAtEpoch;
-    
+
     /// <summary>
     /// Gravitational parameter (GM) of the central body.
     /// </summary>
@@ -83,7 +83,7 @@ internal readonly struct Orbit
     /// Semi-latus rectum - parameter defining the size of the orbit perpendicular to the major axis.
     /// </summary>
     public readonly double SemiLatusRectum;
-    
+
     /// <summary>
     /// Semi-minor axis - half the shortest diameter of the ellipse.
     /// </summary>
@@ -103,7 +103,7 @@ internal readonly struct Orbit
     /// Apoapsis radius - maximum distance from the central body.
     /// </summary>
     public readonly double ApR => (1.0 + Eccentricity) * SemiMajorAxis;
-    
+
     /// <summary>
     /// Periapsis radius - minimum distance from the central body.
     /// </summary>
