@@ -11,6 +11,9 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 -->
 
 ## Unreleased
+### Fixed
+* Fixed a solver crash when a vessel with resource constraints crosses a SOI boundary.
+
 ## 0.1.18
 ### Added
 * Resources mined in the background will now count for ISRU contracts.

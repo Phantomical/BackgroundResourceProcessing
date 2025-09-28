@@ -169,8 +169,8 @@ public sealed partial class BackgroundResourceProcessor
         var state = GetVesselState();
 
         UpdateState(state.CurrentTime, true);
-        processor.UpdateConstraintState();
         processor.ForceUpdateBehaviours(state);
+        processor.UpdateConstraintState();
         processor.ComputeRates();
         DispatchOnRatesComputed(state.CurrentTime);
         UpdateNextChangepoint(state.CurrentTime);
