@@ -15,6 +15,7 @@ internal partial class DebugUI
 
     private void DrawConverterTab()
     {
+        converterTab ??= new(this);
         converterTab.Draw();
     }
 
