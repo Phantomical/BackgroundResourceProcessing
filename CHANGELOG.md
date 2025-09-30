@@ -13,6 +13,7 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 ## Unreleased
 ### Fixed
 * Fixed a solver crash when a vessel with resource constraints crosses a SOI boundary.
+* Fixed incorrect AoA calculation for solar panels.
 
 ## 0.1.18
 ### Added

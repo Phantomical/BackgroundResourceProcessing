@@ -192,7 +192,7 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
     {
         if (panel.isTracking)
         {
-            panel.panelRotationTransform.rotation.ToAngleAxis(out var _, out var axis);
+            var axis = panel.panelRotationTransform.up;
             return Vector3.Cross(axis, sun).magnitude;
         }
 
