@@ -1,4 +1,6 @@
 using System;
+using System.Diagnostics;
+using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Maths;
 using BackgroundResourceProcessing.Utils;
 using static System.Math;
@@ -9,67 +11,68 @@ namespace BackgroundResourceProcessing.Mathematics;
 /// <summary>
 /// Represents an orbital trajectory using Keplerian orbital elements.
 /// </summary>
-internal readonly struct Orbit
+[DebuggerDisplay("{Name}")]
+internal struct Orbit
 {
     /// <summary>
     /// The coordinate frame for the orbit's orientation in space.
     /// </summary>
-    public readonly Planetarium.CelestialFrame OrbitFrame;
+    public Planetarium.CelestialFrame OrbitFrame;
 
     /// <summary>
     /// Eccentricity of the orbit (0 = circular, 0-1 = elliptical, 1 = parabolic, >1 = hyperbolic).
     /// </summary>
-    public readonly double Eccentricity;
+    public double Eccentricity;
 
     /// <summary>
     /// Inclination of the orbital plane relative to the reference plane (in radians).
     /// </summary>
-    public readonly double Inclination;
+    public double Inclination;
 
     /// <summary>
     /// Semi-major axis - half the longest diameter of the ellipse.
     /// </summary>
-    public readonly double SemiMajorAxis;
+    public double SemiMajorAxis;
 
     /// <summary>
     /// Argument of periapsis - angle from ascending node to periapsis (in radians).
     /// </summary>
-    public readonly double ArgumentOfPeriapsis;
+    public double ArgumentOfPeriapsis;
 
     /// <summary>
     /// Longitude of Ascending Node - angle from reference direction to ascending node (in radians).
     /// </summary>
-    public readonly double LAN;
+    public double LAN;
 
     /// <summary>
     /// Epoch time when orbital elements are valid.
     /// </summary>
-    public readonly double Epoch;
+    public double Epoch;
 
     /// <summary>
     /// Orbital time at epoch.
     /// </summary>
-    public readonly double ObTAtEpoch;
+    public double ObTAtEpoch;
 
     /// <summary>
     /// Mean motion - average angular velocity of the orbiting body (radians per second).
     /// </summary>
-    public readonly double MeanMotion;
+    public double MeanMotion;
 
     /// <summary>
     /// Mean anomaly at epoch - average angular position at epoch time.
     /// </summary>
-    public readonly double MeanAnomalyAtEpoch;
+    public double MeanAnomalyAtEpoch;
 
     /// <summary>
     /// Gravitational parameter (GM) of the central body.
     /// </summary>
-    public readonly double GravParameter;
+    public double GravParameter;
 
     /// <summary>
     /// Orbital period for elliptical orbits.
     /// </summary>
-    public readonly double Period;
+    public double Period;
 
     /// <summary>
     /// The index of the celestial body that this orbit is relative to.
@@ -77,12 +80,12 @@ internal readonly struct Orbit
     /// Note that it is only relative to the position of the parent body.
     /// It is not transformed by the OrbitFrame othe parent body.
     /// </summary>
-    public readonly int? ParentBodyIndex;
+    public int? ParentBodyIndex;
 
     /// <summary>
     /// Semi-latus rectum - parameter defining the size of the orbit perpendicular to the major axis.
     /// </summary>
-    public readonly double SemiLatusRectum;
+    public double SemiLatusRectum;
 
     /// <summary>
     /// Semi-minor axis - half the shortest diameter of the ellipse.
@@ -114,7 +117,19 @@ internal readonly struct Orbit
     /// </summary>
     /// <param name="orbit">Source KSP orbit object</param>
     /// <param name="parentBodyIndex">Index of the parent celestial body</param>
-    public Orbit(KSPOrbit orbit, int parentBodyIndex)
+    public Orbit(KSPOrbit orbit, int? parentBodyIndex) => Init(orbit, parentBodyIndex);
+
+    public Orbit(KSPOrbit orbit)
+        : this(orbit, SolarSystem.GetBodyIndex(orbit?.referenceBody)) { }
+
+    public Orbit(Vessel vessel)
+    {
+        Init(vessel.orbit);
+    }
+
+    void Init(KSPOrbit orbit) => Init(orbit, SolarSystem.GetBodyIndex(orbit?.referenceBody));
+
+    void Init(KSPOrbit orbit, int? parentBodyIndex)
     {
         Eccentricity = orbit.eccentricity;
         Inclination = orbit.inclination;
@@ -126,6 +141,7 @@ internal readonly struct Orbit
         MeanMotion = orbit.meanMotion;
         MeanAnomalyAtEpoch = orbit.meanAnomalyAtEpoch;
         GravParameter = orbit.referenceBody.gravParameter;
+        OrbitFrame = orbit.OrbitFrame;
         ParentBodyIndex = parentBodyIndex;
 
         Period = 2.0 * PI / MeanMotion;
@@ -187,7 +203,7 @@ internal readonly struct Orbit
     public readonly double GetMeanAnomaly(double E)
     {
         if (Eccentricity < 1.0)
-            return UtilMath.ClampRadiansTwoPI(E - Eccentricity * Sin(E));
+            return MathUtil.ClampRadiansTwoPI(E - Eccentricity * Sin(E));
         if (double.IsInfinity(E))
             return E;
         return Eccentricity * Sinh(E) - E;
@@ -220,14 +236,14 @@ internal readonly struct Orbit
     /// </summary>
     /// <param name="UT">Universal time</param>
     /// <returns>True anomaly in radians</returns>
-    public double GetTrueAnomalyAtUT(double UT) => GetTrueAnomalyAtT(GetObTAtUT(UT));
+    public readonly double GetTrueAnomalyAtUT(double UT) => GetTrueAnomalyAtT(GetObTAtUT(UT));
 
     /// <summary>
     /// Gets true anomaly at a given orbital time.
     /// </summary>
     /// <param name="T">Orbital time</param>
     /// <returns>True anomaly in radians</returns>
-    public double GetTrueAnomalyAtT(double T)
+    public readonly double GetTrueAnomalyAtT(double T)
     {
         double M = GetMeanAnomalyAtT(T);
         double E = SolveEccentricAnomaly(M);
@@ -241,7 +257,7 @@ internal readonly struct Orbit
     /// </summary>
     /// <param name="E">Eccentric anomaly in radians</param>
     /// <returns>True anomaly in radians</returns>
-    public double GetTrueAnomaly(double E)
+    public readonly double GetTrueAnomaly(double E)
     {
         if (Eccentricity < 1.0)
         {
@@ -270,7 +286,7 @@ internal readonly struct Orbit
     /// <returns>Eccentric anomaly in radians</returns>
     public readonly double GetEccentricAnomaly(double tA)
     {
-        var (sinTA, cosTA) = MathUtil.SinCos(tA);
+        var (sinTA, cosTA) = MathUtil.SinCos(0.5 * tA);
 
         if (Eccentricity < 1.0)
         {
@@ -408,6 +424,20 @@ internal readonly struct Orbit
             M = UtilMath.ClampRadiansTwoPI(M);
         return UT + M / MeanMotion;
     }
+
+    public readonly double GetUTAtTrueAnomaly(double tA, double UT)
+    {
+        var T = GetObTAtTrueAnomaly(tA);
+        var nUT = Epoch + (T - ObTAtEpoch);
+
+        if (Eccentricity < 1.0)
+        {
+            // Ensure that the return UT is in the future.
+            nUT += Period * Max(Ceiling((UT - nUT) / Period), 0.0);
+        }
+
+        return nUT;
+    }
     #endregion
 
     #region Radius
@@ -419,6 +449,14 @@ internal readonly struct Orbit
     public readonly double GetRadiusAtTrueAnomaly(double tA) =>
         SemiLatusRectum * (1.0 / (1.0 + Eccentricity * Cos(tA)));
 
+    /// <summary>
+    /// Gets the orbital radius at a given UT.
+    /// </summary>
+    /// <param name="UT"></param>
+    /// <returns></returns>
+    public readonly double GetRadiusAtUT(double UT) =>
+        GetRadiusAtTrueAnomaly(GetTrueAnomalyAtUT(UT));
+
     #endregion
 
     #region Position
@@ -427,7 +465,7 @@ internal readonly struct Orbit
     /// </summary>
     /// <param name="UT">Universal time</param>
     /// <returns>Position vector relative to central body</returns>
-    public Vector3d GetRelativePositionAtUT(double UT) =>
+    public readonly Vector3d GetRelativePositionAtUT(double UT) =>
         GetRelativePositionAtEccentricAnomaly(GetEccentricAnomalyAtUT(UT));
 
     /// <summary>
@@ -435,7 +473,7 @@ internal readonly struct Orbit
     /// </summary>
     /// <param name="E">Eccentric anomaly in radians</param>
     /// <returns>Position vector relative to central body</returns>
-    public Vector3d GetRelativePositionAtEccentricAnomaly(double E)
+    public readonly Vector3d GetRelativePositionAtEccentricAnomaly(double E)
     {
         double x = 0.0;
         double y = 0.0;
@@ -459,7 +497,7 @@ internal readonly struct Orbit
     /// </summary>
     /// <param name="tA">True anomaly in radians</param>
     /// <returns>Position vector relative to central body</returns>
-    public Vector3d GetRelativePositionAtTrueAnomaly(double tA)
+    public readonly Vector3d GetRelativePositionAtTrueAnomaly(double tA)
     {
         var (sinTA, cosTA) = MathUtil.SinCos(tA);
         double radius = SemiLatusRectum / (1.0 + Eccentricity * cosTA);
@@ -473,7 +511,7 @@ internal readonly struct Orbit
     /// </summary>
     /// <param name="tA">True anomaly in radians</param>
     /// <returns>Velocity vector in orbital frame</returns>
-    public Vector3d GetOrbitalVelocityAtTrueAnomaly(double tA)
+    public readonly Vector3d GetOrbitalVelocityAtTrueAnomaly(double tA)
     {
         var (sinTA, cosTA) = MathUtil.SinCos(tA);
         double r = Sqrt(GravParameter / SemiLatusRectum);
@@ -488,7 +526,7 @@ internal readonly struct Orbit
     /// </summary>
     /// <param name="ObT">Orbital time</param>
     /// <returns>Velocity vector in orbital frame</returns>
-    public Vector3d GetOrbitalVelocityAtObT(double ObT) =>
+    public readonly Vector3d GetOrbitalVelocityAtObT(double ObT) =>
         GetOrbitalVelocityAtTrueAnomaly(GetTrueAnomalyAtT(ObT));
 
     /// <summary>
@@ -496,7 +534,8 @@ internal readonly struct Orbit
     /// </summary>
     /// <param name="UT">Universal time</param>
     /// <returns>Velocity vector in orbital frame</returns>
-    public Vector3d GetOrbitalVelocityAtUT(double UT) => GetOrbitalVelocityAtObT(GetObTAtUT(UT));
+    public readonly Vector3d GetOrbitalVelocityAtUT(double UT) =>
+        GetOrbitalVelocityAtObT(GetObTAtUT(UT));
     #endregion
 
     #region Acceleration
@@ -505,7 +544,7 @@ internal readonly struct Orbit
     /// </summary>
     /// <param name="UT">Universal time</param>
     /// <returns>Acceleration vector due to gravity</returns>
-    public Vector3d GetAccelerationAtUT(double UT) =>
+    public readonly Vector3d GetAccelerationAtUT(double UT) =>
         GetAccelerationAtTrueAnomaly(GetTrueAnomalyAtUT(UT));
 
     /// <summary>
@@ -513,7 +552,7 @@ internal readonly struct Orbit
     /// </summary>
     /// <param name="tA">True anomaly in radians</param>
     /// <returns>Acceleration vector due to gravity</returns>
-    public Vector3d GetAccelerationAtTrueAnomaly(double tA) =>
+    public readonly Vector3d GetAccelerationAtTrueAnomaly(double tA) =>
         GetAccelerationAtPosition(GetRelativePositionAtTrueAnomaly(tA));
 
     /// <summary>
@@ -521,7 +560,7 @@ internal readonly struct Orbit
     /// </summary>
     /// <param name="pos">Position vector</param>
     /// <returns>Acceleration vector due to gravity</returns>
-    public Vector3d GetAccelerationAtPosition(Vector3d pos)
+    public readonly Vector3d GetAccelerationAtPosition(Vector3d pos)
     {
         var R = pos.magnitude;
         var invR = 1.0 / R;
@@ -535,7 +574,7 @@ internal readonly struct Orbit
     /// </summary>
     /// <param name="UT">Universal time as dual number</param>
     /// <returns>Position and velocity as dual vector</returns>
-    public DualVector3 GetRelativePositionAtUT(Dual UT)
+    public readonly DualVector3 GetRelativePositionAtUT(Dual UT)
     {
         var tA = GetTrueAnomalyAtUT(UT.x);
         var pos = GetRelativePositionAtTrueAnomaly(tA);
@@ -549,7 +588,7 @@ internal readonly struct Orbit
     /// </summary>
     /// <param name="UT">Universal time as second-order dual number</param>
     /// <returns>Position, velocity, and acceleration as second-order dual vector</returns>
-    public Dual2Vector3 GetRelativePositionAtUT(Dual2 UT)
+    public readonly Dual2Vector3 GetRelativePositionAtUT(Dual2 UT)
     {
         var tA = GetTrueAnomalyAtUT(UT.x);
         var pos = GetRelativePositionAtTrueAnomaly(tA);

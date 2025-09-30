@@ -45,6 +45,16 @@ internal static class MathUtil
         return x;
     }
 
+    public static double ClampRadiansTwoPI(double angle)
+    {
+        const double TwoPI = 2 * Math.PI;
+
+        angle %= TwoPI;
+        if (angle < 0.0)
+            angle += TwoPI;
+        return angle;
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int Clamp(int x, int lo, int hi)
     {

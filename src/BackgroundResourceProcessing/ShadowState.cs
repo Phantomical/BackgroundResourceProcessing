@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BackgroundResourceProcessing.Behaviour;
+using BackgroundResourceProcessing.Collections.Burst;
+using BackgroundResourceProcessing.Mathematics;
 using BackgroundResourceProcessing.Maths;
 using BackgroundResourceProcessing.Tracing;
 
@@ -109,12 +111,19 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         };
     }
 
-    private static ShadowState GetOrbitShadowState(Vessel vessel)
+    private static unsafe ShadowState GetOrbitShadowState(Vessel vessel)
     {
         var stars = StarProvider.GetRelevantStars(vessel) ?? [];
         var settings = HighLogic.CurrentGame?.Parameters.CustomParams<Settings>();
         if (!(settings?.EnableOrbitShadows ?? false))
             return DefaultForStar(stars.FirstOrDefault());
+
+        using var arena = new BurstAllocator();
+        AllocatorHandle handle = new(&arena);
+
+        var system = new SolarSystem(SolarSystem.Record(handle));
+        var orbit = new Mathematics.Orbit(vessel);
+        var UT = Planetarium.GetUniversalTime();
 
         var state = AlwaysInShadow();
         foreach (var star in stars)
@@ -123,15 +132,19 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
             if (ReferenceEquals(bodies.parent, star))
                 return AlwaysInSun(star);
 
-            OrbitShadow shadow = new();
-            shadow.SetReferenceBodies(vessel, star, bodies.planet);
-            var terminator = shadow.ComputeTerminatorUT(out var inshadow);
+            var terminator = Mathematics.OrbitShadow.ComputeOrbitTerminator(
+                in system,
+                in orbit,
+                (int)SolarSystem.GetBodyIndex(star),
+                UT,
+                bodies.planet.Radius
+            );
 
-            if (!inshadow)
-                return new(Math.Min(terminator, state.NextTerminatorEstimate), inshadow, star);
+            if (!terminator.InShadow)
+                return new(Math.Min(terminator.UT, state.NextTerminatorEstimate), false, star);
 
-            if (terminator < state.NextTerminatorEstimate)
-                state = new(terminator, inshadow);
+            if (terminator.UT < state.NextTerminatorEstimate)
+                state = new(terminator.UT, true);
         }
 
         return state;

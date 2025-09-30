@@ -608,6 +608,11 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
         for (int i = 0; i < count; ++i)
             processor.ComputeRates();
     }
+
+    internal void RecomputeShadowState()
+    {
+        ShadowState = Shadow.GetShadowState(Vessel);
+    }
     #endregion
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

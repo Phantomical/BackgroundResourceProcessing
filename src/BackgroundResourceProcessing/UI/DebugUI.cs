@@ -30,6 +30,7 @@ internal partial class DebugUI : MonoBehaviour
     {
         Resources,
         Converter,
+        Profiling,
     }
 
     static bool InitializedStatics = false;
@@ -185,6 +186,9 @@ internal partial class DebugUI : MonoBehaviour
             case Submenu.Converter:
                 DrawConverterTab();
                 break;
+            case Submenu.Profiling:
+                DrawProfilingTab();
+                break;
         }
 
         if (submenu != Submenu.Converter)
@@ -202,7 +206,7 @@ internal partial class DebugUI : MonoBehaviour
         submenu = (Submenu)
             GUILayout.Toolbar(
                 (int)submenu,
-                ["Resources", "Debug Inspector"],
+                ["Resources", "Debug Inspector", "Profiling"],
                 GUILayout.ExpandWidth(true)
             );
 
