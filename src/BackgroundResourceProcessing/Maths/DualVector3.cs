@@ -5,9 +5,12 @@ namespace BackgroundResourceProcessing.Maths;
 [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
 internal struct DualVector3(Dual x, Dual y, Dual z)
 {
-    public Dual x = x;
-    public Dual y = y;
-    public Dual z = z;
+    public Vector3d v = new(x.x, y.x, z.x);
+    public Vector3d dv = new(x.dx, y.dx, z.dx);
+
+    public readonly Dual x => new(v.x, dv.x);
+    public readonly Dual y => new(v.y, dv.y);
+    public readonly Dual z => new(v.z, dv.z);
 
     public readonly DualVector3 xzy => new(x, z, y);
 
@@ -84,9 +87,13 @@ internal struct DualVector3(Dual x, Dual y, Dual z)
 [method: MethodImpl(MethodImplOptions.AggressiveInlining)]
 internal struct Dual2Vector3(Dual2 x, Dual2 y, Dual2 z)
 {
-    public Dual2 x = x;
-    public Dual2 y = y;
-    public Dual2 z = z;
+    public Vector3d v = new(x.x, y.x, z.x);
+    public Vector3d dv = new(x.dx, y.dx, z.dx);
+    public Vector3d ddv = new(x.ddx, y.ddx, z.ddx);
+
+    public readonly Dual2 x => new(v.x, dv.x, ddv.x);
+    public readonly Dual2 y => new(v.y, dv.y, ddv.y);
+    public readonly Dual2 z => new(v.z, dv.z, ddv.z);
 
     public readonly Dual2Vector3 xzy => new(x, z, y);
 

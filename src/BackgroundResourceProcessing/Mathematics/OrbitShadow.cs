@@ -2,6 +2,7 @@ using System;
 using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Maths;
 using BackgroundResourceProcessing.Utils;
+using TMPro;
 using Unity.Burst;
 
 namespace BackgroundResourceProcessing.Mathematics;
@@ -18,6 +19,9 @@ internal readonly struct OrbitShadow
 
         public static Terminator Shadow(double UT) => new() { UT = UT, InShadow = true };
     }
+
+    const int MaxIter = 32;
+    const int BisectIter = 4;
 
     readonly SolarSystem system;
     readonly SystemBody star;
@@ -118,7 +122,7 @@ internal readonly struct OrbitShadow
         else
         {
             loUT = ComputeNextRegionBoundary(UT);
-            hiUT = StepNextRegionBoundary(UT);
+            hiUT = StepNextRegionBoundary(loUT);
         }
 
         if (hiUT < loUT)
@@ -128,9 +132,7 @@ internal readonly struct OrbitShadow
         if (minimum.Shadow)
             return Terminator.Sun(BisectTerminator(minimum.UT, loUT));
 
-        // TODO: Compute the time at which the vessel's orbit will next
-        //       intersect the planet's umbra.
-        return Terminator.Sun(vessel.Period);
+        return Terminator.Sun(EstimateNextPotentialIntersection(minimum.UT));
     }
 
     double ComputeTerminatorExit(double UT)
@@ -150,6 +152,58 @@ internal readonly struct OrbitShadow
         }
 
         return BisectTerminator(UT, hiUT);
+    }
+
+    double EstimateNextPotentialIntersection(double minUT)
+    {
+        // We can lower-bound the next time we might intersect the terminator
+        // by getting the angular distance between the current orbit and the
+        // umbra, and then figuring out the UT at which sun vector will have
+        // moved by at least that angle.
+        //
+        // This will be a big underestimate in cases where the minimum angular
+        // distance is increasing, but that's actually not a big issue since
+        // time scales here are measured in terms of years, so a few extra
+        // iterations are unlikely to hurt.
+        //
+        // If there are cases where the target star's variation in solar angle
+        // will not exceed then this method will likely return nonsense. I do
+        // not expect those results to show up in actual gameplay, even with
+        // weird kopernicus systems there should either be a nearer star that
+        // will take priority or else power produced by solar panels is so
+        // minimal that it will not matter.
+
+        var cosa = GetCosAngularUmbraDistance(minUT);
+        var csun2 = GetSunVectorAtUT(Dual2.Variable(minUT)).Normalized();
+        var csun = csun2.v;
+
+        // We can approximate dot(sun, sun') as cos(A*t). We can't start newton's
+        // method at minUT because dx will always be 0 at that point so we need
+        // to somehow come up with a starting point estimate.
+        //
+        // The second derivative of the function cos(A*t) is -A*A*cos(A*t), so
+        // we can estimate A as sqrt(abs(ddx)).
+        var scale = Math.Sqrt(Math.Abs(Dual2Vector3.Dot(new(csun), csun2).ddx));
+        // We can then plug this back in to solve cos(A*t) - cos α == 0 for t.
+        var offset = Math.Acos(cosa) / scale;
+
+        var UT = minUT + offset;
+        for (int i = 0; i < MaxIter; ++i)
+        {
+            var sun = GetSunVectorAtUT(Dual.Variable(UT)).Normalized();
+            var f = DualVector3.Dot(sun, new(csun)) - cosa;
+
+            if (f.dx == 0.0)
+                return minUT + vessel.Period;
+
+            var delta = f.x / f.dx;
+            UT -= delta;
+
+            if (MathUtil.ApproxEqual(delta, 0.0))
+                break;
+        }
+
+        return Math.Max(UT, minUT + vessel.Period);
     }
 
     /// <summary>
@@ -186,7 +240,7 @@ internal readonly struct OrbitShadow
             else
                 (sunUT, shadowUT) = (hiUT, loUT);
 
-            for (int i = 0; i < 4; ++i)
+            for (int i = 0; i < BisectIter; ++i)
             {
                 UT = 0.5 * (sunUT + shadowUT);
 
@@ -197,7 +251,7 @@ internal readonly struct OrbitShadow
             }
         }
 
-        for (int i = 0; i < 128; ++i)
+        for (int i = 0; i < MaxIter; ++i)
         {
             var f = ComputeSunDot(Dual.Variable(UT));
             var delta = f.x / f.dx;
@@ -221,7 +275,7 @@ internal readonly struct OrbitShadow
         // orbit.
         UT = ComputeOffsetUT(in vessel, UT, Math.PI);
 
-        for (int i = 0; i < 128; ++i)
+        for (int i = 0; i < MaxIter; ++i)
         {
             var f = ComputeSunDot(Dual.Variable(UT));
             var delta = f.x / f.dx;
@@ -245,7 +299,7 @@ internal readonly struct OrbitShadow
         // an orbit.
         UT = ComputeOffsetUT(in vessel, UT, Math.PI) - vessel.Period;
 
-        for (int i = 0; i < 128; ++i)
+        for (int i = 0; i < MaxIter; ++i)
         {
             var f = ComputeSunDot(Dual.Variable(UT));
             var delta = f.x / f.dx;
@@ -268,7 +322,7 @@ internal readonly struct OrbitShadow
     {
         double UT = startUT;
         Dual2 f = default;
-        for (int i = 0; i < 128; ++i)
+        for (int i = 0; i < MaxIter; ++i)
         {
             f = GetUmbraDistance(Dual2.Variable(UT));
             if (f.x <= 0.0)
@@ -330,7 +384,7 @@ internal readonly struct OrbitShadow
     {
         double UT = startUT;
         Dual2 f = default;
-        for (int i = 0; i < 128; ++i)
+        for (int i = 0; i < MaxIter; ++i)
         {
             f = GetUmbraDistance(Dual2.Variable(UT));
             if (f.x <= 0.0)
@@ -392,7 +446,7 @@ internal readonly struct OrbitShadow
     double BisectTerminator(double shadowUT, double sunUT)
     {
         double UT = 0.0;
-        for (int i = 0; i < 5; ++i)
+        for (int i = 0; i < BisectIter; ++i)
         {
             UT = 0.5 * (shadowUT + sunUT);
             var distance = GetUmbraDistance(UT);
@@ -405,7 +459,7 @@ internal readonly struct OrbitShadow
                 sunUT = UT;
         }
 
-        for (int i = 0; i < 128; ++i)
+        for (int i = 0; i < MaxIter; ++i)
         {
             var f = GetUmbraDistance(Dual.Variable(UT));
             var delta = f.x / f.dx;
@@ -452,6 +506,54 @@ internal readonly struct OrbitShadow
 
         var midTA = 0.5 * (loTA + hiTA);
         return vessel.GetUTAtTrueAnomaly(midTA, loUT);
+    }
+
+    Vector3d GetSunVectorAtUT(double UT)
+    {
+        var starp = system.GetPositionAtUT(in star, UT);
+        var planetp = system.GetPositionAtUT(in planet, UT);
+
+        return planetp - starp;
+    }
+
+    DualVector3 GetSunVectorAtUT(Dual UT)
+    {
+        var starp = system.GetPositionAtUT(in star, UT);
+        var planetp = system.GetPositionAtUT(in planet, UT);
+
+        return planetp - starp;
+    }
+
+    Dual2Vector3 GetSunVectorAtUT(Dual2 UT)
+    {
+        var starp = system.GetPositionAtUT(in star, UT);
+        var planetp = system.GetPositionAtUT(in planet, UT);
+
+        return planetp - starp;
+    }
+
+    double GetCosAngularUmbraDistance(double UT)
+    {
+        var starp = system.GetPositionAtUT(in star, UT);
+        var planetp = system.GetPositionAtUT(in planet, UT);
+        var vesselp = vessel.GetRelativePositionAtUT(UT);
+
+        var sunV = planetp - starp;
+        var sunD = sunV.magnitude;
+        var invSunD = 1.0 / sunD;
+        var sun = sunV * invSunD;
+
+        var r2 = planetRadius * planetRadius;
+        var s2 = sunD * sunD;
+        var v2 = vesselp.sqrMagnitude;
+
+        var l = sunD * (-r2 + Math.Sqrt(s2 * v2 + r2 * (v2 - s2))) / (r2 + s2);
+        var xi = planetRadius * (1.0 + l * invSunD);
+
+        var vperp = (vesselp - Vector3d.Dot(sun, vesselp) * sun).Normalized();
+        var vprime = l * sun + xi * vperp;
+
+        return Vector3d.Dot(vprime.Normalized(), vesselp.Normalized());
     }
 
     double GetUmbraDistance(double UT)
