@@ -90,11 +90,10 @@ public class Settings : GameParameters.CustomParameterNode
     public bool EnableSpaceDustIntegration = true;
 
     [GameParameters.CustomParameterUI(
-        "Enable Experimental Orbit Shadows",
-        toolTip = "Simulate the effect of planet shadows on orbiting ships. "
-            + "This is currently quite buggy, though it won't break your game. "
+        "Enable Orbit Shadows",
+        toolTip = "Simulate the effect of planet shadows on orbiting ships."
     )]
-    public bool EnableOrbitShadows = false;
+    public bool EnableOrbitShadows = true;
 
     [GameParameters.CustomParameterUI(
         "Enable Day/Night Simulation",
