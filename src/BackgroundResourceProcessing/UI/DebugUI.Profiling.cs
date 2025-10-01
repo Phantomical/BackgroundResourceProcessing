@@ -9,6 +9,8 @@ internal partial class DebugUI
         using var group = new PushVerticalGroup();
         if (GUILayout.Button("Recompute Shadow State"))
             RecomputeShadowState();
+        if (GUILayout.Button("Stress Test Shadow State"))
+            StressTestShadowState();
     }
 
     void RecomputeShadowState()
@@ -22,5 +24,19 @@ internal partial class DebugUI
             return;
 
         processor.RecomputeShadowState();
+    }
+
+    void StressTestShadowState()
+    {
+        var vessel = FlightGlobals.ActiveVessel;
+        if (vessel is null)
+            return;
+
+        var processor = vessel.FindVesselModuleImplementing<BackgroundResourceProcessor>();
+        if (processor is null)
+            return;
+
+        for (int i = 0; i < 10000; ++i)
+            processor.RecomputeShadowState();
     }
 }
