@@ -11,6 +11,9 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 -->
 
 ## Unreleased
+### Added
+* Added support for `KPRS`.
+
 ### Changed
 * Rewrote the code that computes when a vessel will next enter a planet's shadow.
   This should now work in vastly more cases.
