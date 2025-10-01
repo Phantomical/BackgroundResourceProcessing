@@ -1,6 +1,4 @@
 using System;
-using System.Diagnostics;
-using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Maths;
 using BackgroundResourceProcessing.Utils;
 using static System.Math;
@@ -11,7 +9,6 @@ namespace BackgroundResourceProcessing.Mathematics;
 /// <summary>
 /// Represents an orbital trajectory using Keplerian orbital elements.
 /// </summary>
-[DebuggerDisplay("{Name}")]
 internal struct Orbit
 {
     /// <summary>

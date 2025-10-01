@@ -1,7 +1,5 @@
 using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Maths;
-using UnityEngine.Animations;
-using UnityEngine.UIElements;
 
 namespace BackgroundResourceProcessing.Mathematics;
 
@@ -90,13 +88,13 @@ internal readonly struct SolarSystem(MemorySpan<SystemBody> bodies)
         return new(body.Position);
     }
 
-    public static RawList<SystemBody> Record(AllocatorHandle allocator)
+    public static SystemBody[] Record()
     {
         var celestialBodies = FlightGlobals.Bodies;
-        var bodies = new RawList<SystemBody>(celestialBodies.Count, allocator);
+        var bodies = new SystemBody[celestialBodies.Count];
 
-        foreach (var cb in celestialBodies)
-            bodies.Add(new SystemBody(cb));
+        for (int i = 0; i < bodies.Length; ++i)
+            bodies[i] = new SystemBody(celestialBodies[i]);
 
         return bodies;
     }

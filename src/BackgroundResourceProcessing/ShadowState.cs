@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using BackgroundResourceProcessing.Behaviour;
-using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Mathematics;
 using BackgroundResourceProcessing.Maths;
 using BackgroundResourceProcessing.Tracing;
@@ -118,10 +116,7 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         if (!(settings?.EnableOrbitShadows ?? false))
             return DefaultForStar(stars.FirstOrDefault());
 
-        using var arena = new BurstAllocator();
-        AllocatorHandle handle = new(&arena);
-
-        var system = new SolarSystem(SolarSystem.Record(handle));
+        var system = SolarSystem.Record();
         var orbit = new Mathematics.Orbit(vessel);
         var UT = Planetarium.GetUniversalTime();
 
@@ -133,8 +128,8 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
                 return AlwaysInSun(star);
 
             var terminator = Mathematics.OrbitShadow.ComputeOrbitTerminator(
-                in system,
-                in orbit,
+                system,
+                orbit,
                 (int)SolarSystem.GetBodyIndex(star),
                 UT,
                 bodies.planet.Radius

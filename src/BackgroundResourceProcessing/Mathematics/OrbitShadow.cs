@@ -1,13 +1,12 @@
 using System;
+using BackgroundResourceProcessing.BurstSolver;
 using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Maths;
 using BackgroundResourceProcessing.Utils;
-using TMPro;
 using Unity.Burst;
 
 namespace BackgroundResourceProcessing.Mathematics;
 
-[BurstCompile]
 internal readonly struct OrbitShadow
 {
     internal struct Terminator
@@ -38,44 +37,72 @@ internal readonly struct OrbitShadow
         this.planetRadius = planetRadius;
     }
 
-    internal static Terminator ComputeOrbitTerminator(
-        in SolarSystem system,
+    unsafe delegate void ComputeOrbitTerminatorDelegate(
+        SolarSystem* system,
+        Orbit* vessel,
+        int starIndex,
+        double UT,
+        double planetRadius,
+        out Terminator terminator
+    );
+
+    static ComputeOrbitTerminatorDelegate ComputeOrbitTerminatorFp = null;
+
+    internal static unsafe Terminator ComputeOrbitTerminator(
+        SystemBody[] bodies,
+        Orbit vessel,
+        int starIndex,
+        double UT,
+        double planetRadius
+    )
+    {
+        // This method does nothing but ensures that the static constructor for
+        // the crash handler is called.
+        BurstCrashHandler.Init();
+
+        fixed (SystemBody* ptr = bodies)
+        {
+            var system = new SolarSystem(new MemorySpan<SystemBody>(ptr, bodies.Length));
+
+            Terminator term;
+            if (!BurstUtil.EnableBurst)
+            {
+                term = ComputeOrbitTerminator(system, in vessel, starIndex, UT, planetRadius);
+            }
+            else
+            {
+                ComputeOrbitTerminatorFp ??= BurstCompiler
+                    .CompileFunctionPointer<ComputeOrbitTerminatorDelegate>(
+                        OrbitShadowBurst.ComputeOrbitTerminatorBurst
+                    )
+                    .Invoke;
+
+                ComputeOrbitTerminatorFp(&system, &vessel, starIndex, UT, planetRadius, out term);
+            }
+
+            if (term.UT == double.MaxValue)
+                term.UT = double.PositiveInfinity;
+
+            return term;
+        }
+    }
+
+    internal static unsafe Terminator ComputeOrbitTerminator(
+        SolarSystem system,
         in Orbit vessel,
         int starIndex,
         double UT,
         double planetRadius
     )
     {
-        ComputeOrbitTerminatorBurst(system, vessel, starIndex, UT, planetRadius, out var term);
-
-        if (term.UT == double.MaxValue)
-            term.UT = double.PositiveInfinity;
-
-        return term;
-    }
-
-    [BurstCompile(FloatMode = FloatMode.Fast)]
-    static void ComputeOrbitTerminatorBurst(
-        in SolarSystem system,
-        in Orbit vessel,
-        int starIndex,
-        double UT,
-        double planetRadius,
-        out Terminator terminator
-    )
-    {
         if (vessel.ParentBodyIndex == starIndex)
-        {
-            terminator = new() { UT = double.MaxValue, InShadow = false };
-        }
+            return new() { UT = double.MaxValue, InShadow = false };
+
+        var shadow = new OrbitShadow(system, vessel, starIndex, planetRadius);
+        if (vessel.Eccentricity < 1.0)
+            return shadow.ComputeOrbitTerminatorNormal(UT);
         else
-        {
-            var shadow = new OrbitShadow(system, vessel, starIndex, planetRadius);
-            if (vessel.Eccentricity < 1.0)
-                terminator = shadow.ComputeOrbitTerminatorNormal(UT);
-            else
-                terminator = shadow.ComputeOrbitTerminatorHyperbolic(UT);
-        }
+            return shadow.ComputeOrbitTerminatorHyperbolic(UT);
     }
 
     Terminator ComputeOrbitTerminatorHyperbolic(double UT)
@@ -611,5 +638,33 @@ internal readonly struct OrbitShadow
     {
         double currentTA = orbit.GetTrueAnomalyAtUT(UT);
         return orbit.GetUTAtTrueAnomaly(currentTA + tA, UT);
+    }
+}
+
+[BurstCompile]
+internal static class OrbitShadowBurst
+{
+    // This needs to be in a class or else we get a segfault somewhere within
+    // mono when calling the burst function pointer.
+    //
+    // I have no idea why this happens, but putting it in a separate class
+    // seems to fix the issue.
+    [BurstCompile]
+    internal static unsafe void ComputeOrbitTerminatorBurst(
+        SolarSystem* system,
+        Orbit* vessel,
+        int starIndex,
+        double UT,
+        double planetRadius,
+        out OrbitShadow.Terminator terminator
+    )
+    {
+        terminator = OrbitShadow.ComputeOrbitTerminator(
+            *system,
+            in *vessel,
+            starIndex,
+            UT,
+            planetRadius
+        );
     }
 }
