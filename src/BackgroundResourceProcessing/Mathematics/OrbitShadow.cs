@@ -649,7 +649,7 @@ internal static class OrbitShadowBurst
     //
     // I have no idea why this happens, but putting it in a separate class
     // seems to fix the issue.
-    [BurstCompile]
+    [BurstCompile(FloatMode = FloatMode.Fast)]
     internal static unsafe void ComputeOrbitTerminatorBurst(
         SolarSystem* system,
         Orbit* vessel,
