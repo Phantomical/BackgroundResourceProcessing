@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -41,6 +42,39 @@ public readonly partial struct FieldExpression<T>(Func<PartModule, T> func, stri
         var func = parser.Parse<T>();
 
         return new(func, expression);
+    }
+
+    internal static FieldExpression<bool> CompileMany(
+        string[] expressions,
+        ConfigNode node,
+        Type target = null
+    )
+    {
+        target ??= typeof(PartModule);
+
+        var param = Expression.Parameter(typeof(PartModule));
+        var module = Expression.Parameter(target);
+        Expression expr = Expression.Constant(true);
+
+        foreach (var text in expressions)
+        {
+            FieldExpression.Lexer lexer = new(text);
+            lexer.MoveNext();
+            FieldExpression.Parser parser = new(lexer, node, target);
+            expr = Expression.AndAlso(expr, parser.ParseFragment<bool>(module));
+        }
+
+        var lambda = Expression.Lambda<Func<PartModule, bool>>(
+            Expression.Block(
+                [module],
+                Expression.Assign(module, Expression.Convert(param, target)),
+                expr
+            ),
+            param
+        );
+        var func = lambda.Compile();
+
+        return new(func, $"({string.Join(") && (", expressions)})");
     }
 
     public static FieldExpression<T> Constant(T value)

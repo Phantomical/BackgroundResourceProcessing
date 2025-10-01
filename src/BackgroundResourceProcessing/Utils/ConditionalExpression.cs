@@ -52,4 +52,18 @@ public readonly struct ConditionalExpression(FieldExpression<bool> expr)
     {
         return new(FieldExpression<bool>.Compile(expression, node, target));
     }
+
+    /// <summary>
+    /// Compile a <see cref="ConditionalExpression"/> from the provided
+    /// expression list and config node context.
+    /// </summary>
+    /// <returns></returns>
+    public static ConditionalExpression Compile(
+        string[] expressions,
+        ConfigNode node,
+        Type target = null
+    )
+    {
+        return new(FieldExpression<bool>.CompileMany(expressions, node, target));
+    }
 }

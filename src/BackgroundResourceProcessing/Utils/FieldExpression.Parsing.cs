@@ -558,6 +558,20 @@ internal partial struct FieldExpression
             return expr.Compile();
         }
 
+        public Expression ParseFragment<T>(ParameterExpression param)
+        {
+            var block = Expression.Block(
+                [module],
+                Expression.Assign(module, Expression.Convert(param, target)),
+                CoerceToTarget<T>(ParseExpression())
+            );
+
+            if (Current != TokenKind.EOF)
+                throw RenderError($"unexpected token `{Current.ToString()}`");
+
+            return block;
+        }
+
         Expression ParseExpression()
         {
             return ParseNullCoalesceExpression();

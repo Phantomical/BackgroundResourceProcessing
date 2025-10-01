@@ -137,14 +137,12 @@ public static class ConfigUtil
         ref ConditionalExpression expr
     )
     {
-        string cond = null;
-        if (node.TryGetValue(name, ref cond))
-        {
-            expr = ConditionalExpression.Compile(cond, node, target);
-            return true;
-        }
+        var conditions = node.GetValues(name);
+        if (conditions == null || conditions.Length == 0)
+            return false;
 
-        return false;
+        expr = ConditionalExpression.Compile(conditions, node, target);
+        return true;
     }
 
     public static bool TryGetCondition2(
