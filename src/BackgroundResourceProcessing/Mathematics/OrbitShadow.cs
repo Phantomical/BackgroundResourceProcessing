@@ -26,15 +26,13 @@ internal readonly struct OrbitShadow
     readonly SystemBody star;
     readonly Orbit vessel;
     readonly SystemBody planet;
-    readonly double planetRadius;
 
-    OrbitShadow(SolarSystem system, Orbit vessel, int starIndex, double planetRadius)
+    OrbitShadow(SolarSystem system, Orbit vessel, int starIndex)
     {
         this.system = system;
         this.vessel = vessel;
         this.star = system[starIndex];
         this.planet = system[vessel.ParentBodyIndex ?? -1];
-        this.planetRadius = planetRadius;
     }
 
     unsafe delegate void ComputeOrbitTerminatorDelegate(
@@ -42,7 +40,6 @@ internal readonly struct OrbitShadow
         Orbit* vessel,
         int starIndex,
         double UT,
-        double planetRadius,
         out Terminator terminator
     );
 
@@ -52,8 +49,7 @@ internal readonly struct OrbitShadow
         SystemBody[] bodies,
         Orbit vessel,
         int starIndex,
-        double UT,
-        double planetRadius
+        double UT
     )
     {
         // This method does nothing but ensures that the static constructor for
@@ -67,7 +63,7 @@ internal readonly struct OrbitShadow
             Terminator term;
             if (!BurstUtil.EnableBurst)
             {
-                term = ComputeOrbitTerminator(system, in vessel, starIndex, UT, planetRadius);
+                term = ComputeOrbitTerminator(system, in vessel, starIndex, UT);
             }
             else
             {
@@ -77,7 +73,7 @@ internal readonly struct OrbitShadow
                     )
                     .Invoke;
 
-                ComputeOrbitTerminatorFp(&system, &vessel, starIndex, UT, planetRadius, out term);
+                ComputeOrbitTerminatorFp(&system, &vessel, starIndex, UT, out term);
             }
 
             if (term.UT == double.MaxValue)
@@ -91,14 +87,13 @@ internal readonly struct OrbitShadow
         SolarSystem system,
         in Orbit vessel,
         int starIndex,
-        double UT,
-        double planetRadius
+        double UT
     )
     {
         if (vessel.ParentBodyIndex == starIndex)
             return new() { UT = double.MaxValue, InShadow = false };
 
-        var shadow = new OrbitShadow(system, vessel, starIndex, planetRadius);
+        var shadow = new OrbitShadow(system, vessel, starIndex);
         if (vessel.Eccentricity < 1.0)
             return shadow.ComputeOrbitTerminatorNormal(UT);
         else
@@ -165,7 +160,7 @@ internal readonly struct OrbitShadow
     double ComputeTerminatorExit(double UT)
     {
         var hiUT = ComputeNextRegionBoundary(UT);
-        if (vessel.GetRadiusAtUT(hiUT) <= planetRadius)
+        if (vessel.GetRadiusAtUT(hiUT) <= planet.Radius)
         {
             // We're on a suborbital trajectory. We need to check if our orbit
             // is entirely within the planet's shadow or if we can find a
@@ -570,12 +565,12 @@ internal readonly struct OrbitShadow
         var invSunD = 1.0 / sunD;
         var sun = sunV * invSunD;
 
-        var r2 = planetRadius * planetRadius;
+        var r2 = planet.Radius * planet.Radius;
         var s2 = sunD * sunD;
         var v2 = vesselp.sqrMagnitude;
 
         var l = sunD * (-r2 + Math.Sqrt(s2 * v2 + r2 * (v2 - s2))) / (r2 + s2);
-        var xi = planetRadius * (1.0 + l * invSunD);
+        var xi = planet.Radius * (1.0 + l * invSunD);
 
         var vperp = (vesselp - Vector3d.Dot(sun, vesselp) * sun).Normalized();
         var vprime = l * sun + xi * vperp;
@@ -594,7 +589,7 @@ internal readonly struct OrbitShadow
         var sun = sunV * invSunD;
 
         var x = Vector3d.Dot(sun, vesselp);
-        var xi = planetRadius * (1.0 + x * invSunD);
+        var xi = planet.Radius * (1.0 + x * invSunD);
         var delta = (vesselp - x * sun).magnitude;
 
         return delta - xi;
@@ -611,7 +606,7 @@ internal readonly struct OrbitShadow
         var sun = sunV / sunD;
 
         var x = DualVector3.Dot(sun, vesselp);
-        var xi = planetRadius * (1.0 + x / sunD);
+        var xi = planet.Radius * (1.0 + x / sunD);
         var delta = (vesselp - x * sun).Magnitude();
 
         return delta - xi;
@@ -628,7 +623,7 @@ internal readonly struct OrbitShadow
         var sun = sunV / sunD;
 
         var x = Dual2Vector3.Dot(sun, vesselp);
-        var xi = planetRadius * (1.0 + x / sunD);
+        var xi = planet.Radius * (1.0 + x / sunD);
         var delta = (vesselp - x * sun).Magnitude();
 
         return delta - xi;
@@ -655,16 +650,9 @@ internal static class OrbitShadowBurst
         Orbit* vessel,
         int starIndex,
         double UT,
-        double planetRadius,
         out OrbitShadow.Terminator terminator
     )
     {
-        terminator = OrbitShadow.ComputeOrbitTerminator(
-            *system,
-            in *vessel,
-            starIndex,
-            UT,
-            planetRadius
-        );
+        terminator = OrbitShadow.ComputeOrbitTerminator(*system, in *vessel, starIndex, UT);
     }
 }

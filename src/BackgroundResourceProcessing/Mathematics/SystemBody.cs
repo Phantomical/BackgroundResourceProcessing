@@ -10,9 +10,23 @@ internal struct SystemBody
     public bool HasOrbit;
     public Orbit Orbit;
     public Vector3d Position;
-    public FixedString32 Name;
+    public int Index;
 
-    public SystemBody(CelestialBody body)
+    public double Radius;
+
+    public readonly string Name
+    {
+        get
+        {
+            var bodies = FlightGlobals.Bodies;
+            if (Index < 0 || Index >= bodies.Count)
+                return null;
+
+            return bodies[Index].bodyName;
+        }
+    }
+
+    public SystemBody(CelestialBody body, int? index = null)
     {
         if (body.orbit is not null)
         {
@@ -25,7 +39,8 @@ internal struct SystemBody
             Position = body.position;
         }
 
-        Name = new(body.bodyName);
+        this.Index = index ?? FlightGlobals.GetBodyIndex(body);
+        this.Radius = body.Radius;
     }
 
     public readonly Vector3d GetRelativePositionAtUT(double UT)
