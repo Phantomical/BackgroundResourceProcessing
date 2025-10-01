@@ -127,12 +127,11 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
             if (ReferenceEquals(bodies.parent, star))
                 return AlwaysInSun(star);
 
-            var terminator = Mathematics.OrbitShadow.ComputeOrbitTerminator(
+            var terminator = OrbitShadow.ComputeOrbitTerminator(
                 system,
                 orbit,
                 (int)SolarSystem.GetBodyIndex(star),
-                UT,
-                bodies.planet.Radius
+                UT
             );
 
             if (!terminator.InShadow)
