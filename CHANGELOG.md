@@ -11,6 +11,11 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 -->
 
 ## Unreleased
+### Changed
+* Rewrote the code that computes when a vessel will next enter a planet's shadow.
+  This should now work in vastly more cases.
+* Updated day/night simulation to be applied to orbiting vessels by default.
+
 ### Fixed
 * Fixed a solver crash when a vessel with resource constraints crosses a SOI boundary.
 * Fixed incorrect AoA calculation for solar panels.
