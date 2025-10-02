@@ -123,11 +123,11 @@ public sealed class BackgroundPersistentThrust : VesselModule
         TargetVesselId = Guid.Empty;
         TargetBodyName = "";
 
-        var target = Vessel.targetObject.GetOrbitDriver();
-        this.target = target.orbit;
-        if (target.vessel is not null)
+        var target = Vessel.targetObject?.GetOrbitDriver();
+        this.target = target?.orbit;
+        if (target?.vessel is not null)
             TargetVesselId = target.vessel.id;
-        else if (target.celestialBody is not null)
+        else if (target?.celestialBody is not null)
             TargetBodyName = target.celestialBody.bodyName;
         else
             this.target = null;
