@@ -22,6 +22,8 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 ### Fixed
 * Fixed a solver crash when a vessel with resource constraints crosses a SOI boundary.
 * Fixed incorrect AoA calculation for solar panels.
+* SystemHeat fission reactors (and engines) that do not produce electricity now
+  correctly either hibernate or run at the minimum throttle in the background.
 
 ## 0.1.18
 ### Added
