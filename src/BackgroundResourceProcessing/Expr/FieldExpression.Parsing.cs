@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using BackgroundResourceProcessing.Utils;
 
-namespace BackgroundResourceProcessing.Utils;
+namespace BackgroundResourceProcessing.Expr;
 
 public class EvaluationException(string message) : Exception(message) { }
 

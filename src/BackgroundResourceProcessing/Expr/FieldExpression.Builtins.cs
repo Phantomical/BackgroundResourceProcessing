@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
-namespace BackgroundResourceProcessing.Utils;
+namespace BackgroundResourceProcessing.Expr;
 
 internal partial struct FieldExpression
 {

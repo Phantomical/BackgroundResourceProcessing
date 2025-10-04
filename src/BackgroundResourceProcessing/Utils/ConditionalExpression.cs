@@ -64,6 +64,6 @@ public readonly struct ConditionalExpression(FieldExpression<bool> expr)
         Type target = null
     )
     {
-        return new(FieldExpression<bool>.CompileMany(expressions, node, target));
+        return new(FieldExpression.CompileMany(expressions, node, target));
     }
 }

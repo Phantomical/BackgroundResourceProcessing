@@ -1,212 +1,41 @@
 using System;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Reflection;
 
 namespace BackgroundResourceProcessing.Utils;
 
-public readonly partial struct FieldExpression<T>(Func<PartModule, T> func, string text)
+public readonly struct FieldExpression<T>
 {
-    const BindingFlags Flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+    readonly Expr.FieldExpression<T> Inner;
 
-    readonly string text = text;
-    readonly Func<PartModule, T> func = func;
+    internal FieldExpression(Expr.FieldExpression<T> inner) => Inner = inner;
 
-    public readonly bool TryEvaluate(PartModule module, out T value)
-    {
-        value = default;
-        if (func == null)
-            return false;
+    public FieldExpression(Func<PartModule, T> func, string text)
+        : this(new(func, text)) { }
 
-        try
-        {
-            value = func(module);
-            return true;
-        }
-        catch (Exception e)
-        {
-            LogUtil.Error($"An exception was thrown while evaluating expression `{text}`: {e}");
-        }
+    public readonly bool TryEvaluate(PartModule module, out T value) =>
+        Inner.TryEvaluate(module, out value);
 
-        return false;
-    }
+    public static FieldExpression<T> Compile(
+        string expression,
+        ConfigNode node,
+        Type target = null
+    ) => new(Expr.FieldExpression<T>.Compile(expression, node, target));
 
-    public static FieldExpression<T> Compile(string expression, ConfigNode node, Type target = null)
-    {
-        target ??= typeof(PartModule);
+    public static FieldExpression<T> Constant(T value) =>
+        new(Expr.FieldExpression<T>.Constant(value));
 
-        FieldExpression.Lexer lexer = new(expression);
-        lexer.MoveNext();
+    public static FieldExpression<T> Field(string name, Type type) =>
+        new(Expr.FieldExpression<T>.Field(name, type));
 
-        FieldExpression.Parser parser = new(lexer, node, target);
-        var func = parser.Parse<T>();
+    public override readonly string ToString() => Inner.ToString();
+}
 
-        return new(func, expression);
-    }
-
-    internal static FieldExpression<bool> CompileMany(
+public static class FieldExpression
+{
+    public static FieldExpression<bool> CompileMany(
         string[] expressions,
         ConfigNode node,
         Type target = null
-    )
-    {
-        target ??= typeof(PartModule);
-
-        var param = Expression.Parameter(typeof(PartModule));
-        var module = Expression.Parameter(target);
-        Expression expr = Expression.Constant(true);
-
-        foreach (var text in expressions)
-        {
-            FieldExpression.Lexer lexer = new(text);
-            lexer.MoveNext();
-            FieldExpression.Parser parser = new(lexer, node, target);
-            expr = Expression.AndAlso(expr, parser.ParseFragment<bool>(module));
-        }
-
-        var lambda = Expression.Lambda<Func<PartModule, bool>>(
-            Expression.Block(
-                [module],
-                Expression.Assign(module, Expression.Convert(param, target)),
-                expr
-            ),
-            param
-        );
-        var func = lambda.Compile();
-
-        return new(func, $"({string.Join(") && (", expressions)})");
-    }
-
-    public static FieldExpression<T> Constant(T value)
-    {
-        return new(_ => value, value.ToString());
-    }
-
-    public static FieldExpression<T> Field(string name, Type type)
-    {
-        if (name == null)
-            throw new ArgumentNullException(nameof(name));
-        if (type == null)
-            throw new ArgumentNullException(nameof(type));
-
-        var field = type.GetField(name, Flags);
-        if (field != null)
-        {
-            if (!IsCompatibleType(field.FieldType))
-                throw new Exception(
-                    $"{type.Name}.{field} is not of type {typeof(T).Name} (found {field.FieldType.Name} instead)"
-                );
-
-            return new(module => (T)GetCompatibleValue(field.GetValue(module)), name);
-        }
-
-        var property = type.GetProperty(name, Flags);
-        if (property != null)
-        {
-            if (!IsCompatibleType(property.PropertyType))
-                throw new Exception(
-                    $"{type.Name}.{field} is not of type {typeof(T).Name} (found {property.PropertyType.Name} instead)"
-                );
-
-            if (!property.CanRead)
-                throw new Exception($"Property {type.Name}.{field} is not readable");
-
-            return new(module => (T)GetCompatibleValue(property.GetValue(module)), name);
-        }
-
-        throw new Exception($"Type {type.Name} has no field or property named `{field}`");
-    }
-
-    private static bool IsCompatibleType(Type type)
-    {
-        if (type == typeof(T))
-            return true;
-
-        // Special case, we can cast a whole bunch of types to double/float
-        if (typeof(T) == typeof(double) || typeof(T) == typeof(float))
-        {
-            return type == typeof(float)
-                || type == typeof(double)
-                || type == typeof(ushort)
-                || type == typeof(uint)
-                || type == typeof(ulong)
-                || type == typeof(short)
-                || type == typeof(int)
-                || type == typeof(long);
-        }
-
-        if (typeof(T).IsEnum)
-            return type == typeof(string);
-
-        if (typeof(T) == typeof(bool))
-            return true;
-
-        return false;
-    }
-
-    private static object GetCompatibleValue(object value)
-    {
-        if (typeof(T) == typeof(double))
-        {
-            return value switch
-            {
-                double v => v,
-                float v => (double)v,
-                ushort v => (double)v,
-                uint v => (double)v,
-                ulong v => (double)v,
-                short v => (double)v,
-                int v => (double)v,
-                long v => (double)v,
-                _ => value,
-            };
-        }
-
-        if (typeof(T) == typeof(float))
-        {
-            return value switch
-            {
-                float v => v,
-                double v => (float)v,
-                ushort v => (float)v,
-                uint v => (float)v,
-                ulong v => (float)v,
-                short v => (float)v,
-                int v => (float)v,
-                long v => (float)v,
-                _ => value,
-            };
-        }
-
-        if (typeof(T) == typeof(bool))
-            return FieldExpression.Methods.CoerceToBool(value);
-
-        if (typeof(T).IsEnum)
-        {
-            if (value is string s)
-                return (T)Enum.Parse(typeof(T), s);
-        }
-
-        return value;
-    }
-
-    private static Func<PartModule, object> MakeLambdaGeneric(Expression<Func<PartModule, T>> expr)
-    {
-        if (expr is not LambdaExpression lambda)
-            throw new Exception($"Expected a lambda expression but got `{expr}` instead");
-
-        var result = Expression.Lambda<Func<PartModule, object>>(
-            Expression.Convert(lambda.Body, typeof(object)),
-            lambda.Parameters
-        );
-
-        return result.Compile();
-    }
-
-    public override string ToString()
-    {
-        return text ?? "";
-    }
+    ) => new(Expr.FieldExpression<bool>.CompileMany(expressions, node, target));
 }
 
 public static class FieldExpressionExtensions

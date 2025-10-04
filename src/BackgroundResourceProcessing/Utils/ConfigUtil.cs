@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using BackgroundResourceProcessing.Utils;
-using Steamworks;
 
-namespace BackgroundResourceProcessing;
+namespace BackgroundResourceProcessing.Utils;
 
 public static class ConfigUtil
 {

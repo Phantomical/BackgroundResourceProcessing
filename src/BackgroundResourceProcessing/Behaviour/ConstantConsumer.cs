@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using BackgroundResourceProcessing;
 using BackgroundResourceProcessing.Behaviour;
+using BackgroundResourceProcessing.Utils;
 
 /// <summary>
 /// A consumer that consumes resources at a fixed rate.

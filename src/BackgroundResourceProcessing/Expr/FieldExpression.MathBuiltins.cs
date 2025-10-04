@@ -1,6 +1,6 @@
 using System;
 
-namespace BackgroundResourceProcessing.Utils;
+namespace BackgroundResourceProcessing.Expr;
 
 internal partial struct FieldExpression
 {
