@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -31,14 +30,26 @@ internal readonly partial struct FieldExpression<T>(Func<PartModule, T> func, st
         return false;
     }
 
+    internal readonly bool TryEvaluateRaw(PartModule module, out T value)
+    {
+        if (func == null)
+        {
+            value = default;
+            return false;
+        }
+
+        value = func(module);
+        return true;
+    }
+
     public static FieldExpression<T> Compile(string expression, ConfigNode node, Type target = null)
     {
         target ??= typeof(PartModule);
 
-        FieldExpression.Lexer lexer = new(expression);
+        Lexer lexer = new(expression);
         lexer.MoveNext();
 
-        FieldExpression.Parser parser = new(lexer, node, target);
+        Parser parser = new(lexer, node, target);
         var func = parser.Parse<T>();
 
         return new(func, expression);
@@ -58,9 +69,9 @@ internal readonly partial struct FieldExpression<T>(Func<PartModule, T> func, st
 
         foreach (var text in expressions)
         {
-            FieldExpression.Lexer lexer = new(text);
+            Lexer lexer = new(text);
             lexer.MoveNext();
-            FieldExpression.Parser parser = new(lexer, node, target);
+            Parser parser = new(lexer, node, target);
             expr = Expression.AndAlso(expr, parser.ParseFragment<bool>(module));
         }
 
@@ -179,7 +190,7 @@ internal readonly partial struct FieldExpression<T>(Func<PartModule, T> func, st
         }
 
         if (typeof(T) == typeof(bool))
-            return FieldExpression.Methods.CoerceToBool(value);
+            return Methods.CoerceToBool(value);
 
         if (typeof(T).IsEnum)
         {

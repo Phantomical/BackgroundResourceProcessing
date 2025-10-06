@@ -1,10 +1,11 @@
 using System;
+using UnityEngine;
 
 namespace BackgroundResourceProcessing.Utils;
 
 public readonly struct FieldExpression<T>
 {
-    readonly Expr.FieldExpression<T> Inner;
+    internal readonly Expr.FieldExpression<T> Inner;
 
     internal FieldExpression(Expr.FieldExpression<T> inner) => Inner = inner;
 
@@ -31,27 +32,74 @@ public readonly struct FieldExpression<T>
 
 public static class FieldExpression
 {
+    public sealed class ClassConstraint<T>
+        where T : class
+    {
+        private ClassConstraint() { }
+    }
+
     public static FieldExpression<bool> CompileMany(
         string[] expressions,
         ConfigNode node,
         Type target = null
     ) => new(Expr.FieldExpression<bool>.CompileMany(expressions, node, target));
-}
 
-public static class FieldExpressionExtensions
-{
-    public static T? Evaluate<T>(this FieldExpression<T> expr, PartModule module)
+    public static T? Evaluate<T>(
+        this FieldExpression<T> expr,
+        PartModule module,
+        T? _ = default(T?)
+    )
         where T : struct
     {
-        if (expr.TryEvaluate(module, out var value))
-            return value;
+        try
+        {
+            if (expr.Inner.TryEvaluateRaw(module, out var value))
+                return value;
+        }
+        catch (Expr.NullValueException) { }
+        catch (Exception e)
+        {
+            LogUtil.Error($"An exception was thrown while evaluating expression `{expr}`: {e}");
+        }
+
         return null;
     }
 
-    public static string Evaluate(this FieldExpression<string> expr, PartModule module)
+    public static T Evaluate<T>(
+        this FieldExpression<T> expr,
+        PartModule module,
+        ClassConstraint<T> _ = default(ClassConstraint<T>)
+    )
+        where T : class
     {
-        if (expr.TryEvaluate(module, out var value))
-            return value;
+        try
+        {
+            if (expr.Inner.TryEvaluateRaw(module, out var value))
+                return value;
+        }
+        catch (Expr.NullValueException) { }
+        catch (Exception e)
+        {
+            LogUtil.Error($"An exception was thrown while evaluating expression `{expr}`: {e}");
+        }
+
+        return null;
+    }
+
+    public static T? Evaluate<T>(this FieldExpression<T?> expr, PartModule module)
+        where T : struct
+    {
+        try
+        {
+            if (expr.Inner.TryEvaluateRaw(module, out var value))
+                return value;
+        }
+        catch (Expr.NullValueException) { }
+        catch (Exception e)
+        {
+            LogUtil.Error($"An exception was thrown while evaluating expression `{expr}`: {e}");
+        }
+
         return null;
     }
 }
