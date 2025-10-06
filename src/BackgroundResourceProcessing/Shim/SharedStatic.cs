@@ -9,7 +9,7 @@ using UnityEngine;
 
 namespace BackgroundResourceProcessing.Shim;
 
-public readonly unsafe struct SharedStatic<T>
+internal readonly unsafe struct SharedStatic<T>
     where T : unmanaged
 {
     private readonly void* _buffer;
