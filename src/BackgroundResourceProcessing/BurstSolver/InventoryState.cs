@@ -1,6 +1,6 @@
 namespace BackgroundResourceProcessing.BurstSolver;
 
-public enum InventoryState : byte
+internal enum InventoryState : byte
 {
     /// <summary>
     /// There is no constraint on flow through this inventory.
