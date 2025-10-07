@@ -6,7 +6,7 @@ namespace BackgroundResourceProcessing.BurstSolver;
 /// <see cref="ResourceRatio"/> but burst-compatible.
 /// </summary>
 [DebuggerDisplay("{ResourceName} {Ratio}/s")]
-public struct GraphRatio
+internal struct GraphRatio
 {
     public int ResourceId;
     public double Ratio;
