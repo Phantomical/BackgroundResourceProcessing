@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
@@ -52,13 +51,5 @@ internal static class DictionaryExtensions
     public static void Add<K, V>(this Dictionary<K, V> dict, KeyValuePair<K, V> pair)
     {
         dict.Add(pair.Key, pair.Value);
-    }
-}
-
-internal static class DictUtil
-{
-    internal static KeyValuePair<K, V> CreateKeyValuePair<K, V>(K key, V value)
-    {
-        return new KeyValuePair<K, V>(key, value);
     }
 }
