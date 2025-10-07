@@ -7,7 +7,7 @@ namespace BackgroundResourceProcessing.Utils;
 public struct FakePartResourceExpression()
 {
     public ConditionalExpression condition = ConditionalExpression.Always;
-    public string ResourceName;
+    public FieldExpression<string> ResourceName;
     public FieldExpression<double> Amount = new(_ => 0.0, "0");
     public FieldExpression<double> MaxAmount = new(_ => 0.0, "0");
 
@@ -19,9 +19,19 @@ public struct FakePartResourceExpression()
             return false;
         }
 
+        var resourceName = ResourceName.Evaluate(module);
+        if (resourceName is null)
+        {
+            LogUtil.Error(
+                "FakePartResource ResourceName evaluated to null. This resource expression will be ignored."
+            );
+            res = default;
+            return false;
+        }
+
         res = new()
         {
-            ResourceName = ResourceName,
+            ResourceName = resourceName,
             Amount = Amount.Evaluate(module) ?? 0.0,
             MaxAmount = MaxAmount.Evaluate(module) ?? 0.0,
         };
@@ -33,7 +43,8 @@ public struct FakePartResourceExpression()
     {
         FakePartResourceExpression result = new();
 
-        node.TryGetValue(nameof(ResourceName), ref result.ResourceName);
+        node.TryGetCondition(nameof(condition), target, ref result.condition);
+        node.TryGetExpression(nameof(ResourceName), target, ref result.ResourceName);
         node.TryGetExpression(nameof(Amount), target, ref result.Amount);
         node.TryGetExpression(nameof(MaxAmount), target, ref result.MaxAmount);
 
