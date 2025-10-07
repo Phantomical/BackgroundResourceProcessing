@@ -299,6 +299,20 @@ public class ResourceInventory
 
     public ResourceInventory() { }
 
+    /// <summary>
+    /// Create a new resource inventory that is not linked to any part.
+    /// </summary>
+    /// <param name="resourceName"></param>
+    /// <param name="amount"></param>
+    /// <param name="maxAmount"></param>
+    public ResourceInventory(string resourceName, double amount, double maxAmount)
+    {
+        ResourceName = resourceName;
+        Amount = amount;
+        MaxAmount = maxAmount;
+        OriginalAmount = amount;
+    }
+
     public ResourceInventory(PartResource resource)
     {
         var part = resource.part;
@@ -332,6 +346,7 @@ public class ResourceInventory
         node.AddValue("maxAmount", MaxAmount);
         node.AddValue("rate", Rate);
         node.AddValue("originalAmount", OriginalAmount);
+        node.AddValue("massIncludedInDryMass", MassIncludedInDryMass);
     }
 
     public void Load(ConfigNode node)
@@ -340,15 +355,16 @@ public class ResourceInventory
 
         uint moduleId = 0;
         if (node.TryGetValue("moduleId", ref moduleId))
-            this.ModuleId = moduleId;
+            ModuleId = moduleId;
 
         string resourceName = null;
         if (node.TryGetValue("resourceName", ref resourceName))
-            this.ResourceName = resourceName;
+            ResourceName = resourceName;
         node.TryGetValue("amount", ref Amount);
         node.TryGetDouble("maxAmount", ref MaxAmount);
         node.TryGetValue("rate", ref Rate);
         node.TryGetValue("originalAmount", ref OriginalAmount);
+        node.TryGetValue("massIncludedInDryMass", ref MassIncludedInDryMass);
     }
 
     internal BurstSolver.InventoryState GetInventoryState()

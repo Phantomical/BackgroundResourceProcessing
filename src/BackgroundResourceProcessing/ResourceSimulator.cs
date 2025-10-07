@@ -182,6 +182,18 @@ public sealed class ResourceSimulator
     }
 
     /// <summary>
+    /// Create a new inventory within the simulator. This inventory will not be
+    /// connected to anything, but you can add new converters that make use of it.
+    /// </summary>
+    /// <param name="inventory"></param>
+    /// <returns></returns>
+    public int AddInventory(Core.ResourceInventory inventory)
+    {
+        processor.inventories.Add(inventory);
+        return processor.inventories.Count - 1;
+    }
+
+    /// <summary>
     /// Update the initial state to take into account any converters that have
     /// been added directly to the simulator.
     /// </summary>
@@ -211,6 +223,18 @@ public sealed class ResourceSimulator
         }
 
         Dirty = false;
+    }
+
+    /// <summary>
+    /// Update the simulation up to the requested time.
+    /// </summary>
+    /// <param name="UT">The time at which to stop the simulation.</param>
+    public void Update(double UT)
+    {
+        while (NextChangepoint < UT)
+            Step(NextChangepoint);
+
+        Step(UT);
     }
 
     /// <summary>
