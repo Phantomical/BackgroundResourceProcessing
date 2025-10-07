@@ -1,11 +1,10 @@
 using System;
 using Unity.Burst.CompilerServices;
-using Unity.Collections;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
 internal struct PriorityQueue<T>(RawList<T> items)
-    where T : struct, IComparable<T>
+    where T : unmanaged, IComparable<T>
 {
     RawList<T> items = items;
 

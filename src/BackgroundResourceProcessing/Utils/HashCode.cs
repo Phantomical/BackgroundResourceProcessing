@@ -288,7 +288,7 @@ internal ref struct HashCode(uint seed)
     }
 
     public void AddAll<T>(MemorySpan<T> items)
-        where T : struct => AddAll(items.AsSystemSpan());
+        where T : unmanaged => AddAll(items.AsSystemSpan());
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override readonly int GetHashCode()

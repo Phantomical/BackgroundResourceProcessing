@@ -26,7 +26,7 @@ namespace BackgroundResourceProcessing.Collections.Burst;
 [DebuggerDisplay("Count = {Count}")]
 [DebuggerTypeProxy(typeof(SpanDebugView<>))]
 internal unsafe struct RawList<T>(AllocatorHandle allocator) : IEnumerable<T>
-    where T : struct
+    where T : unmanaged
 {
     T* data = null;
     uint count = 0;
@@ -303,7 +303,7 @@ internal static class RawListExtensions
 {
     [return: AssumeRange(-1, int.MaxValue)]
     internal static int IndexOf<T>(this RawList<T> list, T item)
-        where T : struct, IEquatable<T>
+        where T : unmanaged, IEquatable<T>
     {
         for (int i = 0; i < list.Count; ++i)
             if (list[i].Equals(item))
@@ -312,7 +312,7 @@ internal static class RawListExtensions
     }
 
     internal static bool Contains<T>(this RawList<T> list, T item)
-        where T : struct, IEquatable<T>
+        where T : unmanaged, IEquatable<T>
     {
         return list.IndexOf(item) != -1;
     }

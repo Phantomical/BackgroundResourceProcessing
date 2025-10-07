@@ -1,19 +1,15 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using BackgroundResourceProcessing.BurstSolver;
-using BackgroundResourceProcessing.Utils;
 using Unity.Burst;
 using Unity.Burst.CompilerServices;
 using CSUnsafe = System.Runtime.CompilerServices.Unsafe;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
-#pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
-
-public static unsafe class TestAllocator
+internal static unsafe class TestAllocator
 {
     static readonly ThreadLocal<List<IntPtr>> Allocations = new(() => []);
 
@@ -37,7 +33,7 @@ public static unsafe class TestAllocator
     }
 
     public static T* Alloc<T>(int count)
-        where T : struct
+        where T : unmanaged
     {
         if (BurstUtil.IsBurstCompiled)
             ThrowBurstException();
@@ -47,10 +43,10 @@ public static unsafe class TestAllocator
 
     [BurstDiscard]
     static void AllocWrap<T>(out T* ptr, int count)
-        where T : struct => ptr = AllocImpl<T>(count);
+        where T : unmanaged => ptr = AllocImpl<T>(count);
 
     static T* AllocImpl<T>(int count)
-        where T : struct
+        where T : unmanaged
     {
         if (count < 0)
             throw new ArgumentOutOfRangeException(nameof(count));

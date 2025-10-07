@@ -6,14 +6,12 @@ using BackgroundResourceProcessing.BurstSolver;
 using Unity.Burst.CompilerServices;
 using Unity.Collections;
 
-#pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
-
 namespace BackgroundResourceProcessing.Collections.Burst;
 
 [DebuggerDisplay("Length = {Length}")]
 [DebuggerTypeProxy(typeof(SpanDebugView<>))]
 internal readonly unsafe struct RawArray<T>(AllocatorHandle allocator) : IEnumerable<T>
-    where T : struct
+    where T : unmanaged
 {
     readonly T* data = null;
     readonly uint length = 0;

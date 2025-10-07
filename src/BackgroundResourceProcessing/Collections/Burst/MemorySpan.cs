@@ -2,23 +2,18 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.BurstSolver;
-using KSPAchievements;
-using Unity.Burst;
 using Unity.Burst.CompilerServices;
 using Unity.Collections;
 using CSUnsafe = System.Runtime.CompilerServices.Unsafe;
-
-#pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
 [DebuggerDisplay("Length = {Length}")]
 [DebuggerTypeProxy(typeof(SpanDebugView<>))]
 internal readonly unsafe struct MemorySpan<T> : IEnumerable<T>
-    where T : struct
+    where T : unmanaged
 {
     readonly T* data;
     readonly int length;
@@ -176,7 +171,7 @@ internal readonly unsafe struct MemorySpan<T> : IEnumerable<T>
 }
 
 internal sealed class SpanDebugView<T>(MemorySpan<T> span)
-    where T : struct
+    where T : unmanaged
 {
     public SpanDebugView(RawList<T> list)
         : this((MemorySpan<T>)list) { }
@@ -188,8 +183,7 @@ internal sealed class SpanDebugView<T>(MemorySpan<T> span)
     public T[] Items { get; } = [.. span];
 }
 
-[BurstCompile]
-public static class MemorySpanExtensions
+internal static class MemorySpanExtensions
 {
     internal static unsafe bool SequenceEqual(this MemorySpan<ulong> lhs, MemorySpan<ulong> rhs)
     {

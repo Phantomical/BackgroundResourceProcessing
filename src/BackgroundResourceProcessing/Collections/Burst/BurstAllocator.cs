@@ -10,7 +10,7 @@ using Unity.Collections.LowLevel.Unsafe;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
-public unsafe struct BurstAllocator() : IDisposable
+internal unsafe struct BurstAllocator() : IDisposable
 {
     const uint SlabSize = 512 * 1024;
 
@@ -112,7 +112,7 @@ public unsafe struct BurstAllocator() : IDisposable
     public void Dispose() => Reset();
 }
 
-public readonly unsafe struct AllocatorHandle
+internal readonly unsafe struct AllocatorHandle
 {
     readonly void* handle;
 
@@ -152,7 +152,7 @@ public readonly unsafe struct AllocatorHandle
 
     [IgnoreWarning(1370)]
     public T* Allocate<T>(int count)
-        where T : struct
+        where T : unmanaged
     {
         if (count < 0 || count > int.MaxValue / sizeof(T))
             throw new ArgumentOutOfRangeException(nameof(count));
@@ -171,7 +171,7 @@ public readonly unsafe struct AllocatorHandle
 
     [IgnoreWarning(1370)]
     public void Free<T>(T* ptr)
-        where T : struct
+        where T : unmanaged
     {
         if (ptr is null)
             return;

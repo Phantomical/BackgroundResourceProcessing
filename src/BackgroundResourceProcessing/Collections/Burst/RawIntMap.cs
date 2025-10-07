@@ -4,18 +4,14 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.BurstSolver;
-using BackgroundResourceProcessing.Shim;
 using Unity.Burst.CompilerServices;
-using UnityEngine.Assertions;
-
-#pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
 [DebuggerDisplay("Count = {Count}")]
 [DebuggerTypeProxy(typeof(RawIntMap<>.DebugView))]
-public struct RawIntMap<T> : IEnumerable<KeyValuePair<int, T>>
-    where T : struct
+internal struct RawIntMap<T> : IEnumerable<KeyValuePair<int, T>>
+    where T : unmanaged
 {
     public struct Entry
     {
