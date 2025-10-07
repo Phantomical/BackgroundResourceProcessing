@@ -79,16 +79,6 @@ public class Settings : GameParameters.CustomParameterNode
     public override bool HasPresets => false;
     public override GameParameters.GameMode GameMode => GameParameters.GameMode.ANY;
 
-    [GameParameters.CustomParameterUI("Enable USI-LS Integration")]
-    public bool EnableUSILSIntegration = true;
-
-    [GameParameters.CustomParameterUI(
-        "Enable SpaceDust Integration",
-        toolTip = "Patch SpaceDust's background simulation to interact with "
-            + "Background Resource Processing."
-    )]
-    public bool EnableSpaceDustIntegration = true;
-
     [GameParameters.CustomParameterUI(
         "Enable Orbit Shadows",
         toolTip = "Simulate the effect of planet shadows on orbiting ships."
@@ -120,6 +110,16 @@ public class ModIntegrationSettings : GameParameters.CustomParameterNode
     public override bool HasPresets => false;
 
     public override GameParameters.GameMode GameMode => GameParameters.GameMode.ANY;
+
+    [GameParameters.CustomParameterUI("Enable USI-LS Integration")]
+    public bool EnableUSILSIntegration = true;
+
+    [GameParameters.CustomParameterUI(
+        "Enable SpaceDust Integration",
+        toolTip = "Patch SpaceDust's background simulation to interact with "
+            + "Background Resource Processing."
+    )]
+    public bool EnableSpaceDustIntegration = true;
 
     [GameParameters.CustomParameterUI(
         "Enable Wild Blue Integrations",
