@@ -114,7 +114,7 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
     /// Note that you can still modify the inventories themselves. You just
     /// cannot add or remove inventories from the set.
     /// </remarks>
-    public ReadOnlyList<ResourceInventory> Inventories => new(processor.inventories);
+    public StableListView<ResourceInventory> Inventories => processor.inventories.AsView();
 
     /// <summary>
     /// Get a read-only view of the available converters.
@@ -124,7 +124,7 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
     /// Note that you can still modify the inventories themselves. You just
     /// cannot add or remove inventories from the set.
     /// </remarks>
-    public ReadOnlyList<Core.ResourceConverter> Converters => new(processor.converters);
+    public StableListView<Core.ResourceConverter> Converters => processor.converters.AsView();
 
     /// <summary>
     /// The time at which the rates for this processor are next expected to
@@ -631,7 +631,8 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
         bool includeModuleInventories
     ) : IEnumerator<ResourceInventory>
     {
-        List<ResourceInventory>.Enumerator enumerator = processor.Inventories.GetEnumerator();
+        StableListView<ResourceInventory>.Enumerator enumerator =
+            processor.Inventories.GetEnumerator();
         readonly int resourceId = resourceId;
         readonly bool includeModuleInventories = includeModuleInventories;
 

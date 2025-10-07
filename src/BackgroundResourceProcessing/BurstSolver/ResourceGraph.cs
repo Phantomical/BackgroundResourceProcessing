@@ -43,17 +43,13 @@ internal struct ResourceGraph
         constraints = new AdjacencyMatrix(nConverters, nInventories, allocator);
 
         var ispan = new TraceSpan("Inventories");
-        for (int i = 0; i < nInventories; ++i)
-        {
-            var inventory = processor.inventories[i];
+        foreach (var (i, inventory) in processor.inventories.Entries)
             inventories.Add(i, new(inventory, i));
-        }
         ispan.Dispose();
 
         var cspan = new TraceSpan("Converters");
-        for (int i = 0; i < nConverters; ++i)
+        foreach (var (i, converter) in processor.converters.Entries)
         {
-            var converter = processor.converters[i];
             var conv = new GraphConverter(i, converter, allocator);
 
             if (!SatisfiesConstraints(converter, ref conv))

@@ -54,7 +54,7 @@ public sealed class ResourceSimulator
     /// Note that you can still modify the inventories themselves. You just
     /// cannot add or remove inventories from the set.
     /// </remarks>
-    public ReadOnlyList<Core.ResourceInventory> Inventories => new(processor.inventories);
+    public StableListView<Core.ResourceInventory> Inventories => processor.inventories.AsView();
 
     /// <summary>
     /// Get a read-only view of the available converters.
@@ -64,7 +64,7 @@ public sealed class ResourceSimulator
     /// Note that you can still modify the inventories themselves. You just
     /// cannot add or remove inventories from the set.
     /// </remarks>
-    public ReadOnlyList<Core.ResourceConverter> Converters => new(processor.converters);
+    public StableListView<Core.ResourceConverter> Converters => processor.converters.AsView();
 
     private bool Dirty = false;
 

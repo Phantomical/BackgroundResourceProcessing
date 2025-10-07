@@ -9,8 +9,8 @@ using BackgroundResourceProcessing.Converter;
 using BackgroundResourceProcessing.Inventory;
 using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
+using Expansions.Missions;
 using Smooth.Collections;
-using UnityEngine.Analytics;
 
 namespace BackgroundResourceProcessing.Core;
 
@@ -48,8 +48,8 @@ internal class ResourceProcessor
 
     private static readonly LRUCache<int, SolverCacheEntry> SolverCache = new(1024);
 
-    public List<ResourceConverter> converters = [];
-    public List<ResourceInventory> inventories = [];
+    public StableList<ResourceConverter> converters = [];
+    public StableList<ResourceInventory> inventories = [];
     public Dictionary<InventoryId, int> inventoryIds = [];
 
     public double lastUpdate = 0.0;
@@ -69,23 +69,35 @@ internal class ResourceProcessor
         node.TryGetDouble("lastUpdate", ref lastUpdate);
         node.TryGetDouble("nextChangepoint", ref nextChangepoint);
 
+        int index = 0;
         foreach (var iNode in node.GetNodes("INVENTORY"))
         {
+            var idx = index;
+            iNode.TryGetValue("index", ref idx);
+
             ResourceInventory inventory = new();
             inventory.Load(iNode);
             if (!inventoryIds.TryAddExt(inventory.Id, inventories.Count))
                 throw new Exception($"An inventory with id {inventory.Id} has already been added");
-            inventories.Add(inventory);
+            inventories.Insert(idx, inventory);
+
+            index += 1;
         }
 
+        index = 0;
         foreach (var cNode in node.GetNodes("CONVERTER"))
         {
+            var idx = index;
+            cNode.TryGetValue("index", ref idx);
+
             ResourceConverter converter = new(null);
             converter.Load(cNode, vessel);
-            converters.Add(converter);
+            converters.Insert(idx, converter);
 
             converter.LoadLegacyEdges(cNode, inventoryIds);
             converter.ComputeConstraintStates(this);
+
+            index += 1;
         }
     }
 
@@ -94,11 +106,19 @@ internal class ResourceProcessor
         node.AddValue("lastUpdate", lastUpdate);
         node.AddValue("nextChangepoint", nextChangepoint);
 
-        foreach (var inventory in inventories)
-            inventory.Save(node.AddNode("INVENTORY"));
+        foreach (var (index, inventory) in inventories.Entries)
+        {
+            var inode = node.AddNode("INVENTORY");
+            inode.AddValue("index", index);
+            inventory.Save(inode);
+        }
 
-        foreach (var converter in converters)
-            converter.Save(node.AddNode("CONVERTER"));
+        foreach (var (index, converter) in converters.Entries)
+        {
+            var cnode = node.AddNode("CONVERTER");
+            cnode.AddValue("index", index);
+            converter.Save(cnode);
+        }
     }
     #endregion
 
