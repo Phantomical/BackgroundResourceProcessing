@@ -1,9 +1,11 @@
 using System;
+using System.Net.NetworkInformation;
 using BackgroundResourceProcessing.BurstSolver;
 using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Maths;
 using BackgroundResourceProcessing.Utils;
 using Unity.Burst;
+using Unity.Burst.CompilerServices;
 
 namespace BackgroundResourceProcessing.Mathematics;
 
@@ -20,7 +22,7 @@ internal readonly struct OrbitShadow
     }
 
     const int MaxIter = 32;
-    const int BisectIter = 4;
+    const int BisectIter = 8;
 
     readonly SolarSystem system;
     readonly SystemBody star;
@@ -250,6 +252,18 @@ internal readonly struct OrbitShadow
             // The solution here behaves reasonably for the first case, and
             // the second case is likely to not matter all that much.
             UT = hiUT;
+
+            for (int i = 0; i < MaxIter; ++i)
+            {
+                var f = ComputeSunDot(Dual.Variable(UT));
+                var delta = f.x / f.dx;
+                UT -= delta;
+
+                if (MathUtil.ApproxEqual(delta, 0.0))
+                    break;
+            }
+
+            return UT;
         }
         else
         {
@@ -271,19 +285,45 @@ internal readonly struct OrbitShadow
                 else
                     shadowUT = UT;
             }
+
+            loUT = Math.Min(sunUT, shadowUT);
+            hiUT = Math.Max(sunUT, shadowUT);
+            UT = 0.5 * (sunUT + shadowUT);
+
+            for (int i = 0; i < MaxIter; ++i)
+            {
+                var f = ComputeSunDot(Dual.Variable(UT));
+                var delta = f.x / f.dx;
+                UT -= delta;
+
+                if (UT < loUT || UT > hiUT)
+                    goto ESCAPED;
+
+                if (MathUtil.ApproxEqual(delta, 0.0))
+                    break;
+            }
+
+            return UT;
+
+            ESCAPED:
+            // Newton's method failed to converge to a point on the range, we
+            // need to use the bisection method to converge to the boundary.
+
+            for (int i = 0; i < 128; ++i)
+            {
+                UT = 0.5 * (sunUT + shadowUT);
+
+                if (MathUtil.ApproxEqual(sunUT, shadowUT))
+                    break;
+
+                if (IsSunwardAtUT(UT))
+                    sunUT = UT;
+                else
+                    shadowUT = UT;
+            }
+
+            return UT;
         }
-
-        for (int i = 0; i < MaxIter; ++i)
-        {
-            var f = ComputeSunDot(Dual.Variable(UT));
-            var delta = f.x / f.dx;
-            UT -= delta;
-
-            if (MathUtil.ApproxEqual(delta, 0.0))
-                break;
-        }
-
-        return UT;
     }
 
     /// <summary>
@@ -342,67 +382,14 @@ internal readonly struct OrbitShadow
     /// <returns></returns>
     unsafe ShadowMinimum ComputeShadowPoint(double loUT, double hiUT, double startUT)
     {
-        double UT = startUT;
-        Dual2 f = default;
-        for (int i = 0; i < MaxIter; ++i)
-        {
-            f = GetUmbraDistance(Dual2.Variable(UT));
-            if (f.x <= 0.0)
-                return new() { UT = UT, Dist = f.x };
+        var minimum = ComputeShadowPointSimple(loUT, hiUT, startUT);
+        if (minimum is not null)
+            return (ShadowMinimum)minimum;
 
-            // We are almost exactly at an inflection point, newton's method
-            // won't give us anything useful here.
-            if (MathUtil.ApproxEqual(f.ddx, 0.0))
-                goto FALLBACK;
-
-            // If ddx <= 0 then we are heading towards a local maximum.
-            // This is not what we want, so break out.
-            if (f.ddx <= 0.0)
-                goto FALLBACK;
-
-            var delta = f.dx / f.ddx;
-            UT -= delta;
-
-            if (MathUtil.ApproxEqual(delta, 0.0))
-                break;
-
-            // Newton's method is converging to something outside the range,
-            // there may not actually be a minimum in the requested range.
-            if (UT <= loUT || UT >= hiUT)
-                goto FALLBACK;
-        }
-
-        return new() { UT = UT, Dist = f.x };
-
-        FALLBACK:
-
-        // As a fallback, just find the minimum distance across the starting
-        // points.
-        double* UTmem = stackalloc double[3] { startUT, loUT, hiUT };
-        MemorySpan<double> UTs = new(UTmem, 3);
-
-        double min = double.PositiveInfinity;
-        UT = double.PositiveInfinity;
-        foreach (var vUT in UTs)
-        {
-            double dist = GetUmbraDistance(vUT);
-            if (dist >= min)
-                continue;
-
-            dist = min;
-            UT = vUT;
-        }
-
-        return new() { UT = UT, Dist = min };
+        return ComputeShadowPointFallback(loUT, hiUT);
     }
 
-    /// <summary>
-    /// Find a UT such that the vessel is not in the planet's shadow. If the
-    /// orbit does not intersect the planet's shadow then it returns the UT with
-    /// the maximum distance.
-    /// </summary>
-    /// <returns></returns>
-    unsafe ShadowMinimum ComputeLitPoint(double loUT, double hiUT, double startUT)
+    ShadowMinimum? ComputeShadowPointSimple(double loUT, double hiUT, double startUT)
     {
         double UT = startUT;
         Dual2 f = default;
@@ -415,12 +402,108 @@ internal readonly struct OrbitShadow
             // We are almost exactly at an inflection point, newton's method
             // won't give us anything useful here.
             if (MathUtil.ApproxEqual(f.ddx, 0.0))
-                goto FALLBACK;
+                return null;
+
+            // If ddx <= 0 then we are heading towards a local maximum.
+            // This is not what we want, so break out.
+            if (f.ddx <= 0.0)
+                return null;
+
+            var delta = f.dx / f.ddx;
+            UT -= delta;
+
+            if (MathUtil.ApproxEqual(delta, 0.0))
+                break;
+
+            // Newton's method is converging to something outside the range,
+            // there may not actually be a minimum in the requested range.
+            if (UT <= loUT || UT >= hiUT)
+                return null;
+        }
+
+        return new() { UT = UT, Dist = f.x };
+    }
+
+    [SkipLocalsInit]
+    unsafe ShadowMinimum ComputeShadowPointFallback(double loUT, double hiUT)
+    {
+        double loTA = vessel.GetTrueAnomalyAtUT(loUT);
+        double hiTA = vessel.GetTrueAnomalyAtUT(hiUT);
+        if (hiTA <= loTA)
+            hiTA += 2 * Math.PI;
+
+        double* UTs = stackalloc double[64];
+        double* fs = stackalloc double[64];
+
+        double step = (hiTA - loTA) * (1.0 / 63.0);
+        for (int i = 0; i < 64; ++i)
+        {
+            double tA = loTA + i * step;
+            double UT = vessel.GetUTAtTrueAnomaly(tA, loUT);
+            double f = GetUmbraDistance(UT);
+
+            if (f < 0.0)
+                return new() { UT = UT, Dist = f };
+
+            UTs[i] = UT;
+            fs[i] = f;
+        }
+
+        int minI = 0;
+        double minUT = loUT;
+        double min = double.MaxValue;
+
+        for (int i = 0; i < 64; ++i)
+        {
+            if (fs[i] >= min)
+                continue;
+
+            minI = i;
+            minUT = UTs[i];
+            min = fs[i];
+        }
+
+        loUT = UTs[MathUtil.Clamp(minI - 1, 0, 63)];
+        hiUT = UTs[MathUtil.Clamp(minI + 1, 0, 63)];
+
+        var minimum = ComputeShadowPointSimple(loUT, hiUT, minUT);
+        return minimum ?? new() { UT = minUT, Dist = min };
+    }
+
+    /// <summary>
+    /// Find a UT such that the vessel is not in the planet's shadow. If the
+    /// orbit does not intersect the planet's shadow then it returns the UT with
+    /// the maximum distance.
+    /// </summary>
+    /// <returns></returns>
+    unsafe ShadowMinimum ComputeLitPoint(double loUT, double hiUT, double startUT)
+    {
+        var maximum = ComputeLitPointSimple(loUT, hiUT, startUT);
+        if (maximum is not null)
+            return (ShadowMinimum)maximum;
+
+        return ComputeLitPointFallback(loUT, hiUT);
+    }
+
+    ShadowMinimum? ComputeLitPointSimple(double loUT, double hiUT, double startUT)
+    {
+        double UT = startUT;
+        Dual2 f = default;
+        for (int i = 0; i < MaxIter; ++i)
+        {
+            f = GetUmbraDistance(Dual2.Variable(UT));
+            if (f.x <= 0.0)
+                return new() { UT = UT, Dist = f.x };
+
+            // We are almost exactly at an inflection point, newton's method
+            // won't give us anything useful here.
+            if (MathUtil.ApproxEqual(f.ddx, 0.0))
+                return null;
 
             // If ddx >= 0 then we are heading towards a local minimum.
             // This is not what we want, so break out.
             if (f.ddx >= 0.0)
-                goto FALLBACK;
+                return null;
 
             var delta = f.dx / f.ddx;
             UT -= delta;
@@ -431,31 +514,56 @@ internal readonly struct OrbitShadow
             // Newton's method is converging to something outside the range,
             // there may not actually be a maximum in the requested range.
             if (UT <= loUT || UT >= hiUT)
-                goto FALLBACK;
+                return null;
         }
 
         return new() { UT = UT, Dist = f.x };
+    }
 
-        FALLBACK:
+    [SkipLocalsInit]
+    unsafe ShadowMinimum ComputeLitPointFallback(double loUT, double hiUT)
+    {
+        double loTA = vessel.GetTrueAnomalyAtUT(loUT);
+        double hiTA = vessel.GetTrueAnomalyAtUT(hiUT);
+        if (hiTA <= loTA)
+            hiTA += 2 * Math.PI;
 
-        // As a fallback, just find the maximum distance across the starting
-        // points.
-        double* UTmem = stackalloc double[3] { startUT, loUT, hiUT };
-        MemorySpan<double> UTs = new(UTmem, 3);
+        double* UTs = stackalloc double[64];
+        double* fs = stackalloc double[64];
 
-        double max = double.PositiveInfinity;
-        UT = double.PositiveInfinity;
-        foreach (var vUT in UTs)
+        double step = (hiTA - loTA) * (1.0 / 63.0);
+        for (int i = 0; i < 64; ++i)
         {
-            double dist = GetUmbraDistance(vUT);
-            if (dist <= max)
-                continue;
+            double tA = loTA + i * step;
+            double UT = vessel.GetUTAtTrueAnomaly(tA, loUT);
+            double f = GetUmbraDistance(UT);
 
-            dist = max;
-            UT = vUT;
+            if (f > 0.0)
+                return new() { UT = UT, Dist = f };
+
+            UTs[i] = UT;
+            fs[i] = f;
         }
 
-        return new() { UT = UT, Dist = max };
+        int maxI = 0;
+        double maxUT = loUT;
+        double max = -double.MaxValue;
+
+        for (int i = 0; i < 64; ++i)
+        {
+            if (fs[i] <= max)
+                continue;
+
+            maxI = i;
+            maxUT = UTs[i];
+            max = fs[i];
+        }
+
+        loUT = UTs[MathUtil.Clamp(maxI - 1, 0, 63)];
+        hiUT = UTs[MathUtil.Clamp(maxI + 1, 0, 63)];
+
+        var maximum = ComputeLitPointSimple(loUT, hiUT, maxUT);
+        return maximum ?? new() { UT = maxUT, Dist = max };
     }
 
     struct ShadowMinimum
