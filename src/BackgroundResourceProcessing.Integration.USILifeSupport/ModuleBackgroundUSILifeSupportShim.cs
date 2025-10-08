@@ -176,7 +176,7 @@ public class ModuleBackgroundUSILifeSupport : VesselModule
 
     private bool IsEnabled()
     {
-        var settings = HighLogic.CurrentGame?.Parameters.CustomParams<Settings>();
+        var settings = HighLogic.CurrentGame?.Parameters.CustomParams<ModIntegrationSettings>();
         if (!(settings?.EnableUSILSIntegration ?? false))
             return false;
 

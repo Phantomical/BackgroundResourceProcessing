@@ -24,7 +24,7 @@ public class SpaceDustHarvesterBackground_AddBackgroundResources_Patch
     {
         try
         {
-            var settings = HighLogic.CurrentGame?.Parameters.CustomParams<Settings>();
+            var settings = HighLogic.CurrentGame?.Parameters.CustomParams<ModIntegrationSettings>();
             var enabled = settings?.EnableSpaceDustIntegration ?? false;
             if (!enabled)
                 return true;

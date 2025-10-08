@@ -225,7 +225,7 @@ public static class LifeSupportMonitor_GetVesselStats_Patch
         ref double ecTimeLeft
     )
     {
-        var settings = HighLogic.CurrentGame?.Parameters.CustomParams<Settings>();
+        var settings = HighLogic.CurrentGame?.Parameters.CustomParams<ModIntegrationSettings>();
         if (!(settings?.EnableUSILSIntegration ?? false))
             return;
 
@@ -276,7 +276,7 @@ public static class LifeSupportMonitor_GetResourceInVessel_Patch
         if (vessel == null || vessel.loaded)
             return true;
 
-        var settings = HighLogic.CurrentGame?.Parameters.CustomParams<Settings>();
+        var settings = HighLogic.CurrentGame?.Parameters.CustomParams<ModIntegrationSettings>();
         if (!(settings?.EnableUSILSIntegration ?? false))
             return true;
 
