@@ -81,7 +81,7 @@ internal struct StableList<T> : IList<T>, ICollection<T>, IEnumerable<T>
     public void RemoveAt(int index)
     {
         if (index < 0 || index >= Count)
-            return;
+            throw new IndexOutOfRangeException("RemoveAt index was out of range");
 
         if (index == Count - 1)
         {
@@ -110,9 +110,9 @@ internal struct StableList<T> : IList<T>, ICollection<T>, IEnumerable<T>
 
     public void Insert(int index, T item)
     {
-        if (index < 0)
+        if (index < 0 || index > Count)
             throw new ArgumentOutOfRangeException(nameof(index));
-        if (index >= Count)
+        if (index == Count)
         {
             var newcount = index + 1;
             list.AddRange(Enumerable.Repeat<T>(null, newcount - Count));
@@ -129,6 +129,8 @@ internal struct StableList<T> : IList<T>, ICollection<T>, IEnumerable<T>
 
     public void Reserve(int capacity)
     {
+        if (capacity < 0)
+            throw new ArgumentOutOfRangeException(nameof(capacity));
         if (capacity < Count)
             return;
         list.Capacity = capacity;

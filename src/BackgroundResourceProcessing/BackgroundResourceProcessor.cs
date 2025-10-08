@@ -418,6 +418,58 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
     }
 
     /// <summary>
+    /// Remove the resource converter present at <paramref name="index"/>.
+    /// </summary>
+    /// <param name="index">The converter index.</param>
+    ///
+    /// <remarks>
+    /// This will not change the indices of any other converters contained
+    /// within this <see cref="BackgroundResourceProcessor"/>. However, the
+    /// slot will be reused if more converters are added in the future.
+    /// </remarks>
+    public void RemoveConverter(int index)
+    {
+        processor.converters.RemoveAt(index);
+    }
+
+    /// <summary>
+    /// Add a new inventory.
+    /// </summary>
+    /// <param name="inventory">The inventory to add.</param>
+    /// <returns>The index of the inventory within <see cref="Inventories"/></returns>
+    ///
+    /// <remarks>
+    /// This allows you to add custom inventories that don't correspond to any
+    /// existing part or module on the vessel. However, you will need to
+    /// manually connect any other converters to the inventory.
+    /// </remarks>
+    public int AddInventory(Core.ResourceInventory inventory)
+    {
+        return processor.inventories.Add(inventory);
+    }
+
+    /// <summary>
+    /// Remove an existing inventory.
+    /// </summary>
+    /// <param name="index">The index of the inventory to remove.</param>
+    /// <remarks>
+    /// This will not change the index of any other inventories contained within
+    /// this <see cref="BackgroundResourceProcessor"/>. However, the index may
+    /// be reused when inventories are added in the future.
+    /// </remarks>
+    public void RemoveInventory(int index)
+    {
+        foreach (var converter in Converters)
+        {
+            converter.Pull?[index] = false;
+            converter.Push?[index] = false;
+            converter.Constraint?[index] = false;
+        }
+
+        processor.inventories.RemoveAt(index);
+    }
+
+    /// <summary>
     /// Add a resource to the inventories within this vessel. This does nothing
     /// if the vessel is currently loaded.
     /// </summary>
