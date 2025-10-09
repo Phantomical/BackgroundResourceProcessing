@@ -29,7 +29,7 @@ internal readonly struct OrbitShadow
     readonly Orbit vessel;
     readonly SystemBody planet;
 
-    OrbitShadow(SolarSystem system, Orbit vessel, int starIndex)
+    OrbitShadow(SolarSystem system, in Orbit vessel, int starIndex)
     {
         this.system = system;
         this.vessel = vessel;
@@ -95,7 +95,7 @@ internal readonly struct OrbitShadow
         if (vessel.ParentBodyIndex == starIndex)
             return new() { UT = double.MaxValue, InShadow = false };
 
-        var shadow = new OrbitShadow(system, vessel, starIndex);
+        var shadow = new OrbitShadow(system, in vessel, starIndex);
         if (vessel.Eccentricity < 1.0)
             return shadow.ComputeOrbitTerminatorNormal(UT);
         else
