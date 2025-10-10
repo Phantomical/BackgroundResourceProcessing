@@ -198,6 +198,50 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
     }
 
     /// <summary>
+    /// Forcibly recalculate the shadow state of the vessel. This will also
+    /// update any converters that could have dependended on the previous
+    /// shadow state.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// <para>
+    /// You will want to use this if you are updating the orbit info of a
+    /// vessel. It is rather expensive to call though, so avoid calling it
+    /// every single frame if possible.
+    /// </para>
+    ///
+    /// <para>
+    /// This method is a no-op if the vessel is currently loaded.
+    /// </para>
+    /// </remarks>
+    public void RefreshShadowState()
+    {
+        if (vessel.loaded || ShadowState is null)
+            return;
+
+        var oldEstimate = ShadowState.Value.NextTerminatorEstimate;
+
+        // GetVesselState will update the shadow state if it is null.
+        ShadowState = null;
+
+        var state = GetVesselState();
+
+        var newEstimate = ShadowState.Value.NextTerminatorEstimate;
+
+        // No need to refresh if there has been no change in the estimate.
+        if (oldEstimate == newEstimate)
+            return;
+
+        // We don't know which behaviours depended on the shadow state of the
+        // vessel, but we do know that ones whose next changepoint happens
+        // after the next terminator estimate do not depend on it.
+        if (!processor.ForceUpdateBehaviours(state, oldEstimate))
+            return;
+
+        MarkDirty();
+    }
+
+    /// <summary>
     /// Suppress the error that no progress has been made with the current
     /// changepoint.
     /// </summary>

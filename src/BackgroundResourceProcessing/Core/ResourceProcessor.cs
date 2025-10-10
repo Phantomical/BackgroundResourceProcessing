@@ -581,12 +581,23 @@ internal class ResourceProcessor
         return changed;
     }
 
-    public void ForceUpdateBehaviours(VesselState state)
+    /// <summary>
+    /// Update all behaviours whose next changepoint is &lt;= <paramref name="limit"/>.
+    /// </summary>
+    /// <param name="state"></param>
+    /// <param name="limit"></param>
+    public bool ForceUpdateBehaviours(VesselState state, double limit = double.PositiveInfinity)
     {
         using var span = new TraceSpan("ResourceProcessor.ForceUpdateBehaviours");
+        bool changed = false;
 
         foreach (var converter in converters)
-            converter.Refresh(state);
+        {
+            if (converter.NextChangepoint <= limit)
+                changed |= converter.Refresh(state);
+        }
+
+        return changed;
     }
 
     /// <summary>
