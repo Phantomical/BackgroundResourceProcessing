@@ -141,4 +141,10 @@ public class ModIntegrationSettings : GameParameters.CustomParameterNode
             + "of Background Resource Processing"
     )]
     public bool EnablePersistentThrustIntegration = true;
+
+    [GameParameters.CustomParameterUI(
+        "Enable BonVoyage Integration",
+        toolTip = "Patch BonVoyage to use Background Resource Processing's simulation"
+    )]
+    public bool EnableBonVoyageIntegration = true;
 }
