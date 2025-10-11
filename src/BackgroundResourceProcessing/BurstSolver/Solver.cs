@@ -18,8 +18,8 @@ internal static class Solver
 
     unsafe delegate Result ComputeInventoryRatesDelegate(
         ref ResourceGraph graph,
-        double* inventoryRates,
-        double* converterRates,
+        in MemorySpan<double> inventoryRates,
+        in MemorySpan<double> converterRates,
         AllocatorHandle* allocator
     );
 
@@ -43,15 +43,13 @@ internal static class Solver
         fixed (double* inv = inventoryRates)
         fixed (double* conv = converterRates)
         {
+            var invRatesSpan = new MemorySpan<double>(inv, inventoryRates.Length);
+            var convRatesSpan = new MemorySpan<double>(conv, converterRates.Length);
+
             Result res;
             if (!BurstUtil.EnableBurst)
             {
-                res = ComputeInventoryRates(
-                    ref graph,
-                    new(inv, inventoryCount),
-                    new(conv, converterCount),
-                    handle
-                );
+                res = ComputeInventoryRates(ref graph, invRatesSpan, convRatesSpan, handle);
             }
             else
             {
@@ -60,7 +58,12 @@ internal static class Solver
                         ComputeInventoryRatesBurst
                     );
 
-                res = ComputeRatesFp.Value.Invoke(ref graph, inv, conv, &handle);
+                res = ComputeRatesFp.Value.Invoke(
+                    ref graph,
+                    in invRatesSpan,
+                    in convRatesSpan,
+                    &handle
+                );
             }
 
             if (!res.Match(out var err))
@@ -73,17 +76,12 @@ internal static class Solver
     [BurstCompile]
     private static unsafe Result ComputeInventoryRatesBurst(
         ref ResourceGraph graph,
-        double* inventoryRates,
-        double* converterRates,
+        in MemorySpan<double> inventoryRates,
+        in MemorySpan<double> converterRates,
         AllocatorHandle* allocator
     )
     {
-        return ComputeInventoryRates(
-            ref graph,
-            new(inventoryRates, graph.inventories.Count),
-            new(converterRates, graph.converters.Count),
-            *allocator
-        );
+        return ComputeInventoryRates(ref graph, inventoryRates, converterRates, *allocator);
     }
 
     private static unsafe Result ComputeInventoryRates(

@@ -11,6 +11,8 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 -->
 
 ## Unreleased
+### Fixed
+* Fixed a solver crash when some vessels do not meet the solver constraints.
 
 ## 0.2.0
 ### Added
