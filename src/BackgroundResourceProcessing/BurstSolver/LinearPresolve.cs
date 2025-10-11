@@ -1,3 +1,15 @@
+#if BURST_TEST_OVERRIDE_AVX2
+#define BURST_TEST_OVERRIDE_SSE41
+#endif
+
+#if BURST_TEST_OVERRIDE_SSE41
+#define BURST_TEST_OVERRIDE_SSSE3
+#endif
+
+#if BURST_TEST_OVERRIDE_SSSE3
+#define BURST_TEST_OVERRIDE_SSE2
+#endif
+
 using System;
 using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Collections.Burst;
@@ -5,10 +17,12 @@ using BackgroundResourceProcessing.Utils;
 using Unity.Burst;
 using Unity.Burst.CompilerServices;
 using Unity.Burst.Intrinsics;
+using Unity.Collections;
 using static Unity.Burst.Intrinsics.X86.Avx;
 using static Unity.Burst.Intrinsics.X86.Avx2;
 using static Unity.Burst.Intrinsics.X86.Fma;
 using static Unity.Burst.Intrinsics.X86.Sse2;
+using static Unity.Burst.Intrinsics.X86.Ssse3;
 
 namespace BackgroundResourceProcessing.BurstSolver;
 
@@ -49,12 +63,25 @@ internal static class LinearPresolve
     }
 #endif
 
+#if BURST_TEST_OVERRIDE_SSE41
+    private static bool IsSse41Supported => true;
+#endif
+
+#if BURST_TEST_OVERRIDE_SSSE3
+    private static bool IsSsse3Supported => true;
+#endif
+
+#if BURST_TEST_OVERRIDE_SSE2
+    private static bool IsSse2Supported => true;
+#endif
+
     [MustUseReturnValue]
     internal static Result<bool> Presolve(
         Matrix matrix,
         BitSpan zeros,
-        int equalities,
-        int inequalities
+        ref int equalities,
+        ref int inequalities,
+        AllocatorHandle allocator
     )
     {
         if (Trace)
@@ -63,22 +90,23 @@ internal static class LinearPresolve
         if (!InferZeros(matrix, zeros, equalities, inequalities).Match(out var found, out var err))
             return err;
         if (!found && equalities == 0)
-            return false;
+            return InferConstants(in matrix, ref equalities, ref inequalities, allocator);
 
         do
         {
             if (Trace)
                 TraceInferZeros(matrix);
 
-            PartialRowReduce(matrix, equalities);
+            PartialRowReduce(in matrix, equalities);
 
             if (Trace)
-                TraceMatrix(matrix);
+                TraceMatrix(in matrix);
 
             if (!InferZeros(matrix, zeros, equalities, inequalities).Match(out found, out err))
                 return err;
         } while (found);
 
+        InferConstants(in matrix, ref equalities, ref inequalities, allocator);
         return true;
     }
 
@@ -164,6 +192,232 @@ internal static class LinearPresolve
         }
 
         return found;
+    }
+
+    private static unsafe bool InferConstants(
+        in Matrix matrix,
+        ref int equalities,
+        ref int inequalities,
+        AllocatorHandle allocator
+    )
+    {
+        Hint.Assume(equalities >= 0);
+        Hint.Assume(inequalities >= 0);
+
+        var indices = new RawArray<int>(
+            MathUtil.RoundUp(matrix.Cols - 1, sizeof(v256) / sizeof(uint)),
+            allocator,
+            NativeArrayOptions.UninitializedMemory
+        );
+        indices.Fill(int.MaxValue);
+
+        int count = matrix.Cols - 1;
+        if (count == 0)
+            return false;
+        var _ = indices[count - 1];
+
+        for (int y = 0; y < matrix.Rows - 1; ++y)
+        {
+            double* row = matrix.GetRowPtr(y);
+            double* ptr = row;
+            uint x = 0;
+
+            if (IsAvx2Supported)
+            {
+                var zero = mm256_setzero_pd();
+                var perm = mm256_setr_epi32(0, 2, 4, 6, 0, 2, 4, 6);
+                var idxs = mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7);
+
+                for (; x + 8 <= count; x += 8, ptr += 8)
+                {
+                    v256 current = mm256_load_si256(&indices.Ptr[x]);
+                    v256 d0 = mm256_cmp_pd(mm256_loadu_pd(&ptr[0]), zero, (int)CMP.EQ_OQ);
+                    v256 d1 = mm256_cmp_pd(mm256_loadu_pd(&ptr[4]), zero, (int)CMP.EQ_OQ);
+
+                    var p0 = mm256_permutevar8x32_epi32(d0, perm);
+                    var p1 = mm256_permutevar8x32_epi32(d1, perm);
+                    var p2 = mm256_blend_epi32(p0, p1, 0xF0);
+
+                    var isZero = p2;
+                    var noValue = mm256_cmpeq_epi32(current, mm256_set1_epi32(int.MaxValue));
+                    var hasValue = mm256_andnot_si256(noValue, mm256_set1_epi32(-1));
+
+                    // We want to
+                    // - set current[x] to idxs[x] if nonZero && noValue
+                    // - set current[x] to -1 if nonZero && !noValue
+                    // - keep current[x] if !knownNonZero
+                    //
+                    // This works roughly as
+                    // invalid = idxs | !noValue
+                    // current[x] = select(isZero, current[x] | !noValue, current[x])
+
+                    current = mm256_blendv_ps(mm256_or_si256(idxs, hasValue), current, isZero);
+                    mm256_storeu_si256(&indices.Ptr[x], current);
+
+                    idxs = mm256_add_epi32(idxs, mm256_set1_epi32(8));
+                }
+            }
+
+            for (; x < count; ++x, ptr += 1)
+            {
+                if (*ptr == 0.0)
+                    continue;
+
+                if (indices[x] != int.MaxValue)
+                    indices[x] = -1;
+                else
+                    indices[x] = y;
+            }
+        }
+
+        bool found = false;
+        int limit = equalities + inequalities;
+        Hint.Assume(limit <= matrix.Rows);
+
+        int numIndices = 0;
+        double* func = matrix.GetRowPtr(matrix.Rows - 1);
+        for (int i = 0; i < indices.Count; ++i)
+        {
+            int index = indices[i];
+            if (index < equalities || index >= limit)
+                continue;
+
+            var row = matrix.GetRowPtr(index);
+            if (row[i] <= 0.0 || row[matrix.Cols - 1] <= 0.0 || func[i] <= 0.0)
+                continue;
+
+            var nzcnt = CountNonZero(new(row, matrix.Cols - 1));
+            if (nzcnt != 1)
+                continue;
+
+            indices[numIndices++] = index;
+            func[i] = 0.0;
+        }
+
+        var compacted = indices.Span.Slice(0, numIndices);
+        compacted.Sort();
+
+        foreach (var index in compacted)
+        {
+            if (index < equalities || index >= limit)
+                continue;
+
+            matrix.SwapRows(index, equalities);
+
+            equalities += 1;
+            inequalities -= 1;
+            found = true;
+        }
+
+        return found;
+    }
+
+    [BurstCompile]
+    private static unsafe uint CountNonZeroBurst(
+        double* ptr,
+        [AssumeRange(0, int.MaxValue)] int length
+    ) => CountNonZero(new(ptr, length));
+
+    private static unsafe uint CountNonZero(MemorySpan<double> span)
+    {
+        int i = 0;
+        uint count = 0;
+        double* ptr = span.Data;
+        double* end = ptr + span.Length;
+
+        if (IsAvx2Supported)
+        {
+            v256 vcount = mm256_setzero_si256();
+            v256 zero = mm256_setzero_pd();
+
+            for (; ptr + 8 <= end; ptr += 8)
+            {
+                v256 v0 = mm256_cmp_pd(mm256_loadu_pd(&ptr[0]), zero, (int)CMP.NEQ_OQ);
+                v256 v1 = mm256_cmp_pd(mm256_loadu_pd(&ptr[4]), zero, (int)CMP.NEQ_OQ);
+
+                // Now v2 contains packed 32-bit counters with 0 if ptr[x] is 0 and -1 otherwise.
+                v256 v2 = mm256_packs_epi32(v0, v1);
+
+                vcount = mm256_sub_epi32(vcount, v2);
+            }
+
+            if (ptr + 4 <= end)
+            {
+                v256 v0 = mm256_cmp_pd(mm256_loadu_pd(&ptr[0]), zero, (int)CMP.NEQ_OQ);
+                v256 v2 = mm256_packs_epi32(v0, zero);
+
+                vcount = mm256_sub_epi32(vcount, v2);
+
+                ptr += 4;
+            }
+
+            vcount = mm256_hadd_epi32(vcount, zero);
+            vcount = mm256_permute4x64_epi64(vcount, (0 << 0) | (2 << 2) | (1 << 4) | (3 << 6));
+            vcount = mm256_hadd_epi32(vcount, zero);
+
+            ulong lcount = (ulong)mm256_extract_epi64(vcount, 0);
+            count += (uint)lcount + (uint)(lcount >> 32);
+
+            for (int j = 0; j < 4 && ptr < end; j += 1, ptr += 1)
+            {
+                if (*ptr != 0.0)
+                    count += 1;
+            }
+        }
+        else if (IsSse2Supported)
+        {
+            v128 vcount = setzero_si128();
+            v128 zero = setzero_si128();
+
+            for (; ptr + 4 <= end; ptr += 4)
+            {
+                v128 v0 = cmpneq_pd(loadu_si128(&ptr[0]), zero);
+                v128 v1 = cmpneq_pd(loadu_si128(&ptr[2]), zero);
+
+                // Now v2 contains packed 32-bit counters with 0 if ptr[x] is 0 and -1 otherwise.
+                v128 v2 = packs_epi32(v0, v1);
+
+                vcount = sub_epi32(vcount, v2);
+            }
+
+            if (ptr + 2 <= end)
+            {
+                v128 v0 = cmpneq_pd(loadu_si128(&ptr[0]), zero);
+                v128 v2 = packs_epi32(v0, zero);
+
+                vcount = sub_epi32(vcount, v2);
+                ptr += 2;
+            }
+
+            if (IsSsse3Supported)
+            {
+                vcount = hadd_epi32(vcount, vcount);
+                vcount = hadd_epi32(vcount, vcount);
+                count += vcount.UInt0;
+            }
+            else
+            {
+                vcount = add_epi32(vcount, shuffle_epi32(vcount, (1 << 0) | (3 << 2)));
+                ulong lcount = vcount.ULong0;
+                count += (uint)lcount + (uint)(lcount >> 32);
+            }
+
+            if (ptr < end)
+            {
+                if (*ptr != 0.0)
+                    count += 1;
+            }
+        }
+        else
+        {
+            for (; i < span.Length; i += 1, ptr += 1)
+            {
+                if (span[i] != 0.0)
+                    count += 1;
+            }
+        }
+
+        return count;
     }
 
     private static unsafe void PartialRowReduce(

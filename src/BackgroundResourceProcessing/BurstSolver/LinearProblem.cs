@@ -320,23 +320,18 @@ internal struct LinearProblem(AllocatorHandle allocator)
         var zeros = new BitSet(zerodata, words);
         var states = new RawArray<ConstraintState>(statedata, matrix.Rows);
 
-        var result = LinearPresolve.Presolve(
-            matrix,
-            zeros,
-            equalities.Count,
-            constraints.Count + simple.Count
-        );
+        var nEqs = equalities.Count;
+        var nCons = constraints.Count + simple.Count;
+        var nDisj = disjunctions.Count;
+
+        var result = LinearPresolve.Presolve(matrix, zeros, ref nEqs, ref nCons, Allocator);
         if (!result.Match(out var changed, out var err))
             return err;
 
         if (!changed)
             return Result.Ok;
 
-        InferStates(in matrix, states.Span, equalities.Count);
-
-        var nEqs = equalities.Count;
-        var nCons = constraints.Count + simple.Count;
-        var nDisj = disjunctions.Count;
+        InferStates(in matrix, states.Span, nEqs);
 
         substitutions = new(VariableCount, allocator);
         equalities.Clear();

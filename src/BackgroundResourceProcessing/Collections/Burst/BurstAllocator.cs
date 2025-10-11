@@ -159,7 +159,7 @@ internal readonly unsafe struct AllocatorHandle
         if (count == 0)
             return null;
 
-        if (!Match(out var allocator, out var handle))
+        if (Hint.Likely(!Match(out var allocator, out var handle)))
             return handle->Allocate<T>(count);
         if (BurstUtil.UseTestAllocator)
             return TestAllocator.Alloc<T>(count);
@@ -186,7 +186,12 @@ internal readonly unsafe struct AllocatorHandle
     private static T* AllocateUnity<T>(int count, Allocator allocator)
         where T : struct
     {
-        return (T*)UnsafeUtility.Malloc(sizeof(T) * count, UnsafeUtility.AlignOf<T>(), allocator);
+        return (T*)
+            UnsafeUtility.Malloc(
+                sizeof(T) * count,
+                Math.Min(UnsafeUtility.AlignOf<T>(), 16),
+                allocator
+            );
     }
 
     private static void FreeUnity<T>(T* ptr, Allocator allocator)

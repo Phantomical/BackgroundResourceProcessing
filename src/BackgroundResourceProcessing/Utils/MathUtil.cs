@@ -148,6 +148,17 @@ internal static class MathUtil
     }
 
     /// <summary>
+    /// Round up <paramref name="v"/> to the next multiple of <paramref name="d"/>.
+    /// </summary>
+    /// <param name="v"></param>
+    /// <param name="d"></param>
+    /// <returns></returns>
+    internal static int RoundUp(int v, int d)
+    {
+        return (v + (d - 1)) / d * d;
+    }
+
+    /// <summary>
     /// Find the previous time at which the curve will have had value
     /// <paramref name="epsilon"/>.
     /// </summary>
