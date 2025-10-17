@@ -16,6 +16,7 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ### Fixed
 * Fixed a solver crash when some vessels do not meet the solver constraints.
+* Fixed the assembly description for the AutomaticLabHousekeeper integration DLL.
 
 ## 0.2.0
 ### Added
