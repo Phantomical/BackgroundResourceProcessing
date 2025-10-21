@@ -12,36 +12,122 @@ using WildBlueIndustries;
 
 namespace BackgroundResourceProcessing.Integration.WildBlueTools;
 
+[HarmonyPatch]
+static class WBIBackgroundConverterMethods
+{
+    static void EmptyMethod() { }
+
+    [HarmonyReversePatch]
+    [HarmonyPatch(typeof(WBIBackgroundConverterMethods), nameof(EmptyMethod))]
+    internal static void EmailPlayer(
+        this WBIBackgroundConverter self,
+        string resourceName,
+        WBIBackroundEmailTypes emailType
+    )
+    {
+        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> _)
+        {
+            return CallMethod(AccessTools.Method(typeof(WBIBackgroundConverter), "emailPlayer"));
+        }
+
+        Transpiler(null);
+        throw new NotImplementedException();
+    }
+
+    [HarmonyReversePatch]
+    [HarmonyPatch(typeof(WBIBackgroundConverterMethods), nameof(EmptyMethod))]
+    internal static void SupplyAmount(
+        this WBIBackgroundConverter self,
+        string resourceName,
+        double supply,
+        ResourceFlowMode flowMode,
+        bool dumpExcess
+    )
+    {
+        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> _)
+        {
+            return CallMethod(AccessTools.Method(typeof(WBIBackgroundConverter), "supplyAmount"));
+        }
+
+        Transpiler(null);
+        throw new NotImplementedException();
+    }
+
+    [HarmonyReversePatch]
+    [HarmonyPatch(typeof(WBIBackgroundConverterMethods), nameof(EmptyMethod))]
+    internal static double RequestAmount(
+        this WBIBackgroundConverter self,
+        string resourceName,
+        double demand,
+        ResourceFlowMode flowMode
+    )
+    {
+        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> _)
+        {
+            return CallMethod(AccessTools.Method(typeof(WBIBackgroundConverter), "requestAmount"));
+        }
+
+        Transpiler(null);
+        throw new NotImplementedException();
+    }
+
+    [HarmonyReversePatch]
+    [HarmonyPatch(typeof(WBIBackgroundConverterMethods), nameof(EmptyMethod))]
+    internal static double GetAmount(
+        this WBIBackgroundConverter self,
+        string resourceName,
+        ResourceFlowMode flowMode
+    )
+    {
+        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> _)
+        {
+            return CallMethod(AccessTools.Method(typeof(WBIBackgroundConverter), "getAmount"));
+        }
+
+        Transpiler(null);
+        throw new NotImplementedException();
+    }
+
+    private static List<CodeInstruction> CallMethod(MethodBase method)
+    {
+        int pcount = method.GetParameters().Length;
+        if (!method.IsStatic)
+            pcount += 1;
+
+        var insts = new List<CodeInstruction>(pcount + 2);
+        for (int i = 0; i < pcount; ++i)
+        {
+            insts.Add(
+                i switch
+                {
+                    0 => new CodeInstruction(OpCodes.Ldarg_0),
+                    1 => new CodeInstruction(OpCodes.Ldarg_1),
+                    2 => new CodeInstruction(OpCodes.Ldarg_2),
+                    3 => new CodeInstruction(OpCodes.Ldarg_3),
+                    _ => i <= 255
+                        ? new CodeInstruction(OpCodes.Ldarg_S, (byte)i)
+                        : new CodeInstruction(OpCodes.Ldarg, i),
+                }
+            );
+        }
+
+        if (method.IsVirtual)
+            insts.Add(new CodeInstruction(OpCodes.Callvirt, method));
+        else
+            insts.Add(new CodeInstruction(OpCodes.Call, method));
+
+        insts.Add(new CodeInstruction(OpCodes.Ret));
+
+        return insts;
+    }
+}
+
 [HarmonyPatch(typeof(WBIBackgroundConverter))]
 static class WBIBackgroundConverter_Methods_Patch
 {
     const BindingFlags Flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
     #region Accessors & Reflection Types
-    delegate void EmailPlayerDelegate(
-        WBIBackgroundConverter self,
-        string resourceName,
-        WBIBackroundEmailTypes emailType
-    );
-    delegate void SupplyAmountDelegate(
-        WBIBackgroundConverter self,
-        string resourceName,
-        double supply,
-        ResourceFlowMode flowMode,
-        bool dumpExcess
-    );
-    delegate double RequestAmountDelegate(
-        WBIBackgroundConverter self,
-        string resourceName,
-        double demand,
-        ResourceFlowMode flowMode
-    );
-    delegate double GetAmountDelegate(
-        WBIBackgroundConverter self,
-        string resourceName,
-        ResourceFlowMode flowMode
-    );
-
     static readonly MethodInfo EmailPlayerMethod = typeof(WBIBackgroundConverter).GetMethod(
         "emailPlayer",
         Flags
@@ -58,17 +144,6 @@ static class WBIBackgroundConverter_Methods_Patch
         "getAmount",
         Flags
     );
-
-    static readonly EmailPlayerDelegate EmailPlayerFunc = CreateInvokeDelegate<EmailPlayerDelegate>(
-        EmailPlayerMethod
-    );
-    static readonly SupplyAmountDelegate SupplyAmountFunc =
-        CreateInvokeDelegate<SupplyAmountDelegate>(SupplyAmountMethod);
-    static readonly RequestAmountDelegate RequestAmountFunc =
-        CreateInvokeDelegate<RequestAmountDelegate>(RequestAmountMethod);
-    static readonly GetAmountDelegate GetAmountFunc = CreateInvokeDelegate<GetAmountDelegate>(
-        GetAmountMethod
-    );
     #endregion
 
     #region Target Fields
@@ -84,14 +159,14 @@ static class WBIBackgroundConverter_Methods_Patch
     {
         var type = typeof(WBIBackgroundConverter);
 
-        yield return AccessTools.Method(
-            type,
-            nameof(WBIBackgroundConverter.CheckRequiredResources)
+        yield return SymbolExtensions.GetMethodInfo<WBIBackgroundConverter>(c =>
+            c.CheckRequiredResources(null, 0)
         );
-        yield return AccessTools.Method(type, nameof(WBIBackgroundConverter.ConsumeInputResources));
-        yield return AccessTools.Method(
-            type,
-            nameof(WBIBackgroundConverter.ProduceOutputResources)
+        yield return SymbolExtensions.GetMethodInfo<WBIBackgroundConverter>(c =>
+            c.ConsumeInputResources(null, 0)
+        );
+        yield return SymbolExtensions.GetMethodInfo<WBIBackgroundConverter>(c =>
+            c.ProduceOutputResources(null, 0)
         );
     }
 
@@ -160,7 +235,7 @@ static class WBIBackgroundConverter_Methods_Patch
         var settings = HighLogic.CurrentGame.Parameters.CustomParams<ModIntegrationSettings>();
         if (!(settings?.EnableWildBlueIntegration ?? false))
         {
-            SupplyAmountFunc(instance, resourceName, supply, flowMode, dumpExcess);
+            instance.SupplyAmount(resourceName, supply, flowMode, dumpExcess);
             return;
         }
 
@@ -189,7 +264,7 @@ static class WBIBackgroundConverter_Methods_Patch
         if (remaining > 1e-5 && !dumpExcess)
         {
             instance.isContainerFull = true;
-            EmailPlayerFunc(instance, resourceName, WBIBackroundEmailTypes.containerFull);
+            instance.EmailPlayer(resourceName, WBIBackroundEmailTypes.containerFull);
         }
     }
 
@@ -203,7 +278,7 @@ static class WBIBackgroundConverter_Methods_Patch
     {
         var settings = HighLogic.CurrentGame.Parameters.CustomParams<ModIntegrationSettings>();
         if (!(settings?.EnableWildBlueIntegration ?? false))
-            return RequestAmountFunc(instance, resourceName, demand, flowMode);
+            return instance.RequestAmount(resourceName, demand, flowMode);
 
         var vessel = proto.vesselRef;
         var processor = vessel.FindVesselModuleImplementing<BackgroundResourceProcessor>();
@@ -237,7 +312,7 @@ static class WBIBackgroundConverter_Methods_Patch
     {
         var settings = HighLogic.CurrentGame.Parameters.CustomParams<ModIntegrationSettings>();
         if (!(settings?.EnableWildBlueIntegration ?? false))
-            return GetAmountFunc(instance, resourceName, flowMode);
+            return instance.GetAmount(resourceName, flowMode);
 
         var vessel = proto.vesselRef;
         var processor = vessel.FindVesselModuleImplementing<BackgroundResourceProcessor>();
