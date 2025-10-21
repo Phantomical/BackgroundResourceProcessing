@@ -128,10 +128,6 @@ static class WBIBackgroundConverter_Methods_Patch
     const BindingFlags Flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
     #region Accessors & Reflection Types
-    static readonly MethodInfo EmailPlayerMethod = typeof(WBIBackgroundConverter).GetMethod(
-        "emailPlayer",
-        Flags
-    );
     static readonly MethodInfo SupplyAmountMethod = typeof(WBIBackgroundConverter).GetMethod(
         "supplyAmount",
         Flags
