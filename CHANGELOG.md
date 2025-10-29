@@ -11,6 +11,11 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 -->
 
 ## Unreleased
+## v0.2.2
+### Fixed
+* Fixed some errors when running BRP with the latest KSPBurst prelease.
+
+## v0.2.1
 ### Added
 * Added support for `BonVoyage`.
 
