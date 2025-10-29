@@ -29,7 +29,32 @@ internal class UnreachableCodeException(string message = "reached unreachable co
 /// </remarks>
 internal static unsafe class BurstCrashHandler
 {
-    delegate void CrashHandlerDelegate(Error err, ref int? param);
+    // Newer versions of burst don't allow passing T? across serialization
+    // boundaries, this is a version that can be marshalled and implicitly
+    // converted.
+    struct NullWrap<T>
+        where T : unmanaged
+    {
+        [MarshalAs(UnmanagedType.U1)]
+        public bool HasValue;
+        public T Value;
+
+        public static implicit operator NullWrap<T>(T? value)
+        {
+            if (value is null)
+                return default;
+            return new NullWrap<T> { HasValue = true, Value = value.Value };
+        }
+
+        public static implicit operator T?(NullWrap<T> value)
+        {
+            if (value.HasValue)
+                return value.Value;
+            return null;
+        }
+    }
+
+    delegate void CrashHandlerDelegate(Error err, in NullWrap<int> param);
 
     struct CrashHandlerVTable
     {
@@ -52,7 +77,9 @@ internal static unsafe class BurstCrashHandler
     static void InitShared()
     {
         ref var vtable = ref Shared.Data;
-        vtable.CrashHandler = new(Marshal.GetFunctionPointerForDelegate(CrashHandler));
+        vtable.CrashHandler = new(
+            Marshal.GetFunctionPointerForDelegate<CrashHandlerDelegate>(CrashHandler)
+        );
     }
 
     public static void Init() { }
@@ -83,7 +110,7 @@ internal static unsafe class BurstCrashHandler
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void CrashImpl(Error err, int? param)
     {
-        Shared.Data.CrashHandler.Invoke(err, ref param);
+        Shared.Data.CrashHandler.Invoke(err, param);
 
         // If the crash handler returns then we should at least attempt to print
         // out some useful information
@@ -104,7 +131,7 @@ internal static unsafe class BurstCrashHandler
         err.ThrowRepresentativeError(param);
 
     [BurstDiscard]
-    private static void CrashHandler(Error err, ref int? param)
+    private static void CrashHandler(Error err, in NullWrap<int> param)
     {
         try
         {

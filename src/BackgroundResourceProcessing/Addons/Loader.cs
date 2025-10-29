@@ -7,6 +7,7 @@ using System.Reflection;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Utils;
 using KSP.Localization;
+using Unity.Burst;
 using UnityEngine;
 
 namespace BackgroundResourceProcessing.Addons;
@@ -157,6 +158,11 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
 
         Tracing.Trace.Start(path);
 #endif
+
+        // Ensure the static initializer for the BurstCompiler type gets run
+        // now on the main thread instead of later on when it could potentially
+        // occur off the main thread.
+        var _ = BurstCompiler.IsEnabled;
 
         // And now we clean up after ourselves.
         Destroy(this);
