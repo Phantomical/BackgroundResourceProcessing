@@ -77,6 +77,10 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
             "BackgroundResourceProcessing.Integration.WildBlueTools",
             [new DirectAssemblyDependency("WildBlueTools", new(1, 0))]
         ),
+        new(
+            "BackgroundResourceProcessing.Integration.WBIResources",
+            [new DirectAssemblyDependency("WBIResources", new(1, 0))]
+        ),
     ];
 
 #if !DIRECT_PLUGIN_LOAD

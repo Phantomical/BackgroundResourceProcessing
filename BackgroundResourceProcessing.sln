@@ -43,6 +43,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessin
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessing.Integration.BonVoyage", "src\BackgroundResourceProcessing.Integration.BonVoyage\BackgroundResourceProcessing.Integration.BonVoyage.csproj", "{F4B07049-A3B7-4F44-B163-9DF55CA4F536}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BackgroundResourceProcessing.Integration.WBIResources", "src\BackgroundResourceProcessing.Integration.WBIResources\BackgroundResourceProcessing.Integration.WBIResources.csproj", "{A4552F51-1D62-480D-936D-97A377FD1CB1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -293,9 +297,24 @@ Global
 		{F4B07049-A3B7-4F44-B163-9DF55CA4F536}.Release|x64.Build.0 = Release|Any CPU
 		{F4B07049-A3B7-4F44-B163-9DF55CA4F536}.Release|x86.ActiveCfg = Release|Any CPU
 		{F4B07049-A3B7-4F44-B163-9DF55CA4F536}.Release|x86.Build.0 = Release|Any CPU
+		{A4552F51-1D62-480D-936D-97A377FD1CB1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A4552F51-1D62-480D-936D-97A377FD1CB1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A4552F51-1D62-480D-936D-97A377FD1CB1}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A4552F51-1D62-480D-936D-97A377FD1CB1}.Debug|x64.Build.0 = Debug|Any CPU
+		{A4552F51-1D62-480D-936D-97A377FD1CB1}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A4552F51-1D62-480D-936D-97A377FD1CB1}.Debug|x86.Build.0 = Debug|Any CPU
+		{A4552F51-1D62-480D-936D-97A377FD1CB1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A4552F51-1D62-480D-936D-97A377FD1CB1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A4552F51-1D62-480D-936D-97A377FD1CB1}.Release|x64.ActiveCfg = Release|Any CPU
+		{A4552F51-1D62-480D-936D-97A377FD1CB1}.Release|x64.Build.0 = Release|Any CPU
+		{A4552F51-1D62-480D-936D-97A377FD1CB1}.Release|x86.ActiveCfg = Release|Any CPU
+		{A4552F51-1D62-480D-936D-97A377FD1CB1}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{A4552F51-1D62-480D-936D-97A377FD1CB1} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {37DA6E36-F22B-49AC-831C-05CA5A1BC618}

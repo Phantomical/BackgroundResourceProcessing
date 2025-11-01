@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <Description>BackgroundResourceProcessing WBIResources Integration</Description>
+
+        <GenerateKSPAssemblyAttribute>true</GenerateKSPAssemblyAttribute>
+        <GenerateKSPAssemblyDependencyAttributes>true</GenerateKSPAssemblyDependencyAttributes>
+
+        <KSPBinaryType>plugin</KSPBinaryType>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference
+            Include="$(ProjectDir)/../BackgroundResourceProcessing/BackgroundResourceProcessing.csproj">
+            <KSPAssemblyName>BackgroundResourceProcessing</KSPAssemblyName>
+            <KSPAssemblyVersion>$(Version)</KSPAssemblyVersion>
+            <Private>false</Private>
+        </ProjectReference>
+
+        <PackageReference Include="Krafs.Publicizer" Version="2.3.0">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+
+        <Reference Include="0Harmony.dll">
+            <HintPath>$(DepSet1)\000_Harmony\0Harmony.dll</HintPath>
+            <Private>false</Private>
+            <CKANIdentifier>Harmony2</CKANIdentifier>
+            <KSPAssemblyName>HarmonyKSP</KSPAssemblyName>
+            <KSPAssemblyVersion>1.0.0</KSPAssemblyVersion>
+        </Reference>
+
+        <Reference Include="WBIResources">
+            <HintPath>$(DepSet1)\WildBlueIndustries\0WBIResources\Plugins\WBIResources.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+
+        <InternalsVisibleTo Include="BackgroundResourceProcessing.Test" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Publicize Include="WBIResources" />
+    </ItemGroup>
+</Project>

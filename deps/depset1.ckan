@@ -29,7 +29,9 @@
         { "name": "SystemHeat",                        "suppress_recommendations": true },
         { "name": "Snacks",                            "suppress_recommendations": true },
         { "name": "USI-LS",                            "suppress_recommendations": true },
-        { "name": "WildBlueTools",                     "suppress_recommendations": true }
+        { "name": "WildBlueTools",                     "suppress_recommendations": true },
+        { "name": "WBIResources",                      "suppress_recommendations": true },
+        { "name": "WildBlueCore",                      "suppress_recommendations": true }
     ],
     "recommends": [
         { "name": "KSPCommunityFixes" },
