@@ -11,6 +11,9 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 -->
 
 ## Unreleased
+### Added
+* Added support for `WBIResources` and `WildBlueCore`.
+
 ## v0.2.2
 ### Fixed
 * Fixed some errors when running BRP with the latest KSPBurst prelease.
