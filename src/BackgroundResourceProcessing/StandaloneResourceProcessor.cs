@@ -1,112 +1,28 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using BackgroundResourceProcessing.Addons;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Converter;
 using BackgroundResourceProcessing.Core;
-using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
-using Shadow = BackgroundResourceProcessing.ShadowState;
 
 namespace BackgroundResourceProcessing;
 
 /// <summary>
-/// This is the core vessel module that takes care of updating vessel
-/// states in the background.
+/// A standalone resource processor, not attached to any KSP game object.
 /// </summary>
 ///
 /// <remarks>
-/// If you want to inspect or otherwise interact with the background state
-/// of the vessel then this module is where you should start.
+/// Note that you won't necessarily be able to use the usual behaviours with
+/// this. Most behaviour
 /// </remarks>
-public sealed partial class BackgroundResourceProcessor : VesselModule, IResourceProcessor
+public class StandaloneResourceProcessor : IResourceProcessor
 {
-    private readonly ResourceProcessor processor = new();
-
-    private bool IsDirty = false;
+    private ResourceProcessor processor;
 
     private bool ImmediateChangepointRequested = false;
 
-    #region Events
-    /// <summary>
-    /// This event is fired when a changepoint occurs.
-    /// </summary>
-    ///
-    /// <remarks>
-    /// Specifically, it is fired after rates are computed for inventories
-    /// but before the rates are used for the next changepoint. This gives
-    /// you freedom to adjust the amount of resources stored in any of the
-    /// inventories in the vessel.
-    /// </remarks>
-    public static readonly EventData<
-        BackgroundResourceProcessor,
-        ChangepointEvent
-    > onVesselChangepoint = new("onVesselChangepoint");
-
-    /// <summary>
-    /// This event is fired after a changepoint complete, after the next
-    /// changepoint time has been computed.
-    /// </summary>
-    public static readonly EventData<BackgroundResourceProcessor> onAfterVesselChangepoint = new(
-        "onVesselChangepoint"
-    );
-
-    /// <summary>
-    /// This event is fired just after the vessel state is updated but before
-    /// any changepoint-related computations are done, if any.
-    /// </summary>
-    ///
-    /// <remarks>
-    /// <para>
-    /// This allows you to look at the old rates on the inventories and
-    /// converters and use that. This is useful if you are tracking, for example,
-    /// total uptime of a converter.
-    /// </para>
-    ///
-    /// <para>
-    /// Like <see cref="onVesselRestore"/>, this will be called during vessel
-    /// load before Start is called on relevant components, so make sure to
-    /// register your event handler in <c>Awake</c>.
-    /// </para>
-    /// </remarks>
-    public static readonly EventData<BackgroundResourceProcessor, ChangepointEvent> onStateUpdate =
-        new("onStateUpdate");
-
-    /// <summary>
-    /// This event is fired just after a vessel is recorded.
-    /// </summary>
-    ///
-    /// <remarks>
-    /// This is meant for cases where you want need to create new converters
-    /// or inventories that don't actually correspond to a part module.
-    /// </remarks>
-    public static readonly EventData<BackgroundResourceProcessor> onVesselRecord = new(
-        "onVesselRecord"
-    );
-
-    /// <summary>
-    /// This event is fired just after a vessel is restored.
-    /// </summary>
-    ///
-    /// <remarks>
-    /// This event usually fires before unity has a chance to call <c>Start</c>
-    /// methods. You will want to subscribe to it in <c>Awake</c> instead.
-    /// </remarks>
-    public static readonly EventData<BackgroundResourceProcessor> onVesselRestore = new(
-        "onVesselRestore"
-    );
-    #endregion
-
-    /// <summary>
-    /// The current state of the vessel WRT to being in the planet's shadow.
-    /// </summary>
-    public ShadowState? ShadowState { get; private set; } = null;
-
-    // This is the actual API that is meant to be used by other code for
-    // interacting with this module.
-    #region Public API
+    #region Properties
     /// <summary>
     /// Get a read-only view of the available inventories.
     /// </summary>
@@ -137,6 +53,38 @@ public sealed partial class BackgroundResourceProcessor : VesselModule, IResourc
     /// The last time that this processor was updated.
     /// </summary>
     public double LastChangepoint => processor.lastUpdate;
+
+    /// <summary>
+    /// The current shadow state for this resource processor. This is used to compute
+    /// power and changepoint times for solar panels.
+    /// </summary>
+    public ShadowState ShadowState { get; set; } = new ShadowState(double.PositiveInfinity, false);
+    #endregion
+
+    #region Events
+    /// <summary>
+    /// This event is fired when a changepoint occurs.
+    /// </summary>
+    public event Action<StandaloneResourceProcessor> OnChangepoint;
+
+    /// <summary>
+    /// This event fires after a changepoint completes, after the next
+    /// changepoint time has been computed.
+    /// </summary>
+    public event Action<StandaloneResourceProcessor> OnAfterChangepoint;
+
+    /// <summary>
+    /// This event is fired just after the stte is update but before any
+    /// changepoint-related computations are done, if any.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// This allows you to look at the old rates on the inventories and
+    /// converters and use that. This is useful if you are tracking, for example,
+    /// total uptime of a converter.
+    /// </remarks>
+    public event Action<StandaloneResourceProcessor, ChangepointEvent> OnStateUpdate;
+    #endregion
 
     /// <summary>
     /// Get an inventory directly from its <c><see cref="InventoryId"/></c>.
@@ -170,6 +118,12 @@ public sealed partial class BackgroundResourceProcessor : VesselModule, IResourc
         return processor.inventories[index];
     }
 
+    /// <summary>
+    /// Get the index of the inventory with the requested id, or null if there
+    /// is no such inventory within this resource processor.
+    /// </summary>
+    /// <param name="id"></param>
+    /// <returns></returns>
     public int? GetInventoryIndex(InventoryId id)
     {
         if (processor.inventoryIds.TryGetValue(id, out var index))
@@ -178,143 +132,8 @@ public sealed partial class BackgroundResourceProcessor : VesselModule, IResourc
     }
 
     /// <summary>
-    /// Update the vessel's stored inventory state to reflect the current
-    /// point in time.
-    /// </summary>
-    ///
-    /// <remarks>
-    /// This does nothing if the vessel is currently active. It is also not
-    /// necessary to call this during an <see cref="onVesselChangepoint"/>
-    /// callback, as it will already have been applied during the callback.
-    /// </remarks>
-    public void UpdateBackgroundState()
-    {
-        if (Vessel.loaded)
-            return;
-        var now = Planetarium.GetUniversalTime();
-        if (processor.lastUpdate >= now)
-            return;
-
-        processor.UpdateState(now, true);
-    }
-
-    /// <summary>
-    /// Forcibly recalculate the shadow state of the vessel. This will also
-    /// update any converters that could have dependended on the previous
-    /// shadow state.
-    /// </summary>
-    ///
-    /// <remarks>
-    /// <para>
-    /// You will want to use this if you are updating the orbit info of a
-    /// vessel. It is rather expensive to call though, so avoid calling it
-    /// every single frame if possible.
-    /// </para>
-    ///
-    /// <para>
-    /// This method is a no-op if the vessel is currently loaded.
-    /// </para>
-    /// </remarks>
-    public void RefreshShadowState()
-    {
-        if (vessel.loaded || ShadowState is null)
-            return;
-
-        var oldEstimate = ShadowState.Value.NextTerminatorEstimate;
-
-        // GetVesselState will update the shadow state if it is null.
-        ShadowState = null;
-
-        var state = GetVesselState();
-
-        var newEstimate = ShadowState.Value.NextTerminatorEstimate;
-
-        // No need to refresh if there has been no change in the estimate.
-        if (oldEstimate == newEstimate)
-            return;
-
-        // We don't know which behaviours depended on the shadow state of the
-        // vessel, but we do know that ones whose next changepoint happens
-        // after the next terminator estimate do not depend on it.
-        if (!processor.ForceUpdateBehaviours(state, oldEstimate))
-            return;
-
-        MarkDirty();
-    }
-
-    /// <summary>
-    /// Suppress the error that no progress has been made with the current
-    /// changepoint.
-    /// </summary>
-    ///
-    /// <remarks>
-    /// This does nothing if called outside of evaluation of a changepoint.
-    /// It is provided as an escape hatch in case you end up modifying behaviours
-    /// in an <see cref="onVesselChangepoint"/> callback.
-    /// </remarks>
-    public void SuppressNoProgressError()
-    {
-        ImmediateChangepointRequested = true;
-    }
-
-    /// <summary>
-    /// Indicate that a change has been made that might change the current
-    /// changepoint or simulation behaviour.
-    /// </summary>
-    ///
-    /// <remarks>
-    /// You should call this any time you directly modify inventories or
-    /// converters owned by this <see cref="BackgroundResourceProcessor"/>.
-    /// This method is cheap and updates to determine if a changepoint needs
-    /// to be run will be deferred until LateUpdate.
-    /// </remarks>
-    public void MarkDirty()
-    {
-        if (IsDirty)
-            return;
-
-        EventDispatcher.RegisterDirty(this);
-        IsDirty = true;
-    }
-
-    /// <summary>
-    /// Get a simulator that allows you to model the resource state of the
-    /// vessel into the future.
-    /// </summary>
-    ///
-    /// <remarks>
-    /// The simulator will <b>not</b> update the behaviours on the ship, so
-    /// this will not be an exact representation of what will happen.
-    /// </remarks>
-    public ResourceSimulator GetSimulator()
-    {
-        using var span = new TraceSpan("BackgroundResourceProcessor.GetSimulator");
-        var currentTime = Planetarium.GetUniversalTime();
-
-        if (vessel.loaded)
-            SaveVessel();
-
-        var clone = processor.CloneForSimulator();
-        clone.UpdateState(currentTime, false);
-        clone.UpdateNextChangepoint(currentTime);
-        return new(clone);
-    }
-
-    /// <summary>
-    /// Get a summary of the total resources currently stored within the
-    /// vessel.
-    /// </summary>
-    /// <returns></returns>
-    public Dictionary<string, InventoryState> GetResourceStates()
-    {
-        return processor.GetResourceStates();
-    }
-
-    /// <summary>
     /// Get a summary for a single resource.
     /// </summary>
-    /// <param name="resourceName"></param>
-    /// <returns></returns>
     public InventoryState GetResourceState(string resourceName) =>
         GetResourceState(resourceName.GetHashCode());
 
@@ -323,6 +142,13 @@ public sealed partial class BackgroundResourceProcessor : VesselModule, IResourc
     /// </summary>
     public InventoryState GetResourceState(int resourceId) =>
         IResourceProcessorDefaults.GetResourceState(this, resourceId);
+
+    /// <summary>
+    /// Get a summary of the total resources currently stored within the
+    /// vessel.
+    /// </summary>
+    /// <returns></returns>
+    public Dictionary<string, InventoryState> GetResourceStates() => processor.GetResourceStates();
 
     /// <summary>
     /// Get the total amount of wet mass that is stored within the simulation,
@@ -336,17 +162,9 @@ public sealed partial class BackgroundResourceProcessor : VesselModule, IResourc
     /// </remarks>
     public InventoryState GetWetMass() => IResourceProcessorDefaults.GetWetMass(this);
 
-    public VesselState GetVesselState() => GetVesselState(Planetarium.GetUniversalTime());
-
-    /// <summary>
-    /// Get the current <see cref="VesselState"/> for this processor.
-    /// </summary>
-    /// <param name="UT"></param>
-    /// <returns></returns>
-    public VesselState GetVesselState(double UT)
+    public void SuppressNoProgressError()
     {
-        ShadowState ??= Shadow.GetShadowState(vessel);
-        return new VesselState(UT) { Processor = this, ShadowState = ShadowState.Value };
+        ImmediateChangepointRequested = true;
     }
 
     /// <summary>
@@ -390,8 +208,6 @@ public sealed partial class BackgroundResourceProcessor : VesselModule, IResourc
     /// </remarks>
     public int AddConverter(Core.ResourceConverter converter, AddConverterOptions options)
     {
-        converter.Behaviour.Vessel = Vessel;
-
         if (options.LinkToAll)
         {
             converter.Refresh(GetVesselState());
@@ -415,7 +231,6 @@ public sealed partial class BackgroundResourceProcessor : VesselModule, IResourc
         var index = processor.converters.Count;
         processor.converters.Add(converter);
         processor.UpdateConstraintState(converter);
-        MarkDirty();
         return index;
     }
 
@@ -505,19 +320,11 @@ public sealed partial class BackgroundResourceProcessor : VesselModule, IResourc
         if (double.IsNaN(amount))
             throw new ArgumentException("amount added was NaN", nameof(amount));
 
-        if (vessel.loaded)
-            return 0.0;
-
-        UpdateBackgroundState();
-
         if (amount == 0.0)
             return 0.0;
 
         var resourceId = resourceName.GetHashCode();
         var added = AddResourceImpl(resourceName, resourceId, amount, includeModuleInventories);
-
-        if (added != 0.0)
-            MarkDirty();
 
         return added;
     }
@@ -638,36 +445,6 @@ public sealed partial class BackgroundResourceProcessor : VesselModule, IResourc
 
         return amount;
     }
-    #endregion
-
-    #region Internal API
-    /// <summary>
-    /// Find all background processing modules and resources on this vessel
-    /// and update the module state accordingly.
-    /// </summary>
-    ///
-    /// <remarks>
-    /// The only reason this isn't private is so that the debug UI can use
-    /// it to prepare the module for dumping.
-    /// </remarks>
-    internal void DebugRecordVesselState()
-    {
-        SaveVessel();
-    }
-
-    internal void StressTest(int count)
-    {
-        using var span = new TraceSpan("BackgroundResourceProcessor.StressTest");
-
-        for (int i = 0; i < count; ++i)
-            processor.ComputeRates();
-    }
-
-    internal void RecomputeShadowState()
-    {
-        ShadowState = Shadow.GetShadowState(Vessel);
-    }
-    #endregion
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private ResourceInventoryEnumerator GetResourceEnumerator(
@@ -676,5 +453,10 @@ public sealed partial class BackgroundResourceProcessor : VesselModule, IResourc
     )
     {
         return new ResourceInventoryEnumerator(this, resourceId, includeModuleInventories);
+    }
+
+    VesselState GetVesselState()
+    {
+        return new VesselState(LastChangepoint) { };
     }
 }

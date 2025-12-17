@@ -12,6 +12,7 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
     public double NextTerminatorEstimate = estimate;
     public bool InShadow = inShadow;
     public CelestialBody Star = star;
+    public double SolarFlux;
 
     public static ShadowState AlwaysInSun(CelestialBody star) =>
         new(double.PositiveInfinity, false, star);
@@ -25,7 +26,7 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
     /// </summary>
     public readonly double GetSolarFluxFactor(Vessel vessel)
     {
-        return StarProvider.GetSolarFluxFactor(Star, vessel);
+        return StarProvider.GetSolarFluxFactor(Star, vessel.position);
     }
     #endregion
 
@@ -52,10 +53,9 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         /// on the provided vessel. A multiplier of 1.0 should be equivalent to the
         /// solar flux at kerbin in a stock game.
         /// </summary>
-        public virtual double GetSolarFluxFactor(CelestialBody star, Vessel vessel)
+        public virtual double GetSolarFluxMultiplierAt(CelestialBody star, Vector3d position)
         {
-            var distance =
-                (star.position - vessel.vesselTransform.position).magnitude - star.Radius;
+            var distance = (star.position - position).magnitude - star.Radius;
             return PhysicsGlobals.SolarLuminosity
                 / (4 * Math.PI * distance * distance * PhysicsGlobals.SolarLuminosityAtHome);
         }

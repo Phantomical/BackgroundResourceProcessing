@@ -23,11 +23,11 @@ public class VesselState(double CurrentTime)
     /// it should usually be close enough that using other properties
     /// associated with the vessel (e.g. position) should be fine.
     /// </remarks>
-    public readonly double CurrentTime = CurrentTime;
+    public double CurrentTime { get; } = CurrentTime;
 
-    public ShadowState ShadowState = ShadowState.AlwaysInShadow();
+    public ShadowState ShadowState { get; set; } = ShadowState.AlwaysInShadow();
 
-    public BackgroundResourceProcessor Processor = null;
+    public IResourceProcessor Processor { get; set; } = null;
 
     /// <summary>
     /// Create a <c><see cref="VesselState"/></c> with the current time.
