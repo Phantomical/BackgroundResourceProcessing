@@ -179,4 +179,21 @@ public sealed class LinearProblemTest
         Assert.AreEqual(0.0, soln[2]);
         Assert.AreEqual(1.0, soln[extra]);
     }
+
+    [TestMethod]
+    public void TestLargeCoefficient()
+    {
+        LinearProblem problem = new();
+        var x0 = problem.CreateVariable();
+        var x1 = problem.CreateVariable();
+
+        problem.AddConstraint(x0 <= 1).Unwrap();
+        problem.AddConstraint(x1 <= 1).Unwrap();
+        problem.AddConstraint(new LinearEquation() { 49.2 * x0 } <= 0.0).Unwrap();
+
+        var soln = problem.Maximize([3e6 * x0, 8.0 * x1]).Unwrap();
+
+        Assert.AreEqual(0.0, soln[x0], 1e-6);
+        Assert.AreEqual(1.0, soln[x1], 1e-6);
+    }
 }

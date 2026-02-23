@@ -107,6 +107,8 @@ internal static class LinearPresolve
         } while (found);
 
         InferConstants(in matrix, ref equalities, ref inequalities, allocator);
+        if (Trace)
+            TraceFinal(in matrix);
         return true;
     }
 
@@ -715,21 +717,27 @@ internal static class LinearPresolve
     }
 
     [BurstDiscard]
-    private static unsafe void TraceInferZeros(in Matrix tableau)
+    private static void TraceInferZeros(in Matrix tableau)
     {
         LogUtil.Log($"Presolve matrix after InferZeros:\n{tableau}");
     }
 
     [BurstDiscard]
-    private static unsafe void TraceInitialMatrix(in Matrix tableau)
+    private static void TraceInitialMatrix(in Matrix tableau)
     {
         LogUtil.Log($"Initial presolve matrix:\n{tableau}");
     }
 
     [BurstDiscard]
-    private static unsafe void TraceMatrix(in Matrix tableau)
+    private static void TraceMatrix(in Matrix tableau)
     {
         LogUtil.Log($"Presolve matrix after RowReduce:\n{tableau}");
+    }
+
+    [BurstDiscard]
+    private static void TraceFinal(in Matrix tableau)
+    {
+        LogUtil.Log($"Presolve matrix after InferConstants:\n{tableau}");
     }
 
     private static void ThrowStopIndexOutOfRange(int stop) =>
