@@ -18,6 +18,10 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 ### Fixed
 * Fixed a bug in the linear solver presolve, which would occasionally result in
   incorrect resource rates.
+* Fixed the SIMD path in `PartialRowReduce` zeroing the pivot row's diagonal
+  entry, corrupting the reduced row echelon form.
+* Fixed an incorrect shuffle immediate in the SSE2 (non-SSSE3) path of
+  `CountNonZero`, which would produce wrong counts.
 
 ## v0.2.3
 ### Added

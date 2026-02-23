@@ -397,7 +397,10 @@ internal static class LinearPresolve
             }
             else
             {
-                vcount = add_epi32(vcount, shuffle_epi32(vcount, (1 << 0) | (3 << 2)));
+                vcount = add_epi32(
+                    vcount,
+                    shuffle_epi32(vcount, (2 << 0) | (3 << 2) | (0 << 4) | (1 << 6))
+                );
                 ulong lcount = vcount.ULong0;
                 count += (uint)lcount + (uint)(lcount >> 32);
             }
@@ -519,7 +522,8 @@ internal static class LinearPresolve
                     }
 
                     for (int i = 0; i < 4; ++i)
-                        row[i][pc] = 0.0;
+                        if (r + i != pr)
+                            row[i][pc] = 0.0;
                 }
 
                 for (; r < tableau.Rows; ++r)
