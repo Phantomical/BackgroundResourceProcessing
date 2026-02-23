@@ -123,13 +123,13 @@ internal static partial class Simplex
             var ihi = mm256_extractf128_si256(vpivot, 1);
 
             var hvalue = min_pd(vlo, vhi);
-            var hmask = cmplt_pd(vlo, vhi);
+            var hmask = cmple_pd(vlo, vhi);
             var hpivot = blendv_pd(ihi, ilo, hmask);
 
             double lo = cvtsd_f64(hvalue);
             double hi = cvtsd_f64(unpackhi_pd(hvalue, hvalue));
 
-            if (lo < hi)
+            if (lo <= hi)
                 return (int)extract_epi64(hpivot, 0);
             else
                 return (int)extract_epi64(hpivot, 1);
@@ -287,7 +287,7 @@ internal static partial class Simplex
     private static v256 mm256_not_si256(v256 x)
     {
         if (IsAvx2Supported)
-            return mm256_andnot_si256(x, mm256_setzero_si256());
+            return mm256_andnot_si256(x, mm256_set1_epi64x(-1));
         else
             throw UnsupportedInstructionSet();
     }
