@@ -228,7 +228,7 @@ internal static class LinearPresolve
             {
                 var zero = mm256_setzero_pd();
                 var perm = mm256_setr_epi32(0, 2, 4, 6, 0, 2, 4, 6);
-                var idxs = mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7);
+                var idxs = mm256_set1_epi32(y);
 
                 for (; x + 8 <= count; x += 8, ptr += 8)
                 {
@@ -245,18 +245,16 @@ internal static class LinearPresolve
                     var hasValue = mm256_andnot_si256(noValue, mm256_set1_epi32(-1));
 
                     // We want to
-                    // - set current[x] to idxs[x] if nonZero && noValue
+                    // - set current[x] to y if nonZero && noValue
                     // - set current[x] to -1 if nonZero && !noValue
                     // - keep current[x] if !knownNonZero
                     //
                     // This works roughly as
-                    // invalid = idxs | !noValue
+                    // invalid = y | !noValue
                     // current[x] = select(isZero, current[x] | !noValue, current[x])
 
                     current = mm256_blendv_ps(mm256_or_si256(idxs, hasValue), current, isZero);
                     mm256_storeu_si256(&indices.Ptr[x], current);
-
-                    idxs = mm256_add_epi32(idxs, mm256_set1_epi32(8));
                 }
             }
 

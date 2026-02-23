@@ -11,6 +11,10 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 -->
 
 ## Unreleased
+### Fixed
+* Fixed a bug in the linear solver presolve, which would occasionally result in
+  incorrect resource rates.
+
 ## v0.2.3
 ### Added
 * Added support for `WBIResources` and `WildBlueCore`.
