@@ -11,6 +11,8 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 -->
 
 ## Unreleased
+
+## v0.2.4
 ### Changed
 * Background converter/inventory registration now happens in a ModuleManager
   post-load callback, instead of just before the main menu loads.
