@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -7,7 +6,6 @@ using System.Reflection;
 using System.Threading.Tasks;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Utils;
-using KSP.Localization;
 using Unity.Burst;
 using UnityEngine;
 
@@ -149,13 +147,6 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
 
     void Start()
     {
-        // We don't want to set up the type registries until the game
-        // database has been fully patched by module manager.
-        //
-        // We do this by sticking it as an extra loading screen step
-        // that happens at the very end.
-        LoadingScreen.Instance.loaders.Add(gameObject.AddComponent<RegistryLoadingSystem>());
-
 #if TRACING
         var path = typeof(BackgroundResourceProcessingLoader).Assembly.Location;
         path = Path.GetDirectoryName(path);
@@ -355,47 +346,17 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
         return existing >= required;
     }
 
-    private class RegistryLoadingSystem() : LoadingSystem
+    public static void ModuleManagerPostLoad()
     {
-        private string title;
-        private bool done;
+        var watch = new System.Diagnostics.Stopwatch();
+        watch.Start();
 
-        public override bool IsReady()
-        {
-            return done;
-        }
+        TypeRegistry.RegisterAll();
 
-        public override string ProgressTitle()
-        {
-            title ??= Localizer.GetStringByTag("#LOC_BRP_LoadingScreenText");
-            return title;
-        }
+        watch.Stop();
+        var elapsed = watch.ElapsedMilliseconds;
 
-        public override void StartLoad()
-        {
-            StartCoroutine(DoLoad());
-        }
-
-        private IEnumerator DoLoad()
-        {
-            try
-            {
-                yield return 0;
-                var watch = new System.Diagnostics.Stopwatch();
-                watch.Start();
-
-                TypeRegistry.RegisterAll();
-
-                watch.Stop();
-                var elapsed = watch.ElapsedMilliseconds;
-
-                LogUtil.Log($"Loaded background converters in {elapsed} ms");
-            }
-            finally
-            {
-                done = true;
-            }
-        }
+        LogUtil.Log($"Loaded background converters in {elapsed} ms");
     }
 
     private abstract class AssemblyDependency

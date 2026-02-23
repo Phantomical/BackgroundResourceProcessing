@@ -11,6 +11,10 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 -->
 
 ## Unreleased
+### Changed
+* Background converter/inventory registration now happens in a ModuleManager
+  post-load callback, instead of just before the main menu loads.
+
 ### Fixed
 * Fixed a bug in the linear solver presolve, which would occasionally result in
   incorrect resource rates.
