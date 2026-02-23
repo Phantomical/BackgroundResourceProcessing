@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Utils;
 using KSP.Localization;
@@ -168,8 +169,39 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
         // occur off the main thread.
         var _ = BurstCompiler.IsEnabled;
 
+        CleanupOldShipLogZips();
+
         // And now we clean up after ourselves.
         Destroy(this);
+    }
+
+    private static void CleanupOldShipLogZips()
+    {
+        var logDir = Path.Combine(
+            KSPUtil.ApplicationRootPath,
+            "Logs",
+            "BackgroundResourceProcessing"
+        );
+
+        Task.Run(() =>
+        {
+            try
+            {
+                if (!Directory.Exists(logDir))
+                    return;
+
+                var cutoff = DateTime.Now.AddDays(-7);
+                foreach (var file in Directory.GetFiles(logDir, "*.zip"))
+                {
+                    if (File.GetCreationTime(file) < cutoff)
+                        File.Delete(file);
+                }
+            }
+            catch (Exception e)
+            {
+                LogUtil.Error($"Failed to clean up old ship log zips: {e}");
+            }
+        });
     }
 
     /// <summary>

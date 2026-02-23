@@ -15,6 +15,10 @@
   <ItemGroup>
     <!-- <PackageReference Include="System.Memory" Version="4.6.3" /> -->
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" />
+    <Reference Include="System.IO.Compression">
+      <HintPath>$(DepSet1)\000_KSPBurst\Plugins\System.IO.Compression.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <PackageReference Include="JsonPoke" Version="1.2.0" />
     <PackageReference Include="MustUseRetVal" Version="0.0.2" />
 

@@ -1,3 +1,7 @@
+using System;
+using System.IO;
+using System.IO.Compression;
+using System.Threading.Tasks;
 using BackgroundResourceProcessing.Addons;
 using BackgroundResourceProcessing.Tracing;
 using Shadow = BackgroundResourceProcessing.ShadowState;
@@ -254,6 +258,50 @@ public sealed partial class BackgroundResourceProcessor
         processor.ComputeRates();
         DispatchOnRatesComputed(currentTime);
         UpdateNextChangepoint(currentTime);
+
+        LogShipToZip();
+    }
+
+    private void LogShipToZip()
+    {
+        ConfigNode root = new();
+        ConfigNode node = root.AddNode("BRP_SHIP");
+        processor.Save(node);
+
+        var shipName = vessel.GetDisplayName();
+        var serialized = root.ToString();
+
+        var now = DateTime.Now;
+        var zipName = $"{now:yy}-{now.DayOfYear:D3}-{now:HH}-{now:mm}-{now:ss}-{shipName}.zip";
+        var logDir = Path.Combine(
+            KSPUtil.ApplicationRootPath,
+            "Logs",
+            "BackgroundResourceProcessing"
+        );
+
+        LogUtil.Log($"Logging ship state to {zipName}");
+
+        Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(100);
+
+                Directory.CreateDirectory(logDir);
+
+                var zipPath = Path.Combine(logDir, zipName);
+
+                using var stream = new FileStream(zipPath, FileMode.Create);
+                using var archive = new ZipArchive(stream, ZipArchiveMode.Create);
+                var entry = archive.CreateEntry($"{shipName}.cfg");
+                using var writer = new StreamWriter(entry.Open());
+                writer.Write(serialized);
+            }
+            catch (Exception e)
+            {
+                LogUtil.Error($"Failed to log ship to zip: {e}");
+            }
+        });
     }
 
     private void DispatchOnRatesComputed(double currentTime)
