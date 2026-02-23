@@ -129,7 +129,7 @@ internal unsafe struct AdjacencyMatrix : IEnumerable<BitSpan>
                     v128 ones = set1_epi64x(1);
                     v128 vbit = set1_epi64x(bit);
 
-                    for (int i = 0; i < Rows; i += 2)
+                    for (int i = 0; i < Rows; ++i)
                     {
                         var vrow = loadu_si128(&data[i * ColumnWords]);
                         var vword =
@@ -181,7 +181,7 @@ internal unsafe struct AdjacencyMatrix : IEnumerable<BitSpan>
                     {
                         ulong* row = &data[i * ColumnWords];
                         ulong invmask = ((row[word] >> bit) & 1) - 1;
-                        var vinvmask = set1_epi64x(word);
+                        var vinvmask = set1_epi64x((long)invmask);
 
                         setlo = and_si128(setlo, xor_si128(vinvmask, loadu_si128(&row[0])));
                         sethi = and_si128(sethi, xor_si128(vinvmask, loadu_si128(&row[2])));
