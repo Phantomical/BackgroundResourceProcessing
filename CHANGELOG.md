@@ -12,6 +12,10 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ## Unreleased
 
+## v0.2.5
+### Fixed
+* Properly escape the ship name before logging the ship zip.
+
 ## v0.2.4
 ### Changed
 * Background converter/inventory registration now happens in a ModuleManager
