@@ -1,9 +1,11 @@
 using System;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Threading.Tasks;
 using BackgroundResourceProcessing.Addons;
 using BackgroundResourceProcessing.Tracing;
+using Steamworks;
 using Shadow = BackgroundResourceProcessing.ShadowState;
 
 namespace BackgroundResourceProcessing;
@@ -262,17 +264,26 @@ public sealed partial class BackgroundResourceProcessor
         LogShipToZip();
     }
 
+    private static readonly char[] InvalidFileNameChars = Path.GetInvalidFileNameChars();
+
+    private static string StripUnsupportedPathChars(string path)
+    {
+        return new([.. path.Select(static c => InvalidFileNameChars.Contains(c) ? '-' : c)]);
+    }
+
     private void LogShipToZip()
     {
         ConfigNode root = new();
         ConfigNode node = root.AddNode("BRP_SHIP");
         processor.Save(node);
 
-        var shipName = vessel.GetDisplayName();
+        var shipName = StripUnsupportedPathChars(vessel.GetDisplayName());
         var serialized = root.ToString();
 
         var now = DateTime.Now;
-        var zipName = $"{now:yy}-{now.DayOfYear:D3}-{now:HH}-{now:mm}-{now:ss}-{shipName}.zip";
+        var idHash = (vessel.id.GetHashCode() & 0xFFFFFFFF).ToString("x8");
+        var zipName =
+            $"{now:yy}-{now.DayOfYear:D3}-{now:HH}-{now:mm}-{now:ss}-{idHash}-{shipName}.zip";
         var logDir = Path.Combine(
             KSPUtil.ApplicationRootPath,
             "Logs",
