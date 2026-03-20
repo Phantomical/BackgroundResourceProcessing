@@ -1,10 +1,10 @@
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using BackgroundResourceProcessing.Shim;
 using Unity.Burst;
 using Unity.Burst.CompilerServices;
 using static UnityEngine.Application;
+using Shim = BackgroundResourceProcessing.Shim;
 
 namespace BackgroundResourceProcessing.BurstSolver;
 
@@ -62,14 +62,14 @@ internal static unsafe class BurstCrashHandler
     }
 
     #region Initialization
-    static readonly SharedStatic<CrashHandlerVTable> Shared;
+    static readonly Shim.SharedStatic<CrashHandlerVTable> Shared;
 
     static BurstCrashHandler()
     {
         if (BurstUtil.UseTestAllocator)
             return;
 
-        Shared = SharedStatic<CrashHandlerVTable>.GetOrCreate<CrashHandlerVTable>();
+        Shared = Shim.SharedStatic<CrashHandlerVTable>.GetOrCreate<CrashHandlerVTable>();
         InitShared();
     }
 
