@@ -12,6 +12,10 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ## Unreleased
 
+## v0.2.6
+### Fixed
+* Fixed a broken CI build preventing release artifacts from being created.
+
 ## v0.2.5
 ### Fixed
 * Properly escape the ship name before logging the ship zip.
