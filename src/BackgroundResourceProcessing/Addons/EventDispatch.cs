@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using BackgroundResourceProcessing.Collections;
+using Unity.Burst;
 using UnityEngine;
 
 namespace BackgroundResourceProcessing.Addons;
@@ -116,6 +117,7 @@ internal class EventDispatcher : MonoBehaviour
             );
 
         Instance = this;
+        _ = BurstCompiler.IsEnabled;
     }
 
     void Start()
