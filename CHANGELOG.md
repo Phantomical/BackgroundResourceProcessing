@@ -12,6 +12,11 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ## Unreleased
 
+## v0.2.7
+### Fixed
+* Fixed an issue where BRP was breaking KSPBurst by causing burst-compiled
+  methods to be loaded too early.
+
 ## v0.2.6
 ### Fixed
 * Fixed a broken CI build preventing release artifacts from being created.
