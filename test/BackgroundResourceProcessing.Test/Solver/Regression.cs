@@ -1,3 +1,5 @@
+using System.IO;
+using System.Linq;
 using BackgroundResourceProcessing.Collections.Burst;
 
 namespace BackgroundResourceProcessing.Test.Solver
@@ -167,6 +169,52 @@ namespace BackgroundResourceProcessing.Test.Solver
             var h2 = processor.GetResourceStates()["LqdHydrogen"];
 
             Assert.AreEqual(0.0, h2.rate, "LH2 rate should be 0");
+        }
+
+        [TestMethod]
+        public void TestSolarPanelZeroRate()
+        {
+            var processor = TestUtil.LoadVessel("regression/solar-panel-zero-rate.cfg");
+            processor.ComputeRates();
+
+            // Solar panels are converters 6-9. They should have nonzero rates
+            // since there are EC consumers (radiators, command, drill) and there
+            // is room for the solar panels to produce EC to compensate.
+            for (int i = 6; i <= 9; ++i)
+            {
+                Assert.AreNotEqual(
+                    0.0,
+                    processor.converters[i].Rate,
+                    $"Solar panel converter {i} should have a nonzero rate"
+                );
+            }
+        }
+
+        [TestMethod]
+        public void TestSolarPanelZeroRateWithHalfFullTanks()
+        {
+            // Same vessel but with LF/Ox tanks at 50% (representing the
+            // state when rates were originally computed, before tanks filled up).
+            // EC is still full. Solar panels should produce EC to offset ISRU consumption.
+            var processor = TestUtil.LoadVessel("regression/solar-panel-zero-rate-2.cfg");
+            processor.ComputeRates();
+
+            // ISRU should be running (Ox and LF tanks not full)
+            Assert.AreNotEqual(
+                0.0,
+                processor.converters[0].Rate,
+                "ISRU should be running since LF/Ox tanks are not full"
+            );
+
+            // Solar panels should be running to offset EC consumption
+            for (int i = 6; i <= 9; ++i)
+            {
+                Assert.AreNotEqual(
+                    0.0,
+                    processor.converters[i].Rate,
+                    $"Solar panel converter {i} should have a nonzero rate"
+                );
+            }
         }
     }
 }

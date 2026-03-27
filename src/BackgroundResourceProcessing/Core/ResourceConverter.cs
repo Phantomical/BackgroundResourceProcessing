@@ -332,7 +332,7 @@ public class ResourceConverter(ConverterBehaviour behaviour)
                 builder.Add(ratio.ResourceName.GetHashCode(), ratio.WithDefaultedFlowMode());
         }
 
-        return old == ratios;
+        return !old.Equals(ratios);
     }
 
     private static bool OverwriteConstraints(
@@ -354,7 +354,7 @@ public class ResourceConverter(ConverterBehaviour behaviour)
             }
         }
 
-        return old == ratios;
+        return !old.Equals(ratios);
     }
 
     internal ResourceConverter CloneForSimulator()
