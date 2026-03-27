@@ -371,6 +371,11 @@ public class ResourceConverter(ConverterBehaviour behaviour)
         hasher.AddAll(Push.Bits);
         hasher.AddAll(Pull.Bits);
         hasher.Add(ConstraintState);
+
+        foreach (var (key, ratio) in Inputs)
+            hasher.Add(key, ratio.Ratio);
+        foreach (var (key, ratio) in Outputs)
+            hasher.Add(key, ratio.Ratio);
     }
 
     private static void SaveRequiredResources(
