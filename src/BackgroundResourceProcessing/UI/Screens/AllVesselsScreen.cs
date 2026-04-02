@@ -194,11 +194,7 @@ internal class AllVesselsScreenContent : MonoBehaviour
             statusLE.flexibleWidth = 0f;
         }
 
-        // Resource summary
-        if (!vessel.loaded)
-            processor.UpdateBackgroundState();
-
-        var states = processor.GetResourceStates();
+        var states = processor.GetCurrentResourceStates();
         var defs = PartResourceLibrary.Instance.resourceDefinitions;
         foreach (var kvp in states.OrderBy(kvp => kvp.Key))
         {
@@ -215,14 +211,14 @@ internal class AllVesselsScreenContent : MonoBehaviour
 
         // Converter/changepoint info
         var convCount = processor.Converters.Count;
-        var nextCp = processor.NextChangepoint;
-        var cpStr = double.IsPositiveInfinity(nextCp)
-            ? "Never"
-            : KSPUtil.PrintTimeCompact(nextCp, true);
-        DebugUIManager.CreateLabel(
+        var cpLabel = DebugUIManager.CreateLabel(
             _scrollContent,
-            $"    {convCount} converter(s), next changepoint: {cpStr}"
+            $"    {convCount} converter(s), next changepoint: "
         );
+        var cpTime =
+            cpLabel.transform.parent.gameObject.AddComponent<Components.RelativeTimeLabel>();
+        cpTime.UT = processor.NextChangepoint;
+        cpTime.Prefix = $"    {convCount} converter(s), next changepoint: ";
     }
 
     void ClearDynamic()

@@ -36,9 +36,6 @@ internal static class VesselDetailPopup
             return window;
         }
 
-        if (!vessel.loaded)
-            processor.UpdateBackgroundState();
-
         // Single scroll rect for all content
         var scrollContent = BuildScrollContainer(contentArea);
 
@@ -46,8 +43,10 @@ internal static class VesselDetailPopup
         updater.Processor = processor;
 
         BuildVesselInfo(scrollContent, vessel, processor, updater);
-        BuildResourcesSection(scrollContent, processor);
-        BuildConvertersSection(scrollContent, processor);
+        var (resourceContent, resourceTable) = BuildResourcesSection(scrollContent, processor);
+        updater.ResourceContent = resourceContent;
+        updater.ResourceTable = resourceTable;
+        updater.ConverterContent = BuildConvertersSection(scrollContent, processor);
 
         return window;
     }
@@ -118,36 +117,30 @@ internal static class VesselDetailPopup
         DebugUIManager.CreateTableRow(parent, "Type", vessel.vesselType.ToString());
         DebugUIManager.CreateTableRow(parent, "Status", vessel.loaded ? "Loaded" : "Unloaded");
         DebugUIManager.CreateTableRow(parent, "Situation", vessel.SituationString);
-        updater.LastChangepointLabel = DebugUIManager.CreateTableRow(
+        var lastCp = DebugUIManager.CreateTimeRow(
             parent,
             "Last Changepoint",
-            FormatTime(processor.LastChangepoint)
+            processor.LastChangepoint
         );
-        updater.NextChangepointLabel = DebugUIManager.CreateTableRow(
+        var nextCp = DebugUIManager.CreateTimeRow(
             parent,
             "Next Changepoint",
-            FormatTime(processor.NextChangepoint)
+            processor.NextChangepoint
         );
+        updater.LastChangepoint = lastCp;
+        updater.NextChangepoint = nextCp;
 
         DebugUIManager.CreateSpacer(parent);
     }
 
-    static void BuildResourcesSection(Transform parent, BackgroundResourceProcessor processor)
+    static (Transform content, TableLayoutGroup table) BuildResourcesSection(
+        Transform parent,
+        BackgroundResourceProcessor processor
+    )
     {
         DebugUIManager.CreateHeader(parent, "Resources");
         DebugUIManager.CreateSeparator(parent);
 
-        var states = processor.GetResourceStates();
-        var sorted = states.OrderBy(kvp => kvp.Key).ToList();
-
-        if (sorted.Count == 0)
-        {
-            DebugUIManager.CreateLabel(parent, "No resources");
-            DebugUIManager.CreateSpacer(parent);
-            return;
-        }
-
-        // Inline table container (no nested scroll)
         var tableGo = new GameObject("ResourceTable", typeof(RectTransform));
         tableGo.transform.SetParent(parent, false);
 
@@ -155,6 +148,29 @@ internal static class VesselDetailPopup
         table.MinimumColumnWidth = 0f;
         table.ColumnSpacing = 8f;
         table.RowSpacing = 2f;
+
+        PopulateResourceTable(tableGo.transform, table, processor);
+
+        DebugUIManager.CreateSpacer(parent);
+
+        return (tableGo.transform, table);
+    }
+
+    internal static void PopulateResourceTable(
+        Transform content,
+        TableLayoutGroup table,
+        BackgroundResourceProcessor processor
+    )
+    {
+        var states = processor.GetCurrentResourceStates();
+        var sorted = states.OrderBy(kvp => kvp.Key).ToList();
+
+        if (sorted.Count == 0)
+        {
+            table.RowHeights = [20f];
+            DebugUIManager.CreateDirectLabel(content, "No resources");
+            return;
+        }
 
         // +1 for header
         var heights = new float[sorted.Count + 1];
@@ -165,15 +181,15 @@ internal static class VesselDetailPopup
         var defs = PartResourceLibrary.Instance.resourceDefinitions;
 
         // Header row
-        var h1 = DebugUIManager.CreateDirectLabel(tableGo.transform, "Resource");
+        var h1 = DebugUIManager.CreateDirectLabel(content, "Resource");
         h1.fontStyle = FontStyles.Bold;
-        var h2 = DebugUIManager.CreateDirectLabel(tableGo.transform, "Amount");
+        var h2 = DebugUIManager.CreateDirectLabel(content, "Amount");
         h2.fontStyle = FontStyles.Bold;
         h2.alignment = TextAlignmentOptions.MidlineRight;
-        var h3 = DebugUIManager.CreateDirectLabel(tableGo.transform, "Capacity");
+        var h3 = DebugUIManager.CreateDirectLabel(content, "Capacity");
         h3.fontStyle = FontStyles.Bold;
         h3.alignment = TextAlignmentOptions.MidlineRight;
-        var h4 = DebugUIManager.CreateDirectLabel(tableGo.transform, "Rate");
+        var h4 = DebugUIManager.CreateDirectLabel(content, "Rate");
         h4.fontStyle = FontStyles.Bold;
         h4.alignment = TextAlignmentOptions.MidlineRight;
 
@@ -184,36 +200,51 @@ internal static class VesselDetailPopup
             var displayName = def != null ? def.displayName : kvp.Key;
             var state = kvp.Value;
 
-            DebugUIManager.CreateDirectLabel(tableGo.transform, displayName);
+            DebugUIManager.CreateDirectLabel(content, displayName);
             var a = DebugUIManager.CreateDirectLabel(
-                tableGo.transform,
+                content,
                 DebugUI.FormatCellNumber(state.amount)
             );
             a.alignment = TextAlignmentOptions.MidlineRight;
             var c = DebugUIManager.CreateDirectLabel(
-                tableGo.transform,
+                content,
                 DebugUI.FormatCellNumber(state.maxAmount)
             );
             c.alignment = TextAlignmentOptions.MidlineRight;
-            var r = DebugUIManager.CreateDirectLabel(
-                tableGo.transform,
-                DebugUI.FormatCellNumber(state.rate)
-            );
+            var r = DebugUIManager.CreateDirectLabel(content, DebugUI.FormatCellNumber(state.rate));
             r.alignment = TextAlignmentOptions.MidlineRight;
         }
-
-        DebugUIManager.CreateSpacer(parent);
     }
 
-    static void BuildConvertersSection(Transform parent, BackgroundResourceProcessor processor)
+    static Transform BuildConvertersSection(Transform parent, BackgroundResourceProcessor processor)
     {
         DebugUIManager.CreateHeader(parent, "Converters");
         DebugUIManager.CreateSeparator(parent);
 
+        var converterGo = new GameObject("ConverterList", typeof(RectTransform));
+        converterGo.transform.SetParent(parent, false);
+        var vlg = converterGo.AddComponent<VerticalLayoutGroup>();
+        vlg.childAlignment = TextAnchor.UpperLeft;
+        vlg.childControlWidth = true;
+        vlg.childControlHeight = true;
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = false;
+        vlg.spacing = 4f;
+
+        PopulateConverterList(converterGo.transform, processor);
+
+        return converterGo.transform;
+    }
+
+    internal static void PopulateConverterList(
+        Transform content,
+        BackgroundResourceProcessor processor
+    )
+    {
         var converters = processor.Converters;
         if (converters.Count == 0)
         {
-            DebugUIManager.CreateLabel(parent, "No converters");
+            DebugUIManager.CreateLabel(content, "No converters");
             return;
         }
 
@@ -225,47 +256,42 @@ internal static class VesselDetailPopup
             var sourceModule = behaviour?.SourceModule ?? "Unknown";
 
             var headerLabel = DebugUIManager.CreateLabel(
-                parent,
+                content,
                 $"[{index}] {sourceModule} ({sourcePart})"
             );
             headerLabel.fontStyle = FontStyles.Bold;
 
             DebugUIManager.CreateLabel(
-                parent,
+                content,
                 $"  Rate: {DebugUI.FormatCellNumber(converter.Rate)}"
             );
 
             foreach (var input in converter.Inputs)
                 DebugUIManager.CreateLabel(
-                    parent,
+                    content,
                     $"  INPUT: {input.Value.ResourceName} x{DebugUI.FormatCellNumber(input.Value.Ratio)}"
                 );
 
             foreach (var output in converter.Outputs)
                 DebugUIManager.CreateLabel(
-                    parent,
+                    content,
                     $"  OUTPUT: {output.Value.ResourceName} x{DebugUI.FormatCellNumber(output.Value.Ratio)}"
                 );
 
-            DebugUIManager.CreateSpacer(parent, 4f);
+            DebugUIManager.CreateSpacer(content, 4f);
             index++;
         }
-    }
-
-    internal static string FormatTime(double ut)
-    {
-        if (double.IsInfinity(ut) || double.IsNaN(ut))
-            return "Never";
-        var now = Planetarium.GetUniversalTime();
-        return KSPUtil.PrintTimeCompact(ut - now, true);
     }
 }
 
 internal class ChangepointUpdater : MonoBehaviour
 {
     internal BackgroundResourceProcessor Processor;
-    internal TextMeshProUGUI LastChangepointLabel;
-    internal TextMeshProUGUI NextChangepointLabel;
+    internal RelativeTimeLabel LastChangepoint;
+    internal RelativeTimeLabel NextChangepoint;
+    internal Transform ResourceContent;
+    internal TableLayoutGroup ResourceTable;
+    internal Transform ConverterContent;
 
     float _timer;
 
@@ -279,9 +305,27 @@ internal class ChangepointUpdater : MonoBehaviour
         if (Processor == null)
             return;
 
-        if (LastChangepointLabel)
-            LastChangepointLabel.text = VesselDetailPopup.FormatTime(Processor.LastChangepoint);
-        if (NextChangepointLabel)
-            NextChangepointLabel.text = VesselDetailPopup.FormatTime(Processor.NextChangepoint);
+        if (LastChangepoint != null)
+            LastChangepoint.UT = Processor.LastChangepoint;
+        if (NextChangepoint != null)
+            NextChangepoint.UT = Processor.NextChangepoint;
+
+        if (ResourceContent != null && ResourceTable != null)
+        {
+            ClearChildren(ResourceContent);
+            VesselDetailPopup.PopulateResourceTable(ResourceContent, ResourceTable, Processor);
+        }
+
+        if (ConverterContent != null)
+        {
+            ClearChildren(ConverterContent);
+            VesselDetailPopup.PopulateConverterList(ConverterContent, Processor);
+        }
+    }
+
+    static void ClearChildren(Transform parent)
+    {
+        for (int i = parent.childCount - 1; i >= 0; i--)
+            Destroy(parent.GetChild(i).gameObject);
     }
 }

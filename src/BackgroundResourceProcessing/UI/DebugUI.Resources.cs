@@ -15,7 +15,7 @@ internal partial class DebugUI
         List<KeyValuePair<string, InventoryState>> totals = [];
         if (processor != null)
         {
-            totals = [.. processor.GetResourceStates()];
+            totals = [.. processor.GetCurrentResourceStates()];
         }
 
         totals.Sort((a, b) => a.Key.CompareTo(b.Key));

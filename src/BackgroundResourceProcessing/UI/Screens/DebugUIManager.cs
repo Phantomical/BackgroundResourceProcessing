@@ -612,6 +612,19 @@ internal static class DebugUIManager
         return valueTmp;
     }
 
+    public static Components.RelativeTimeLabel CreateTimeRow(
+        Transform parent,
+        string name,
+        double initialUT
+    )
+    {
+        var valueTmp = CreateTableRow(parent, name, "");
+        var timeLabel =
+            valueTmp.transform.parent.gameObject.AddComponent<Components.RelativeTimeLabel>();
+        timeLabel.UT = initialUT;
+        return timeLabel;
+    }
+
     public static Scrollbar CreateScrollbar(Transform parent, ScrollRect scrollRect)
     {
         if (_scrollbarPrefab == null)

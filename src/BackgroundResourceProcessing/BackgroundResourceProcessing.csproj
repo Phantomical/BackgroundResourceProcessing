@@ -88,6 +88,11 @@
     </Reference>
   </ItemGroup>
 
+  <ItemGroup>
+    <Publicize Include="Assembly-CSharp:KSPUtil.cacheAutoLOC_6002332" />
+    <Publicize Include="Assembly-CSharp:KSPUtil.cacheAutoLOC_6002333" />
+  </ItemGroup>
+
   <!--
     It's really easy for old binaries to stick around in GameData and bin
     directories. This step makes sure that doesn't happen.

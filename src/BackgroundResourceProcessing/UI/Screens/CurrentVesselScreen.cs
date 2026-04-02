@@ -23,10 +23,10 @@ internal class CurrentVesselScreenContent : MonoBehaviour
     TextMeshProUGUI _vesselStatusLabel;
 
     [SerializeField]
-    TextMeshProUGUI _lastChangepointLabel;
+    RelativeTimeLabel _lastChangepoint;
 
     [SerializeField]
-    TextMeshProUGUI _nextChangepointLabel;
+    RelativeTimeLabel _nextChangepoint;
 
     [SerializeField]
     TextMeshProUGUI _sceneGuardLabel;
@@ -112,15 +112,15 @@ internal class CurrentVesselScreenContent : MonoBehaviour
 
         _vesselNameLabel = DebugUIManager.CreateTableRow(scrollContent, "Vessel", "—");
         _vesselStatusLabel = DebugUIManager.CreateTableRow(scrollContent, "Status", "—");
-        _lastChangepointLabel = DebugUIManager.CreateTableRow(
+        _lastChangepoint = DebugUIManager.CreateTimeRow(
             scrollContent,
             "Last Changepoint",
-            "—"
+            double.PositiveInfinity
         );
-        _nextChangepointLabel = DebugUIManager.CreateTableRow(
+        _nextChangepoint = DebugUIManager.CreateTimeRow(
             scrollContent,
             "Next Changepoint",
-            "—"
+            double.PositiveInfinity
         );
 
         DebugUIManager.CreateSpacer(scrollContent);
@@ -164,8 +164,19 @@ internal class CurrentVesselScreenContent : MonoBehaviour
         DebugUIManager.CreateButton<ExportShipButton>(actionRow.transform, "Export Ship");
     }
 
+    float _refreshTimer;
+
     void OnEnable()
     {
+        Populate();
+    }
+
+    void Update()
+    {
+        _refreshTimer += Time.unscaledDeltaTime;
+        if (_refreshTimer < 1f)
+            return;
+        _refreshTimer = 0f;
         Populate();
     }
 
@@ -192,8 +203,8 @@ internal class CurrentVesselScreenContent : MonoBehaviour
         {
             _vesselNameLabel.text = "No active vessel";
             _vesselStatusLabel.text = "—";
-            _lastChangepointLabel.text = "—";
-            _nextChangepointLabel.text = "—";
+            _lastChangepoint.UT = double.PositiveInfinity;
+            _nextChangepoint.UT = double.PositiveInfinity;
             return;
         }
 
@@ -202,8 +213,8 @@ internal class CurrentVesselScreenContent : MonoBehaviour
         {
             _vesselNameLabel.text = vessel.GetDisplayName();
             _vesselStatusLabel.text = "No processor";
-            _lastChangepointLabel.text = "—";
-            _nextChangepointLabel.text = "—";
+            _lastChangepoint.UT = double.PositiveInfinity;
+            _nextChangepoint.UT = double.PositiveInfinity;
             return;
         }
 
@@ -211,8 +222,8 @@ internal class CurrentVesselScreenContent : MonoBehaviour
 
         _vesselNameLabel.text = vessel.GetDisplayName();
         _vesselStatusLabel.text = vessel.loaded ? "Loaded" : "Unloaded";
-        _lastChangepointLabel.text = FormatTime(processor.LastChangepoint);
-        _nextChangepointLabel.text = FormatTime(processor.NextChangepoint);
+        _lastChangepoint.UT = processor.LastChangepoint;
+        _nextChangepoint.UT = processor.NextChangepoint;
 
         PopulateResources(processor);
         PopulateConverters(processor);
@@ -222,7 +233,7 @@ internal class CurrentVesselScreenContent : MonoBehaviour
     {
         ClearDynamic(_resourceContent);
 
-        var states = processor.GetResourceStates();
+        var states = processor.GetCurrentResourceStates();
         var sorted = states.OrderBy(kvp => kvp.Key).ToList();
 
         if (sorted.Count == 0)
@@ -323,15 +334,6 @@ internal class CurrentVesselScreenContent : MonoBehaviour
             DebugUIManager.CreateSpacer(_converterContent, 4f);
             index++;
         }
-    }
-
-    static string FormatTime(double ut)
-    {
-        if (double.IsPositiveInfinity(ut))
-            return "Never";
-        if (double.IsNaN(ut))
-            return "NaN";
-        return KSPUtil.PrintTimeCompact(ut, true);
     }
 
     static void ClearDynamic(Transform parent)
