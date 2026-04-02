@@ -329,6 +329,8 @@ public sealed partial class BackgroundResourceProcessor
         ShadowState = Shadow.GetShadowState(vessel);
         var state = GetVesselState(currentTime);
 
+        using (var eventspan = new TraceSpan("onBeforeVesselRecord"))
+            onBeforeVesselRecord.Fire(this);
         processor.RecordVesselState(vessel, state);
         processor.RecordProtoInventories(vessel);
         using (var eventspan = new TraceSpan("onVesselRecord"))

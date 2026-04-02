@@ -12,8 +12,10 @@ namespace BackgroundResourceProcessing.Integration.SystemHeat;
 // cooling state as it was when the vessel last unloaded) to decide whether
 // boiloff should occur in the background:
 //
-//   BoiloffOccuring = false → cooling was active, no background boiloff
-//   BoiloffOccuring = true  → boiloff was happening, continue it in background
+//   BoiloffOccuring = false → cooling was active; we model the heat-flux draw
+//                             of the cooling system at low priority so that an
+//                             overloaded loop causes boiloff to begin on reload.
+//   BoiloffOccuring = true  → boiloff was happening, continue it in background.
 //
 // OnRestore updates LastUpdateTime so that DoCatchup() (called from Start()
 // on vessel load) computes elapsed ≈ 0 and does not re-apply boiloff that
@@ -30,7 +32,7 @@ public class BackgroundSystemHeatCryoTank : BackgroundConverter<ModuleSystemHeat
             return null;
 
         if (module.CoolingEnabled && module.IsCoolable() && !module.BoiloffOccuring)
-            return null;
+            return GetCoolingBehaviour(module);
 
         List<ConverterBehaviour> behaviours = [];
         foreach (var fuel in module.fuels)
@@ -52,6 +54,30 @@ public class BackgroundSystemHeatCryoTank : BackgroundConverter<ModuleSystemHeat
             return null;
 
         return new ModuleBehaviour(behaviours);
+    }
+
+    private static ModuleBehaviour GetCoolingBehaviour(ModuleSystemHeatCryoTank module)
+    {
+        var marker = module.vessel?.rootPart?.FindModuleImplementing<BRPSystemHeatMarker>();
+        if (marker == null || module.heatModule == null)
+            return null;
+
+        float coolingCost = module.GetTotalCoolingCost();
+        if (coolingCost <= 0)
+            return null;
+
+        var fluxInput = new ResourceRatio()
+        {
+            ResourceName = SystemHeatFlux.ResourceName(module.heatModule.currentLoopID),
+            Ratio = coolingCost,
+            FlowMode = ResourceFlowMode.ALL_VESSEL,
+            DumpExcess = false,
+        };
+
+        var converter = new ConstantConverter([fluxInput], [], []) { Priority = -10 };
+        var behaviour = new ModuleBehaviour(converter);
+        behaviour.AddPullModule(marker);
+        return behaviour;
     }
 
     public override void OnRestore(
