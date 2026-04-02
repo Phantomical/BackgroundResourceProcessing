@@ -7,6 +7,7 @@ using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Converter;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
+using BackgroundResourceProcessing.Utils;
 using Shadow = BackgroundResourceProcessing.ShadowState;
 
 namespace BackgroundResourceProcessing;
@@ -300,27 +301,46 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
     }
 
     /// <summary>
-    /// Get a summary of the total resources currently stored within the
-    /// vessel.
+    /// Get a summary of the resources in this vessel as they were at the last
+    /// changepoint.
     /// </summary>
     /// <returns></returns>
-    public Dictionary<string, InventoryState> GetResourceStates()
+    public Dictionary<string, InventoryState> GetResourceStates() => processor.GetResourceStates();
+
+    /// <summary>
+    /// Get a summary of the resources in this vessel as they are right now.
+    /// </summary>
+    /// <returns></returns>
+    public Dictionary<string, InventoryState> GetCurrentResourceStates()
     {
-        return processor.GetResourceStates();
+        var elapsed = Planetarium.GetUniversalTime() - LastChangepoint;
+        var totals = new Dictionary<string, InventoryState>();
+
+        foreach (var inventory in Inventories)
+        {
+            var state = inventory.State;
+            state.amount += state.rate * elapsed;
+            state.amount = MathUtil.Clamp(state.amount, 0, state.maxAmount);
+
+            if (totals.TryGetValue(inventory.ResourceName, out var existing))
+                state = existing.Merge(state);
+
+            totals[inventory.ResourceName] = state;
+        }
+
+        return totals;
     }
 
     /// <summary>
-    /// Get a summary for a single resource.
+    /// Get a summary for a single resource as it was at the last changepoint.
     /// </summary>
     /// <param name="resourceName"></param>
     /// <returns></returns>
-    public InventoryState GetResourceState(string resourceName)
-    {
-        return GetResourceState(resourceName.GetHashCode());
-    }
+    public InventoryState GetResourceState(string resourceName) =>
+        GetResourceState(resourceName.GetHashCode());
 
     /// <summary>
-    /// Get a summary for a single resource.
+    /// Get a summary for a single resource as it was at the last changepoint.
     /// </summary>
     public InventoryState GetResourceState(int resourceId)
     {
@@ -330,6 +350,31 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
             if (inventory.ResourceId == resourceId)
                 state = state.Merge(inventory.State);
         }
+        return state;
+    }
+
+    /// <summary>
+    /// Get a summary for a single resource as it is right now.
+    /// </summary>
+    /// <param name="resourceName"></param>
+    /// <returns></returns>
+    public InventoryState GetCurrentResourceState(string resourceName) =>
+        GetCurrentResourceState(resourceName.GetHashCode());
+
+    /// <summary>
+    /// Get a summary for a single resource.
+    /// </summary>
+    public InventoryState GetCurrentResourceState(int resourceId)
+    {
+        InventoryState state = default;
+        foreach (var inventory in processor.inventories)
+        {
+            if (inventory.ResourceId == resourceId)
+                state = state.Merge(inventory.State);
+        }
+
+        var elapsed = Planetarium.GetUniversalTime() - LastChangepoint;
+        state.amount += state.rate * elapsed;
         return state;
     }
 
