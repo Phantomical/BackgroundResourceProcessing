@@ -59,7 +59,7 @@ internal partial class DebugUI
             GUILayout.Label(FormatCellNumber(value), CellStyle, GUILayout.ExpandWidth(true));
     }
 
-    static string FormatCellNumber(double n)
+    internal static string FormatCellNumber(double n)
     {
         if (Math.Abs(n) < 0.1)
             return $"{n:g3}";
