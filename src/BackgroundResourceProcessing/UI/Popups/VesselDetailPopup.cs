@@ -117,6 +117,12 @@ internal static class VesselDetailPopup
         DebugUIManager.CreateTableRow(parent, "Type", vessel.vesselType.ToString());
         DebugUIManager.CreateTableRow(parent, "Status", vessel.loaded ? "Loaded" : "Unloaded");
         DebugUIManager.CreateTableRow(parent, "Situation", vessel.SituationString);
+        var shadow = processor.ShadowState;
+        updater.SunlightLabel = DebugUIManager.CreateTableRow(
+            parent,
+            "Sunlight",
+            shadow.HasValue ? (shadow.Value.InShadow ? "In Shadow" : "In Sunlight") : "Unknown"
+        );
         var lastCp = DebugUIManager.CreateTimeRow(
             parent,
             "Last Changepoint",
@@ -130,7 +136,32 @@ internal static class VesselDetailPopup
         updater.LastChangepoint = lastCp;
         updater.NextChangepoint = nextCp;
 
+        var actionRow = DebugUIManager.CreateHorizontalLayout(parent);
+        var dumpBtn = DebugUIManager.CreateButton(actionRow.transform, "Dump Vessel");
+        dumpBtn.onClick.AddListener(() => DumpVessel(vessel, processor));
+
         DebugUIManager.CreateSpacer(parent);
+    }
+
+    static void DumpVessel(Vessel vessel, BackgroundResourceProcessor processor)
+    {
+        var pluginDir = System.IO.Path.GetDirectoryName(
+            System.Reflection.Assembly.GetExecutingAssembly().Location
+        );
+        var exportDir = System.IO.Path.Combine(pluginDir, @"..\Exports");
+        System.IO.Directory.CreateDirectory(exportDir);
+
+        ConfigNode root = new();
+        ConfigNode node = root.AddNode("BRP_SHIP");
+        processor.Save(node);
+
+        var name = vessel.GetDisplayName();
+        var outputPath = System.IO.Path.GetFullPath(
+            System.IO.Path.Combine(exportDir, $"{name}.cfg.export")
+        );
+        root.Save(outputPath);
+
+        ScreenMessages.PostScreenMessage($"Ship resource graph exported to {outputPath}");
     }
 
     static (Transform content, TableLayoutGroup table) BuildResourcesSection(
@@ -287,6 +318,7 @@ internal static class VesselDetailPopup
 internal class ChangepointUpdater : MonoBehaviour
 {
     internal BackgroundResourceProcessor Processor;
+    internal TextMeshProUGUI SunlightLabel;
     internal RelativeTimeLabel LastChangepoint;
     internal RelativeTimeLabel NextChangepoint;
     internal Transform ResourceContent;
@@ -304,6 +336,14 @@ internal class ChangepointUpdater : MonoBehaviour
 
         if (Processor == null)
             return;
+
+        if (SunlightLabel != null)
+        {
+            var shadow = Processor.ShadowState;
+            SunlightLabel.text = shadow.HasValue
+                ? (shadow.Value.InShadow ? "In Shadow" : "In Sunlight")
+                : "Unknown";
+        }
 
         if (LastChangepoint != null)
             LastChangepoint.UT = Processor.LastChangepoint;

@@ -23,6 +23,9 @@ internal class CurrentVesselScreenContent : MonoBehaviour
     TextMeshProUGUI _vesselStatusLabel;
 
     [SerializeField]
+    TextMeshProUGUI _sunlightLabel;
+
+    [SerializeField]
     RelativeTimeLabel _lastChangepoint;
 
     [SerializeField]
@@ -112,6 +115,7 @@ internal class CurrentVesselScreenContent : MonoBehaviour
 
         _vesselNameLabel = DebugUIManager.CreateTableRow(scrollContent, "Vessel", "—");
         _vesselStatusLabel = DebugUIManager.CreateTableRow(scrollContent, "Status", "—");
+        _sunlightLabel = DebugUIManager.CreateTableRow(scrollContent, "Sunlight", "—");
         _lastChangepoint = DebugUIManager.CreateTimeRow(
             scrollContent,
             "Last Changepoint",
@@ -203,6 +207,7 @@ internal class CurrentVesselScreenContent : MonoBehaviour
         {
             _vesselNameLabel.text = "No active vessel";
             _vesselStatusLabel.text = "—";
+            _sunlightLabel.text = "—";
             _lastChangepoint.UT = double.PositiveInfinity;
             _nextChangepoint.UT = double.PositiveInfinity;
             return;
@@ -213,6 +218,7 @@ internal class CurrentVesselScreenContent : MonoBehaviour
         {
             _vesselNameLabel.text = vessel.GetDisplayName();
             _vesselStatusLabel.text = "No processor";
+            _sunlightLabel.text = "—";
             _lastChangepoint.UT = double.PositiveInfinity;
             _nextChangepoint.UT = double.PositiveInfinity;
             return;
@@ -222,6 +228,10 @@ internal class CurrentVesselScreenContent : MonoBehaviour
 
         _vesselNameLabel.text = vessel.GetDisplayName();
         _vesselStatusLabel.text = vessel.loaded ? "Loaded" : "Unloaded";
+        var shadow = processor.ShadowState;
+        _sunlightLabel.text = shadow.HasValue
+            ? (shadow.Value.InShadow ? "In Shadow" : "In Sunlight")
+            : "Unknown";
         _lastChangepoint.UT = processor.LastChangepoint;
         _nextChangepoint.UT = processor.NextChangepoint;
 
