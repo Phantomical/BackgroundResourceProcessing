@@ -14,18 +14,19 @@
         "resolved": "3.3.0",
         "contentHash": "K5I6v/umxRVzoxQABT1JzLpk0Sj5JzrOZe1iZZXNBCje9PPWfhnAO6FJ3RN6YUHZSlGAAEX5gV7WBbAMxPobIg=="
       },
-      "JsonPoke": {
-        "type": "Transitive",
-        "resolved": "1.2.0",
-        "contentHash": "AW7iyzudTA4VzW3pYjTzy+MucrF+wUWKQulqx/EnqvlqLwVseNk2nqlWpTRySItQCgBv0w7o/dqTN4wj0tWJhA=="
-      },
       "Microsoft.NETFramework.ReferenceAssemblies": {
-        "type": "Transitive",
+        "type": "Direct",
+        "requested": "[1.0.3, )",
         "resolved": "1.0.3",
         "contentHash": "vUc9Npcs14QsyOD01tnv/m8sQUnGTGOw1BCmKcv77LBJY7OxhJ+zJF7UD/sCL3lYNFuqmQEVlkfS4Quif6FyYg==",
         "dependencies": {
           "Microsoft.NETFramework.ReferenceAssemblies.net481": "1.0.3"
         }
+      },
+      "JsonPoke": {
+        "type": "Transitive",
+        "resolved": "1.2.0",
+        "contentHash": "AW7iyzudTA4VzW3pYjTzy+MucrF+wUWKQulqx/EnqvlqLwVseNk2nqlWpTRySItQCgBv0w7o/dqTN4wj0tWJhA=="
       },
       "Microsoft.NETFramework.ReferenceAssemblies.net481": {
         "type": "Transitive",
