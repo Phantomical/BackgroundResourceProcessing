@@ -44,13 +44,15 @@ public class SystemHeatCryoTankBoiloffBehaviour : ConstantProducer
 
         foreach (var output in Outputs)
         {
-            resources.Outputs.Add(new ResourceRatio()
-            {
-                ResourceName = output.ResourceName,
-                Ratio = output.Ratio * rate,
-                FlowMode = output.FlowMode,
-                DumpExcess = true,
-            });
+            resources.Outputs.Add(
+                new ResourceRatio()
+                {
+                    ResourceName = output.ResourceName,
+                    Ratio = output.Ratio * rate,
+                    FlowMode = output.FlowMode,
+                    DumpExcess = true,
+                }
+            );
         }
 
         return resources;

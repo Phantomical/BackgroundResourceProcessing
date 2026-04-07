@@ -38,12 +38,14 @@ public class BackgroundSystemHeatCryoTank : BackgroundConverter<ModuleSystemHeat
             if (!fuel.fuelPresent || fuel.boiloffRateSeconds <= 0)
                 continue;
 
-            behaviours.Add(new SystemHeatCryoTankBoiloffBehaviour(fuel.outputs)
-            {
-                FuelInventoryId = new(module.part, fuel.fuelName),
-                BoiloffRate = fuel.boiloffRateSeconds,
-                MaxError = MaxError,
-            });
+            behaviours.Add(
+                new SystemHeatCryoTankBoiloffBehaviour(fuel.outputs)
+                {
+                    FuelInventoryId = new(module.part, fuel.fuelName),
+                    BoiloffRate = fuel.boiloffRateSeconds,
+                    MaxError = MaxError,
+                }
+            );
         }
 
         if (behaviours.Count == 0)
@@ -52,7 +54,10 @@ public class BackgroundSystemHeatCryoTank : BackgroundConverter<ModuleSystemHeat
         return new ModuleBehaviour(behaviours);
     }
 
-    public override void OnRestore(ModuleSystemHeatCryoTank module, Core.ResourceConverter converter)
+    public override void OnRestore(
+        ModuleSystemHeatCryoTank module,
+        Core.ResourceConverter converter
+    )
     {
         module.LastUpdateTime = Planetarium.GetUniversalTime();
     }
