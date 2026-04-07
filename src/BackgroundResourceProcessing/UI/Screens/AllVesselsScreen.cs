@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using BackgroundResourceProcessing.UI.Components;
 using BackgroundResourceProcessing.UI.Popups;
 using TMPro;
 using UnityEngine;
@@ -19,6 +20,8 @@ internal class AllVesselsScreenContent : MonoBehaviour
 
     [SerializeField]
     GameObject _scrollContainer;
+
+    readonly List<VesselEntry> _entries = [];
 
     internal static RectTransform CreatePrefab()
     {
@@ -91,12 +94,34 @@ internal class AllVesselsScreenContent : MonoBehaviour
 
     void OnEnable()
     {
+        BackgroundResourceProcessor.onAfterVesselChangepoint.Add(OnChangepoint);
+        GameEvents.onVesselDestroy.Add(OnVesselDestroy);
         Populate();
     }
 
     void OnDisable()
     {
+        BackgroundResourceProcessor.onAfterVesselChangepoint.Remove(OnChangepoint);
+        GameEvents.onVesselDestroy.Remove(OnVesselDestroy);
         ClearDynamic();
+    }
+
+    void OnChangepoint(BackgroundResourceProcessor _)
+    {
+        foreach (var entry in _entries)
+            entry.Refresh();
+    }
+
+    void OnVesselDestroy(Vessel vessel)
+    {
+        for (int i = _entries.Count - 1; i >= 0; i--)
+        {
+            if (_entries[i].Vessel == vessel)
+            {
+                _entries[i].Destroy();
+                _entries.RemoveAt(i);
+            }
+        }
     }
 
     void Populate()
@@ -151,14 +176,14 @@ internal class AllVesselsScreenContent : MonoBehaviour
 
             foreach (var entry in group.Value)
             {
-                BuildVesselEntry(entry.vessel, entry.processor);
+                _entries.Add(BuildVesselEntry(entry.vessel, entry.processor));
             }
 
             DebugUIManager.CreateSpacer(_scrollContent);
         }
     }
 
-    void BuildVesselEntry(Vessel vessel, BackgroundResourceProcessor processor)
+    VesselEntry BuildVesselEntry(Vessel vessel, BackgroundResourceProcessor processor)
     {
         // Header row: [View] VesselName   Loaded/Unloaded
         var headerRow = DebugUIManager.CreateHorizontalLayout(_scrollContent);
@@ -194,7 +219,67 @@ internal class AllVesselsScreenContent : MonoBehaviour
             statusLE.flexibleWidth = 0f;
         }
 
-        var states = processor.GetCurrentResourceStates();
+        // Resource detail container
+        var detailGo = new GameObject("VesselDetail", typeof(RectTransform));
+        detailGo.transform.SetParent(_scrollContent, false);
+        var detailVlg = detailGo.AddComponent<VerticalLayoutGroup>();
+        detailVlg.childAlignment = TextAnchor.UpperLeft;
+        detailVlg.childControlWidth = true;
+        detailVlg.childControlHeight = true;
+        detailVlg.childForceExpandWidth = true;
+        detailVlg.childForceExpandHeight = false;
+        detailVlg.spacing = 2f;
+
+        var entry = new VesselEntry
+        {
+            Vessel = vessel,
+            Processor = processor,
+            HeaderRow = headerRow,
+            StatusLabel = statusLabel,
+            DetailContent = detailGo.transform,
+        };
+        entry.Refresh();
+        return entry;
+    }
+
+    void ClearDynamic()
+    {
+        _entries.Clear();
+        if (_scrollContent == null)
+            return;
+        for (int i = _scrollContent.childCount - 1; i >= 0; i--)
+            Destroy(_scrollContent.GetChild(i).gameObject);
+    }
+}
+
+internal class VesselEntry
+{
+    internal Vessel Vessel;
+    internal BackgroundResourceProcessor Processor;
+    internal GameObject HeaderRow;
+    internal TextMeshProUGUI StatusLabel;
+    internal Transform DetailContent;
+
+    static readonly Color StatusGood = new(0.35f, 1.0f, 0.35f);
+
+    internal void Refresh()
+    {
+        if (Processor == null || DetailContent == null)
+            return;
+
+        // Update status
+        if (StatusLabel != null)
+        {
+            var loaded = Processor.Vessel != null && Processor.Vessel.loaded;
+            StatusLabel.text = loaded ? "Loaded" : "Unloaded";
+            StatusLabel.color = loaded ? StatusGood : Color.white;
+        }
+
+        // Clear and rebuild resource lines
+        for (int i = DetailContent.childCount - 1; i >= 0; i--)
+            Object.Destroy(DetailContent.GetChild(i).gameObject);
+
+        var states = Processor.GetCurrentResourceStates();
         var defs = PartResourceLibrary.Instance.resourceDefinitions;
         foreach (var kvp in states.OrderBy(kvp => kvp.Key))
         {
@@ -204,28 +289,25 @@ internal class AllVesselsScreenContent : MonoBehaviour
             var rateStr = state.rate != 0.0 ? $" ({DebugUI.FormatCellNumber(state.rate)}/s)" : "";
 
             DebugUIManager.CreateLabel(
-                _scrollContent,
+                DetailContent,
                 $"    {displayName}: {DebugUI.FormatCellNumber(state.amount)} / {DebugUI.FormatCellNumber(state.maxAmount)}{rateStr}"
             );
         }
 
         // Converter/changepoint info
-        var convCount = processor.Converters.Count;
+        var convCount = Processor.Converters.Count;
         var cpLabel = DebugUIManager.CreateLabel(
-            _scrollContent,
+            DetailContent,
             $"    {convCount} converter(s), next changepoint: "
         );
-        var cpTime =
-            cpLabel.transform.parent.gameObject.AddComponent<Components.RelativeTimeLabel>();
-        cpTime.UT = processor.NextChangepoint;
+        var cpTime = cpLabel.transform.parent.gameObject.AddComponent<RelativeTimeLabel>();
+        cpTime.UT = Processor.NextChangepoint;
         cpTime.Prefix = $"    {convCount} converter(s), next changepoint: ";
     }
 
-    void ClearDynamic()
+    internal void Destroy()
     {
-        if (_scrollContent == null)
-            return;
-        for (int i = _scrollContent.childCount - 1; i >= 0; i--)
-            Destroy(_scrollContent.GetChild(i).gameObject);
+        Object.Destroy(HeaderRow);
+        Object.Destroy(DetailContent.gameObject);
     }
 }
