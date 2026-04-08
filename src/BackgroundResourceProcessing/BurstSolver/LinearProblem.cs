@@ -6,6 +6,7 @@ using BackgroundResourceProcessing.Utils;
 using Unity.Burst;
 using Unity.Burst.CompilerServices;
 using Unity.Collections;
+using UnityEngine;
 using static BackgroundResourceProcessing.BurstSolver.LinearPresolve;
 using static BackgroundResourceProcessing.Collections.KeyValuePairExt;
 
@@ -727,10 +728,81 @@ internal struct LinearProblem(AllocatorHandle allocator)
     }
 
     [BurstDiscard]
+    private readonly void TraceInitialProblemManaged(LinearEquation func)
+    {
+        LogUtil.Log($"\nMaximize Z = {func}\nsubject to\n{this}");
+    }
+
     private readonly void TraceInitialProblem(LinearEquation func)
     {
-        if (BurstUtil.SolverTrace)
-            LogUtil.Log($"\nMaximize Z = {func}\nsubject to\n{this}");
+        if (!BurstUtil.SolverTrace)
+            return;
+
+        if (!BurstUtil.IsBurstCompiled)
+        {
+            TraceInitialProblemManaged(func);
+            return;
+        }
+
+        FixedString512 line = "[BRP Solver] Maximize Z = ";
+        func.AppendToFixedString(ref line);
+        Debug.Log(line);
+
+        Debug.Log((FixedString64)"[BRP Solver] subject to");
+
+        foreach (var equality in equalities)
+        {
+            line = "[BRP Solver]   ";
+            equality.variables.AppendToFixedString(ref line);
+            line.Append((FixedString32)" == ");
+            line.Append((FixedString32)$"{equality.constant}");
+            Debug.Log(line);
+        }
+
+        for (int i = 0; i < simple.Count; ++i)
+        {
+            ref var s = ref simple[i];
+            line = "[BRP Solver]   ";
+            AppendVariable(ref line, s.variable);
+            line.Append((FixedString32)" <= ");
+            line.Append((FixedString32)$"{s.constant}");
+            Debug.Log(line);
+        }
+
+        foreach (var constraint in constraints)
+        {
+            line = "[BRP Solver]   ";
+            constraint.variables.AppendToFixedString(ref line);
+            line.Append((FixedString32)" <= ");
+            line.Append((FixedString32)$"{constraint.constant}");
+            Debug.Log(line);
+        }
+
+        foreach (var or in disjunctions)
+        {
+            line = "[BRP Solver]   (";
+            or.lhs.variables.AppendToFixedString(ref line);
+            line.Append((FixedString32)" <= ");
+            line.Append((FixedString32)$"{or.lhs.constant}");
+            line.Append((FixedString32)" || ");
+            or.rhs.variables.AppendToFixedString(ref line);
+            line.Append((FixedString32)" <= ");
+            line.Append((FixedString32)$"{or.rhs.constant}");
+            line.Append(')');
+            Debug.Log(line);
+        }
+    }
+
+    private static void AppendVariable(ref FixedString512 s, Variable v)
+    {
+        if (v.Coef != 1.0)
+        {
+            s.Append((FixedString32)$"{v.Coef}");
+            s.Append('*');
+        }
+        FixedString32 varName = "x";
+        varName.Append(v.Index);
+        s.Append(varName);
     }
 
     [BurstDiscard]
@@ -1103,6 +1175,49 @@ internal struct LinearProblem(AllocatorHandle allocator)
                 builder.Append(" - ");
             else
                 builder.Append(" + ");
+
+            builder.Append(var);
+        }
+    }
+
+    internal static void RenderCoef(
+        ref FixedString512 builder,
+        double coef,
+        in FixedString32 var,
+        ref bool first
+    )
+    {
+        if (coef == 0.0)
+            return;
+
+        if (Math.Abs(coef) != 1.0)
+        {
+            if (first)
+            {
+                builder.Append((FixedString32)$"{coef}");
+                first = false;
+            }
+            else if (coef < 0)
+                builder.Append((FixedString32)$" - {-coef}");
+            else
+                builder.Append((FixedString32)$" + {coef}");
+
+            builder.Append('*');
+            builder.Append(var);
+        }
+        else
+        {
+            if (first)
+            {
+                if (coef < 0.0)
+                    builder.Append('-');
+
+                first = false;
+            }
+            else if (coef < 0.0)
+                builder.Append((FixedString32)" - ");
+            else
+                builder.Append((FixedString32)" + ");
 
             builder.Append(var);
         }

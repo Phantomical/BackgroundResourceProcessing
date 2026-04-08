@@ -1,12 +1,12 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
 using Unity.Burst;
+using Unity.Collections;
 using static BackgroundResourceProcessing.Collections.KeyValuePairExt;
 
 namespace BackgroundResourceProcessing.BurstSolver;
@@ -110,15 +110,22 @@ internal static class Solver
 
         var converterMap = new RawIntMap<int>(converterCount, allocator);
         int index = 0;
-        foreach (var converterId in graph.converters.Keys)
-            converterMap.Add(converterId, index++);
+        // NOTE: All foreach loops in this method have been converted to
+        // manual while loops to work around a Burst compiler bug where
+        // nested foreach try-finally state machines are miscompiled,
+        // causing inner loops to skip and the outer loop to terminate
+        // after a single iteration.
+        var keyEnum = graph.converters.Keys.GetEnumerator();
+        while (keyEnum.MoveNext())
+            converterMap.Add(keyEnum.Current, index++);
 
         var problem = new LinearProblem(allocator);
         var rates = problem.CreateVariables(graph.converters.Count);
 
-        foreach (var rate in rates)
+        var rateEnum = rates.GetEnumerator();
+        while (rateEnum.MoveNext())
         {
-            if (!problem.AddConstraint(rate <= 1.0).Match(out err))
+            if (!problem.AddConstraint(rateEnum.Current <= 1.0).Match(out err))
                 return err;
         }
 
@@ -137,8 +144,10 @@ internal static class Solver
         // The object function that we are optimizing.
         LinearEquation func = new(problem.VariableCount, allocator);
 
-        foreach (var converterId in graph.converters.Keys)
+        keyEnum = graph.converters.Keys.GetEnumerator();
+        while (keyEnum.MoveNext())
         {
+            var converterId = keyEnum.Current;
             ref var converter = ref graph.converters[converterId];
             var varId = converterMap[converterId];
             var alpha = rates[varId];
@@ -148,14 +157,18 @@ internal static class Solver
             var inputInvs = graph.inputs.GetConverterEntry(converterId);
             var outputInvs = graph.outputs.GetConverterEntry(converterId);
 
-            foreach (var (resource, input) in converter.inputs)
+            var inputEnum = converter.inputs.GetEnumerator();
+            while (inputEnum.MoveNext())
             {
+                var (resource, input) = inputEnum.Current;
                 var rate = input.Ratio * alpha;
 
                 connected.Clear();
 
-                foreach (var invId in inputInvs)
+                var inputInvEnum = inputInvs.GetEnumerator();
+                while (inputInvEnum.MoveNext())
                 {
+                    var invId = inputInvEnum.Current;
                     if (graph.inventories[invId].resourceId != resource)
                         continue;
                     connected.Add(invId);
@@ -177,6 +190,7 @@ internal static class Solver
                     var invId = connected[0];
                     if (!iRates.ContainsKey(invId))
                         iRates.Add(invId, new LinearEquation(problem.VariableCount * 2, allocator));
+
                     iRates[invId].Sub(rate);
 
                     if (dRates.ContainsKey(invId))
@@ -213,14 +227,18 @@ internal static class Solver
                 }
             }
 
-            foreach (var (resource, output) in converter.outputs)
+            var outputEnum = converter.outputs.GetEnumerator();
+            while (outputEnum.MoveNext())
             {
+                var (resource, output) = outputEnum.Current;
                 var rate = output.Ratio * alpha;
 
                 connected.Clear();
 
-                foreach (var invId in outputInvs)
+                var outputInvEnum = outputInvs.GetEnumerator();
+                while (outputInvEnum.MoveNext())
                 {
+                    var invId = outputInvEnum.Current;
                     if (graph.inventories[invId].resourceId != resource)
                         continue;
                     connected.Add(invId);
@@ -295,8 +313,10 @@ internal static class Solver
             }
         }
 
-        foreach (var converterId in graph.converters.Keys)
+        keyEnum = graph.converters.Keys.GetEnumerator();
+        while (keyEnum.MoveNext())
         {
+            var converterId = keyEnum.Current;
             ref var converter = ref graph.converters[converterId];
             if (converter.constraints.Count == 0)
                 continue;
@@ -318,8 +338,12 @@ internal static class Solver
             // relevant constraints.
 
             constraintEqs.Clear();
-            foreach (var inventoryId in graph.constraints.GetConverterEntry(converterId))
+            var constraintInvEnum = graph
+                .constraints.GetConverterEntry(converterId)
+                .GetEnumerator();
+            while (constraintInvEnum.MoveNext())
             {
+                var inventoryId = constraintInvEnum.Current;
                 var inventory = graph.inventories[inventoryId];
                 if (!converter.constraints.ContainsKey(inventory.resourceId))
                     continue;
@@ -339,8 +363,10 @@ internal static class Solver
                 eq.Add(irate);
             }
 
-            foreach (var (resource, constraint) in converter.constraints)
+            var constraintEnum = converter.constraints.GetEnumerator();
+            while (constraintEnum.MoveNext())
             {
+                var (resource, constraint) = constraintEnum.Current;
                 // If the constrained resource does not have a total rate
                 // then its rate is 0 and we can skip emitting the constraint
                 // since it will always be true.
@@ -361,8 +387,10 @@ internal static class Solver
             }
         }
 
-        foreach (var inventoryId in graph.inventories.Keys)
+        var inventoryKeyEnum = graph.inventories.Keys.GetEnumerator();
+        while (inventoryKeyEnum.MoveNext())
         {
+            var inventoryId = inventoryKeyEnum.Current;
             ref var inventory = ref graph.inventories[inventoryId];
 
             // The inventory is unconstrained. There is nothing we need to
@@ -416,14 +444,17 @@ internal static class Solver
         if (!problem.Maximize(func).Match(out var soln, out err))
             return err;
 
-        foreach (var (invId, iRate) in iRates)
+        var iRatesEnum = iRates.GetEnumerator();
+        while (iRatesEnum.MoveNext())
         {
+            var (invId, iRate) = iRatesEnum.Current;
             double rate = 0.0;
             double norm = 0.0;
 
-            foreach (var var in iRate)
+            var varEnum = iRate.GetEnumerator();
+            while (varEnum.MoveNext())
             {
-                var eval = soln.Evaluate(var);
+                var eval = soln.Evaluate(varEnum.Current);
 
                 rate += eval;
                 norm += Math.Abs(eval);
@@ -462,10 +493,12 @@ internal static class Solver
                 continue;
 
             int? count = null;
-            foreach (var realId in new ClassEnumerator(graph.inventoryIds, inventory.baseId))
+            var classEnum1 = new ClassEnumerator(graph.inventoryIds, inventory.baseId);
+            while (classEnum1.MoveNext())
             {
+                var realId = classEnum1.Current;
                 var summary = summaries[realId];
-                double frac = 0.0;
+                double frac;
                 if (!MathUtil.IsFinite(total))
                 {
                     count ??= new ClassEnumerator(graph.inventoryIds, inventory.baseId).Count();
@@ -480,12 +513,15 @@ internal static class Solver
             }
         }
 
-        foreach (var (convId, varId) in converterMap)
+        var converterMapEnum = converterMap.GetEnumerator();
+        while (converterMapEnum.MoveNext())
         {
-            var rate = soln[rates[varId]];
+            var (convId, varId2) = converterMapEnum.Current;
+            var rate = soln[rates[varId2]];
             var converter = graph.converters[convId];
-            foreach (var realId in new ClassEnumerator(graph.converterIds, converter.baseId))
-                converterRates[realId] = rate;
+            var classEnum2 = new ClassEnumerator(graph.converterIds, converter.baseId);
+            while (classEnum2.MoveNext())
+                converterRates[classEnum2.Current] = rate;
         }
 
         return Result.Ok;
@@ -502,7 +538,7 @@ internal static class Solver
         return summaries;
     }
 
-    [DebuggerDisplay("{amount}/{maxAmount}")]
+    [System.Diagnostics.DebuggerDisplay("{amount}/{maxAmount}")]
     private struct InventorySummary(GraphInventory inventory)
     {
         public double amount = inventory.amount;

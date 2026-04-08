@@ -6,6 +6,7 @@ using System.Text;
 using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Utils;
 using Unity.Burst.CompilerServices;
+using Unity.Collections;
 
 namespace BackgroundResourceProcessing.BurstSolver;
 
@@ -310,9 +311,23 @@ internal struct LinearEquation(RawList<double> values)
             LinearProblem.RenderCoef(builder, coef, new Variable(index).ToString(), ref first);
 
         if (first)
-            builder.Append("0");
+            builder.Append('0');
 
         return builder.ToString();
+    }
+
+    public readonly void AppendToFixedString(ref FixedString512 builder)
+    {
+        bool first = true;
+        foreach (var (index, coef) in this)
+        {
+            FixedString32 varName = "x";
+            varName.Append(index);
+            LinearProblem.RenderCoef(ref builder, coef, in varName, ref first);
+        }
+
+        if (first)
+            builder.Append('0');
     }
     #endregion
 }

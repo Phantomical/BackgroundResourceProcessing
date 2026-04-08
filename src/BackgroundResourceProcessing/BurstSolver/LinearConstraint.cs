@@ -2,7 +2,7 @@ using System;
 using System.Text;
 using BackgroundResourceProcessing.Collections.Burst;
 using Unity.Burst;
-using Unity.Burst.CompilerServices;
+using Unity.Collections;
 
 namespace BackgroundResourceProcessing.BurstSolver;
 
@@ -94,6 +94,29 @@ internal struct LinearConstraint : IComparable<LinearConstraint>
         builder.Append(constant);
 
         return builder.ToString();
+    }
+
+    public readonly void AppendToFixedString(ref FixedString512 builder)
+    {
+        if (variables.Count == 0)
+            builder.Append((FixedString32)"0.0");
+        else
+            variables.AppendToFixedString(ref builder);
+
+        switch (relation)
+        {
+            case Relation.LEqual:
+                builder.Append((FixedString32)" <= ");
+                break;
+            case Relation.GEqual:
+                builder.Append((FixedString32)" >= ");
+                break;
+            case Relation.Equal:
+                builder.Append((FixedString32)" == ");
+                break;
+        }
+
+        builder.Append((FixedString32)$"{constant}");
     }
 
     public int CompareTo(LinearConstraint other)
