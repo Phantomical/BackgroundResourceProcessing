@@ -51,7 +51,6 @@ internal class EventRouter : MonoBehaviour
             return;
 
         DebugSettings.Instance = settings;
-        BurstSolver.BurstUtil.SetSolverTrace(settings.SolverTrace);
     }
 
     private void OnGameDatabaseLoaded()

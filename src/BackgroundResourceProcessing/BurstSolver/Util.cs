@@ -58,17 +58,21 @@ internal static class BurstUtil
         }
     }
 
-    // SharedStatic so SolverTrace is readable from burst-compiled code.
-    // Updated from managed code via SetSolverTrace whenever settings change.
-    private struct SolverTraceTag { }
+    internal static bool SolverTrace
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get
+        {
+            [BurstDiscard]
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            static void Managed(ref bool trace) =>
+                trace = DebugSettings.Instance?.SolverTrace ?? false;
 
-    static readonly SharedStatic<bool> SolverTraceStatic =
-        SharedStatic<bool>.GetOrCreate<SolverTraceTag>();
-
-    internal static bool SolverTrace => SolverTraceStatic.Data;
-
-    [BurstDiscard]
-    internal static void SetSolverTrace(bool value) => SolverTraceStatic.Data = value;
+            bool trace = false;
+            Managed(ref trace);
+            return trace;
+        }
+    }
 
     internal static T Take<T>(ref T item)
     {
