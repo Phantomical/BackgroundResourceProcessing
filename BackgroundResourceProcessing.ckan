@@ -10,8 +10,8 @@ depends:
   - name: Harmony2
     min_version: 2.2.1
   - name: KSPBurst
-    min_version: 1.5.5.2
+    min_version: 1.7.4.11
 
 recommends:
   - name: KSPBurst-Full
-    min_version: 1.5.5.2
+    min_version: 1.7.4.11

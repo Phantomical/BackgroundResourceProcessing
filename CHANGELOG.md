@@ -12,6 +12,20 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ## Unreleased
 
+## v0.2.8
+### Added
+* Added support for `ModuleSystemHeatCryoTank`
+* Added a much more useful debug UI in the Alt+F12 menu, replacing the old one.
+
+### Fixed
+* Fixed an issue where the solution cache would occasionally reuse a solution
+  when it was not supposed to.
+* Worked around a burst miscompilation that was causing incorrect resource rates
+  on background ships.
+
+### Changed
+* BRP now depends on KSPBurst v1.7.4.11 or newer.
+
 ## v0.2.7
 ### Fixed
 * Fixed an issue where BRP was breaking KSPBurst by causing burst-compiled
