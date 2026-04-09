@@ -234,15 +234,18 @@ internal static class VesselDetailPopup
             DebugUIManager.CreateDirectLabel(content, displayName);
             var a = DebugUIManager.CreateDirectLabel(
                 content,
-                DebugUI.FormatCellNumber(state.amount)
+                DebugUIManager.FormatCellNumber(state.amount)
             );
             a.alignment = TextAlignmentOptions.MidlineRight;
             var c = DebugUIManager.CreateDirectLabel(
                 content,
-                DebugUI.FormatCellNumber(state.maxAmount)
+                DebugUIManager.FormatCellNumber(state.maxAmount)
             );
             c.alignment = TextAlignmentOptions.MidlineRight;
-            var r = DebugUIManager.CreateDirectLabel(content, DebugUI.FormatCellNumber(state.rate));
+            var r = DebugUIManager.CreateDirectLabel(
+                content,
+                DebugUIManager.FormatCellNumber(state.rate)
+            );
             r.alignment = TextAlignmentOptions.MidlineRight;
         }
     }
@@ -294,19 +297,19 @@ internal static class VesselDetailPopup
 
             DebugUIManager.CreateLabel(
                 content,
-                $"  Rate: {DebugUI.FormatCellNumber(converter.Rate)}"
+                $"  Rate: {DebugUIManager.FormatCellNumber(converter.Rate)}"
             );
 
             foreach (var input in converter.Inputs)
                 DebugUIManager.CreateLabel(
                     content,
-                    $"  INPUT: {input.Value.ResourceName} x{DebugUI.FormatCellNumber(input.Value.Ratio)}"
+                    $"  INPUT: {input.Value.ResourceName} x{DebugUIManager.FormatCellNumber(input.Value.Ratio)}"
                 );
 
             foreach (var output in converter.Outputs)
                 DebugUIManager.CreateLabel(
                     content,
-                    $"  OUTPUT: {output.Value.ResourceName} x{DebugUI.FormatCellNumber(output.Value.Ratio)}"
+                    $"  OUTPUT: {output.Value.ResourceName} x{DebugUIManager.FormatCellNumber(output.Value.Ratio)}"
                 );
 
             DebugUIManager.CreateSpacer(content, 4f);

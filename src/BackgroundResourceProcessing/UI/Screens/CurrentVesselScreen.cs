@@ -284,17 +284,17 @@ internal class CurrentVesselScreenContent : MonoBehaviour
             DebugUIManager.CreateDirectLabel(_resourceContent, displayName);
             var amountLabel = DebugUIManager.CreateDirectLabel(
                 _resourceContent,
-                DebugUI.FormatCellNumber(state.amount)
+                DebugUIManager.FormatCellNumber(state.amount)
             );
             amountLabel.alignment = TextAlignmentOptions.MidlineRight;
             var capLabel = DebugUIManager.CreateDirectLabel(
                 _resourceContent,
-                DebugUI.FormatCellNumber(state.maxAmount)
+                DebugUIManager.FormatCellNumber(state.maxAmount)
             );
             capLabel.alignment = TextAlignmentOptions.MidlineRight;
             var rateLabel = DebugUIManager.CreateDirectLabel(
                 _resourceContent,
-                DebugUI.FormatCellNumber(state.rate)
+                DebugUIManager.FormatCellNumber(state.rate)
             );
             rateLabel.alignment = TextAlignmentOptions.MidlineRight;
         }
@@ -326,19 +326,19 @@ internal class CurrentVesselScreenContent : MonoBehaviour
 
             DebugUIManager.CreateLabel(
                 _converterContent,
-                $"  Rate: {DebugUI.FormatCellNumber(converter.Rate)}"
+                $"  Rate: {DebugUIManager.FormatCellNumber(converter.Rate)}"
             );
 
             foreach (var input in converter.Inputs)
                 DebugUIManager.CreateLabel(
                     _converterContent,
-                    $"  INPUT: {input.Value.ResourceName} x{DebugUI.FormatCellNumber(input.Value.Ratio)}"
+                    $"  INPUT: {input.Value.ResourceName} x{DebugUIManager.FormatCellNumber(input.Value.Ratio)}"
                 );
 
             foreach (var output in converter.Outputs)
                 DebugUIManager.CreateLabel(
                     _converterContent,
-                    $"  OUTPUT: {output.Value.ResourceName} x{DebugUI.FormatCellNumber(output.Value.Ratio)}"
+                    $"  OUTPUT: {output.Value.ResourceName} x{DebugUIManager.FormatCellNumber(output.Value.Ratio)}"
                 );
 
             DebugUIManager.CreateSpacer(_converterContent, 4f);
@@ -367,15 +367,6 @@ internal class ExportShipButton : DebugScreenButton
 {
     protected override void OnClick()
     {
-        // Reuse the existing export logic from the IMGUI debug UI
-        var debugUI = Object.FindObjectOfType<DebugUI>();
-        if (debugUI != null)
-        {
-            debugUI.DumpCurrentVessel();
-            return;
-        }
-
-        // Fallback: do it directly if the IMGUI UI isn't active
         var vessel = FlightGlobals.ActiveVessel;
         if (vessel == null)
         {

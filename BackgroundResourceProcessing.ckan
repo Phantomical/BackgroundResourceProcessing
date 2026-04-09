@@ -12,10 +12,6 @@ depends:
   - name: KSPBurst
     min_version: 1.5.5.2
 
-suggests:
-  - name: ClickThroughBlocker
-    min_version: 2.1.10
-
 recommends:
   - name: KSPBurst-Full
     min_version: 1.5.5.2

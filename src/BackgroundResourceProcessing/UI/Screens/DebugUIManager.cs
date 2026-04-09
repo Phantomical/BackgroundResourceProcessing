@@ -14,6 +14,13 @@ namespace BackgroundResourceProcessing.UI.Screens;
 /// </summary>
 internal static class DebugUIManager
 {
+    internal static string FormatCellNumber(double n)
+    {
+        if (System.Math.Abs(n) < 0.1)
+            return $"{n:g3}";
+        return $"{n:N}";
+    }
+
     static GameObject _labelPrefab;
     static GameObject _buttonPrefab;
     static GameObject _togglePrefab;

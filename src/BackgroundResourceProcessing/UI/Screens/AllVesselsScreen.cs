@@ -286,11 +286,12 @@ internal class VesselEntry
             var def = defs[kvp.Key];
             var displayName = def != null ? def.displayName : kvp.Key;
             var state = kvp.Value;
-            var rateStr = state.rate != 0.0 ? $" ({DebugUI.FormatCellNumber(state.rate)}/s)" : "";
+            var rateStr =
+                state.rate != 0.0 ? $" ({DebugUIManager.FormatCellNumber(state.rate)}/s)" : "";
 
             DebugUIManager.CreateLabel(
                 DetailContent,
-                $"    {displayName}: {DebugUI.FormatCellNumber(state.amount)} / {DebugUI.FormatCellNumber(state.maxAmount)}{rateStr}"
+                $"    {displayName}: {DebugUIManager.FormatCellNumber(state.amount)} / {DebugUIManager.FormatCellNumber(state.maxAmount)}{rateStr}"
             );
         }
 
