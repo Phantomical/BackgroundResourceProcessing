@@ -40,9 +40,6 @@ internal class MainScreenContent : MonoBehaviour
         DebugUIManager.CreateHeader(parent, "Debug Settings");
         DebugUIManager.CreateSeparator(parent);
 
-        DebugUIManager.CreateToggle<DebugUIToggle>(parent, "Debug UI");
-        DebugUIManager.CreateToggle<DebugLoggingToggle>(parent, "Debug Logging");
-        DebugUIManager.CreateToggle<SolverTraceToggle>(parent, "Solver Trace Logging");
         DebugUIManager.CreateToggle<EnableBurstToggle>(parent, "Burst-Accelerated Methods");
         DebugUIManager.CreateToggle<EnableSolutionCacheToggle>(parent, "Solution Cache");
     }
@@ -91,29 +88,6 @@ internal class MainScreenContent : MonoBehaviour
         _totalInventoriesValue.text = totalInventories.ToString();
         _totalConvertersValue.text = totalConverters.ToString();
     }
-}
-
-internal class DebugUIToggle : DebugScreenToggle
-{
-    protected override void SetupValues() => SetToggle(DebugSettings.Instance.DebugUI);
-
-    protected override void OnToggleChanged(bool state) => DebugSettings.Instance.DebugUI = state;
-}
-
-internal class DebugLoggingToggle : DebugScreenToggle
-{
-    protected override void SetupValues() => SetToggle(DebugSettings.Instance.DebugLogging);
-
-    protected override void OnToggleChanged(bool state) =>
-        DebugSettings.Instance.DebugLogging = state;
-}
-
-internal class SolverTraceToggle : DebugScreenToggle
-{
-    protected override void SetupValues() => SetToggle(DebugSettings.Instance.SolverTrace);
-
-    protected override void OnToggleChanged(bool state) =>
-        DebugSettings.Instance.SolverTrace = state;
 }
 
 internal class EnableBurstToggle : DebugScreenToggle

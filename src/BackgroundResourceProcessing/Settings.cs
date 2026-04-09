@@ -1,5 +1,3 @@
-using System.Reflection;
-
 namespace BackgroundResourceProcessing;
 
 // See "Modders notes for KSP 1.2" for a description of how to use this.
@@ -22,20 +20,9 @@ public class DebugSettings : GameParameters.CustomParameterNode
     public override bool HasPresets => false;
     public override GameParameters.GameMode GameMode => GameParameters.GameMode.ANY;
 
-    [GameParameters.CustomParameterUI("Enable the Debug UI?")]
-    public bool DebugUI = false;
+    internal bool DebugLogging = false;
 
-    [GameParameters.CustomParameterUI(
-        "Enable Debug Logging?",
-        toolTip = "Enable verbose debug output to KSP.log."
-    )]
-    public bool DebugLogging = false;
-
-    [GameParameters.CustomParameterUI(
-        "Enable Solver Trace Logging?",
-        toolTip = "Enable extraordinarily verbose logging of internal solver states. You don't need this unless you are debugging BRP itself."
-    )]
-    public bool SolverTrace = false;
+    internal bool SolverTrace = false;
 
     [GameParameters.CustomParameterUI("Enable Burst-Accelerated Methods")]
     public bool EnableBurst = true;
@@ -48,16 +35,6 @@ public class DebugSettings : GameParameters.CustomParameterNode
     /// allocator never actually frees anything.
     /// </summary>
     internal bool UseTestAllocator = false;
-
-    public override bool Enabled(MemberInfo member, GameParameters parameters)
-    {
-        return member.Name switch
-        {
-            // We only show the solver trace flag if debug logging is enabled.
-            "SolverTrace" => DebugLogging,
-            _ => true,
-        };
-    }
 
     /// <summary>
     /// Configure the debug settings to disable anything that cannot be used
