@@ -1,15 +1,12 @@
 using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Mathematics;
+using KSP.Testing;
 using BRPOrbit = BackgroundResourceProcessing.Mathematics.Orbit;
 
 namespace BackgroundResourceProcessing.Test.Mathematics;
 
-[TestClass]
-public sealed class OrbitTests
+public sealed class OrbitTests : BRPTestBase
 {
-    [TestCleanup]
-    public void Cleanup() => TestAllocator.Cleanup();
-
     static readonly BRPOrbit circular = new()
     {
         ArgumentOfPeriapsis = 240.076778361441,
@@ -34,7 +31,7 @@ public sealed class OrbitTests
 
     static readonly double CurrentUT = 1223.88227020244;
 
-    [TestMethod]
+    [TestInfo("OrbitTests_TestGetUTAtKnownTA")]
     public void TestGetUTAtKnownTA()
     {
         var tA = 1.65069858643016;
@@ -43,7 +40,7 @@ public sealed class OrbitTests
         Assert.AreEqual(2895.60450391238, UT, 1e-6);
     }
 
-    [TestMethod]
+    [TestInfo("OrbitTests_TestGetObTAtKnownTA")]
     public void TestGetObTAtKnownTA()
     {
         var tA = 1.65069858643016;
@@ -52,7 +49,7 @@ public sealed class OrbitTests
         Assert.AreEqual(878.379163815299, ObT, 1e-6);
     }
 
-    [TestMethod]
+    [TestInfo("OrbitTests_TestGetEccAnomalyAtKnownTA")]
     public void TestGetEccAnomalyAtKnownTA()
     {
         var tA = 1.65069858643016;

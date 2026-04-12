@@ -1,12 +1,12 @@
 using BackgroundResourceProcessing.Utils;
+using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.Utils;
 
 /// <summary>
 /// Tests for boolean/logical expressions in field expressions.
 /// </summary>
-[TestClass]
-public sealed class FieldExpressionLogicTests
+public sealed class FieldExpressionLogicTests : BRPTestBase
 {
     class LogicTestModule : PartModule
     {
@@ -26,21 +26,21 @@ public sealed class FieldExpressionLogicTests
 
     #region Basic Boolean Operators
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_LogicalNot_True")]
     public void LogicalNot_True()
     {
         var expr = FieldExpression<bool>.Compile("!true", new(), typeof(LogicTestModule));
         Assert.AreEqual(false, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_LogicalNot_False")]
     public void LogicalNot_False()
     {
         var expr = FieldExpression<bool>.Compile("!false", new(), typeof(LogicTestModule));
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_LogicalNot_Field_True")]
     public void LogicalNot_Field_True()
     {
         var module = new LogicTestModule { trueValue = true };
@@ -48,7 +48,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(false, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_LogicalNot_Field_False")]
     public void LogicalNot_Field_False()
     {
         var module = new LogicTestModule { falseValue = false };
@@ -56,84 +56,84 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_LogicalAnd_TrueTrue")]
     public void LogicalAnd_TrueTrue()
     {
         var expr = FieldExpression<bool>.Compile("true && true", new(), typeof(LogicTestModule));
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_LogicalAnd_TrueFalse")]
     public void LogicalAnd_TrueFalse()
     {
         var expr = FieldExpression<bool>.Compile("true && false", new(), typeof(LogicTestModule));
         Assert.AreEqual(false, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_LogicalAnd_FalseTrue")]
     public void LogicalAnd_FalseTrue()
     {
         var expr = FieldExpression<bool>.Compile("false && true", new(), typeof(LogicTestModule));
         Assert.AreEqual(false, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_LogicalAnd_FalseFalse")]
     public void LogicalAnd_FalseFalse()
     {
         var expr = FieldExpression<bool>.Compile("false && false", new(), typeof(LogicTestModule));
         Assert.AreEqual(false, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_LogicalOr_TrueTrue")]
     public void LogicalOr_TrueTrue()
     {
         var expr = FieldExpression<bool>.Compile("true || true", new(), typeof(LogicTestModule));
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_LogicalOr_TrueFalse")]
     public void LogicalOr_TrueFalse()
     {
         var expr = FieldExpression<bool>.Compile("true || false", new(), typeof(LogicTestModule));
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_LogicalOr_FalseTrue")]
     public void LogicalOr_FalseTrue()
     {
         var expr = FieldExpression<bool>.Compile("false || true", new(), typeof(LogicTestModule));
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_LogicalOr_FalseFalse")]
     public void LogicalOr_FalseFalse()
     {
         var expr = FieldExpression<bool>.Compile("false || false", new(), typeof(LogicTestModule));
         Assert.AreEqual(false, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_LogicalXor_TrueTrue")]
     public void LogicalXor_TrueTrue()
     {
         var expr = FieldExpression<bool>.Compile("true ^ true", new(), typeof(LogicTestModule));
         Assert.AreEqual(false, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_LogicalXor_TrueFalse")]
     public void LogicalXor_TrueFalse()
     {
         var expr = FieldExpression<bool>.Compile("true ^ false", new(), typeof(LogicTestModule));
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_LogicalXor_FalseTrue")]
     public void LogicalXor_FalseTrue()
     {
         var expr = FieldExpression<bool>.Compile("false ^ true", new(), typeof(LogicTestModule));
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_LogicalXor_FalseFalse")]
     public void LogicalXor_FalseFalse()
     {
         var expr = FieldExpression<bool>.Compile("false ^ false", new(), typeof(LogicTestModule));
@@ -144,7 +144,7 @@ public sealed class FieldExpressionLogicTests
 
     #region Boolean Coercion - Null Values
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Coercion_Null_CoercesToFalse")]
     public void Coercion_Null_CoercesToFalse()
     {
         var module = new LogicTestModule { nullObject = null };
@@ -152,7 +152,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(false, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Coercion_NullString_CoercesToFalse")]
     public void Coercion_NullString_CoercesToFalse()
     {
         var module = new LogicTestModule { nullString = null };
@@ -160,7 +160,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(false, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Coercion_NullBool_CoercesToFalse")]
     public void Coercion_NullBool_CoercesToFalse()
     {
         var module = new LogicTestModule { nullBool = null };
@@ -168,7 +168,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(false, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_LogicalNot_Null_CoercesToTrue")]
     public void LogicalNot_Null_CoercesToTrue()
     {
         var module = new LogicTestModule { nullObject = null };
@@ -176,7 +176,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_LogicalAnd_NullAndTrue_ReturnsFalse")]
     public void LogicalAnd_NullAndTrue_ReturnsFalse()
     {
         var module = new LogicTestModule { nullObject = null };
@@ -188,7 +188,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(false, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_LogicalOr_NullOrTrue_ReturnsTrue")]
     public void LogicalOr_NullOrTrue_ReturnsTrue()
     {
         var module = new LogicTestModule { nullObject = null };
@@ -200,7 +200,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_LogicalOr_NullOrFalse_ReturnsFalse")]
     public void LogicalOr_NullOrFalse_ReturnsFalse()
     {
         var module = new LogicTestModule { nullObject = null };
@@ -212,7 +212,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(false, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_LogicalXor_NullXorTrue_ReturnsTrue")]
     public void LogicalXor_NullXorTrue_ReturnsTrue()
     {
         var module = new LogicTestModule { nullObject = null };
@@ -224,7 +224,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_LogicalXor_NullXorFalse_ReturnsFalse")]
     public void LogicalXor_NullXorFalse_ReturnsFalse()
     {
         var module = new LogicTestModule { nullObject = null };
@@ -240,7 +240,7 @@ public sealed class FieldExpressionLogicTests
 
     #region Boolean Coercion - String Values
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Coercion_StringTrue_CaseInsensitive")]
     public void Coercion_StringTrue_CaseInsensitive()
     {
         var module = new LogicTestModule { trueString = "TrUe" };
@@ -248,7 +248,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Coercion_StringFalse_CaseInsensitive")]
     public void Coercion_StringFalse_CaseInsensitive()
     {
         var module = new LogicTestModule { falseString = "FaLsE" };
@@ -256,7 +256,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(false, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Coercion_StringTrue_Lowercase")]
     public void Coercion_StringTrue_Lowercase()
     {
         var module = new LogicTestModule { trueString = "true" };
@@ -264,7 +264,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Coercion_StringFalse_Lowercase")]
     public void Coercion_StringFalse_Lowercase()
     {
         var module = new LogicTestModule { falseString = "false" };
@@ -272,7 +272,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(false, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Coercion_StringTrue_Uppercase")]
     public void Coercion_StringTrue_Uppercase()
     {
         var module = new LogicTestModule { trueString = "TRUE" };
@@ -280,7 +280,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Coercion_StringFalse_Uppercase")]
     public void Coercion_StringFalse_Uppercase()
     {
         var module = new LogicTestModule { falseString = "FALSE" };
@@ -288,7 +288,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(false, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Coercion_EmptyString_CoercesToTrue")]
     public void Coercion_EmptyString_CoercesToTrue()
     {
         var module = new LogicTestModule { emptyString = "" };
@@ -296,7 +296,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Coercion_NonBooleanString_CoercesToTrue")]
     public void Coercion_NonBooleanString_CoercesToTrue()
     {
         var module = new LogicTestModule { emptyString = "hello" };
@@ -308,7 +308,7 @@ public sealed class FieldExpressionLogicTests
 
     #region Boolean Coercion - Numeric Values
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Coercion_NonZeroInt_CoercesToTrue")]
     public void Coercion_NonZeroInt_CoercesToTrue()
     {
         var module = new LogicTestModule { intValue = 42 };
@@ -316,7 +316,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Coercion_ZeroInt_CoercesToTrue")]
     public void Coercion_ZeroInt_CoercesToTrue()
     {
         var module = new LogicTestModule { zero = 0 };
@@ -324,7 +324,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Coercion_NonZeroDouble_CoercesToTrue")]
     public void Coercion_NonZeroDouble_CoercesToTrue()
     {
         var module = new LogicTestModule { doubleValue = 3.14 };
@@ -332,7 +332,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Coercion_ZeroDouble_CoercesToTrue")]
     public void Coercion_ZeroDouble_CoercesToTrue()
     {
         var module = new LogicTestModule { doubleValue = 0.0 };
@@ -340,7 +340,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Coercion_NegativeInt_CoercesToTrue")]
     public void Coercion_NegativeInt_CoercesToTrue()
     {
         var module = new LogicTestModule { intValue = -5 };
@@ -352,7 +352,7 @@ public sealed class FieldExpressionLogicTests
 
     #region Boolean Coercion - Object Values
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Coercion_NonNullObject_CoercesToTrue")]
     public void Coercion_NonNullObject_CoercesToTrue()
     {
         var module = new LogicTestModule { nonNullObject = new object() };
@@ -364,21 +364,21 @@ public sealed class FieldExpressionLogicTests
 
     #region Operator Precedence
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Precedence_NotBeforeAnd")]
     public void Precedence_NotBeforeAnd()
     {
         var expr = FieldExpression<bool>.Compile("!false && true", new(), typeof(LogicTestModule));
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Precedence_NotBeforeOr")]
     public void Precedence_NotBeforeOr()
     {
         var expr = FieldExpression<bool>.Compile("!false || false", new(), typeof(LogicTestModule));
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Precedence_AndBeforeOr")]
     public void Precedence_AndBeforeOr()
     {
         var expr = FieldExpression<bool>.Compile(
@@ -389,7 +389,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(false, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Precedence_AndBeforeOr_Alternative")]
     public void Precedence_AndBeforeOr_Alternative()
     {
         var expr = FieldExpression<bool>.Compile(
@@ -400,7 +400,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Precedence_XorBeforeOr")]
     public void Precedence_XorBeforeOr()
     {
         var expr = FieldExpression<bool>.Compile(
@@ -411,7 +411,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(false, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Precedence_Parentheses_OverrideAnd")]
     public void Precedence_Parentheses_OverrideAnd()
     {
         var expr = FieldExpression<bool>.Compile(
@@ -422,7 +422,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(false, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Precedence_Parentheses_OverrideOr")]
     public void Precedence_Parentheses_OverrideOr()
     {
         var expr = FieldExpression<bool>.Compile(
@@ -433,14 +433,14 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Precedence_MultipleNot")]
     public void Precedence_MultipleNot()
     {
         var expr = FieldExpression<bool>.Compile("!!true", new(), typeof(LogicTestModule));
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Precedence_TripleNot")]
     public void Precedence_TripleNot()
     {
         var expr = FieldExpression<bool>.Compile("!!!false", new(), typeof(LogicTestModule));
@@ -451,63 +451,63 @@ public sealed class FieldExpressionLogicTests
 
     #region Comparison Operators
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Comparison_Equal_Integers")]
     public void Comparison_Equal_Integers()
     {
         var expr = FieldExpression<bool>.Compile("5 == 5", new(), typeof(LogicTestModule));
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Comparison_NotEqual_Integers")]
     public void Comparison_NotEqual_Integers()
     {
         var expr = FieldExpression<bool>.Compile("5 != 3", new(), typeof(LogicTestModule));
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Comparison_LessThan")]
     public void Comparison_LessThan()
     {
         var expr = FieldExpression<bool>.Compile("3 < 5", new(), typeof(LogicTestModule));
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Comparison_LessThanOrEqual")]
     public void Comparison_LessThanOrEqual()
     {
         var expr = FieldExpression<bool>.Compile("5 <= 5", new(), typeof(LogicTestModule));
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Comparison_GreaterThan")]
     public void Comparison_GreaterThan()
     {
         var expr = FieldExpression<bool>.Compile("5 > 3", new(), typeof(LogicTestModule));
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Comparison_GreaterThanOrEqual")]
     public void Comparison_GreaterThanOrEqual()
     {
         var expr = FieldExpression<bool>.Compile("5 >= 5", new(), typeof(LogicTestModule));
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Comparison_Equal_Booleans")]
     public void Comparison_Equal_Booleans()
     {
         var expr = FieldExpression<bool>.Compile("true == true", new(), typeof(LogicTestModule));
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Comparison_NotEqual_Booleans")]
     public void Comparison_NotEqual_Booleans()
     {
         var expr = FieldExpression<bool>.Compile("true != false", new(), typeof(LogicTestModule));
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Comparison_WithFields")]
     public void Comparison_WithFields()
     {
         var module = new LogicTestModule { intValue = 42 };
@@ -519,7 +519,7 @@ public sealed class FieldExpressionLogicTests
 
     #region Complex Expressions
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Complex_AndOrCombination")]
     public void Complex_AndOrCombination()
     {
         var expr = FieldExpression<bool>.Compile(
@@ -530,7 +530,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Complex_NestedParentheses")]
     public void Complex_NestedParentheses()
     {
         var expr = FieldExpression<bool>.Compile(
@@ -541,7 +541,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Complex_WithComparisons")]
     public void Complex_WithComparisons()
     {
         var module = new LogicTestModule { intValue = 10 };
@@ -553,7 +553,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Complex_WithNot")]
     public void Complex_WithNot()
     {
         var module = new LogicTestModule { trueValue = true, falseValue = false };
@@ -565,7 +565,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Complex_AllOperators")]
     public void Complex_AllOperators()
     {
         var expr = FieldExpression<bool>.Compile(
@@ -576,7 +576,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Complex_WithNullCoalescing")]
     public void Complex_WithNullCoalescing()
     {
         var module = new LogicTestModule { nullBool = null };
@@ -588,7 +588,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Complex_ChainedAnd")]
     public void Complex_ChainedAnd()
     {
         var expr = FieldExpression<bool>.Compile(
@@ -599,7 +599,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Complex_ChainedOr")]
     public void Complex_ChainedOr()
     {
         var expr = FieldExpression<bool>.Compile(
@@ -610,7 +610,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_Complex_MixedFields")]
     public void Complex_MixedFields()
     {
         var module = new LogicTestModule
@@ -631,7 +631,7 @@ public sealed class FieldExpressionLogicTests
 
     #region Short-Circuit Evaluation
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_ShortCircuit_And_FalseFirst")]
     public void ShortCircuit_And_FalseFirst()
     {
         // If AND short-circuits properly, the second operand won't be evaluated
@@ -644,7 +644,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(false, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_ShortCircuit_Or_TrueFirst")]
     public void ShortCircuit_Or_TrueFirst()
     {
         // If OR short-circuits properly, the second operand won't be evaluated
@@ -661,42 +661,42 @@ public sealed class FieldExpressionLogicTests
 
     #region Case Sensitivity
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_CaseSensitivity_True_Lowercase")]
     public void CaseSensitivity_True_Lowercase()
     {
         var expr = FieldExpression<bool>.Compile("true", new(), typeof(LogicTestModule));
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_CaseSensitivity_True_Uppercase")]
     public void CaseSensitivity_True_Uppercase()
     {
         var expr = FieldExpression<bool>.Compile("TRUE", new(), typeof(LogicTestModule));
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_CaseSensitivity_True_MixedCase")]
     public void CaseSensitivity_True_MixedCase()
     {
         var expr = FieldExpression<bool>.Compile("TrUe", new(), typeof(LogicTestModule));
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_CaseSensitivity_False_Lowercase")]
     public void CaseSensitivity_False_Lowercase()
     {
         var expr = FieldExpression<bool>.Compile("false", new(), typeof(LogicTestModule));
         Assert.AreEqual(false, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_CaseSensitivity_False_Uppercase")]
     public void CaseSensitivity_False_Uppercase()
     {
         var expr = FieldExpression<bool>.Compile("FALSE", new(), typeof(LogicTestModule));
         Assert.AreEqual(false, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_CaseSensitivity_False_MixedCase")]
     public void CaseSensitivity_False_MixedCase()
     {
         var expr = FieldExpression<bool>.Compile("FaLsE", new(), typeof(LogicTestModule));
@@ -707,7 +707,7 @@ public sealed class FieldExpressionLogicTests
 
     #region Real-World Use Cases
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_RealWorld_ActivationCondition")]
     public void RealWorld_ActivationCondition()
     {
         var module = new LogicTestModule
@@ -724,7 +724,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_RealWorld_RangeCheck")]
     public void RealWorld_RangeCheck()
     {
         var module = new LogicTestModule { doubleValue = 50.0 };
@@ -736,7 +736,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_RealWorld_NullSafeCheck")]
     public void RealWorld_NullSafeCheck()
     {
         var module = new LogicTestModule { nullObject = null };
@@ -752,14 +752,14 @@ public sealed class FieldExpressionLogicTests
 
     #region Edge Cases
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_EdgeCase_DoubleNegation")]
     public void EdgeCase_DoubleNegation()
     {
         var expr = FieldExpression<bool>.Compile("!!true", new(), typeof(LogicTestModule));
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_EdgeCase_XorChaining")]
     public void EdgeCase_XorChaining()
     {
         var expr = FieldExpression<bool>.Compile(
@@ -770,7 +770,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_EdgeCase_AllFalseAnd")]
     public void EdgeCase_AllFalseAnd()
     {
         var expr = FieldExpression<bool>.Compile(
@@ -781,7 +781,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(false, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_EdgeCase_AllTrueOr")]
     public void EdgeCase_AllTrueOr()
     {
         var expr = FieldExpression<bool>.Compile(
@@ -792,7 +792,7 @@ public sealed class FieldExpressionLogicTests
         Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionLogicTests_EdgeCase_DeeplyNestedParentheses")]
     public void EdgeCase_DeeplyNestedParentheses()
     {
         var expr = FieldExpression<bool>.Compile(

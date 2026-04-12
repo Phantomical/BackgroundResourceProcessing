@@ -3,23 +3,16 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using BackgroundResourceProcessing.Collections.Burst;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using KSP.Testing;
 using Unity.Collections;
 
 namespace BackgroundResourceProcessing.Test.Collections.Burst;
 
-[TestClass]
-public sealed class MemorySpanTests
+public sealed class MemorySpanTests : BRPTestBase
 {
-    [TestCleanup]
-    public void Cleanup()
-    {
-        TestAllocator.Cleanup();
-    }
-
     #region Basic Foreach Iteration Tests
 
-    [TestMethod]
+    [TestInfo("MemorySpanTests_ForeachIteration_EmptySpan_DoesNotExecuteLoop")]
     public void ForeachIteration_EmptySpan_DoesNotExecuteLoop()
     {
         var array = new RawArray<int>(0, AllocatorHandle.Temp);
@@ -34,7 +27,7 @@ public sealed class MemorySpanTests
         Assert.AreEqual(0, iterationCount);
     }
 
-    [TestMethod]
+    [TestInfo("MemorySpanTests_ForeachIteration_SingleElement_IteratesOnce")]
     public void ForeachIteration_SingleElement_IteratesOnce()
     {
         var array = new RawArray<int>(1, AllocatorHandle.Temp);
@@ -53,7 +46,7 @@ public sealed class MemorySpanTests
         Assert.AreEqual(42, capturedValue);
     }
 
-    [TestMethod]
+    [TestInfo("MemorySpanTests_ForeachIteration_MultipleElements_IteratesInOrder")]
     public void ForeachIteration_MultipleElements_IteratesInOrder()
     {
         var array = new RawArray<int>(5, AllocatorHandle.Temp);
@@ -72,7 +65,7 @@ public sealed class MemorySpanTests
         CollectionAssert.AreEqual(new[] { 0, 10, 20, 30, 40 }, capturedValues);
     }
 
-    [TestMethod]
+    [TestInfo("MemorySpanTests_ForeachIteration_ByReference_AllowsModification")]
     public void ForeachIteration_ByReference_AllowsModification()
     {
         var array = new RawArray<int>(3, AllocatorHandle.Temp);
@@ -95,7 +88,7 @@ public sealed class MemorySpanTests
 
     #region Manual Enumerator Tests
 
-    [TestMethod]
+    [TestInfo("MemorySpanTests_ManualEnumerator_EmptySpan_MoveNextReturnsFalse")]
     public void ManualEnumerator_EmptySpan_MoveNextReturnsFalse()
     {
         var array = new RawArray<int>(0, AllocatorHandle.Temp);
@@ -107,7 +100,7 @@ public sealed class MemorySpanTests
         Assert.IsFalse(result);
     }
 
-    [TestMethod]
+    [TestInfo("MemorySpanTests_ManualEnumerator_SingleElement_MoveNextOnceThenFalse")]
     public void ManualEnumerator_SingleElement_MoveNextOnceThenFalse()
     {
         var array = new RawArray<int>(1, AllocatorHandle.Temp);
@@ -124,7 +117,7 @@ public sealed class MemorySpanTests
         Assert.IsFalse(secondMove);
     }
 
-    [TestMethod]
+    [TestInfo("MemorySpanTests_ManualEnumerator_MultipleElements_IteratesCorrectly")]
     public void ManualEnumerator_MultipleElements_IteratesCorrectly()
     {
         var array = new RawArray<int>(4, AllocatorHandle.Temp);
@@ -145,7 +138,7 @@ public sealed class MemorySpanTests
         CollectionAssert.AreEqual(new[] { 10, 20, 30, 40 }, values);
     }
 
-    [TestMethod]
+    [TestInfo("MemorySpanTests_ManualEnumerator_CurrentByReference_AllowsModification")]
     public void ManualEnumerator_CurrentByReference_AllowsModification()
     {
         var array = new RawArray<int>(2, AllocatorHandle.Temp);
@@ -165,7 +158,9 @@ public sealed class MemorySpanTests
         Assert.AreEqual(150, array[1]);
     }
 
-    [TestMethod]
+    [TestInfo(
+        "MemorySpanTests_ManualEnumerator_CallingCurrentBeforeMoveNext_ReturnsInvalidReference"
+    )]
     public void ManualEnumerator_CallingCurrentBeforeMoveNext_ReturnsInvalidReference()
     {
         var array = new RawArray<int>(1, AllocatorHandle.Temp);
@@ -183,7 +178,7 @@ public sealed class MemorySpanTests
 
     #region IEnumerable Interface Tests
 
-    [TestMethod]
+    [TestInfo("MemorySpanTests_IEnumerableInterface_EmptySpan_WorksCorrectly")]
     public void IEnumerableInterface_EmptySpan_WorksCorrectly()
     {
         var array = new RawArray<int>(0, AllocatorHandle.Temp);
@@ -195,7 +190,7 @@ public sealed class MemorySpanTests
         Assert.AreEqual(0, result.Count);
     }
 
-    [TestMethod]
+    [TestInfo("MemorySpanTests_IEnumerableInterface_WithElements_WorksCorrectly")]
     public void IEnumerableInterface_WithElements_WorksCorrectly()
     {
         var array = new RawArray<int>(3, AllocatorHandle.Temp);
@@ -210,7 +205,7 @@ public sealed class MemorySpanTests
         CollectionAssert.AreEqual(new[] { 100, 200, 300 }, result);
     }
 
-    [TestMethod]
+    [TestInfo("MemorySpanTests_IEnumerableInterface_NonGeneric_WorksCorrectly")]
     public void IEnumerableInterface_NonGeneric_WorksCorrectly()
     {
         var array = new RawArray<int>(2, AllocatorHandle.Temp);
@@ -234,7 +229,7 @@ public sealed class MemorySpanTests
 
     #region Sliced Span Iteration Tests
 
-    [TestMethod]
+    [TestInfo("MemorySpanTests_SlicedSpan_StartIndex_IteratesFromCorrectPosition")]
     public void SlicedSpan_StartIndex_IteratesFromCorrectPosition()
     {
         var array = new RawArray<int>(5, AllocatorHandle.Temp);
@@ -253,7 +248,7 @@ public sealed class MemorySpanTests
         CollectionAssert.AreEqual(new[] { 3, 4, 5 }, result);
     }
 
-    [TestMethod]
+    [TestInfo("MemorySpanTests_SlicedSpan_StartAndLength_IteratesCorrectSubset")]
     public void SlicedSpan_StartAndLength_IteratesCorrectSubset()
     {
         var array = new RawArray<int>(6, AllocatorHandle.Temp);
@@ -272,7 +267,7 @@ public sealed class MemorySpanTests
         CollectionAssert.AreEqual(new[] { 20, 30, 40 }, result);
     }
 
-    [TestMethod]
+    [TestInfo("MemorySpanTests_SlicedSpan_EmptySlice_DoesNotIterate")]
     public void SlicedSpan_EmptySlice_DoesNotIterate()
     {
         var array = new RawArray<int>(3, AllocatorHandle.Temp);
@@ -291,7 +286,7 @@ public sealed class MemorySpanTests
         Assert.AreEqual(0, iterationCount);
     }
 
-    [TestMethod]
+    [TestInfo("MemorySpanTests_SlicedSpan_SingleElementSlice_IteratesOnce")]
     public void SlicedSpan_SingleElementSlice_IteratesOnce()
     {
         var array = new RawArray<int>(5, AllocatorHandle.Temp);
@@ -315,7 +310,7 @@ public sealed class MemorySpanTests
 
     #region Enumerator Edge Cases and Error Conditions
 
-    [TestMethod]
+    [TestInfo("MemorySpanTests_EnumeratorReset_ThrowsNotSupportedException")]
     public void EnumeratorReset_ThrowsNotSupportedException()
     {
         var array = new RawArray<int>(1, AllocatorHandle.Temp);
@@ -326,7 +321,7 @@ public sealed class MemorySpanTests
         Assert.ThrowsException<NotSupportedException>(() => enumerator.Reset());
     }
 
-    [TestMethod]
+    [TestInfo("MemorySpanTests_EnumeratorDispose_DoesNotThrow")]
     public void EnumeratorDispose_DoesNotThrow()
     {
         var array = new RawArray<int>(2, AllocatorHandle.Temp);
@@ -339,7 +334,7 @@ public sealed class MemorySpanTests
         enumerator.Dispose();
     }
 
-    [TestMethod]
+    [TestInfo("MemorySpanTests_MultipleEnumerators_WorkIndependently")]
     public void MultipleEnumerators_WorkIndependently()
     {
         var array = new RawArray<int>(3, AllocatorHandle.Temp);
@@ -367,7 +362,7 @@ public sealed class MemorySpanTests
         Assert.AreEqual(10, enumerator2.Current);
     }
 
-    [TestMethod]
+    [TestInfo("MemorySpanTests_EnumeratorAfterSpanSlice_IteratesCorrectly")]
     public void EnumeratorAfterSpanSlice_IteratesCorrectly()
     {
         var array = new RawArray<int>(4, AllocatorHandle.Temp);
@@ -392,7 +387,7 @@ public sealed class MemorySpanTests
 
     #region Different Data Types
 
-    [TestMethod]
+    [TestInfo("MemorySpanTests_Iteration_ByteType_WorksCorrectly")]
     public void Iteration_ByteType_WorksCorrectly()
     {
         var array = new RawArray<byte>(4, AllocatorHandle.Temp);
@@ -411,7 +406,7 @@ public sealed class MemorySpanTests
         CollectionAssert.AreEqual(new byte[] { 0xFF, 0x80, 0x40, 0x01 }, result);
     }
 
-    [TestMethod]
+    [TestInfo("MemorySpanTests_Iteration_CustomStruct_WorksCorrectly")]
     public void Iteration_CustomStruct_WorksCorrectly()
     {
         var array = new RawArray<TestStruct>(3, AllocatorHandle.Temp);
@@ -437,7 +432,7 @@ public sealed class MemorySpanTests
 
     #endregion
 
-    [TestMethod]
+    [TestInfo("MemorySpanTests_CollectionExpression_WorksRight")]
     public void CollectionExpression_WorksRight()
     {
         var array = new RawArray<int>(5, AllocatorHandle.Temp)

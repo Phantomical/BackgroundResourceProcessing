@@ -1,18 +1,12 @@
 using BackgroundResourceProcessing.Collections.Burst;
+using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.Solver;
 
-[TestClass]
-public class SolverConstraintTests
+public class SolverConstraintTests : BRPTestBase
 {
-    [TestCleanup]
-    public void Cleanup()
-    {
-        TestAllocator.Cleanup();
-    }
-
     #region AT_MOST constraints
-    [TestMethod]
+    [TestInfo("SolverConstraintTests_TestAtMostEnabled")]
     public void TestAtMostEnabled()
     {
         var processor = TestUtil.LoadVessel("constraint/at-most-enabled.cfg");
@@ -21,7 +15,7 @@ public class SolverConstraintTests
         Assert.AreEqual(1.0, processor.converters[0].Rate);
     }
 
-    [TestMethod]
+    [TestInfo("SolverConstraintTests_TestAtMostDisabled")]
     public void TestAtMostDisabled()
     {
         var processor = TestUtil.LoadVessel("constraint/at-most-disabled.cfg");
@@ -30,7 +24,7 @@ public class SolverConstraintTests
         Assert.AreEqual(0.0, processor.converters[0].Rate);
     }
 
-    [TestMethod]
+    [TestInfo("SolverConstraintTests_TestAtMostBoundaryDisabled")]
     public void TestAtMostBoundaryDisabled()
     {
         var processor = TestUtil.LoadVessel("constraint/at-most-boundary-disabled.cfg");
@@ -39,7 +33,7 @@ public class SolverConstraintTests
         Assert.AreEqual(0.0, processor.converters[0].Rate);
     }
 
-    [TestMethod]
+    [TestInfo("SolverConstraintTests_TestAtMostBoundaryEnabled")]
     public void TestAtMostBoundaryEnabled()
     {
         var processor = TestUtil.LoadVessel("constraint/at-most-boundary-enabled.cfg");
@@ -48,7 +42,7 @@ public class SolverConstraintTests
         Assert.AreEqual(1.0, processor.converters[0].Rate);
     }
 
-    [TestMethod]
+    [TestInfo("SolverConstraintTests_TestAtMostBoundaryPartial")]
     public void TestAtMostBoundaryPartial()
     {
         var processor = TestUtil.LoadVessel("constraint/at-most-boundary-partial.cfg");
@@ -57,7 +51,7 @@ public class SolverConstraintTests
         Assert.AreEqual(0.5, processor.converters[0].Rate);
     }
 
-    [TestMethod]
+    [TestInfo("SolverConstraintTests_TestAtLeastEnabled")]
     public void TestAtLeastEnabled()
     {
         var processor = TestUtil.LoadVessel("constraint/at-least-enabled.cfg");
@@ -66,7 +60,7 @@ public class SolverConstraintTests
         Assert.AreEqual(1.0, processor.converters[0].Rate);
     }
 
-    [TestMethod]
+    [TestInfo("SolverConstraintTests_TestAtLeastDisabled")]
     public void TestAtLeastDisabled()
     {
         var processor = TestUtil.LoadVessel("constraint/at-least-disabled.cfg");
@@ -75,7 +69,7 @@ public class SolverConstraintTests
         Assert.AreEqual(0.0, processor.converters[0].Rate);
     }
 
-    [TestMethod]
+    [TestInfo("SolverConstraintTests_TestAtLeastBoundaryDisabled")]
     public void TestAtLeastBoundaryDisabled()
     {
         var processor = TestUtil.LoadVessel("constraint/at-least-boundary-disabled.cfg");
@@ -84,7 +78,7 @@ public class SolverConstraintTests
         Assert.AreEqual(0.0, processor.converters[0].Rate);
     }
 
-    [TestMethod]
+    [TestInfo("SolverConstraintTests_TestAtLeastBoundaryEnabled")]
     public void TestAtLeastBoundaryEnabled()
     {
         var processor = TestUtil.LoadVessel("constraint/at-least-boundary-enabled.cfg");
@@ -93,7 +87,7 @@ public class SolverConstraintTests
         Assert.AreEqual(1.0, processor.converters[0].Rate);
     }
 
-    [TestMethod]
+    [TestInfo("SolverConstraintTests_TestAtLeastBoundaryPartial")]
     public void TestAtLeastBoundaryPartial()
     {
         var processor = TestUtil.LoadVessel("constraint/at-least-boundary-partial.cfg");

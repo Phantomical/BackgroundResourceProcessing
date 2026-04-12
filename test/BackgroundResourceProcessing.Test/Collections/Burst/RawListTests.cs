@@ -1,19 +1,12 @@
 using System;
 using BackgroundResourceProcessing.Collections.Burst;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using KSP.Testing;
 using Unity.Collections;
 
 namespace BackgroundResourceProcessing.Test.Collections.Burst;
 
-[TestClass]
-public sealed class RawListTest
+public sealed class RawListTest : BRPTestBase
 {
-    [TestCleanup]
-    public void Cleanup()
-    {
-        TestAllocator.Cleanup();
-    }
-
     private struct NonDisposableValue : IEquatable<NonDisposableValue>
     {
         public int Value { get; set; }
@@ -32,7 +25,7 @@ public sealed class RawListTest
 
     #region Constructor Tests
 
-    [TestMethod]
+    [TestInfo("RawListTest_Constructor_WithAllocator_CreatesEmptyList")]
     public void Constructor_WithAllocator_CreatesEmptyList()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -42,7 +35,7 @@ public sealed class RawListTest
         Assert.IsTrue(list.IsEmpty);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_Constructor_WithCapacityAndAllocator_CreatesListWithCapacity")]
     public void Constructor_WithCapacityAndAllocator_CreatesListWithCapacity()
     {
         const int capacity = 10;
@@ -53,7 +46,7 @@ public sealed class RawListTest
         Assert.IsTrue(list.IsEmpty);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_Constructor_WithNegativeCapacity_ThrowsArgumentOutOfRangeException")]
     public void Constructor_WithNegativeCapacity_ThrowsArgumentOutOfRangeException()
     {
         Assert.ThrowsException<ArgumentOutOfRangeException>(() =>
@@ -66,7 +59,7 @@ public sealed class RawListTest
 
     #region Add Tests
 
-    [TestMethod]
+    [TestInfo("RawListTest_Add_SingleItem_IncreasesCount")]
     public void Add_SingleItem_IncreasesCount()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -78,7 +71,7 @@ public sealed class RawListTest
         Assert.IsFalse(list.IsEmpty);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_Add_MultipleItems_PreservesOrder")]
     public void Add_MultipleItems_PreservesOrder()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -93,7 +86,7 @@ public sealed class RawListTest
         Assert.AreEqual(3, list[2]);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_Add_ExceedsCapacity_ExpandsAutomatically")]
     public void Add_ExceedsCapacity_ExpandsAutomatically()
     {
         var list = new RawList<int>(1, AllocatorHandle.Temp);
@@ -112,7 +105,7 @@ public sealed class RawListTest
 
     #region AddRange Tests
 
-    [TestMethod]
+    [TestInfo("RawListTest_AddRange_EmptySpan_DoesNotChangeList")]
     public void AddRange_EmptySpan_DoesNotChangeList()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -123,7 +116,7 @@ public sealed class RawListTest
         Assert.IsTrue(list.IsEmpty);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_AddRange_ValidSpan_AddsAllElements")]
     public void AddRange_ValidSpan_AddsAllElements()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -137,7 +130,7 @@ public sealed class RawListTest
         Assert.AreEqual(30, list[2]);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_AddRange_ExceedsCapacity_ExpandsAutomatically")]
     public void AddRange_ExceedsCapacity_ExpandsAutomatically()
     {
         var list = new RawList<int>(2, AllocatorHandle.Temp);
@@ -157,7 +150,7 @@ public sealed class RawListTest
 
     #region Push/Pop Tests
 
-    [TestMethod]
+    [TestInfo("RawListTest_Push_SingleItem_AddsItemToEnd")]
     public void Push_SingleItem_AddsItemToEnd()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -168,7 +161,7 @@ public sealed class RawListTest
         Assert.AreEqual(42, list[0]);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_Pop_EmptyList_ThrowsInvalidOperationException")]
     public void Pop_EmptyList_ThrowsInvalidOperationException()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -176,7 +169,7 @@ public sealed class RawListTest
         Assert.ThrowsException<InvalidOperationException>(() => list.Pop());
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_Pop_NonEmptyList_ReturnsLastItemAndReducesCount")]
     public void Pop_NonEmptyList_ReturnsLastItemAndReducesCount()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -190,7 +183,7 @@ public sealed class RawListTest
         Assert.AreEqual(2, list.Count);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_TryPop_EmptyList_ReturnsFalse")]
     public void TryPop_EmptyList_ReturnsFalse()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -201,7 +194,7 @@ public sealed class RawListTest
         Assert.AreEqual(default(int), item);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_TryPop_NonEmptyList_ReturnsLastItemAndReducesCount")]
     public void TryPop_NonEmptyList_ReturnsLastItemAndReducesCount()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -220,7 +213,7 @@ public sealed class RawListTest
 
     #region Indexer Tests
 
-    [TestMethod]
+    [TestInfo("RawListTest_Indexer_ValidIndex_ReturnsCorrectItem")]
     public void Indexer_ValidIndex_ReturnsCorrectItem()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -231,7 +224,7 @@ public sealed class RawListTest
         Assert.AreEqual(20, list[1]);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_Indexer_NegativeIndex_ThrowsIndexOutOfRangeException")]
     public void Indexer_NegativeIndex_ThrowsIndexOutOfRangeException()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -240,7 +233,7 @@ public sealed class RawListTest
         Assert.ThrowsException<IndexOutOfRangeException>(() => _ = list[-1]);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_Indexer_IndexOutOfBounds_ThrowsIndexOutOfRangeException")]
     public void Indexer_IndexOutOfBounds_ThrowsIndexOutOfRangeException()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -249,7 +242,7 @@ public sealed class RawListTest
         Assert.ThrowsException<IndexOutOfRangeException>(() => _ = list[1]);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_Indexer_CanModifyExistingItem")]
     public void Indexer_CanModifyExistingItem()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -264,7 +257,7 @@ public sealed class RawListTest
 
     #region Clear Tests
 
-    [TestMethod]
+    [TestInfo("RawListTest_Clear_EmptyList_RemainsEmpty")]
     public void Clear_EmptyList_RemainsEmpty()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -275,7 +268,7 @@ public sealed class RawListTest
         Assert.IsTrue(list.IsEmpty);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_Clear_NonEmptyList_MakesListEmpty")]
     public void Clear_NonEmptyList_MakesListEmpty()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -293,7 +286,7 @@ public sealed class RawListTest
 
     #region RemoveAt Tests
 
-    [TestMethod]
+    [TestInfo("RawListTest_RemoveAt_ValidIndex_RemovesItemAndShiftsElements")]
     public void RemoveAt_ValidIndex_RemovesItemAndShiftsElements()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -308,7 +301,7 @@ public sealed class RawListTest
         Assert.AreEqual(30, list[1]);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_RemoveAt_LastIndex_RemovesItemWithoutShifting")]
     public void RemoveAt_LastIndex_RemovesItemWithoutShifting()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -323,7 +316,7 @@ public sealed class RawListTest
         Assert.AreEqual(20, list[1]);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_RemoveAt_NegativeIndex_ThrowsIndexOutOfRangeException")]
     public void RemoveAt_NegativeIndex_ThrowsIndexOutOfRangeException()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -332,7 +325,7 @@ public sealed class RawListTest
         Assert.ThrowsException<IndexOutOfRangeException>(() => list.RemoveAt(-1));
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_RemoveAt_IndexOutOfBounds_ThrowsIndexOutOfRangeException")]
     public void RemoveAt_IndexOutOfBounds_ThrowsIndexOutOfRangeException()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -345,7 +338,7 @@ public sealed class RawListTest
 
     #region RemoveAtSwapBack Tests
 
-    [TestMethod]
+    [TestInfo("RawListTest_RemoveAtSwapBack_ValidIndex_RemovesItemAndSwapsWithLast")]
     public void RemoveAtSwapBack_ValidIndex_RemovesItemAndSwapsWithLast()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -360,7 +353,7 @@ public sealed class RawListTest
         Assert.AreEqual(30, list[1]); // Last element moved to index 1
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_RemoveAtSwapBack_LastIndex_RemovesItemWithoutSwapping")]
     public void RemoveAtSwapBack_LastIndex_RemovesItemWithoutSwapping()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -375,7 +368,7 @@ public sealed class RawListTest
         Assert.AreEqual(20, list[1]);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_RemoveAtSwapBack_NegativeIndex_ThrowsArgumentOutOfRangeException")]
     public void RemoveAtSwapBack_NegativeIndex_ThrowsArgumentOutOfRangeException()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -384,7 +377,7 @@ public sealed class RawListTest
         Assert.ThrowsException<IndexOutOfRangeException>(() => list.RemoveAtSwapBack(-1));
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_RemoveAtSwapBack_IndexOutOfBounds_ThrowsArgumentOutOfRangeException")]
     public void RemoveAtSwapBack_IndexOutOfBounds_ThrowsArgumentOutOfRangeException()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -397,7 +390,7 @@ public sealed class RawListTest
 
     #region Resize Tests
 
-    [TestMethod]
+    [TestInfo("RawListTest_Resize_ToLargerSize_IncreasesCount")]
     public void Resize_ToLargerSize_IncreasesCount()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -414,7 +407,7 @@ public sealed class RawListTest
         Assert.AreEqual(0, list[4]);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_Resize_ToSmallerSize_DecreasesCount")]
     public void Resize_ToSmallerSize_DecreasesCount()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -429,7 +422,7 @@ public sealed class RawListTest
         Assert.AreEqual(20, list[1]);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_Resize_ToZero_MakesListEmpty")]
     public void Resize_ToZero_MakesListEmpty()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -442,7 +435,7 @@ public sealed class RawListTest
         Assert.IsTrue(list.IsEmpty);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_Resize_WithNegativeSize_ThrowsArgumentOutOfRangeException")]
     public void Resize_WithNegativeSize_ThrowsArgumentOutOfRangeException()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -450,7 +443,7 @@ public sealed class RawListTest
         Assert.ThrowsException<ArgumentOutOfRangeException>(() => list.Resize(-1));
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_Resize_WithUninitializedMemory_DoesNotClearNewElements")]
     public void Resize_WithUninitializedMemory_DoesNotClearNewElements()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -467,7 +460,7 @@ public sealed class RawListTest
 
     #region Truncate Tests
 
-    [TestMethod]
+    [TestInfo("RawListTest_Truncate_ValidIndex_ReducesCountToIndex")]
     public void Truncate_ValidIndex_ReducesCountToIndex()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -482,7 +475,7 @@ public sealed class RawListTest
         Assert.AreEqual(20, list[1]);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_Truncate_ToZero_MakesListEmpty")]
     public void Truncate_ToZero_MakesListEmpty()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -495,7 +488,7 @@ public sealed class RawListTest
         Assert.IsTrue(list.IsEmpty);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_Truncate_BeyondCount_DoesNotChangeList")]
     public void Truncate_BeyondCount_DoesNotChangeList()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -509,7 +502,7 @@ public sealed class RawListTest
         Assert.AreEqual(20, list[1]);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_Truncate_NegativeIndex_ThrowsArgumentOutOfRangeException")]
     public void Truncate_NegativeIndex_ThrowsArgumentOutOfRangeException()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -521,7 +514,7 @@ public sealed class RawListTest
 
     #region Reserve Tests
 
-    [TestMethod]
+    [TestInfo("RawListTest_Reserve_ValidCapacity_IncreasesCapacity")]
     public void Reserve_ValidCapacity_IncreasesCapacity()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -533,7 +526,7 @@ public sealed class RawListTest
         Assert.IsTrue(list.Capacity >= originalCapacity);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_Reserve_SmallerThanCurrentCapacity_DoesNotChangeCapacity")]
     public void Reserve_SmallerThanCurrentCapacity_DoesNotChangeCapacity()
     {
         var list = new RawList<int>(10, AllocatorHandle.Temp);
@@ -544,7 +537,7 @@ public sealed class RawListTest
         Assert.AreEqual(originalCapacity, list.Capacity);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_Reserve_NegativeCapacity_ThrowsArgumentOutOfRangeException")]
     public void Reserve_NegativeCapacity_ThrowsArgumentOutOfRangeException()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -552,7 +545,7 @@ public sealed class RawListTest
         Assert.ThrowsException<ArgumentOutOfRangeException>(() => list.Reserve(-1));
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_Reserve_PreservesExistingData")]
     public void Reserve_PreservesExistingData()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -572,7 +565,7 @@ public sealed class RawListTest
 
     #region Span Tests
 
-    [TestMethod]
+    [TestInfo("RawListTest_Span_EmptyList_ReturnsEmptySpan")]
     public void Span_EmptyList_ReturnsEmptySpan()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -582,7 +575,7 @@ public sealed class RawListTest
         Assert.AreEqual(0, span.Length);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_Span_NonEmptyList_ReturnsCorrectSpan")]
     public void Span_NonEmptyList_ReturnsCorrectSpan()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -598,7 +591,7 @@ public sealed class RawListTest
         Assert.AreEqual(30, span[2]);
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_Span_CanModifyData")]
     public void Span_CanModifyData()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -618,7 +611,7 @@ public sealed class RawListTest
 
     #region Ptr Tests
 
-    [TestMethod]
+    [TestInfo("RawListTest_Ptr_EmptyList_ReturnsValidPointer")]
     public void Ptr_EmptyList_ReturnsValidPointer()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -631,7 +624,7 @@ public sealed class RawListTest
         }
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_Ptr_NonEmptyList_ReturnsValidPointer")]
     public void Ptr_NonEmptyList_ReturnsValidPointer()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -649,7 +642,7 @@ public sealed class RawListTest
 
     #region Edge Cases and Stress Tests
 
-    [TestMethod]
+    [TestInfo("RawListTest_StressTest_ManyOperations_MaintainsConsistency")]
     public void StressTest_ManyOperations_MaintainsConsistency()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);
@@ -677,7 +670,7 @@ public sealed class RawListTest
         }
     }
 
-    [TestMethod]
+    [TestInfo("RawListTest_LargeCapacityReservation_WorksCorrectly")]
     public void LargeCapacityReservation_WorksCorrectly()
     {
         var list = new RawList<int>(AllocatorHandle.Temp);

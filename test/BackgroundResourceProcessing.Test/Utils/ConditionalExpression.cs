@@ -1,16 +1,16 @@
 using BackgroundResourceProcessing.Utils;
+using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.Utils;
 
-[TestClass]
-public sealed class ConditionalExpressionTests
+public sealed class ConditionalExpressionTests : BRPTestBase
 {
     public static ConditionalExpression Compile(string expression, ConfigNode node = null)
     {
         return ConditionalExpression.Compile(expression, node ?? new(), typeof(DummyPartModule));
     }
 
-    [TestMethod]
+    [TestInfo("ConditionalExpressionTests_TestConstants")]
     public void TestConstants()
     {
         ConditionalExpression expr;
@@ -60,7 +60,7 @@ public sealed class ConditionalExpressionTests
         };
     }
 
-    [TestMethod]
+    [TestInfo("ConditionalExpressionTests_TestFieldAccess")]
     public void TestFieldAccess()
     {
         ConditionalExpression expr;
@@ -89,7 +89,7 @@ public sealed class ConditionalExpressionTests
         Assert.IsTrue(expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("ConditionalExpressionTests_TestNestedFieldAccess")]
     public void TestNestedFieldAccess()
     {
         ConditionalExpression expr;
@@ -111,7 +111,7 @@ public sealed class ConditionalExpressionTests
         Assert.IsTrue(expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("ConditionalExpressionTests_TestTypeof")]
     public void TestTypeof()
     {
         ConditionalExpression expr;
@@ -124,7 +124,7 @@ public sealed class ConditionalExpressionTests
         Assert.IsTrue(expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("ConditionalExpressionTests_TestStringFieldAccess")]
     public void TestStringFieldAccess()
     {
         ConditionalExpression expr;
@@ -134,7 +134,7 @@ public sealed class ConditionalExpressionTests
         Assert.IsTrue(expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("ConditionalExpressionTests_TestParenthesizedExpression")]
     public void TestParenthesizedExpression()
     {
         ConditionalExpression expr;

@@ -2,14 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BackgroundResourceProcessing.Collections;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.Collections;
 
-[TestClass]
-public sealed class BitEnumeratorTest
+public sealed class BitEnumeratorTest : BRPTestBase
 {
-    [TestMethod]
+    [TestInfo("BitEnumerator_Constructor_WithZeroBits_CreatesEnumeratorAtStartIndex")]
     public void Constructor_WithZeroBits_CreatesEnumeratorAtStartIndex()
     {
         var enumerator = new BitEnumerator(10, 0UL);
@@ -18,7 +17,7 @@ public sealed class BitEnumeratorTest
         Assert.AreEqual(9, enumerator.Current);
     }
 
-    [TestMethod]
+    [TestInfo("BitEnumerator_Constructor_WithNonZeroBits_CreatesEnumeratorAtStartIndex")]
     public void Constructor_WithNonZeroBits_CreatesEnumeratorAtStartIndex()
     {
         var enumerator = new BitEnumerator(64, 0x1UL);
@@ -27,7 +26,7 @@ public sealed class BitEnumeratorTest
         Assert.AreEqual(63, enumerator.Current);
     }
 
-    [TestMethod]
+    [TestInfo("BitEnumerator_MoveNext_WithZeroBits_ReturnsFalse")]
     public void MoveNext_WithZeroBits_ReturnsFalse()
     {
         var enumerator = new BitEnumerator(0, 0UL);
@@ -38,7 +37,7 @@ public sealed class BitEnumeratorTest
         Assert.AreEqual(-1, enumerator.Current); // Should remain at start - 1
     }
 
-    [TestMethod]
+    [TestInfo("BitEnumerator_MoveNext_WithSingleBitAtPosition0_ReturnsCorrectIndex")]
     public void MoveNext_WithSingleBitAtPosition0_ReturnsCorrectIndex()
     {
         var enumerator = new BitEnumerator(10, 0x1UL); // Bit at position 0
@@ -49,7 +48,7 @@ public sealed class BitEnumeratorTest
         Assert.AreEqual(10, enumerator.Current); // start + bit position
     }
 
-    [TestMethod]
+    [TestInfo("BitEnumerator_MoveNext_WithSingleBitAtPosition5_ReturnsCorrectIndex")]
     public void MoveNext_WithSingleBitAtPosition5_ReturnsCorrectIndex()
     {
         var enumerator = new BitEnumerator(20, 0x20UL); // Bit at position 5 (binary: 100000)
@@ -60,7 +59,7 @@ public sealed class BitEnumeratorTest
         Assert.AreEqual(25, enumerator.Current); // 20 + 5
     }
 
-    [TestMethod]
+    [TestInfo("BitEnumerator_MoveNext_WithSingleBitAtPosition63_ReturnsCorrectIndex")]
     public void MoveNext_WithSingleBitAtPosition63_ReturnsCorrectIndex()
     {
         var enumerator = new BitEnumerator(0, 0x8000000000000000UL); // Bit at position 63
@@ -75,7 +74,7 @@ public sealed class BitEnumeratorTest
         Assert.IsFalse(secondResult);
     }
 
-    [TestMethod]
+    [TestInfo("BitEnumerator_MoveNext_WithMultipleBits_IteratesInOrder")]
     public void MoveNext_WithMultipleBits_IteratesInOrder()
     {
         // Binary: 10001001 (bits at positions 0, 3, 7)
@@ -90,7 +89,7 @@ public sealed class BitEnumeratorTest
         AssertUtils.SequenceEqual([10, 13, 17], results); // 10+0, 10+3, 10+7
     }
 
-    [TestMethod]
+    [TestInfo("BitEnumerator_MoveNext_WithAllBitsSet_IteratesAllPositions")]
     public void MoveNext_WithAllBitsSet_IteratesAllPositions()
     {
         var enumerator = new BitEnumerator(0, 0xFFUL); // First 8 bits set
@@ -104,7 +103,7 @@ public sealed class BitEnumeratorTest
         AssertUtils.SequenceEqual([0, 1, 2, 3, 4, 5, 6, 7], results);
     }
 
-    [TestMethod]
+    [TestInfo("BitEnumerator_MoveNext_WithAlternatingBits_IteratesCorrectly")]
     public void MoveNext_WithAlternatingBits_IteratesCorrectly()
     {
         // Binary: 01010101 (bits at positions 0, 2, 4, 6)
@@ -119,7 +118,7 @@ public sealed class BitEnumeratorTest
         AssertUtils.SequenceEqual([100, 102, 104, 106], results);
     }
 
-    [TestMethod]
+    [TestInfo("BitEnumerator_MoveNext_WithSparseHighBits_IteratesCorrectly")]
     public void MoveNext_WithSparseHighBits_IteratesCorrectly()
     {
         // Bits at positions 32 and 48
@@ -135,7 +134,7 @@ public sealed class BitEnumeratorTest
         AssertUtils.SequenceEqual([32, 48], results);
     }
 
-    [TestMethod]
+    [TestInfo("BitEnumerator_MoveNext_WithMaxValue_IteratesAll64Bits")]
     public void MoveNext_WithMaxValue_IteratesAll64Bits()
     {
         var enumerator = new BitEnumerator(0, ulong.MaxValue);
@@ -153,7 +152,7 @@ public sealed class BitEnumeratorTest
         }
     }
 
-    [TestMethod]
+    [TestInfo("BitEnumerator_MoveNext_AfterExhausted_ContinuesToReturnFalse")]
     public void MoveNext_AfterExhausted_ContinuesToReturnFalse()
     {
         var enumerator = new BitEnumerator(0, 0x1UL); // Single bit
@@ -168,7 +167,7 @@ public sealed class BitEnumeratorTest
         Assert.IsFalse(enumerator.MoveNext());
     }
 
-    [TestMethod]
+    [TestInfo("BitEnumerator_Current_BeforeMoveNext_ReturnsStartMinusOne")]
     public void Current_BeforeMoveNext_ReturnsStartMinusOne()
     {
         var enumerator1 = new BitEnumerator(0, 0x1UL);
@@ -178,7 +177,7 @@ public sealed class BitEnumeratorTest
         Assert.AreEqual(99, enumerator2.Current);
     }
 
-    [TestMethod]
+    [TestInfo("BitEnumerator_Current_AfterSuccessfulMoveNext_ReturnsCorrectIndex")]
     public void Current_AfterSuccessfulMoveNext_ReturnsCorrectIndex()
     {
         var enumerator = new BitEnumerator(50, 0x8UL); // Bit at position 3
@@ -188,7 +187,7 @@ public sealed class BitEnumeratorTest
         Assert.AreEqual(53, enumerator.Current); // 50 + 3
     }
 
-    [TestMethod]
+    [TestInfo("BitEnumerator_BitShifting_HandlesBoundaryConditions")]
     public void BitShifting_HandlesBoundaryConditions()
     {
         // Test bit 62 (should shift normally)
@@ -204,7 +203,7 @@ public sealed class BitEnumeratorTest
         Assert.IsFalse(enumerator2.MoveNext()); // Should be exhausted
     }
 
-    [TestMethod]
+    [TestInfo("BitEnumerator_ComplexBitPattern_IteratesCorrectly")]
     public void ComplexBitPattern_IteratesCorrectly()
     {
         // Test a complex bit pattern: 0xF0F0F0F0F0F0F0F0
@@ -231,7 +230,7 @@ public sealed class BitEnumeratorTest
         AssertUtils.SequenceEqual(expected, results);
     }
 
-    [TestMethod]
+    [TestInfo("BitEnumerator_EdgeCase_StartAtMaxInt_WorksCorrectly")]
     public void EdgeCase_StartAtMaxInt_WorksCorrectly()
     {
         // Test with a very high start index
@@ -248,7 +247,7 @@ public sealed class BitEnumeratorTest
         AssertUtils.SequenceEqual(expected, results);
     }
 
-    [TestMethod]
+    [TestInfo("BitEnumerator_EdgeCase_AllOddBits_IteratesCorrectly")]
     public void EdgeCase_AllOddBits_IteratesCorrectly()
     {
         // Set all odd-numbered bits (1, 3, 5, 7, ...)

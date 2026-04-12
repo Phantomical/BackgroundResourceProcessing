@@ -1,11 +1,11 @@
 using BackgroundResourceProcessing.Utils;
+using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.Utils;
 
-[TestClass]
-public sealed class FieldExpressionTests
+public sealed class FieldExpressionTests : BRPTestBase
 {
-    [TestMethod]
+    [TestInfo("FieldExpressionTests_TestNumbers")]
     public void TestNumbers()
     {
         ConfigNode node = new();
@@ -22,7 +22,7 @@ public sealed class FieldExpressionTests
         public double[] array = null;
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTests_IndexNull")]
     public void IndexNull()
     {
         ConfigNode node = new();
@@ -32,7 +32,7 @@ public sealed class FieldExpressionTests
         Assert.AreEqual(expr.Evaluate(module), 5.0);
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTests_ParseEnum")]
     public void ParseEnum()
     {
         ConfigNode node = new();
@@ -55,7 +55,7 @@ public sealed class FieldExpressionTests
         public double NoParams() => 1.0;
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTests_EvaluateFloatCurve")]
     public void EvaluateFloatCurve()
     {
         FloatCurveTest module = new();
@@ -64,7 +64,7 @@ public sealed class FieldExpressionTests
         Assert.AreEqual(75.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTests_EvaluateFloatMethodCurve")]
     public void EvaluateFloatMethodCurve()
     {
         FloatCurveTest module = new();
@@ -77,7 +77,7 @@ public sealed class FieldExpressionTests
         Assert.AreEqual(75.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTests_EvaluateNoParams")]
     public void EvaluateNoParams()
     {
         FloatCurveTest module = new();

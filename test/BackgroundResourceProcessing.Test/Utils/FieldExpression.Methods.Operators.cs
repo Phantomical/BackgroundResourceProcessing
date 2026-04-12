@@ -1,4 +1,5 @@
 using BackgroundResourceProcessing.Utils;
+using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.Utils;
 
@@ -7,8 +8,7 @@ namespace BackgroundResourceProcessing.Test.Utils;
 /// These test the DoMultiply, DoDivide, DoAdd, DoSub, DoMod, DoUnaryMinus, DoUnaryPlus,
 /// DoBoolNot, DoBitNot, and DoXor methods which handle operator execution at runtime.
 /// </summary>
-[TestClass]
-public sealed class FieldExpressionMethodsOperatorsTests
+public sealed class FieldExpressionMethodsOperatorsTests : BRPTestBase
 {
     class OperatorTestModule : PartModule
     {
@@ -23,7 +23,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
 
     #region Arithmetic Operators (DoMultiply, DoDivide, DoAdd, DoSub, DoMod)
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoMultiply_IntInt")]
     public void DoMultiply_IntInt()
     {
         var module = new OperatorTestModule { intValue = 6 };
@@ -35,7 +35,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(42.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoMultiply_DoubleDouble")]
     public void DoMultiply_DoubleDouble()
     {
         var module = new OperatorTestModule { doubleValue = 2.5 };
@@ -47,7 +47,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(10.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoMultiply_MixedTypes")]
     public void DoMultiply_MixedTypes()
     {
         var module = new OperatorTestModule { intValue = 5, floatValue = 2.5f };
@@ -59,7 +59,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(12.5, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoMultiply_ByZero")]
     public void DoMultiply_ByZero()
     {
         var module = new OperatorTestModule { intValue = 42 };
@@ -71,7 +71,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(0.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoDivide_IntInt")]
     public void DoDivide_IntInt()
     {
         var module = new OperatorTestModule { intValue = 20 };
@@ -83,7 +83,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(5.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoDivide_IntInt_Fractional")]
     public void DoDivide_IntInt_Fractional()
     {
         var module = new OperatorTestModule { intValue = 5 };
@@ -95,7 +95,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(2.5, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoDivide_DoubleDouble")]
     public void DoDivide_DoubleDouble()
     {
         var module = new OperatorTestModule { doubleValue = 10.0 };
@@ -107,7 +107,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(4.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoDivide_ByZero_Infinity")]
     public void DoDivide_ByZero_Infinity()
     {
         var module = new OperatorTestModule { doubleValue = 10.0 };
@@ -119,7 +119,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.IsTrue(double.IsPositiveInfinity(expr.Evaluate(module).Value));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoDivide_NegativeByZero_NegativeInfinity")]
     public void DoDivide_NegativeByZero_NegativeInfinity()
     {
         var module = new OperatorTestModule { doubleValue = -10.0 };
@@ -131,7 +131,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.IsTrue(double.IsNegativeInfinity(expr.Evaluate(module).Value));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoAdd_IntInt")]
     public void DoAdd_IntInt()
     {
         var module = new OperatorTestModule { intValue = 15 };
@@ -143,7 +143,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(42.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoAdd_DoubleDouble")]
     public void DoAdd_DoubleDouble()
     {
         var module = new OperatorTestModule { doubleValue = 3.14 };
@@ -155,7 +155,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(6.0, expr.Evaluate(module).Value, 1e-10);
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoAdd_MixedTypes")]
     public void DoAdd_MixedTypes()
     {
         var module = new OperatorTestModule { intValue = 10, floatValue = 2.5f };
@@ -167,7 +167,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(12.5, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoSub_IntInt")]
     public void DoSub_IntInt()
     {
         var module = new OperatorTestModule { intValue = 50 };
@@ -179,7 +179,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(42.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoSub_DoubleDouble")]
     public void DoSub_DoubleDouble()
     {
         var module = new OperatorTestModule { doubleValue = 10.5 };
@@ -191,7 +191,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(5.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoSub_ResultNegative")]
     public void DoSub_ResultNegative()
     {
         var module = new OperatorTestModule { intValue = 10 };
@@ -203,7 +203,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(-10.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoMod_IntInt")]
     public void DoMod_IntInt()
     {
         var module = new OperatorTestModule { intValue = 17 };
@@ -215,7 +215,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(2.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoMod_DoubleDouble")]
     public void DoMod_DoubleDouble()
     {
         var module = new OperatorTestModule { doubleValue = 7.5 };
@@ -227,7 +227,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(0.0, expr.Evaluate(module).Value, 1e-10);
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoMod_ZeroRemainder")]
     public void DoMod_ZeroRemainder()
     {
         var module = new OperatorTestModule { intValue = 20 };
@@ -243,7 +243,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
 
     #region Unary Operators (DoUnaryMinus, DoUnaryPlus)
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoUnaryMinus_PositiveInt")]
     public void DoUnaryMinus_PositiveInt()
     {
         var module = new OperatorTestModule { intValue = 42 };
@@ -251,7 +251,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(-42.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoUnaryMinus_NegativeInt")]
     public void DoUnaryMinus_NegativeInt()
     {
         var module = new OperatorTestModule { intValue = -42 };
@@ -259,7 +259,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(42.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoUnaryMinus_Double")]
     public void DoUnaryMinus_Double()
     {
         var module = new OperatorTestModule { doubleValue = 3.14 };
@@ -271,7 +271,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(-3.14, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoUnaryMinus_Zero")]
     public void DoUnaryMinus_Zero()
     {
         var module = new OperatorTestModule { intValue = 0 };
@@ -279,7 +279,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(0.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoUnaryPlus_PositiveInt")]
     public void DoUnaryPlus_PositiveInt()
     {
         var module = new OperatorTestModule { intValue = 42 };
@@ -287,7 +287,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(42.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoUnaryPlus_NegativeInt")]
     public void DoUnaryPlus_NegativeInt()
     {
         var module = new OperatorTestModule { intValue = -42 };
@@ -295,7 +295,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(-42.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoUnaryPlus_Double")]
     public void DoUnaryPlus_Double()
     {
         var module = new OperatorTestModule { doubleValue = 3.14 };
@@ -311,7 +311,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
 
     #region Boolean Operators (DoBoolNot)
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoBoolNot_True")]
     public void DoBoolNot_True()
     {
         var module = new OperatorTestModule { boolValue = true };
@@ -319,7 +319,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(false, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoBoolNot_False")]
     public void DoBoolNot_False()
     {
         var module = new OperatorTestModule { boolValue = false };
@@ -327,7 +327,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(true, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoBoolNot_Expression")]
     public void DoBoolNot_Expression()
     {
         var module = new OperatorTestModule { intValue = 10 };
@@ -339,7 +339,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(false, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoBoolNot_DoubleNegation")]
     public void DoBoolNot_DoubleNegation()
     {
         var module = new OperatorTestModule { boolValue = true };
@@ -351,21 +351,21 @@ public sealed class FieldExpressionMethodsOperatorsTests
 
     #region Bitwise Operators (DoBitNot, DoXor)
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoXor_BooleanValues")]
     public void DoXor_BooleanValues()
     {
         var expr = FieldExpression<bool>.Compile("true ^ false", new(), typeof(OperatorTestModule));
         Assert.AreEqual(true, expr.Evaluate(new OperatorTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoXor_BothTrue")]
     public void DoXor_BothTrue()
     {
         var expr = FieldExpression<bool>.Compile("true ^ true", new(), typeof(OperatorTestModule));
         Assert.AreEqual(false, expr.Evaluate(new OperatorTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_DoXor_BothFalse")]
     public void DoXor_BothFalse()
     {
         var expr = FieldExpression<bool>.Compile(
@@ -380,7 +380,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
 
     #region Type Promotion and Mixed Operations
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_TypePromotion_ByteToDouble")]
     public void TypePromotion_ByteToDouble()
     {
         var module = new OperatorTestModule { byteValue = 10 };
@@ -392,7 +392,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(25.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_TypePromotion_LongToDouble")]
     public void TypePromotion_LongToDouble()
     {
         var module = new OperatorTestModule { longValue = 100 };
@@ -404,7 +404,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(25.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_TypePromotion_FloatToDouble")]
     public void TypePromotion_FloatToDouble()
     {
         var module = new OperatorTestModule { floatValue = 2.5f };
@@ -416,7 +416,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(4.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_MixedOperation_AllNumericTypes")]
     public void MixedOperation_AllNumericTypes()
     {
         var module = new OperatorTestModule
@@ -438,7 +438,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
 
     #region Complex Expressions with Operators
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_ComplexExpression_MultipleOperators")]
     public void ComplexExpression_MultipleOperators()
     {
         var module = new OperatorTestModule { intValue = 5, doubleValue = 2.0 };
@@ -450,7 +450,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(11.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_ComplexExpression_NestedUnaryOperators")]
     public void ComplexExpression_NestedUnaryOperators()
     {
         var module = new OperatorTestModule { intValue = 5 };
@@ -462,7 +462,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(5.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_ComplexExpression_MixedUnaryAndBinary")]
     public void ComplexExpression_MixedUnaryAndBinary()
     {
         var module = new OperatorTestModule { intValue = 10, doubleValue = 3.0 };
@@ -478,7 +478,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
 
     #region Edge Cases
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_EdgeCase_DivisionResultingInInfinity")]
     public void EdgeCase_DivisionResultingInInfinity()
     {
         var module = new OperatorTestModule { doubleValue = 1e308 };
@@ -491,7 +491,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.IsTrue(double.IsPositiveInfinity(result.Value) || result.Value > 1e308);
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_EdgeCase_VerySmallResult")]
     public void EdgeCase_VerySmallResult()
     {
         var module = new OperatorTestModule { doubleValue = 1e-300 };
@@ -504,7 +504,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.IsTrue(result >= 0);
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_EdgeCase_ModuloWithNegative")]
     public void EdgeCase_ModuloWithNegative()
     {
         var module = new OperatorTestModule { intValue = -17 };
@@ -518,7 +518,7 @@ public sealed class FieldExpressionMethodsOperatorsTests
         Assert.AreEqual(-2.0, result);
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodsOperatorsTests_EdgeCase_UnaryMinusOnZero")]
     public void EdgeCase_UnaryMinusOnZero()
     {
         var module = new OperatorTestModule { intValue = 0 };

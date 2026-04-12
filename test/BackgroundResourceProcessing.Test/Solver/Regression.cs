@@ -1,19 +1,12 @@
-using System.IO;
 using System.Linq;
 using BackgroundResourceProcessing.Collections.Burst;
+using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.Solver
 {
-    [TestClass]
-    public sealed class RegressionTests
+    public sealed class RegressionTests : BRPTestBase
     {
-        [TestCleanup]
-        public void Cleanup()
-        {
-            TestAllocator.Cleanup();
-        }
-
-        [TestMethod]
+        [TestInfo("RegressionTests_TestCrashSplitOutput")]
         public void TestCrashSplitOutput()
         {
             var processor = TestUtil.LoadVessel("regression/crash-split-output.cfg");
@@ -22,28 +15,28 @@ namespace BackgroundResourceProcessing.Test.Solver
             Assert.AreNotEqual(0.0, processor.converters[12].Rate);
         }
 
-        [TestMethod]
+        [TestInfo("RegressionTests_TestCrashBadVariableSelection")]
         public void TestCrashBadVariableSelection()
         {
             var processor = TestUtil.LoadVessel("regression/crash-bad-var-selection.cfg");
             processor.ComputeRates();
         }
 
-        [TestMethod]
+        [TestInfo("RegressionTests_TestCrashSelectedSlack")]
         public void TestCrashSelectedSlack()
         {
             var processor = TestUtil.LoadVessel("regression/crash-selected-slack.cfg");
             processor.ComputeRates();
         }
 
-        [TestMethod]
+        [TestInfo("RegressionTests_TestFullDumpExcess")]
         public void TestFullDumpExcess()
         {
             var processor = TestUtil.LoadVessel("regression/crash-full-dump-excess.cfg");
             processor.ComputeRates();
         }
 
-        [TestMethod]
+        [TestInfo("RegressionTests_TestDisjunctionInstability")]
         public void TestDisjunctionInstability()
         {
             var processor = TestUtil.LoadVessel("regression/disjunction-instability.cfg");
@@ -54,7 +47,7 @@ namespace BackgroundResourceProcessing.Test.Solver
             Assert.AreEqual(0.0, processor.converters[0].Rate, 0.0);
         }
 
-        [TestMethod]
+        [TestInfo("RegressionTests_TestUnderflowInstability")]
         public void TestUnderflowInstability()
         {
             var processor = TestUtil.LoadVessel("regression/underflow-instability.cfg");
@@ -65,7 +58,7 @@ namespace BackgroundResourceProcessing.Test.Solver
                 Assert.AreEqual(0.0, processor.inventories[i].Rate);
         }
 
-        [TestMethod]
+        [TestInfo("RegressionTests_TestZeroRates")]
         public void TestZeroRates()
         {
             var processor = TestUtil.LoadVessel("regression/zero-rates.cfg");
@@ -74,7 +67,7 @@ namespace BackgroundResourceProcessing.Test.Solver
             Assert.AreNotEqual(0.0, processor.inventories[2].Rate);
         }
 
-        [TestMethod]
+        [TestInfo("RegressionTests_TestFertilizerOutOfThinAir")]
         public void TestFertilizerOutOfThinAir()
         {
             var processor = TestUtil.LoadVessel("regression/fertilizer-out-of-thin-air.cfg");
@@ -89,7 +82,7 @@ namespace BackgroundResourceProcessing.Test.Solver
             }
         }
 
-        [TestMethod]
+        [TestInfo("RegressionTests_TestBoiloffIgnored")]
         public void TestBoiloffIgnored()
         {
             var processor = TestUtil.LoadVessel("regression/boiloff-ignored.cfg");
@@ -108,7 +101,7 @@ namespace BackgroundResourceProcessing.Test.Solver
             }
         }
 
-        [TestMethod]
+        [TestInfo("RegressionTests_TestBoiloffEcIgnored")]
         public void TestBoiloffEcIgnored()
         {
             var processor = TestUtil.LoadVessel("regression/boiloff-ec-ignored.cfg");
@@ -124,14 +117,14 @@ namespace BackgroundResourceProcessing.Test.Solver
             }
         }
 
-        [TestMethod]
+        [TestInfo("RegressionTests_TestCrashBadBchoiceAccess")]
         public void TestCrashBadBchoiceAccess()
         {
             var processor = TestUtil.LoadVessel("regression/crash-bad-bchoice-access.cfg");
             processor.ComputeRates();
         }
 
-        [TestMethod]
+        [TestInfo("RegressionTests_TestCrashNoProgress")]
         public void TestCrashNoProgress()
         {
             var processor = TestUtil.LoadVessel("regression/crash-bad-bchoice-access.cfg");
@@ -141,14 +134,14 @@ namespace BackgroundResourceProcessing.Test.Solver
             Assert.AreNotEqual(0.0, changepoint);
         }
 
-        [TestMethod]
+        [TestInfo("RegressionTests_TestCrashCreateSimplexTableau")]
         public void TestCrashCreateSimplexTableau()
         {
             var processor = TestUtil.LoadVessel("regression/crash-create-simplex-tableau.cfg");
             processor.ComputeRates();
         }
 
-        [TestMethod]
+        [TestInfo("RegressionTests_TestZeroRankFunction")]
         public void TestZeroRankFunction()
         {
             var processor = TestUtil.LoadVessel("regression/crash-create-simplex-tableau.cfg");
@@ -160,7 +153,7 @@ namespace BackgroundResourceProcessing.Test.Solver
             );
         }
 
-        [TestMethod]
+        [TestInfo("RegressionTests_TestBoiloffUnexpected")]
         public void TestBoiloffUnexpected()
         {
             var processor = TestUtil.LoadVessel("regression/boiloff-unexpected.cfg");
@@ -171,7 +164,7 @@ namespace BackgroundResourceProcessing.Test.Solver
             Assert.AreEqual(0.0, h2.rate, "LH2 rate should be 0");
         }
 
-        [TestMethod]
+        [TestInfo("RegressionTests_TestSolarPanelZeroRate")]
         public void TestSolarPanelZeroRate()
         {
             var processor = TestUtil.LoadVessel("regression/solar-panel-zero-rate.cfg");
@@ -190,7 +183,7 @@ namespace BackgroundResourceProcessing.Test.Solver
             }
         }
 
-        [TestMethod]
+        [TestInfo("RegressionTests_TestSolarPanelZeroRateWithHalfFullTanks")]
         public void TestSolarPanelZeroRateWithHalfFullTanks()
         {
             // Same vessel but with LF/Ox tanks at 50% (representing the

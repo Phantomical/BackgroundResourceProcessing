@@ -1,18 +1,12 @@
 using BackgroundResourceProcessing.Collections.Burst;
+using KSP.Testing;
 using Unity.Collections;
 
 namespace BackgroundResourceProcessing.Test.Collections.Burst
 {
-    [TestClass]
-    public sealed class AdjacencyMatrixTests
+    public sealed class AdjacencyMatrixTests : BRPTestBase
     {
-        [TestCleanup]
-        public void Cleanup()
-        {
-            TestAllocator.Cleanup();
-        }
-
-        [TestMethod]
+        [TestInfo("AdjacencyMatrixTests_Constructor_ValidDimensions_CreatesMatrix")]
         public void Constructor_ValidDimensions_CreatesMatrix()
         {
             var matrix = new AdjacencyMatrix(5, 10, AllocatorHandle.Temp);
@@ -22,7 +16,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             Assert.AreEqual(1, matrix.ColumnWords); // 10 bits fits in 1 ulong
         }
 
-        [TestMethod]
+        [TestInfo("AdjacencyMatrixTests_Constructor_LargeDimensions_CalculatesCorrectColumnWords")]
         public void Constructor_LargeDimensions_CalculatesCorrectColumnWords()
         {
             var matrix = new AdjacencyMatrix(5, 128, AllocatorHandle.Temp);
@@ -32,7 +26,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             Assert.AreEqual(2, matrix.ColumnWords); // 128 bits requires 2 ulongs
         }
 
-        [TestMethod]
+        [TestInfo("AdjacencyMatrixTests_Constructor_NegativeRows_ThrowsException")]
         public void Constructor_NegativeRows_ThrowsException()
         {
             Assert.ThrowsException<ArgumentOutOfRangeException>(() =>
@@ -40,7 +34,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             );
         }
 
-        [TestMethod]
+        [TestInfo("AdjacencyMatrixTests_Constructor_NegativeCols_ThrowsException")]
         public void Constructor_NegativeCols_ThrowsException()
         {
             Assert.ThrowsException<ArgumentOutOfRangeException>(() =>
@@ -48,7 +42,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             );
         }
 
-        [TestMethod]
+        [TestInfo("AdjacencyMatrixTests_Indexer_SingleElement_GetSet")]
         public void Indexer_SingleElement_GetSet()
         {
             var matrix = new AdjacencyMatrix(3, 3, AllocatorHandle.Temp);
@@ -65,7 +59,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             Assert.IsFalse(matrix[1, 2]);
         }
 
-        [TestMethod]
+        [TestInfo("AdjacencyMatrixTests_Indexer_MultipleElements_Independent")]
         public void Indexer_MultipleElements_Independent()
         {
             var matrix = new AdjacencyMatrix(3, 3, AllocatorHandle.Temp);
@@ -81,7 +75,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             Assert.IsFalse(matrix[1, 0]);
         }
 
-        [TestMethod]
+        [TestInfo("AdjacencyMatrixTests_RowIndexer_OutOfRange_ThrowsException")]
         public void RowIndexer_OutOfRange_ThrowsException()
         {
             var matrix = new AdjacencyMatrix(3, 3, AllocatorHandle.Temp);
@@ -97,7 +91,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             });
         }
 
-        [TestMethod]
+        [TestInfo("AdjacencyMatrixTests_RowIndexer_ValidRange_ReturnsBitSpan")]
         public void RowIndexer_ValidRange_ReturnsBitSpan()
         {
             var matrix = new AdjacencyMatrix(3, 65, AllocatorHandle.Temp);
@@ -111,7 +105,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             Assert.AreEqual(matrix.ColumnWords, row2.Words);
         }
 
-        [TestMethod]
+        [TestInfo("AdjacencyMatrixTests_ElementIndexer_OutOfRange_ThrowsException")]
         public void ElementIndexer_OutOfRange_ThrowsException()
         {
             var matrix = new AdjacencyMatrix(3, 3, AllocatorHandle.Temp);
@@ -127,7 +121,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             });
         }
 
-        [TestMethod]
+        [TestInfo("AdjacencyMatrixTests_Bits_Property_ReturnsCorrectBitSpan")]
         public void Bits_Property_ReturnsCorrectBitSpan()
         {
             var matrix = new AdjacencyMatrix(2, 65, AllocatorHandle.Temp);
@@ -136,7 +130,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             Assert.AreEqual(matrix.Rows * matrix.ColumnWords, bits.Words);
         }
 
-        [TestMethod]
+        [TestInfo("AdjacencyMatrixTests_SetEqualColumns_EmptyMatrix_SetsAllBitsTrue")]
         public void SetEqualColumns_EmptyMatrix_SetsAllBitsTrue()
         {
             var matrix = new AdjacencyMatrix(0, 5, AllocatorHandle.Temp);
@@ -156,7 +150,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             Assert.IsTrue(span[4]);
         }
 
-        [TestMethod]
+        [TestInfo("AdjacencyMatrixTests_SetEqualColumns_WithData_FindsEqualColumns")]
         public void SetEqualColumns_WithData_FindsEqualColumns()
         {
             var matrix = new AdjacencyMatrix(3, 5, AllocatorHandle.Temp);
@@ -201,7 +195,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             }
         }
 
-        [TestMethod]
+        [TestInfo("AdjacencyMatrixTests_RemoveUnequalColumns_InvalidSpanSize_ThrowsException")]
         public void RemoveUnequalColumns_InvalidSpanSize_ThrowsException()
         {
             var matrix = new AdjacencyMatrix(3, 5, AllocatorHandle.Temp);
@@ -222,7 +216,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             }
         }
 
-        [TestMethod]
+        [TestInfo("AdjacencyMatrixTests_RemoveUnequalColumns_InvalidColumn_ThrowsException")]
         public void RemoveUnequalColumns_InvalidColumn_ThrowsException()
         {
             var matrix = new AdjacencyMatrix(3, 5, AllocatorHandle.Temp);
@@ -253,7 +247,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             }
         }
 
-        [TestMethod]
+        [TestInfo("AdjacencyMatrixTests_RemoveUnequalColumns_SingleColumnWord_WorksCorrectly")]
         public void RemoveUnequalColumns_SingleColumnWord_WorksCorrectly()
         {
             var matrix = new AdjacencyMatrix(3, 32, AllocatorHandle.Temp); // Single column word
@@ -281,7 +275,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             Assert.IsFalse(span[15]); // Different from column 5
         }
 
-        [TestMethod]
+        [TestInfo("AdjacencyMatrixTests_RemoveUnequalColumns_MultipleColumnWords_WorksCorrectly")]
         public void RemoveUnequalColumns_MultipleColumnWords_WorksCorrectly()
         {
             var matrix = new AdjacencyMatrix(2, 128, AllocatorHandle.Temp); // Multiple column words
@@ -315,7 +309,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             Assert.IsFalse(span[120]); // Different pattern
         }
 
-        [TestMethod]
+        [TestInfo("AdjacencyMatrixTests_LargeDimensionsHandling")]
         public void LargeDimensionsHandling()
         {
             // Test with dimensions that require multiple column words
@@ -344,7 +338,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             Assert.IsFalse(matrix[4, 63]);
         }
 
-        [TestMethod]
+        [TestInfo("AdjacencyMatrixTests_FillUpperDiagonal_SquareMatrix_FillsCorrectly")]
         public void FillUpperDiagonal_SquareMatrix_FillsCorrectly()
         {
             var matrix = new AdjacencyMatrix(4, 4, AllocatorHandle.Temp);
@@ -381,7 +375,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             Assert.IsFalse(matrix[1, 5]);
         }
 
-        [TestMethod]
+        [TestInfo("AdjacencyMatrixTests_FillUpperDiagonal_WideMatrix_FillsCorrectly")]
         public void FillUpperDiagonal_WideMatrix_FillsCorrectly()
         {
             var matrix = new AdjacencyMatrix(3, 5, AllocatorHandle.Temp);
@@ -415,7 +409,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             Assert.IsFalse(matrix[2, 4]);
         }
 
-        [TestMethod]
+        [TestInfo("AdjacencyMatrixTests_FillUpperDiagonal_TallMatrix_ThrowsException")]
         public void FillUpperDiagonal_TallMatrix_ThrowsException()
         {
             // Create a matrix where the actual column width (rounded up) is smaller than rows
@@ -429,7 +423,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             Assert.ThrowsException<InvalidOperationException>(() => matrix.FillUpperDiagonal());
         }
 
-        [TestMethod]
+        [TestInfo("AdjacencyMatrixTests_FillUpperDiagonal_LargeMatrix_FillsCorrectly")]
         public void FillUpperDiagonal_LargeMatrix_FillsCorrectly()
         {
             var matrix = new AdjacencyMatrix(100, 100, AllocatorHandle.Temp);
@@ -459,7 +453,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             Assert.IsFalse(matrix[99, 100]);
         }
 
-        [TestMethod]
+        [TestInfo("AdjacencyMatrixTests_FillUpperDiagonal_CrossWordBoundary_FillsCorrectly")]
         public void FillUpperDiagonal_CrossWordBoundary_FillsCorrectly()
         {
             // Test with matrix dimensions that cross ulong word boundaries (64-bit)
@@ -488,7 +482,7 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             Assert.IsFalse(matrix[64, 65]);
         }
 
-        [TestMethod]
+        [TestInfo("AdjacencyMatrixTests_RemoveUnequalColumns_Simple")]
         public void RemoveUnequalColumns_Simple()
         {
             AdjacencyMatrix matrix = new(5, 5, AllocatorHandle.Temp);

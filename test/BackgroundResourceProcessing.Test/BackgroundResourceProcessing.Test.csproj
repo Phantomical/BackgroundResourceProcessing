@@ -1,63 +1,43 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <IsTestProject>false</IsTestProject>
     <ImplicitUsings>enable</ImplicitUsings>
-    <!-- <Nullable>enable</Nullable> -->
-    <EnableMSTestRunner>true</EnableMSTestRunner>
-    <OutputType>Exe</OutputType>
-    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <!--
-      Displays error on console in addition to the log file. Note that this feature comes with a performance impact.
-      For more information, visit https://learn.microsoft.com/dotnet/core/testing/unit-testing-platform-integration-dotnet-test#show-failure-per-test
-      -->
-    <TestingPlatformShowTestsFailure>true</TestingPlatformShowTestsFailure>
 
+    <KSPBinaryType>binary</KSPBinaryType>
+    <GameDataOutDir>$(ProjectRootDir)\GameData\BackgroundResourceProcessing.Test</GameDataOutDir>
+    <BinariesOutputRelativePath>GameData/BackgroundResourceProcessing.Test</BinariesOutputRelativePath>
+
+    <GenerateKSPAssemblyAttribute>true</GenerateKSPAssemblyAttribute>
+    <GenerateKSPAssemblyDependencyAttributes>true</GenerateKSPAssemblyDependencyAttributes>
   </PropertyGroup>
 
   <PropertyGroup>
     <ProjectRootDir>$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory), 'BackgroundResourceProcessing.sln'))</ProjectRootDir>
-    <RepoRootPath>$(MSBuildThisFileDirectory)\bin\GameData</RepoRootPath>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DotNetGraph" Version="3.2.0" />
-    <PackageReference Include="System.Text.Json" Version="9.0.5" />
-
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
-    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="17.12.6" />
-    <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" Version="1.4.3" />
-    <PackageReference Include="MSTest" Version="3.6.4" />
-
     <Reference Include="BackgroundResourceProcessing.System.Memory" Aliases="BRPMemory">
       <HintPath>$(SolutionDir)/deps/BackgroundResourceProcessing.System.Memory.dll</HintPath>
-      <Private>true</Private>
+      <Private>false</Private>
     </Reference>
 
     <Reference Include="0Harmony.dll">
       <HintPath>$(DepSet1)\000_Harmony\0Harmony.dll</HintPath>
-      <Private>true</Private>
+      <Private>false</Private>
     </Reference>
 
-    <ProjectReference Include="$(ProjectRootDir)\src\BackgroundResourceProcessing\BackgroundResourceProcessing.csproj" />
+    <ProjectReference Include="$(ProjectRootDir)\src\BackgroundResourceProcessing\BackgroundResourceProcessing.csproj">
+      <Private>false</Private>
+      <KSPAssemblyName>BackgroundResourceProcessing</KSPAssemblyName>
+      <KSPAssemblyVersion>$(Version)</KSPAssemblyVersion>
+    </ProjectReference>
   </ItemGroup>
 
-  <ItemGroup>
-    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
-  </ItemGroup>
-
-  <Target Name="CopyKSPDlls" AfterTargets="CopyFilesToOutputDirectory">
+  <Target Name="CopyTestData" AfterTargets="CopyFilesToOutputDirectory">
     <ItemGroup>
-      <KspDlls Include="$(ManagedPath)\*.dll" />
-      <BurstDlls Include="$(DepSet1)\000_KSPBurst\Plugins\*.dll" />
+      <TestVessels Include="$(MSBuildThisFileDirectory)vessels\**\*.*" />
     </ItemGroup>
-
-    <Copy SourceFiles="@(BurstDlls)" DestinationFolder="$(OutDir)\%(RecursiveDir)" />
-    <Copy SourceFiles="@(KspDlls)" DestinationFolder="$(OutDir)\%(RecursiveDir)" />
+    <Copy SourceFiles="@(TestVessels)" DestinationFolder="$(GameDataOutDir)\PluginData\vessels\%(RecursiveDir)" />
   </Target>
-<!-- 
-  <TestRunParameters>
-    <Parameter name="KSPRoot">$(KSPRoot)</Parameter>
-    <Parameter name="ProjectDir">$(ProjectDir)</Parameter>
-  </TestRunParameters> -->
-
 </Project>

@@ -1,11 +1,11 @@
 using BackgroundResourceProcessing.Collections;
+using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.Collections
 {
-    [TestClass]
-    public sealed class PriorityQueueTest
+    public sealed class PriorityQueueTest : BRPTestBase
     {
-        [TestMethod]
+        [TestInfo("PriorityQueue_RemoveFromMiddle")]
         public void RemoveFromMiddle()
         {
             PriorityQueue<int, int> queue = new();
@@ -17,7 +17,7 @@ namespace BackgroundResourceProcessing.Test.Collections
             Assert.AreEqual(6, removed);
         }
 
-        [TestMethod]
+        [TestInfo("PriorityQueue_InsertReversed")]
         public void InsertReversed()
         {
             int count = 8;
@@ -30,7 +30,7 @@ namespace BackgroundResourceProcessing.Test.Collections
                 Assert.AreEqual(i, queue.Dequeue());
         }
 
-        [TestMethod]
+        [TestInfo("PriorityQueue_TryDequeueEmpty")]
         public void TryDequeueEmpty()
         {
             PriorityQueue<int, int> queue = new();

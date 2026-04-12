@@ -1,11 +1,11 @@
 using BackgroundResourceProcessing.Maths;
+using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.Maths;
 
-[TestClass]
-public class DualTests
+public class DualTests : BRPTestBase
 {
-    [TestMethod]
+    [TestInfo("DualTests_RotateNormalByQuaternion")]
     public void RotateNormalByQuaternion()
     {
         var nrm = new Vector3d(-0.714522795224093, -0.0871465129957876, 0.69416328077609);
@@ -21,7 +21,7 @@ public class DualTests
         var r = q.Rotate(new(nrm));
     }
 
-    [TestMethod]
+    [TestInfo("DualTests_RotateByQuaternionDual")]
     public void RotateByQuaternionDual()
     {
         var q1 = DualQuaternion.FromAngleAxis(new(0, 1), new(new Vector3d(0, 1, 0)));

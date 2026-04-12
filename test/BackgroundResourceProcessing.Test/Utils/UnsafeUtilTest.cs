@@ -1,11 +1,10 @@
 using System;
 using BackgroundResourceProcessing.Utils;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.Utils;
 
-[TestClass]
-public sealed class UnsafeUtilTest
+public sealed class UnsafeUtilTest : BRPTestBase
 {
     private struct PrimitiveStruct
     {
@@ -55,7 +54,7 @@ public sealed class UnsafeUtilTest
         public int Value { get; set; }
     }
 
-    [TestMethod]
+    [TestInfo("UnsafeUtilTest_ContainsReferences_PrimitiveTypes_ReturnsFalse")]
     public void ContainsReferences_PrimitiveTypes_ReturnsFalse()
     {
         Assert.IsFalse(UnsafeUtil.ContainsReferences<int>());
@@ -69,7 +68,7 @@ public sealed class UnsafeUtilTest
         Assert.IsFalse(UnsafeUtil.ContainsReferences<decimal>());
     }
 
-    [TestMethod]
+    [TestInfo("UnsafeUtilTest_ContainsReferences_ReferenceTypes_ReturnsTrue")]
     public void ContainsReferences_ReferenceTypes_ReturnsTrue()
     {
         Assert.IsTrue(UnsafeUtil.ContainsReferences<string>());
@@ -79,7 +78,7 @@ public sealed class UnsafeUtilTest
         Assert.IsTrue(UnsafeUtil.ContainsReferences<List<int>>());
     }
 
-    [TestMethod]
+    [TestInfo("UnsafeUtilTest_ContainsReferences_EnumTypes_ReturnsFalse")]
     public void ContainsReferences_EnumTypes_ReturnsFalse()
     {
         Assert.IsFalse(UnsafeUtil.ContainsReferences<SimpleEnum>());
@@ -87,37 +86,37 @@ public sealed class UnsafeUtilTest
         Assert.IsFalse(UnsafeUtil.ContainsReferences<DayOfWeek>());
     }
 
-    [TestMethod]
+    [TestInfo("UnsafeUtilTest_ContainsReferences_PrimitiveOnlyStruct_ReturnsFalse")]
     public void ContainsReferences_PrimitiveOnlyStruct_ReturnsFalse()
     {
         Assert.IsFalse(UnsafeUtil.ContainsReferences<PrimitiveStruct>());
     }
 
-    [TestMethod]
+    [TestInfo("UnsafeUtilTest_ContainsReferences_StructWithReferenceField_ReturnsTrue")]
     public void ContainsReferences_StructWithReferenceField_ReturnsTrue()
     {
         Assert.IsTrue(UnsafeUtil.ContainsReferences<StructWithReference>());
     }
 
-    [TestMethod]
+    [TestInfo("UnsafeUtilTest_ContainsReferences_NestedStructWithoutReferences_ReturnsFalse")]
     public void ContainsReferences_NestedStructWithoutReferences_ReturnsFalse()
     {
         Assert.IsFalse(UnsafeUtil.ContainsReferences<NestedStructWithoutReferences>());
     }
 
-    [TestMethod]
+    [TestInfo("UnsafeUtilTest_ContainsReferences_NestedStructWithReferences_ReturnsTrue")]
     public void ContainsReferences_NestedStructWithReferences_ReturnsTrue()
     {
         Assert.IsTrue(UnsafeUtil.ContainsReferences<NestedStructWithReferences>());
     }
 
-    [TestMethod]
+    [TestInfo("UnsafeUtilTest_ContainsReferences_StructWithNullableValueTypes_ReturnsTrue")]
     public void ContainsReferences_StructWithNullableValueTypes_ReturnsTrue()
     {
         Assert.IsFalse(UnsafeUtil.ContainsReferences<StructWithNullableValueType>());
     }
 
-    [TestMethod]
+    [TestInfo("UnsafeUtilTest_ContainsReferences_NullableValueTypes_ReturnsTrue")]
     public void ContainsReferences_NullableValueTypes_ReturnsTrue()
     {
         Assert.IsFalse(UnsafeUtil.ContainsReferences<int?>());
@@ -126,7 +125,7 @@ public sealed class UnsafeUtilTest
         Assert.IsFalse(UnsafeUtil.ContainsReferences<DateTime?>());
     }
 
-    [TestMethod]
+    [TestInfo("UnsafeUtilTest_ContainsReferences_SystemValueTypes_ReturnsFalse")]
     public void ContainsReferences_SystemValueTypes_ReturnsFalse()
     {
         Assert.IsFalse(UnsafeUtil.ContainsReferences<DateTime>());
@@ -134,7 +133,7 @@ public sealed class UnsafeUtilTest
         Assert.IsFalse(UnsafeUtil.ContainsReferences<Guid>());
     }
 
-    [TestMethod]
+    [TestInfo("UnsafeUtilTest_ContainsReferences_ConsistentResults_SameTypeMultipleCalls")]
     public void ContainsReferences_ConsistentResults_SameTypeMultipleCalls()
     {
         // Ensure that multiple calls return the same result (testing caching behavior)
@@ -147,7 +146,7 @@ public sealed class UnsafeUtilTest
         Assert.IsFalse(result1);
     }
 
-    [TestMethod]
+    [TestInfo("UnsafeUtilTest_ContainsReferences_ConsistentResults_ReferenceTypeMultipleCalls")]
     public void ContainsReferences_ConsistentResults_ReferenceTypeMultipleCalls()
     {
         // Ensure that multiple calls return the same result for reference types

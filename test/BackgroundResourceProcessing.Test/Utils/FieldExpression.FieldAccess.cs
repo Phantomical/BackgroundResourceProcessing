@@ -1,9 +1,9 @@
 using BackgroundResourceProcessing.Utils;
+using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.Utils;
 
-[TestClass]
-public sealed class FieldExpressionFieldAccessTests
+public sealed class FieldExpressionFieldAccessTests : BRPTestBase
 {
     #region Test Helper Classes
 
@@ -114,7 +114,7 @@ public sealed class FieldExpressionFieldAccessTests
 
     #region Basic Field Access Tests
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestPublicFieldAccess")]
     public void TestPublicFieldAccess()
     {
         var module = new BasicFieldsModule();
@@ -127,7 +127,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.AreEqual("PublicValue", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestPrivateFieldAccess")]
     public void TestPrivateFieldAccess()
     {
         var module = new BasicFieldsModule();
@@ -140,7 +140,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.AreEqual("PrivateValue", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestProtectedFieldAccess")]
     public void TestProtectedFieldAccess()
     {
         var module = new BasicFieldsModule();
@@ -153,7 +153,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.AreEqual("ProtectedValue", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestInternalFieldAccess")]
     public void TestInternalFieldAccess()
     {
         var module = new BasicFieldsModule();
@@ -170,7 +170,7 @@ public sealed class FieldExpressionFieldAccessTests
 
     #region Property Access Tests
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestReadablePropertyAccess")]
     public void TestReadablePropertyAccess()
     {
         var module = new BasicFieldsModule();
@@ -183,7 +183,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.AreEqual("PublicPropertyValue", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestReadOnlyPropertyAccess")]
     public void TestReadOnlyPropertyAccess()
     {
         var module = new BasicFieldsModule();
@@ -196,7 +196,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.AreEqual("ReadOnlyValue", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestComputedPropertyAccess")]
     public void TestComputedPropertyAccess()
     {
         var module = new BasicFieldsModule();
@@ -209,16 +209,12 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.AreEqual("PublicValue_Computed", expr.Evaluate(module));
     }
 
-    [TestMethod]
-    [ExpectedException(typeof(BackgroundResourceProcessing.Expr.CompilationException))]
+    [TestInfo("FieldExpressionFieldAccessTests_TestWriteOnlyPropertyAccessThrows")]
     public void TestWriteOnlyPropertyAccessThrows()
     {
         var module = new BasicFieldsModule();
-        // This should throw CompilationException because write-only properties are not readable
-        var expr = FieldExpression<string>.Compile(
-            "%WriteOnlyProperty",
-            new(),
-            typeof(BasicFieldsModule)
+        Assert.ThrowsException<BackgroundResourceProcessing.Expr.CompilationException>(() =>
+            FieldExpression<string>.Compile("%WriteOnlyProperty", new(), typeof(BasicFieldsModule))
         );
     }
 
@@ -226,7 +222,7 @@ public sealed class FieldExpressionFieldAccessTests
 
     #region Nested Field Access Tests
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestSingleLevelNestedFieldAccess")]
     public void TestSingleLevelNestedFieldAccess()
     {
         var module = new NestedFieldsModule();
@@ -239,7 +235,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.AreEqual("NestedValue", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestMultiLevelNestedFieldAccess")]
     public void TestMultiLevelNestedFieldAccess()
     {
         var module = new NestedFieldsModule();
@@ -252,7 +248,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.AreEqual("DeeperValue", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestMultiLevelNestedNumericAccess")]
     public void TestMultiLevelNestedNumericAccess()
     {
         var module = new NestedFieldsModule();
@@ -265,7 +261,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.AreEqual(42, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestNestedFieldAccessOnNull")]
     public void TestNestedFieldAccessOnNull()
     {
         var module = new NestedFieldsModule();
@@ -278,7 +274,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.IsNull(expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestDeepNestedFieldAccessOnNull")]
     public void TestDeepNestedFieldAccessOnNull()
     {
         var module = new NestedFieldsModule();
@@ -295,7 +291,7 @@ public sealed class FieldExpressionFieldAccessTests
 
     #region Non-Existent Field Tests
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestNonExistentField")]
     public void TestNonExistentField()
     {
         var module = new BasicFieldsModule();
@@ -308,7 +304,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.IsNull(expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestNonExistentNestedField")]
     public void TestNonExistentNestedField()
     {
         var module = new NestedFieldsModule();
@@ -321,7 +317,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.IsNull(expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestCaseSensitiveFieldAccess")]
     public void TestCaseSensitiveFieldAccess()
     {
         var module = new BasicFieldsModule();
@@ -339,7 +335,7 @@ public sealed class FieldExpressionFieldAccessTests
 
     #region Module Self-Reference Tests
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestModuleSelfReference")]
     public void TestModuleSelfReference()
     {
         var module = new BasicFieldsModule();
@@ -350,7 +346,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.AreSame(module, result);
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestModuleSelfReferenceWithDotAccess")]
     public void TestModuleSelfReferenceWithDotAccess()
     {
         var module = new BasicFieldsModule();
@@ -367,7 +363,7 @@ public sealed class FieldExpressionFieldAccessTests
 
     #region Index-Based Field Access Tests
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestStringIndexFieldAccess")]
     public void TestStringIndexFieldAccess()
     {
         var module = new BasicFieldsModule();
@@ -380,7 +376,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.AreEqual("PublicValue", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestStringIndexPropertyAccess")]
     public void TestStringIndexPropertyAccess()
     {
         var module = new BasicFieldsModule();
@@ -393,7 +389,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.AreEqual("PublicPropertyValue", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestStringIndexNonExistentField")]
     public void TestStringIndexNonExistentField()
     {
         var module = new BasicFieldsModule();
@@ -410,7 +406,7 @@ public sealed class FieldExpressionFieldAccessTests
 
     #region Dynamic Type Tests (Runtime Type Resolution)
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestDerivedClassFieldAccess")]
     public void TestDerivedClassFieldAccess()
     {
         var module = new DerivedFieldsModule();
@@ -423,7 +419,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.AreEqual("DerivedValue", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestBaseClassFieldFromDerived")]
     public void TestBaseClassFieldFromDerived()
     {
         var module = new DerivedFieldsModule();
@@ -436,7 +432,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.AreEqual("BaseValue", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestRuntimeTypeFieldAccess")]
     public void TestRuntimeTypeFieldAccess()
     {
         var module = new DerivedFieldsModule();
@@ -452,7 +448,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.AreEqual("RuntimeValue", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestRuntimeTypeNestedNumericAccess")]
     public void TestRuntimeTypeNestedNumericAccess()
     {
         var module = new DerivedFieldsModule();
@@ -470,7 +466,7 @@ public sealed class FieldExpressionFieldAccessTests
 
     #region Type Coercion Tests
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestIntToDoubleCoercion")]
     public void TestIntToDoubleCoercion()
     {
         var module = new TypeCoercionModule();
@@ -479,7 +475,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.AreEqual(42.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestFloatToDoubleCoercion")]
     public void TestFloatToDoubleCoercion()
     {
         var module = new TypeCoercionModule();
@@ -494,7 +490,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.AreEqual(3.14, result.Value, 0.001);
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestByteToDoubleCoercion")]
     public void TestByteToDoubleCoercion()
     {
         var module = new TypeCoercionModule();
@@ -503,7 +499,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.AreEqual(255.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestLongToDoubleCoercion")]
     public void TestLongToDoubleCoercion()
     {
         var module = new TypeCoercionModule();
@@ -512,7 +508,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.AreEqual(9999999999.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestEnumFieldAccess")]
     public void TestEnumFieldAccess()
     {
         var module = new TypeCoercionModule();
@@ -530,7 +526,7 @@ public sealed class FieldExpressionFieldAccessTests
 
     #region Nullable Type Tests
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestNullableIntAccess")]
     public void TestNullableIntAccess()
     {
         var module = new NullableFieldsModule();
@@ -543,7 +539,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.AreEqual(100.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestNullableNullAccess")]
     public void TestNullableNullAccess()
     {
         var module = new NullableFieldsModule();
@@ -557,7 +553,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.IsTrue(expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestNullableDoubleAccess")]
     public void TestNullableDoubleAccess()
     {
         var module = new NullableFieldsModule();
@@ -572,7 +568,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.AreEqual(3.14, result.Value, 0.001);
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestNestedFieldWithNullable")]
     public void TestNestedFieldWithNullable()
     {
         var module = new NullableFieldsModule();
@@ -591,7 +587,7 @@ public sealed class FieldExpressionFieldAccessTests
 
     #region Exception Handling Tests
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestExceptionInPropertyGetter")]
     public void TestExceptionInPropertyGetter()
     {
         var module = new ExceptionThrowingModule();
@@ -604,12 +600,12 @@ public sealed class FieldExpressionFieldAccessTests
         );
 
         // This will throw because LogUtil.Error throws in test environment
-        Assert.ThrowsException<BackgroundResourceProcessing.Test.Setup.TestLogErrorException>(() =>
-            expr.Evaluate(module)
+        Assert.ThrowsException<BackgroundResourceProcessing.Test.TestSetup.TestLogErrorException>(
+            () => expr.Evaluate(module)
         );
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestNormalFieldAfterException")]
     public void TestNormalFieldAfterException()
     {
         var module = new ExceptionThrowingModule();
@@ -626,7 +622,7 @@ public sealed class FieldExpressionFieldAccessTests
 
     #region Collection Field Tests
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestArrayFieldAccess")]
     public void TestArrayFieldAccess()
     {
         var module = new CollectionFieldsModule();
@@ -641,7 +637,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.IsInstanceOfType(result, typeof(string[]));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestListFieldAccess")]
     public void TestListFieldAccess()
     {
         var module = new CollectionFieldsModule();
@@ -656,7 +652,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.IsInstanceOfType(result, typeof(List<string>));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestDictionaryFieldAccess")]
     public void TestDictionaryFieldAccess()
     {
         var module = new CollectionFieldsModule();
@@ -675,7 +671,7 @@ public sealed class FieldExpressionFieldAccessTests
 
     #region Edge Cases
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestFieldReturningNull")]
     public void TestFieldReturningNull()
     {
         var module = new NestedFieldsModule();
@@ -690,7 +686,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.IsNull(result);
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestValueTypeFieldAccess")]
     public void TestValueTypeFieldAccess()
     {
         var module = new TypeCoercionModule();
@@ -699,7 +695,7 @@ public sealed class FieldExpressionFieldAccessTests
         Assert.AreEqual(42, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldAccessTests_TestChainedNullPropagation")]
     public void TestChainedNullPropagation()
     {
         var module = new NestedFieldsModule();

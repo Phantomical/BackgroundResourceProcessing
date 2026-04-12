@@ -1,12 +1,11 @@
-using System.Numerics;
 using BackgroundResourceProcessing.Maths;
+using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.Maths;
 
-[TestClass]
-public class QuaternionDTests
+public class QuaternionDTests : BRPTestBase
 {
-    [TestMethod]
+    [TestInfo("QuaternionDTests_ToBasisIdentity")]
     public void ToBasisIdentity()
     {
         var q = QuaternionD.ToBasis(new(1, 0, 0), new(0, 1, 0), new(0, 0, 1));
@@ -19,7 +18,7 @@ public class QuaternionDTests
         AssertUtils.AreEqual(new(0, 0, 1), z);
     }
 
-    [TestMethod]
+    [TestInfo("QuaternionDTests_ToBasisRotatedY")]
     public void ToBasisRotatedY()
     {
         // A 90 degree rotation around the Y axis
@@ -33,7 +32,7 @@ public class QuaternionDTests
         AssertUtils.AreEqual(new(-1, 0, 0), z);
     }
 
-    [TestMethod]
+    [TestInfo("QuaternionDTests_ToBasisRotated45")]
     public void ToBasisRotated45()
     {
         var invsqrt2 = 1.0 / Math.Sqrt(2);
@@ -53,7 +52,7 @@ public class QuaternionDTests
         AssertUtils.AreEqual(new(-invsqrt2, 0, invsqrt2), z);
     }
 
-    [TestMethod]
+    [TestInfo("QuaternionDTests_FromBasisRotated45")]
     public void FromBasisRotated45()
     {
         var invsqrt2 = 1.0 / Math.Sqrt(2);
@@ -74,7 +73,7 @@ public class QuaternionDTests
         AssertUtils.AreEqual(new(1, 0, 0), z);
     }
 
-    [TestMethod]
+    [TestInfo("QuaternionDTests_Rotate90DegreesAroundY")]
     public void Rotate90DegreesAroundY()
     {
         var q = QuaternionD.FromAngleAxis(Math.PI / 2, new(0, 1, 0));

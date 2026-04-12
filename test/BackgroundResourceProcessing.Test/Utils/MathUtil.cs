@@ -1,11 +1,11 @@
 using BackgroundResourceProcessing.Utils;
+using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.Utils
 {
-    [TestClass]
-    public sealed class MathUtilTest
+    public sealed class MathUtilTest : BRPTestBase
     {
-        [TestMethod]
+        [TestInfo("MathUtilTest_TestCountTrailingZeros")]
         public void TestCountTrailingZeros()
         {
             Assert.AreEqual(8, MathUtil.TrailingZeroCount(0x100));

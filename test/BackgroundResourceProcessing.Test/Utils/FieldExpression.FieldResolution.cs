@@ -1,4 +1,5 @@
 using BackgroundResourceProcessing.Utils;
+using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.Utils;
 
@@ -6,8 +7,7 @@ namespace BackgroundResourceProcessing.Test.Utils;
 /// Tests for field and property resolution, including dynamic field access via DoFieldAccess.
 /// Tests the Parser.ParseFieldAccess and Methods.DoFieldAccess functionality.
 /// </summary>
-[TestClass]
-public sealed class FieldExpressionFieldResolutionTests
+public sealed class FieldExpressionFieldResolutionTests : BRPTestBase
 {
     #region Test Helper Classes
 
@@ -65,7 +65,7 @@ public sealed class FieldExpressionFieldResolutionTests
 
     #region Basic Field Access
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_FieldAccess_PublicField")]
     public void FieldAccess_PublicField()
     {
         var module = new FieldResolutionModule();
@@ -77,7 +77,7 @@ public sealed class FieldExpressionFieldResolutionTests
         Assert.AreEqual("public", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_FieldAccess_PrivateField")]
     public void FieldAccess_PrivateField()
     {
         var module = new FieldResolutionModule();
@@ -89,7 +89,7 @@ public sealed class FieldExpressionFieldResolutionTests
         Assert.AreEqual("private", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_FieldAccess_ProtectedField")]
     public void FieldAccess_ProtectedField()
     {
         var module = new FieldResolutionModule();
@@ -101,7 +101,7 @@ public sealed class FieldExpressionFieldResolutionTests
         Assert.AreEqual("protected", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_FieldAccess_InternalField")]
     public void FieldAccess_InternalField()
     {
         var module = new FieldResolutionModule();
@@ -117,7 +117,7 @@ public sealed class FieldExpressionFieldResolutionTests
 
     #region Property Access
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_PropertyAccess_ReadWrite")]
     public void PropertyAccess_ReadWrite()
     {
         var module = new FieldResolutionModule();
@@ -129,7 +129,7 @@ public sealed class FieldExpressionFieldResolutionTests
         Assert.AreEqual("property", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_PropertyAccess_ReadOnly")]
     public void PropertyAccess_ReadOnly()
     {
         var module = new FieldResolutionModule();
@@ -141,7 +141,7 @@ public sealed class FieldExpressionFieldResolutionTests
         Assert.AreEqual("readonly", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_PropertyAccess_Computed")]
     public void PropertyAccess_Computed()
     {
         var module = new FieldResolutionModule();
@@ -157,7 +157,7 @@ public sealed class FieldExpressionFieldResolutionTests
 
     #region Nested Field Access
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_NestedFieldAccess_SingleLevel")]
     public void NestedFieldAccess_SingleLevel()
     {
         var module = new FieldResolutionModule();
@@ -169,7 +169,7 @@ public sealed class FieldExpressionFieldResolutionTests
         Assert.AreEqual("nested", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_NestedFieldAccess_MultiLevel")]
     public void NestedFieldAccess_MultiLevel()
     {
         var module = new FieldResolutionModule();
@@ -181,7 +181,7 @@ public sealed class FieldExpressionFieldResolutionTests
         Assert.AreEqual("deep", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_NestedFieldAccess_NullIntermediate")]
     public void NestedFieldAccess_NullIntermediate()
     {
         var module = new FieldResolutionModule { nested = null };
@@ -193,7 +193,7 @@ public sealed class FieldExpressionFieldResolutionTests
         Assert.AreEqual("fallback", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_NestedFieldAccess_NullDeep")]
     public void NestedFieldAccess_NullDeep()
     {
         var module = new FieldResolutionModule();
@@ -210,7 +210,7 @@ public sealed class FieldExpressionFieldResolutionTests
 
     #region Dynamic Type Resolution
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_DynamicFieldAccess_RuntimeType")]
     public void DynamicFieldAccess_RuntimeType()
     {
         var module = new DynamicTypeModule();
@@ -223,7 +223,7 @@ public sealed class FieldExpressionFieldResolutionTests
         Assert.AreEqual("runtime", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_DynamicFieldAccess_RuntimeNumeric")]
     public void DynamicFieldAccess_RuntimeNumeric()
     {
         var module = new DynamicTypeModule();
@@ -235,7 +235,7 @@ public sealed class FieldExpressionFieldResolutionTests
         Assert.AreEqual(42.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_DynamicFieldAccess_NullDynamic")]
     public void DynamicFieldAccess_NullDynamic()
     {
         var module = new DynamicTypeModule { dynamicField = null };
@@ -251,7 +251,7 @@ public sealed class FieldExpressionFieldResolutionTests
 
     #region String Index Access for Fields
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_StringIndexAccess_Field")]
     public void StringIndexAccess_Field()
     {
         var module = new FieldResolutionModule();
@@ -263,7 +263,7 @@ public sealed class FieldExpressionFieldResolutionTests
         Assert.AreEqual("public", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_StringIndexAccess_Property")]
     public void StringIndexAccess_Property()
     {
         var module = new FieldResolutionModule();
@@ -275,7 +275,7 @@ public sealed class FieldExpressionFieldResolutionTests
         Assert.AreEqual("property", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_StringIndexAccess_NonExistent")]
     public void StringIndexAccess_NonExistent()
     {
         var module = new FieldResolutionModule();
@@ -291,7 +291,7 @@ public sealed class FieldExpressionFieldResolutionTests
 
     #region Case Sensitivity
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_CaseSensitivity_ExactMatch")]
     public void CaseSensitivity_ExactMatch()
     {
         var module = new FieldResolutionModule();
@@ -303,7 +303,7 @@ public sealed class FieldExpressionFieldResolutionTests
         Assert.AreEqual("public", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_CaseSensitivity_WrongCase_ReturnsNull")]
     public void CaseSensitivity_WrongCase_ReturnsNull()
     {
         var module = new FieldResolutionModule();
@@ -316,7 +316,7 @@ public sealed class FieldExpressionFieldResolutionTests
         Assert.AreEqual("fallback", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_CaseSensitivity_FieldVsProperty")]
     public void CaseSensitivity_FieldVsProperty()
     {
         var module = new CollisionModule();
@@ -334,7 +334,7 @@ public sealed class FieldExpressionFieldResolutionTests
 
     #region Non-Existent Fields
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_NonExistentField_ReturnsNull")]
     public void NonExistentField_ReturnsNull()
     {
         var module = new FieldResolutionModule();
@@ -346,7 +346,7 @@ public sealed class FieldExpressionFieldResolutionTests
         Assert.AreEqual("fallback", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_NonExistentNestedField")]
     public void NonExistentNestedField()
     {
         var module = new FieldResolutionModule();
@@ -362,7 +362,7 @@ public sealed class FieldExpressionFieldResolutionTests
 
     #region Module Self-Reference
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_SelfReference_ModuleObject")]
     public void SelfReference_ModuleObject()
     {
         var module = new FieldResolutionModule();
@@ -373,7 +373,7 @@ public sealed class FieldExpressionFieldResolutionTests
         Assert.AreSame(module, result);
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_SelfReference_WithDotAccess")]
     public void SelfReference_WithDotAccess()
     {
         var module = new FieldResolutionModule();
@@ -389,7 +389,7 @@ public sealed class FieldExpressionFieldResolutionTests
 
     #region Complex Field Expressions
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_ComplexExpression_FieldInArithmetic")]
     public void ComplexExpression_FieldInArithmetic()
     {
         var module = new DynamicTypeModule();
@@ -401,7 +401,7 @@ public sealed class FieldExpressionFieldResolutionTests
         Assert.AreEqual(84.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_ComplexExpression_NestedFieldComparison")]
     public void ComplexExpression_NestedFieldComparison()
     {
         var module = new FieldResolutionModule();
@@ -413,7 +413,7 @@ public sealed class FieldExpressionFieldResolutionTests
         Assert.IsTrue(expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_ComplexExpression_MultipleFieldAccess")]
     public void ComplexExpression_MultipleFieldAccess()
     {
         var module = new FieldResolutionModule();
@@ -429,7 +429,7 @@ public sealed class FieldExpressionFieldResolutionTests
 
     #region Edge Cases
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_EdgeCase_FieldReturningNull")]
     public void EdgeCase_FieldReturningNull()
     {
         var module = new FieldResolutionModule { nested = null };
@@ -441,7 +441,7 @@ public sealed class FieldExpressionFieldResolutionTests
         Assert.IsNull(expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_EdgeCase_ChainedNullPropagation")]
     public void EdgeCase_ChainedNullPropagation()
     {
         var module = new FieldResolutionModule { nested = null };
@@ -453,7 +453,7 @@ public sealed class FieldExpressionFieldResolutionTests
         Assert.AreEqual("fallback", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionFieldResolutionTests_EdgeCase_PropertyWithSideEffects")]
     public void EdgeCase_PropertyWithSideEffects()
     {
         var module = new CountingPropertyModule();

@@ -1,9 +1,10 @@
+using KSP.Testing;
+
 namespace BackgroundResourceProcessing.Test.Core
 {
-    [TestClass]
-    public sealed class ChangepointTests
+    public sealed class ChangepointTests : BRPTestBase
     {
-        [TestMethod]
+        [TestInfo("ChangepointTests_TestSingleInventoryPositiveRate")]
         public void TestSingleInventoryPositiveRate()
         {
             var processor = TestUtil.LoadVessel("changepoint/one-inventory-positive.cfg");
@@ -12,7 +13,7 @@ namespace BackgroundResourceProcessing.Test.Core
             Assert.AreEqual(50.0, changepoint, 1e-6);
         }
 
-        [TestMethod]
+        [TestInfo("ChangepointTests_TestSingleInventoryNegativeRate")]
         public void TestSingleInventoryNegativeRate()
         {
             var processor = TestUtil.LoadVessel("changepoint/one-inventory-negative.cfg");
@@ -21,7 +22,7 @@ namespace BackgroundResourceProcessing.Test.Core
             Assert.AreEqual(75.0, changepoint, 1e-6);
         }
 
-        [TestMethod]
+        [TestInfo("ChangepointTests_TestMultipleInventories")]
         public void TestMultipleInventories()
         {
             var processor = TestUtil.LoadVessel("changepoint/multiple.cfg");

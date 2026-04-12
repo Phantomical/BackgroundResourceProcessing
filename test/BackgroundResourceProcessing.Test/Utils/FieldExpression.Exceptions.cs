@@ -1,13 +1,13 @@
 using BackgroundResourceProcessing.Expr;
 using BackgroundResourceProcessing.Utils;
+using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.Utils;
 
 /// <summary>
 /// Tests for exception handling in field expressions.
 /// </summary>
-[TestClass]
-public sealed class FieldExpressionExceptionsTests
+public sealed class FieldExpressionExceptionsTests : BRPTestBase
 {
     class ExceptionTestModule : PartModule
     {
@@ -18,57 +18,65 @@ public sealed class FieldExpressionExceptionsTests
 
     #region CompilationException Tests
 
-    [TestMethod]
-    [ExpectedException(typeof(Expr.CompilationException))]
+    [TestInfo(
+        "FieldExpressionExceptionsTests_CompilationException_InvalidSyntax_MissingClosingParen"
+    )]
     public void CompilationException_InvalidSyntax_MissingClosingParen()
     {
-        BackgroundResourceProcessing.Utils.FieldExpression<double>.Compile(
-            "(1 + 2",
-            new(),
-            typeof(ExceptionTestModule)
+        Assert.ThrowsException<Expr.CompilationException>(() =>
+            BackgroundResourceProcessing.Utils.FieldExpression<double>.Compile(
+                "(1 + 2",
+                new(),
+                typeof(ExceptionTestModule)
+            )
         );
     }
 
     // Note: "1 + + 2" is actually valid - it parses as "1 + (+2)"
     // The parser accepts unary + operator
 
-    [TestMethod]
-    [ExpectedException(typeof(Expr.CompilationException))]
+    [TestInfo("FieldExpressionExceptionsTests_CompilationException_InvalidSyntax_EmptyExpression")]
     public void CompilationException_InvalidSyntax_EmptyExpression()
     {
-        BackgroundResourceProcessing.Utils.FieldExpression<double>.Compile(
-            "",
-            new(),
-            typeof(ExceptionTestModule)
+        Assert.ThrowsException<Expr.CompilationException>(() =>
+            BackgroundResourceProcessing.Utils.FieldExpression<double>.Compile(
+                "",
+                new(),
+                typeof(ExceptionTestModule)
+            )
         );
     }
 
-    [TestMethod]
-    [ExpectedException(typeof(Expr.CompilationException))]
+    [TestInfo(
+        "FieldExpressionExceptionsTests_CompilationException_InvalidSyntax_UnterminatedString"
+    )]
     public void CompilationException_InvalidSyntax_UnterminatedString()
     {
-        BackgroundResourceProcessing.Utils.FieldExpression<string>.Compile(
-            "\"unterminated",
-            new(),
-            typeof(ExceptionTestModule)
+        Assert.ThrowsException<Expr.CompilationException>(() =>
+            BackgroundResourceProcessing.Utils.FieldExpression<string>.Compile(
+                "\"unterminated",
+                new(),
+                typeof(ExceptionTestModule)
+            )
         );
     }
 
-    [TestMethod]
-    [ExpectedException(typeof(Expr.CompilationException))]
+    [TestInfo("FieldExpressionExceptionsTests_CompilationException_InvalidSyntax_InvalidOperator")]
     public void CompilationException_InvalidSyntax_InvalidOperator()
     {
-        BackgroundResourceProcessing.Utils.FieldExpression<double>.Compile(
-            "1 @ 2",
-            new(),
-            typeof(ExceptionTestModule)
+        Assert.ThrowsException<Expr.CompilationException>(() =>
+            BackgroundResourceProcessing.Utils.FieldExpression<double>.Compile(
+                "1 @ 2",
+                new(),
+                typeof(ExceptionTestModule)
+            )
         );
     }
 
     // Note: String fields can be coerced to double
     // The type system is flexible and allows cross-type conversions
 
-    [TestMethod]
+    [TestInfo("FieldExpressionExceptionsTests_CompilationException_MessageContainsDetails")]
     public void CompilationException_MessageContainsDetails()
     {
         try
@@ -91,7 +99,7 @@ public sealed class FieldExpressionExceptionsTests
 
     #region EvaluationException Tests
 
-    [TestMethod]
+    [TestInfo("FieldExpressionExceptionsTests_EvaluationException_DivisionByZero_ReturnsInfinity")]
     public void EvaluationException_DivisionByZero_ReturnsInfinity()
     {
         var module = new ExceptionTestModule { value = 0.0 };
@@ -109,7 +117,7 @@ public sealed class FieldExpressionExceptionsTests
 
     #region NullValueException Tests
 
-    [TestMethod]
+    [TestInfo("FieldExpressionExceptionsTests_NullValueException_NullToNonNullableStruct")]
     public void NullValueException_NullToNonNullableStruct()
     {
         var module = new ExceptionTestModule { nullObject = null };
@@ -125,7 +133,7 @@ public sealed class FieldExpressionExceptionsTests
         Assert.AreEqual(5.0, result);
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionExceptionsTests_NullValueException_NullField_HandledGracefully")]
     public void NullValueException_NullField_HandledGracefully()
     {
         var module = new ExceptionTestModule { nullObject = null };
@@ -144,7 +152,7 @@ public sealed class FieldExpressionExceptionsTests
 
     #region Exception Handling in Evaluate Methods
 
-    [TestMethod]
+    [TestInfo("FieldExpressionExceptionsTests_Evaluate_StructType_CatchesExceptionsReturnsNull")]
     public void Evaluate_StructType_CatchesExceptionsReturnsNull()
     {
         var module = new ExceptionTestModule();
@@ -159,7 +167,7 @@ public sealed class FieldExpressionExceptionsTests
         Assert.AreEqual(42.0, result);
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionExceptionsTests_Evaluate_ClassType_CatchesExceptionsReturnsNull")]
     public void Evaluate_ClassType_CatchesExceptionsReturnsNull()
     {
         var module = new ExceptionTestModule();
@@ -173,7 +181,7 @@ public sealed class FieldExpressionExceptionsTests
         Assert.AreEqual("default", result);
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionExceptionsTests_Evaluate_NullableType_CatchesExceptionsReturnsNull")]
     public void Evaluate_NullableType_CatchesExceptionsReturnsNull()
     {
         var module = new ExceptionTestModule();
@@ -191,7 +199,9 @@ public sealed class FieldExpressionExceptionsTests
 
     #region Error Recovery
 
-    [TestMethod]
+    [TestInfo(
+        "FieldExpressionExceptionsTests_ErrorRecovery_MultipleExpressionsOneFailsOneSucceeds"
+    )]
     public void ErrorRecovery_MultipleExpressionsOneFailsOneSucceeds()
     {
         var module = new ExceptionTestModule { value = 10.0 };
@@ -232,29 +242,31 @@ public sealed class FieldExpressionExceptionsTests
 
     #region Edge Cases
 
-    [TestMethod]
-    [ExpectedException(typeof(Expr.CompilationException))]
+    [TestInfo("FieldExpressionExceptionsTests_EdgeCase_OnlyOperator")]
     public void EdgeCase_OnlyOperator()
     {
-        BackgroundResourceProcessing.Utils.FieldExpression<double>.Compile(
-            "+",
-            new(),
-            typeof(ExceptionTestModule)
+        Assert.ThrowsException<Expr.CompilationException>(() =>
+            BackgroundResourceProcessing.Utils.FieldExpression<double>.Compile(
+                "+",
+                new(),
+                typeof(ExceptionTestModule)
+            )
         );
     }
 
-    [TestMethod]
-    [ExpectedException(typeof(Expr.CompilationException))]
+    [TestInfo("FieldExpressionExceptionsTests_EdgeCase_MismatchedParentheses_TooManyClosing")]
     public void EdgeCase_MismatchedParentheses_TooManyClosing()
     {
-        BackgroundResourceProcessing.Utils.FieldExpression<double>.Compile(
-            "(1 + 2))",
-            new(),
-            typeof(ExceptionTestModule)
+        Assert.ThrowsException<Expr.CompilationException>(() =>
+            BackgroundResourceProcessing.Utils.FieldExpression<double>.Compile(
+                "(1 + 2))",
+                new(),
+                typeof(ExceptionTestModule)
+            )
         );
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionExceptionsTests_EdgeCase_ComplexExpressionWithNullFields")]
     public void EdgeCase_ComplexExpressionWithNullFields()
     {
         var module = new ExceptionTestModule { nullObject = null, value = 5.0 };

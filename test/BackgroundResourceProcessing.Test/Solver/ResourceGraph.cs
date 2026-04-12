@@ -1,18 +1,12 @@
 using BackgroundResourceProcessing.BurstSolver;
 using BackgroundResourceProcessing.Collections.Burst;
+using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.Solver
 {
-    [TestClass]
-    public sealed class ResourceGraphTest
+    public sealed class ResourceGraphTest : BRPTestBase
     {
-        [TestCleanup]
-        public void Cleanup()
-        {
-            TestAllocator.Cleanup();
-        }
-
-        [TestMethod]
+        [TestInfo("ResourceGraphTest_MergeEquivalentInventories")]
         public void MergeEquivalentInventories()
         {
             var module = TestUtil.LoadVessel("isru-2/partially-full-lfo.cfg");
@@ -50,7 +44,7 @@ namespace BackgroundResourceProcessing.Test.Solver
             Assert.AreEqual(InventoryState.Full, graph.inventories[17].state); // Mass
         }
 
-        [TestMethod]
+        [TestInfo("ResourceGraphTest_MergeInventoriesWithDifferentConstraints")]
         public void MergeInventoriesWithDifferentConstraints()
         {
             var module = TestUtil.LoadVessel("isru-2/asteroid-interceptor.cfg");
@@ -65,7 +59,7 @@ namespace BackgroundResourceProcessing.Test.Solver
             Assert.AreEqual(InventoryState.Unconstrained, graph.inventories[4].state);
         }
 
-        [TestMethod]
+        [TestInfo("ResourceGraphTest_Crash1")]
         public void Crash1()
         {
             var processor = TestUtil.LoadVessel("regression/solver-v2-crash-1.cfg");
@@ -75,7 +69,7 @@ namespace BackgroundResourceProcessing.Test.Solver
             graph.MergeEquivalentConverters();
         }
 
-        [TestMethod]
+        [TestInfo("ResourceGraphTest_Crash1Solve")]
         public void Crash1Solve()
         {
             var processor = TestUtil.LoadVessel("regression/solver-v2-crash-1.cfg");

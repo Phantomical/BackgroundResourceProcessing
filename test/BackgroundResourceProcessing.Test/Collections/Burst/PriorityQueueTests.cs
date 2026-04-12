@@ -1,18 +1,12 @@
 using BackgroundResourceProcessing.Collections.Burst;
+using KSP.Testing;
 using Unity.Collections;
 
 namespace BackgroundResourceProcessing.Test.Collections.Burst;
 
-[TestClass]
-public class PriorityQueueTests
+public class PriorityQueueTests : BRPTestBase
 {
-    [TestCleanup]
-    public void Cleanup()
-    {
-        TestAllocator.Cleanup();
-    }
-
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_Constructor_Default_CreatesEmptyQueue")]
     public void Constructor_Default_CreatesEmptyQueue()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
@@ -22,7 +16,7 @@ public class PriorityQueueTests
         Assert.IsTrue(queue.Capacity >= 0);
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_Constructor_WithCapacity_CreatesQueueWithCapacity")]
     public void Constructor_WithCapacity_CreatesQueueWithCapacity()
     {
         const int capacity = 10;
@@ -33,7 +27,7 @@ public class PriorityQueueTests
         Assert.IsTrue(queue.Capacity >= capacity);
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_Constructor_WithArray_CreatesHeapifiedQueue")]
     public void Constructor_WithArray_CreatesHeapifiedQueue()
     {
         int[] values = { 5, 2, 8, 1, 9, 3 };
@@ -52,7 +46,7 @@ public class PriorityQueueTests
         CollectionAssert.AreEqual(new[] { 1, 2, 3, 5, 8, 9 }, result);
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_Enqueue_SingleItem_IncreasesCount")]
     public void Enqueue_SingleItem_IncreasesCount()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
@@ -63,7 +57,7 @@ public class PriorityQueueTests
         Assert.IsFalse(queue.IsEmpty);
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_Enqueue_MultipleItems_MaintainsMinHeapProperty")]
     public void Enqueue_MultipleItems_MaintainsMinHeapProperty()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
@@ -87,7 +81,7 @@ public class PriorityQueueTests
         CollectionAssert.AreEqual(new[] { 1, 2, 3, 5, 8, 9 }, result);
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_Enqueue_ExceedsCapacity_ExpandsAutomatically")]
     public void Enqueue_ExceedsCapacity_ExpandsAutomatically()
     {
         var queue = new PriorityQueue<int>(2, AllocatorHandle.Temp);
@@ -103,7 +97,7 @@ public class PriorityQueueTests
         Assert.AreEqual(1, queue.Peek()); // Min element should be at root
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_Dequeue_EmptyQueue_ThrowsInvalidOperationException")]
     public void Dequeue_EmptyQueue_ThrowsInvalidOperationException()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
@@ -111,7 +105,7 @@ public class PriorityQueueTests
         Assert.ThrowsException<InvalidOperationException>(() => queue.Dequeue());
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_Dequeue_NonEmptyQueue_ReturnsMinimumElementAndReducesCount")]
     public void Dequeue_NonEmptyQueue_ReturnsMinimumElementAndReducesCount()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
@@ -127,7 +121,7 @@ public class PriorityQueueTests
         Assert.AreEqual(2, queue.Peek()); // Next minimum should now be at root
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_TryDequeue_EmptyQueue_ReturnsFalse")]
     public void TryDequeue_EmptyQueue_ReturnsFalse()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
@@ -138,7 +132,7 @@ public class PriorityQueueTests
         Assert.AreEqual(default(int), item);
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_TryDequeue_NonEmptyQueue_ReturnsMinimumElementAndReducesCount")]
     public void TryDequeue_NonEmptyQueue_ReturnsMinimumElementAndReducesCount()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
@@ -154,7 +148,7 @@ public class PriorityQueueTests
         Assert.AreEqual(3, queue.Count);
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_Peek_EmptyQueue_ThrowsInvalidOperationException")]
     public void Peek_EmptyQueue_ThrowsInvalidOperationException()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
@@ -162,7 +156,7 @@ public class PriorityQueueTests
         Assert.ThrowsException<InvalidOperationException>(() => queue.Peek());
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_Peek_NonEmptyQueue_ReturnsMinimumElementWithoutRemoval")]
     public void Peek_NonEmptyQueue_ReturnsMinimumElementWithoutRemoval()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
@@ -180,7 +174,7 @@ public class PriorityQueueTests
         Assert.AreEqual(1, queue.Peek());
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_TryPeek_EmptyQueue_ReturnsFalse")]
     public void TryPeek_EmptyQueue_ReturnsFalse()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
@@ -191,7 +185,7 @@ public class PriorityQueueTests
         Assert.AreEqual(default(int), item);
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_TryPeek_NonEmptyQueue_ReturnsMinimumElementWithoutRemoval")]
     public void TryPeek_NonEmptyQueue_ReturnsMinimumElementWithoutRemoval()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
@@ -207,7 +201,7 @@ public class PriorityQueueTests
         Assert.AreEqual(4, queue.Count);
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_Count_EmptyQueue_ReturnsZero")]
     public void Count_EmptyQueue_ReturnsZero()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
@@ -215,7 +209,7 @@ public class PriorityQueueTests
         Assert.AreEqual(0, queue.Count);
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_Count_AfterEnqueueOperations_ReturnsCorrectCount")]
     public void Count_AfterEnqueueOperations_ReturnsCorrectCount()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
@@ -232,7 +226,7 @@ public class PriorityQueueTests
         Assert.AreEqual(3, queue.Count);
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_Count_AfterDequeueOperations_ReturnsCorrectCount")]
     public void Count_AfterDequeueOperations_ReturnsCorrectCount()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
@@ -252,7 +246,7 @@ public class PriorityQueueTests
         Assert.AreEqual(0, queue.Count);
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_IsEmpty_EmptyQueue_ReturnsTrue")]
     public void IsEmpty_EmptyQueue_ReturnsTrue()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
@@ -260,7 +254,7 @@ public class PriorityQueueTests
         Assert.IsTrue(queue.IsEmpty);
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_IsEmpty_NonEmptyQueue_ReturnsFalse")]
     public void IsEmpty_NonEmptyQueue_ReturnsFalse()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
@@ -269,7 +263,7 @@ public class PriorityQueueTests
         Assert.IsFalse(queue.IsEmpty);
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_IsEmpty_AfterDequeueingAllElements_ReturnsTrue")]
     public void IsEmpty_AfterDequeueingAllElements_ReturnsTrue()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
@@ -282,7 +276,7 @@ public class PriorityQueueTests
         Assert.IsTrue(queue.IsEmpty);
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_Capacity_InitialCapacity_IsNonNegative")]
     public void Capacity_InitialCapacity_IsNonNegative()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
@@ -290,7 +284,7 @@ public class PriorityQueueTests
         Assert.IsTrue(queue.Capacity >= 0);
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_Capacity_WithSpecifiedCapacity_IsAtLeastSpecified")]
     public void Capacity_WithSpecifiedCapacity_IsAtLeastSpecified()
     {
         const int requestedCapacity = 10;
@@ -299,7 +293,7 @@ public class PriorityQueueTests
         Assert.IsTrue(queue.Capacity >= requestedCapacity);
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_Span_EmptyQueue_ReturnsEmptySpan")]
     public void Span_EmptyQueue_ReturnsEmptySpan()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
@@ -309,7 +303,7 @@ public class PriorityQueueTests
         Assert.AreEqual(0, span.Length);
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_Span_NonEmptyQueue_ReturnsCorrectSpan")]
     public void Span_NonEmptyQueue_ReturnsCorrectSpan()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
@@ -324,7 +318,7 @@ public class PriorityQueueTests
         Assert.AreEqual(1, span[0]); // Root should be minimum
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_Span_CanModifyData")]
     public void Span_CanModifyData()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
@@ -337,7 +331,7 @@ public class PriorityQueueTests
         Assert.AreEqual(10, span[0]);
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_PriorityOrdering_WithCustomComparableStruct_WorksCorrectly")]
     public void PriorityOrdering_WithCustomComparableStruct_WorksCorrectly()
     {
         var queue = new PriorityQueue<Priority>(AllocatorHandle.Temp);
@@ -357,7 +351,7 @@ public class PriorityQueueTests
         CollectionAssert.AreEqual(new[] { 1, 2, 3, 4, 5 }, results);
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_LargeDataSet_MaintainsCorrectOrdering")]
     public void LargeDataSet_MaintainsCorrectOrdering()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
@@ -385,7 +379,7 @@ public class PriorityQueueTests
         CollectionAssert.AreEqual(expectedValues, actualValues);
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_StressTest_MixedOperations_MaintainsConsistency")]
     public void StressTest_MixedOperations_MaintainsConsistency()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);
@@ -420,7 +414,7 @@ public class PriorityQueueTests
         }
     }
 
-    [TestMethod]
+    [TestInfo("PriorityQueueTests_HeapProperty_AfterMultipleOperations_IsAlwaysMaintained")]
     public void HeapProperty_AfterMultipleOperations_IsAlwaysMaintained()
     {
         var queue = new PriorityQueue<int>(AllocatorHandle.Temp);

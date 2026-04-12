@@ -1,154 +1,91 @@
-using System.Runtime.CompilerServices;
+using System;
+using System.IO;
 using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using BackgroundResourceProcessing.BurstSolver;
 using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Utils;
-using KSPAchievements;
 
-namespace BackgroundResourceProcessing.Test
+namespace BackgroundResourceProcessing.Test;
+
+internal static class TestUtil
 {
-    internal static class TestUtil
+    static readonly string VesselsDirectory = Path.Combine(
+        KSPUtil.ApplicationRootPath,
+        "GameData/BackgroundResourceProcessing.Test/PluginData/vessels"
+    );
+
+    /// <summary>
+    /// Load a saved cfg file from the test vessels directory.
+    /// </summary>
+    public static ResourceProcessor LoadVessel(string name)
     {
-        private static string GetCallerFilePath([CallerFilePath] string callerFilePath = null)
-        {
-            return callerFilePath ?? throw new ArgumentNullException(nameof(callerFilePath));
-        }
+        var configPath = Path.Combine(VesselsDirectory, name);
 
-        public static string ProjectDirectory => Path.GetDirectoryName(GetCallerFilePath());
+        if (!File.Exists(configPath))
+            throw new FileNotFoundException($"file not found: {configPath}");
 
-        /// <summary>
-        /// Load a saved cfg file from the <c>vessels</c> directory.
-        /// </summary>
-        /// <param name="name">
-        /// The relative path of the config file under the <c>vessels</c> directory.
-        /// </param>
-        /// <returns></returns>
-        public static ResourceProcessor LoadVessel(string name)
-        {
-            var configPath = Path.Combine(ProjectDirectory, "vessels", name);
-
-            // ConfigNode attempts to use unity's Debug.Log if an error occurs.
-            // The unit tests run outside of unity so this ends up causing an
-            // opaque error. We fix that here by manually checking in advance.
-            if (!File.Exists(configPath))
-                throw new FileNotFoundException($"file not found: {configPath}");
-
-            var configNode = ConfigNode.Load(configPath);
-            var processor = new ResourceProcessor();
-            processor.Load(configNode.GetNode("BRP_SHIP"));
-            return processor;
-        }
-
-        static readonly JsonSerializerOptions options = new()
-        {
-            WriteIndented = true,
-            IncludeFields = true,
-            NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals,
-        };
-
-        static TestUtil()
-        {
-            options.Converters.Add(new JsonStringEnumConverter());
-        }
-
-        public static string DumpJson<T>(T obj)
-        {
-            return JsonSerializer.Serialize(obj, options);
-        }
-
-        public static void DumpProcessor(ResourceProcessor processor, string filename)
-        {
-            ConfigNode root = new();
-            ConfigNode node = root.AddNode("BRP_SHIP");
-            processor.Save(node);
-
-            Directory.CreateDirectory(Path.Combine(ProjectDirectory, "bin/ship"));
-            var path = Path.Combine(ProjectDirectory, "bin/ship", filename);
-            root.Save(path);
-        }
-
-        public static string SequenceToString<T>(IEnumerable<T> seq)
-        {
-            StringBuilder builder = new();
-            builder.Append("[");
-
-            bool first = true;
-            foreach (var item in seq)
-            {
-                if (!first)
-                    builder.Append(", ");
-                else
-                    first = false;
-
-                builder.Append(item);
-            }
-
-            builder.Append("]");
-            return builder.ToString();
-        }
+        var configNode = ConfigNode.Load(configPath);
+        var processor = new ResourceProcessor();
+        processor.Load(configNode.GetNode("BRP_SHIP"));
+        return processor;
     }
 
-    [TestClass]
-    public static class Setup
+    public static string SequenceToString<T>(IEnumerable<T> seq)
     {
-        public class TestLogErrorException(string message) : Exception(message) { }
+        StringBuilder builder = new();
+        builder.Append("[");
 
-        internal class TestLogSink(string path) : LogUtil.ILogSink
+        bool first = true;
+        foreach (var item in seq)
         {
-            internal TextWriter output = new StreamWriter(File.Open(path, FileMode.Create));
+            if (!first)
+                builder.Append(", ");
+            else
+                first = false;
 
-            public void Error(string message)
-            {
-                throw new TestLogErrorException(message);
-            }
-
-            public void Log(string message)
-            {
-                lock (output)
-                {
-                    output.WriteLine($"[INFO]  {message}");
-                }
-            }
-
-            public void Warn(string message)
-            {
-                lock (output)
-                {
-                    output.WriteLine($"[WARN]  {message}");
-                }
-            }
+            builder.Append(item);
         }
 
-        static readonly TestLogSink sink;
+        builder.Append("]");
+        return builder.ToString();
+    }
+}
 
-        static Setup()
+[KSPAddon(KSPAddon.Startup.Instantly, true)]
+public class TestSetup : UnityEngine.MonoBehaviour
+{
+    static bool initialized;
+
+    void Awake()
+    {
+        if (initialized)
+            return;
+        initialized = true;
+
+        DontDestroyOnLoad(gameObject);
+
+        LogUtil.Sink = new TestLogSink();
+        TypeRegistry.RegisterForTest([typeof(TestSetup).Assembly]);
+        DebugSettings.Instance.ConfigureUnityExternal();
+    }
+
+    public class TestLogErrorException(string message) : Exception(message) { }
+
+    class TestLogSink : LogUtil.ILogSink
+    {
+        public void Error(string message)
         {
-            sink = new TestLogSink(Path.Combine(TestUtil.ProjectDirectory, "bin/test-output.log"));
-            LogUtil.Sink = sink;
-
-            TypeRegistry.RegisterForTest([typeof(Setup).Assembly]);
-
-            DebugSettings.Instance.ConfigureUnityExternal();
-            DebugSettings.Instance.DebugLogging = true;
-#if SOLVERTRACE
-            DebugSettings.Instance.SolverTrace = true;
-#endif
+            throw new TestLogErrorException(message);
         }
 
-        [AssemblyInitialize]
-        public static void AssemblySetup(TestContext testContext)
+        public void Log(string message)
         {
-            DebugSettings.Instance.ConfigureUnityExternal();
+            UnityEngine.Debug.Log($"[BRP.Test] {message}");
         }
 
-        [AssemblyCleanup()]
-        public static void AssemblyCleanup()
+        public void Warn(string message)
         {
-            sink.output.Close();
-            TestAllocator.Cleanup();
+            UnityEngine.Debug.LogWarning($"[BRP.Test] {message}");
         }
     }
 }

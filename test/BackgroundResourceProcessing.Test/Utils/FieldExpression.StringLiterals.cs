@@ -1,5 +1,6 @@
 using BackgroundResourceProcessing.Expr;
 using BackgroundResourceProcessing.Utils;
+using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.Utils;
 
@@ -7,8 +8,7 @@ namespace BackgroundResourceProcessing.Test.Utils;
 /// Tests for string literal parsing and escape sequences in field expressions.
 /// Tests the Lexer.TakeString method and related string handling.
 /// </summary>
-[TestClass]
-public sealed class FieldExpressionStringLiteralsTests
+public sealed class FieldExpressionStringLiteralsTests : BRPTestBase
 {
     class StringTestModule : PartModule
     {
@@ -18,7 +18,7 @@ public sealed class FieldExpressionStringLiteralsTests
 
     #region Basic String Literals
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_BasicString_Simple")]
     public void BasicString_Simple()
     {
         var expr = BackgroundResourceProcessing.Utils.FieldExpression<string>.Compile(
@@ -29,7 +29,7 @@ public sealed class FieldExpressionStringLiteralsTests
         Assert.AreEqual("hello", expr.Evaluate(new StringTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_BasicString_Empty")]
     public void BasicString_Empty()
     {
         var expr = BackgroundResourceProcessing.Utils.FieldExpression<string>.Compile(
@@ -40,7 +40,7 @@ public sealed class FieldExpressionStringLiteralsTests
         Assert.AreEqual("", expr.Evaluate(new StringTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_BasicString_WithSpaces")]
     public void BasicString_WithSpaces()
     {
         var expr = BackgroundResourceProcessing.Utils.FieldExpression<string>.Compile(
@@ -51,7 +51,7 @@ public sealed class FieldExpressionStringLiteralsTests
         Assert.AreEqual("hello world", expr.Evaluate(new StringTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_BasicString_WithNumbers")]
     public void BasicString_WithNumbers()
     {
         var expr = BackgroundResourceProcessing.Utils.FieldExpression<string>.Compile(
@@ -66,7 +66,7 @@ public sealed class FieldExpressionStringLiteralsTests
 
     #region Escape Sequences
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_EscapeSequence_Quote")]
     public void EscapeSequence_Quote()
     {
         var expr = BackgroundResourceProcessing.Utils.FieldExpression<string>.Compile(
@@ -77,7 +77,7 @@ public sealed class FieldExpressionStringLiteralsTests
         Assert.AreEqual("say \"hi\"", expr.Evaluate(new StringTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_EscapeSequence_Backslash")]
     public void EscapeSequence_Backslash()
     {
         var expr = BackgroundResourceProcessing.Utils.FieldExpression<string>.Compile(
@@ -95,7 +95,7 @@ public sealed class FieldExpressionStringLiteralsTests
 
     #region String Comparisons
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_StringComparison_Equals")]
     public void StringComparison_Equals()
     {
         var expr = BackgroundResourceProcessing.Utils.FieldExpression<bool>.Compile(
@@ -106,7 +106,7 @@ public sealed class FieldExpressionStringLiteralsTests
         Assert.IsTrue(expr.Evaluate(new StringTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_StringComparison_NotEquals")]
     public void StringComparison_NotEquals()
     {
         var expr = BackgroundResourceProcessing.Utils.FieldExpression<bool>.Compile(
@@ -117,7 +117,7 @@ public sealed class FieldExpressionStringLiteralsTests
         Assert.IsTrue(expr.Evaluate(new StringTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_StringComparison_WithField")]
     public void StringComparison_WithField()
     {
         var module = new StringTestModule { text = "hello" };
@@ -129,7 +129,7 @@ public sealed class FieldExpressionStringLiteralsTests
         Assert.IsTrue(expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_StringComparison_EmptyString")]
     public void StringComparison_EmptyString()
     {
         var module = new StringTestModule { empty = "" };
@@ -145,7 +145,7 @@ public sealed class FieldExpressionStringLiteralsTests
 
     #region String Concatenation (if supported)
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_StringConcatenation_TwoLiterals")]
     public void StringConcatenation_TwoLiterals()
     {
         // Test if + operator works for strings
@@ -157,7 +157,7 @@ public sealed class FieldExpressionStringLiteralsTests
         Assert.AreEqual("hello world", expr.Evaluate(new StringTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_StringConcatenation_WithField")]
     public void StringConcatenation_WithField()
     {
         var module = new StringTestModule { text = "hello" };
@@ -169,7 +169,7 @@ public sealed class FieldExpressionStringLiteralsTests
         Assert.AreEqual("hello world", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_StringConcatenation_Multiple")]
     public void StringConcatenation_Multiple()
     {
         var expr = BackgroundResourceProcessing.Utils.FieldExpression<string>.Compile(
@@ -184,7 +184,7 @@ public sealed class FieldExpressionStringLiteralsTests
 
     #region Special Characters
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_SpecialChars_Punctuation")]
     public void SpecialChars_Punctuation()
     {
         var expr = BackgroundResourceProcessing.Utils.FieldExpression<string>.Compile(
@@ -195,7 +195,7 @@ public sealed class FieldExpressionStringLiteralsTests
         Assert.AreEqual("Hello, World!", expr.Evaluate(new StringTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_SpecialChars_Symbols")]
     public void SpecialChars_Symbols()
     {
         var expr = BackgroundResourceProcessing.Utils.FieldExpression<string>.Compile(
@@ -206,7 +206,7 @@ public sealed class FieldExpressionStringLiteralsTests
         Assert.AreEqual("@#$%^&*()", expr.Evaluate(new StringTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_SpecialChars_BracesAndBrackets")]
     public void SpecialChars_BracesAndBrackets()
     {
         var expr = BackgroundResourceProcessing.Utils.FieldExpression<string>.Compile(
@@ -221,7 +221,7 @@ public sealed class FieldExpressionStringLiteralsTests
 
     #region Null Coalescing with Strings
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_NullCoalesce_StringField")]
     public void NullCoalesce_StringField()
     {
         var module = new StringTestModule { text = null };
@@ -233,7 +233,7 @@ public sealed class FieldExpressionStringLiteralsTests
         Assert.AreEqual("default", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_NullCoalesce_StringFieldNotNull")]
     public void NullCoalesce_StringFieldNotNull()
     {
         var module = new StringTestModule { text = "value" };
@@ -245,7 +245,7 @@ public sealed class FieldExpressionStringLiteralsTests
         Assert.AreEqual("value", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_NullCoalesce_EmptyStringNotNull")]
     public void NullCoalesce_EmptyStringNotNull()
     {
         var module = new StringTestModule { empty = "" };
@@ -261,29 +261,31 @@ public sealed class FieldExpressionStringLiteralsTests
 
     #region Error Cases
 
-    [TestMethod]
-    [ExpectedException(typeof(CompilationException))]
+    [TestInfo("FieldExpressionStringLiteralsTests_ErrorCase_UnterminatedString")]
     public void ErrorCase_UnterminatedString()
     {
-        BackgroundResourceProcessing.Utils.FieldExpression<string>.Compile(
-            "\"unterminated",
-            new(),
-            typeof(StringTestModule)
+        Assert.ThrowsException<CompilationException>(() =>
+            BackgroundResourceProcessing.Utils.FieldExpression<string>.Compile(
+                "\"unterminated",
+                new(),
+                typeof(StringTestModule)
+            )
         );
     }
 
-    [TestMethod]
-    [ExpectedException(typeof(CompilationException))]
+    [TestInfo("FieldExpressionStringLiteralsTests_ErrorCase_UnterminatedStringWithEscape")]
     public void ErrorCase_UnterminatedStringWithEscape()
     {
-        BackgroundResourceProcessing.Utils.FieldExpression<string>.Compile(
-            "\"text\\",
-            new(),
-            typeof(StringTestModule)
+        Assert.ThrowsException<CompilationException>(() =>
+            BackgroundResourceProcessing.Utils.FieldExpression<string>.Compile(
+                "\"text\\",
+                new(),
+                typeof(StringTestModule)
+            )
         );
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_ErrorCase_StringWithOnlyEscapes")]
     public void ErrorCase_StringWithOnlyEscapes()
     {
         var expr = BackgroundResourceProcessing.Utils.FieldExpression<string>.Compile(
@@ -298,7 +300,7 @@ public sealed class FieldExpressionStringLiteralsTests
 
     #region Complex String Expressions
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_Complex_StringInComparison")]
     public void Complex_StringInComparison()
     {
         var module = new StringTestModule { text = "test" };
@@ -310,7 +312,7 @@ public sealed class FieldExpressionStringLiteralsTests
         Assert.IsTrue(expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_Complex_StringConcatenationWithEscapes")]
     public void Complex_StringConcatenationWithEscapes()
     {
         var expr = BackgroundResourceProcessing.Utils.FieldExpression<string>.Compile(
@@ -321,7 +323,7 @@ public sealed class FieldExpressionStringLiteralsTests
         Assert.AreEqual("line1\nline2", expr.Evaluate(new StringTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_Complex_MultipleStringsAndFields")]
     public void Complex_MultipleStringsAndFields()
     {
         var module = new StringTestModule { text = "middle" };
@@ -337,7 +339,7 @@ public sealed class FieldExpressionStringLiteralsTests
 
     #region Edge Cases
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_EdgeCase_VeryLongString")]
     public void EdgeCase_VeryLongString()
     {
         var longString = new string('a', 1000);
@@ -349,7 +351,7 @@ public sealed class FieldExpressionStringLiteralsTests
         Assert.AreEqual(longString, expr.Evaluate(new StringTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_EdgeCase_StringWithOnlySpaces")]
     public void EdgeCase_StringWithOnlySpaces()
     {
         var expr = BackgroundResourceProcessing.Utils.FieldExpression<string>.Compile(
@@ -360,7 +362,7 @@ public sealed class FieldExpressionStringLiteralsTests
         Assert.AreEqual("     ", expr.Evaluate(new StringTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_EdgeCase_ConsecutiveEscapes")]
     public void EdgeCase_ConsecutiveEscapes()
     {
         var expr = BackgroundResourceProcessing.Utils.FieldExpression<string>.Compile(
@@ -371,7 +373,7 @@ public sealed class FieldExpressionStringLiteralsTests
         Assert.AreEqual("\\\\", expr.Evaluate(new StringTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_EdgeCase_QuoteAtEnd")]
     public void EdgeCase_QuoteAtEnd()
     {
         var expr = BackgroundResourceProcessing.Utils.FieldExpression<string>.Compile(
@@ -382,7 +384,7 @@ public sealed class FieldExpressionStringLiteralsTests
         Assert.AreEqual("end\"", expr.Evaluate(new StringTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionStringLiteralsTests_EdgeCase_QuoteAtStart")]
     public void EdgeCase_QuoteAtStart()
     {
         var expr = BackgroundResourceProcessing.Utils.FieldExpression<string>.Compile(

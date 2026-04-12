@@ -1,9 +1,9 @@
 using BackgroundResourceProcessing.Utils;
+using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.Utils;
 
-[TestClass]
-public class FieldExpressionIndexAccessTests
+public class FieldExpressionIndexAccessTests : BRPTestBase
 {
     #region Test Helper Classes
 
@@ -161,7 +161,7 @@ public class FieldExpressionIndexAccessTests
 
     #region Array Indexing Tests
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestIntArrayIndexing")]
     public void TestIntArrayIndexing()
     {
         var module = new ArrayModule();
@@ -169,7 +169,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(1, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestIntArrayMiddleIndex")]
     public void TestIntArrayMiddleIndex()
     {
         var module = new ArrayModule();
@@ -177,7 +177,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(3, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestIntArrayLastIndex")]
     public void TestIntArrayLastIndex()
     {
         var module = new ArrayModule();
@@ -185,7 +185,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(5, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestDoubleArrayIndexing")]
     public void TestDoubleArrayIndexing()
     {
         var module = new ArrayModule();
@@ -193,7 +193,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(2.2, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestStringArrayIndexing")]
     public void TestStringArrayIndexing()
     {
         var module = new ArrayModule();
@@ -201,7 +201,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual("third", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestArrayIndexOutOfBounds")]
     public void TestArrayIndexOutOfBounds()
     {
         var module = new ArrayModule();
@@ -209,7 +209,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(-1, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestArrayNegativeIndex")]
     public void TestArrayNegativeIndex()
     {
         var module = new ArrayModule();
@@ -221,7 +221,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(-999, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestEmptyArray")]
     public void TestEmptyArray()
     {
         var module = new ArrayModule();
@@ -229,7 +229,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestNullArray")]
     public void TestNullArray()
     {
         var module = new ArrayModule();
@@ -237,7 +237,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(5, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestObjectArray")]
     public void TestObjectArray()
     {
         var module = new ArrayModule();
@@ -249,7 +249,7 @@ public class FieldExpressionIndexAccessTests
 
     #region List Indexing Tests
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestListIndexing")]
     public void TestListIndexing()
     {
         var module = new ListModule();
@@ -257,7 +257,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(10, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestListMiddleIndex")]
     public void TestListMiddleIndex()
     {
         var module = new ListModule();
@@ -265,7 +265,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(30, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestListLastIndex")]
     public void TestListLastIndex()
     {
         var module = new ListModule();
@@ -273,7 +273,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(40, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestStringListIndexing")]
     public void TestStringListIndexing()
     {
         var module = new ListModule();
@@ -281,7 +281,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual("beta", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestDoubleListIndexing")]
     public void TestDoubleListIndexing()
     {
         var module = new ListModule();
@@ -289,7 +289,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(3.5, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestListIndexOutOfBounds")]
     public void TestListIndexOutOfBounds()
     {
         var module = new ListModule();
@@ -297,7 +297,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(-1, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestListNegativeIndex")]
     public void TestListNegativeIndex()
     {
         var module = new ListModule();
@@ -305,7 +305,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(-999, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestEmptyList")]
     public void TestEmptyList()
     {
         var module = new ListModule();
@@ -313,7 +313,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestNullList")]
     public void TestNullList()
     {
         var module = new ListModule();
@@ -325,7 +325,7 @@ public class FieldExpressionIndexAccessTests
 
     #region Dictionary Indexing Tests
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestStringDictionaryIndexing")]
     public void TestStringDictionaryIndexing()
     {
         var module = new DictionaryModule();
@@ -337,7 +337,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(1, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestStringDictionaryMultipleKeys")]
     public void TestStringDictionaryMultipleKeys()
     {
         var module = new DictionaryModule();
@@ -349,7 +349,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(3, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestIntDictionaryIndexing")]
     public void TestIntDictionaryIndexing()
     {
         var module = new DictionaryModule();
@@ -357,7 +357,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual("second", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestDoubleDictionaryIndexing")]
     public void TestDoubleDictionaryIndexing()
     {
         var module = new DictionaryModule();
@@ -369,7 +369,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(3.14159, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestDictionaryMissingKey")]
     public void TestDictionaryMissingKey()
     {
         var module = new DictionaryModule();
@@ -381,7 +381,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(-1, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestEmptyDictionary")]
     public void TestEmptyDictionary()
     {
         var module = new DictionaryModule();
@@ -393,7 +393,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestNullDictionary")]
     public void TestNullDictionary()
     {
         var module = new DictionaryModule();
@@ -409,7 +409,7 @@ public class FieldExpressionIndexAccessTests
 
     #region Custom Indexer Tests
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestCustomIntIndexer")]
     public void TestCustomIntIndexer()
     {
         var module = new CustomIndexerModule();
@@ -417,7 +417,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual("zero", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestCustomIntIndexerMiddle")]
     public void TestCustomIntIndexerMiddle()
     {
         var module = new CustomIndexerModule();
@@ -425,7 +425,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual("one", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestCustomStringIndexer")]
     public void TestCustomStringIndexer()
     {
         var module = new CustomIndexerModule();
@@ -433,7 +433,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(100, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestCustomStringIndexerSecond")]
     public void TestCustomStringIndexerSecond()
     {
         var module = new CustomIndexerModule();
@@ -445,7 +445,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(200, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestCustomIndexerInvalidKey")]
     public void TestCustomIndexerInvalidKey()
     {
         var module = new CustomIndexerModule();
@@ -457,7 +457,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(-1, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestCustomIndexerOutOfBounds")]
     public void TestCustomIndexerOutOfBounds()
     {
         var module = new CustomIndexerModule();
@@ -469,7 +469,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual("default", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestMultiIndexerInt")]
     public void TestMultiIndexerInt()
     {
         var module = new MultiIndexerModule();
@@ -477,7 +477,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(50, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestMultiIndexerDouble")]
     public void TestMultiIndexerDouble()
     {
         var module = new MultiIndexerModule();
@@ -485,7 +485,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(6.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestMultiIndexerString")]
     public void TestMultiIndexerString()
     {
         var module = new MultiIndexerModule();
@@ -501,7 +501,7 @@ public class FieldExpressionIndexAccessTests
 
     #region Numeric Type Conversion Tests
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestDoubleToIntConversion")]
     public void TestDoubleToIntConversion()
     {
         var module = new NumericConversionModule();
@@ -513,7 +513,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(200, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestDoubleToIntConversionTruncation")]
     public void TestDoubleToIntConversionTruncation()
     {
         var module = new NumericConversionModule();
@@ -525,7 +525,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(200, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestDoubleToIntListIndex")]
     public void TestDoubleToIntListIndex()
     {
         var module = new NumericConversionModule();
@@ -537,7 +537,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual("c", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestDoubleToIntDictKey")]
     public void TestDoubleToIntDictKey()
     {
         var module = new NumericConversionModule();
@@ -549,7 +549,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(2.2, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestFloatToIntConversion")]
     public void TestFloatToIntConversion()
     {
         var module = new NumericConversionModule();
@@ -561,7 +561,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(100, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestUIntToIntConversion")]
     public void TestUIntToIntConversion()
     {
         var module = new NumericConversionModule();
@@ -577,7 +577,7 @@ public class FieldExpressionIndexAccessTests
 
     #region String Index Fallback Tests
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestStringIndexFallbackToField")]
     public void TestStringIndexFallbackToField()
     {
         var module = new StringIndexFallbackModule();
@@ -589,7 +589,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual("FieldValue", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestStringIndexFallbackNumericField")]
     public void TestStringIndexFallbackNumericField()
     {
         var module = new StringIndexFallbackModule();
@@ -601,7 +601,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(42, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestStringIndexPrefersIndexer")]
     public void TestStringIndexPrefersIndexer()
     {
         var module = new StringIndexFallbackModule();
@@ -613,7 +613,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(10, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestStringIndexFallbackNonExistent")]
     public void TestStringIndexFallbackNonExistent()
     {
         var module = new StringIndexFallbackModule();
@@ -629,7 +629,7 @@ public class FieldExpressionIndexAccessTests
 
     #region Null Propagation Tests
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestNullObjectIndex")]
     public void TestNullObjectIndex()
     {
         var module = new ArrayModule();
@@ -637,7 +637,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(99, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestNullIndexOnValidObject")]
     public void TestNullIndexOnValidObject()
     {
         var module = new ArrayModule();
@@ -650,7 +650,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(88, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestNullDictionaryAccess")]
     public void TestNullDictionaryAccess()
     {
         var module = new DictionaryModule();
@@ -662,7 +662,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(77, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestNullListAccess")]
     public void TestNullListAccess()
     {
         var module = new ListModule();
@@ -674,7 +674,7 @@ public class FieldExpressionIndexAccessTests
 
     #region Nested Index Access Tests
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestNestedArrayAccess")]
     public void TestNestedArrayAccess()
     {
         var module = new NestedIndexModule();
@@ -686,7 +686,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(2, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestNestedArrayAccessDeep")]
     public void TestNestedArrayAccessDeep()
     {
         var module = new NestedIndexModule();
@@ -698,7 +698,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(9, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestDictOfListsAccess")]
     public void TestDictOfListsAccess()
     {
         var module = new NestedIndexModule();
@@ -710,7 +710,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(20, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestDictOfListsSecondKey")]
     public void TestDictOfListsSecondKey()
     {
         var module = new NestedIndexModule();
@@ -722,7 +722,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(60, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestJaggedArrayAccess")]
     public void TestJaggedArrayAccess()
     {
         var module = new NestedIndexModule();
@@ -734,7 +734,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(5, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestNestedAccessOutOfBounds")]
     public void TestNestedAccessOutOfBounds()
     {
         var module = new NestedIndexModule();
@@ -746,7 +746,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(-1, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestNestedAccessInnerOutOfBounds")]
     public void TestNestedAccessInnerOutOfBounds()
     {
         var module = new NestedIndexModule();
@@ -762,7 +762,7 @@ public class FieldExpressionIndexAccessTests
 
     #region Exception Handling Tests
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestIndexOutOfRangeException")]
     public void TestIndexOutOfRangeException()
     {
         var module = new ThrowingIndexerModule();
@@ -774,7 +774,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual("caught", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestKeyNotFoundException")]
     public void TestKeyNotFoundException()
     {
         var module = new ThrowingIndexerModule();
@@ -786,7 +786,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual("caught", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestOtherExceptionLogged")]
     public void TestOtherExceptionLogged()
     {
         var module = new ThrowingIndexerModule();
@@ -799,7 +799,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual("caught", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestValidIndexAfterException")]
     public void TestValidIndexAfterException()
     {
         var module = new ThrowingIndexerModule();
@@ -811,7 +811,7 @@ public class FieldExpressionIndexAccessTests
 
     #region Type Coercion Tests
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestIntFromObjectArray")]
     public void TestIntFromObjectArray()
     {
         var module = new TypeCoercionModule();
@@ -823,7 +823,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(42, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestDoubleFromObjectArray")]
     public void TestDoubleFromObjectArray()
     {
         var module = new TypeCoercionModule();
@@ -835,7 +835,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(3.14, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestStringFromObjectArray")]
     public void TestStringFromObjectArray()
     {
         var module = new TypeCoercionModule();
@@ -847,7 +847,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual("text", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestBoolFromObjectArray")]
     public void TestBoolFromObjectArray()
     {
         var module = new TypeCoercionModule();
@@ -859,7 +859,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(true, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestObjectFromMixedList")]
     public void TestObjectFromMixedList()
     {
         var module = new TypeCoercionModule();
@@ -871,7 +871,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(2.5, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestIntFromMixedList")]
     public void TestIntFromMixedList()
     {
         var module = new TypeCoercionModule();
@@ -883,7 +883,7 @@ public class FieldExpressionIndexAccessTests
 
     #region Edge Cases
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestZeroIndex")]
     public void TestZeroIndex()
     {
         var module = new ArrayModule();
@@ -891,7 +891,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(1, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestEmptyStringKey")]
     public void TestEmptyStringKey()
     {
         var module = new DictionaryModule();
@@ -903,7 +903,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(-1, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestComplexExpression")]
     public void TestComplexExpression()
     {
         var module = new ArrayModule();
@@ -915,7 +915,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(5, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestIndexWithCoalescing")]
     public void TestIndexWithCoalescing()
     {
         var module = new ArrayModule();
@@ -927,7 +927,7 @@ public class FieldExpressionIndexAccessTests
         Assert.AreEqual(11, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionIndexAccessTests_TestChainedCoalescing")]
     public void TestChainedCoalescing()
     {
         var module = new ArrayModule();

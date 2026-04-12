@@ -1,4 +1,5 @@
 using BackgroundResourceProcessing.Utils;
+using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.Utils;
 
@@ -6,8 +7,7 @@ namespace BackgroundResourceProcessing.Test.Utils;
 /// Tests for method invocation in field expressions.
 /// Tests the Methods.DoMethodInvoke functionality and parameter type conversion.
 /// </summary>
-[TestClass]
-public sealed class FieldExpressionMethodCallsTests
+public sealed class FieldExpressionMethodCallsTests : BRPTestBase
 {
     #region Test Helper Classes
 
@@ -47,7 +47,7 @@ public sealed class FieldExpressionMethodCallsTests
 
     #region Basic Method Calls
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodCallsTests_MethodCall_NoParams")]
     public void MethodCall_NoParams()
     {
         var module = new MethodCallModule();
@@ -55,7 +55,7 @@ public sealed class FieldExpressionMethodCallsTests
         Assert.AreEqual(42.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodCallsTests_MethodCall_SingleParam")]
     public void MethodCall_SingleParam()
     {
         var module = new MethodCallModule();
@@ -67,7 +67,7 @@ public sealed class FieldExpressionMethodCallsTests
         Assert.AreEqual(20.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodCallsTests_MethodCall_TwoParams")]
     public void MethodCall_TwoParams()
     {
         var module = new MethodCallModule();
@@ -75,7 +75,7 @@ public sealed class FieldExpressionMethodCallsTests
         Assert.AreEqual(12.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodCallsTests_MethodCall_ThreeParams")]
     public void MethodCall_ThreeParams()
     {
         var module = new MethodCallModule();
@@ -91,7 +91,7 @@ public sealed class FieldExpressionMethodCallsTests
 
     #region Method Calls with Type Conversion
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodCallsTests_MethodCall_TypeConversion_IntToDouble")]
     public void MethodCall_TypeConversion_IntToDouble()
     {
         var module = new MethodCallModule();
@@ -103,7 +103,7 @@ public sealed class FieldExpressionMethodCallsTests
         Assert.AreEqual(15.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodCallsTests_MethodCall_TypeConversion_DoubleToInt")]
     public void MethodCall_TypeConversion_DoubleToInt()
     {
         var module = new MethodCallModule();
@@ -119,7 +119,7 @@ public sealed class FieldExpressionMethodCallsTests
 
     #region Method Calls with String Parameters
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodCallsTests_MethodCall_StringParams")]
     public void MethodCall_StringParams()
     {
         var module = new MethodCallModule();
@@ -135,7 +135,7 @@ public sealed class FieldExpressionMethodCallsTests
 
     #region Method Overload Resolution
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodCallsTests_MethodOverload_IntParam")]
     public void MethodOverload_IntParam()
     {
         var module = new MethodCallModule();
@@ -148,7 +148,7 @@ public sealed class FieldExpressionMethodCallsTests
         Assert.AreEqual(10.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodCallsTests_MethodOverload_DoubleParam")]
     public void MethodOverload_DoubleParam()
     {
         var module = new MethodCallModule();
@@ -161,7 +161,7 @@ public sealed class FieldExpressionMethodCallsTests
         Assert.AreEqual(10.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodCallsTests_MethodOverload_StringParam")]
     public void MethodOverload_StringParam()
     {
         var module = new MethodCallModule();
@@ -178,7 +178,7 @@ public sealed class FieldExpressionMethodCallsTests
 
     #region Return Type Conversion
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodCallsTests_ReturnType_IntToDouble")]
     public void ReturnType_IntToDouble()
     {
         var module = new MethodCallModule();
@@ -190,7 +190,7 @@ public sealed class FieldExpressionMethodCallsTests
         Assert.AreEqual(10.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodCallsTests_ReturnType_String")]
     public void ReturnType_String()
     {
         var module = new MethodCallModule();
@@ -202,7 +202,7 @@ public sealed class FieldExpressionMethodCallsTests
         Assert.AreEqual("test", expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodCallsTests_ReturnType_Bool")]
     public void ReturnType_Bool()
     {
         var module = new MethodCallModule();
@@ -214,7 +214,7 @@ public sealed class FieldExpressionMethodCallsTests
 
     #region Method Calls in Expressions
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodCallsTests_MethodInArithmetic")]
     public void MethodInArithmetic()
     {
         var module = new MethodCallModule();
@@ -226,7 +226,7 @@ public sealed class FieldExpressionMethodCallsTests
         Assert.AreEqual(16.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodCallsTests_NestedMethodCalls")]
     public void NestedMethodCalls()
     {
         var module = new MethodCallModule();
@@ -239,7 +239,7 @@ public sealed class FieldExpressionMethodCallsTests
         Assert.AreEqual(20.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodCallsTests_MethodCallWithFieldParam")]
     public void MethodCallWithFieldParam()
     {
         var module = new MethodWithFieldsModule { value = 7 };
@@ -262,7 +262,7 @@ public sealed class FieldExpressionMethodCallsTests
 
     #region Edge Cases
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodCallsTests_EdgeCase_MethodReturningNull")]
     public void EdgeCase_MethodReturningNull()
     {
         var module = new NullReturningModule();
@@ -279,7 +279,7 @@ public sealed class FieldExpressionMethodCallsTests
         public string ReturnNull() => null;
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionMethodCallsTests_EdgeCase_MethodWithManyParams")]
     public void EdgeCase_MethodWithManyParams()
     {
         var module = new ManyParamsModule();

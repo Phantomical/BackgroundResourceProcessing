@@ -1,12 +1,12 @@
 using BackgroundResourceProcessing.Utils;
+using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.Utils;
 
 /// <summary>
 /// Tests for builtin objects accessible in field expressions ($Math, $Infinity, etc.).
 /// </summary>
-[TestClass]
-public sealed class FieldExpressionBuiltinsTests
+public sealed class FieldExpressionBuiltinsTests : BRPTestBase
 {
     class BuiltinsTestModule : PartModule
     {
@@ -15,7 +15,7 @@ public sealed class FieldExpressionBuiltinsTests
 
     #region $Infinity Constant
 
-    [TestMethod]
+    [TestInfo("FieldExpressionBuiltinsTests_Infinity_Constant")]
     public void Infinity_Constant()
     {
         var expr = FieldExpression<double>.Compile("$Infinity", new(), typeof(BuiltinsTestModule));
@@ -23,7 +23,7 @@ public sealed class FieldExpressionBuiltinsTests
         Assert.IsTrue(double.IsPositiveInfinity(result.Value));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionBuiltinsTests_Infinity_InArithmetic")]
     public void Infinity_InArithmetic()
     {
         var expr = FieldExpression<double>.Compile(
@@ -35,7 +35,7 @@ public sealed class FieldExpressionBuiltinsTests
         Assert.IsTrue(double.IsPositiveInfinity(result.Value));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionBuiltinsTests_Infinity_InComparison")]
     public void Infinity_InComparison()
     {
         var expr = FieldExpression<bool>.Compile(
@@ -46,7 +46,7 @@ public sealed class FieldExpressionBuiltinsTests
         Assert.IsTrue(expr.Evaluate(new BuiltinsTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionBuiltinsTests_Infinity_DivideByInfinity_ReturnsNaN")]
     public void Infinity_DivideByInfinity_ReturnsNaN()
     {
         var expr = FieldExpression<double>.Compile(
@@ -58,7 +58,7 @@ public sealed class FieldExpressionBuiltinsTests
         Assert.IsTrue(double.IsNaN(result.Value));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionBuiltinsTests_Infinity_MinusInfinity_ReturnsNaN")]
     public void Infinity_MinusInfinity_ReturnsNaN()
     {
         var expr = FieldExpression<double>.Compile(
@@ -74,21 +74,21 @@ public sealed class FieldExpressionBuiltinsTests
 
     #region $Math Access
 
-    [TestMethod]
+    [TestInfo("FieldExpressionBuiltinsTests_Math_PIAccess")]
     public void Math_PIAccess()
     {
         var expr = FieldExpression<double>.Compile("$Math.PI", new(), typeof(BuiltinsTestModule));
         Assert.AreEqual(Math.PI, expr.Evaluate(new BuiltinsTestModule()).Value, 1e-10);
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionBuiltinsTests_Math_EAccess")]
     public void Math_EAccess()
     {
         var expr = FieldExpression<double>.Compile("$Math.E", new(), typeof(BuiltinsTestModule));
         Assert.AreEqual(Math.E, expr.Evaluate(new BuiltinsTestModule()).Value, 1e-10);
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionBuiltinsTests_Math_FunctionCall")]
     public void Math_FunctionCall()
     {
         var expr = FieldExpression<double>.Compile(
@@ -99,7 +99,7 @@ public sealed class FieldExpressionBuiltinsTests
         Assert.AreEqual(4.0, expr.Evaluate(new BuiltinsTestModule()).Value, 1e-10);
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionBuiltinsTests_Math_ChainedAccess")]
     public void Math_ChainedAccess()
     {
         var expr = FieldExpression<double>.Compile(
@@ -114,7 +114,7 @@ public sealed class FieldExpressionBuiltinsTests
 
     #region Combined Builtins
 
-    [TestMethod]
+    [TestInfo("FieldExpressionBuiltinsTests_Combined_MathWithInfinity")]
     public void Combined_MathWithInfinity()
     {
         var expr = FieldExpression<bool>.Compile(
@@ -125,7 +125,7 @@ public sealed class FieldExpressionBuiltinsTests
         Assert.IsTrue(expr.Evaluate(new BuiltinsTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionBuiltinsTests_Combined_InfinityInMathFunction")]
     public void Combined_InfinityInMathFunction()
     {
         var expr = FieldExpression<double>.Compile(
@@ -136,7 +136,7 @@ public sealed class FieldExpressionBuiltinsTests
         Assert.AreEqual(100.0, expr.Evaluate(new BuiltinsTestModule()).Value, 1e-10);
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionBuiltinsTests_Combined_FieldsWithBuiltins")]
     public void Combined_FieldsWithBuiltins()
     {
         var module = new BuiltinsTestModule { value = 5.0 };
@@ -152,7 +152,7 @@ public sealed class FieldExpressionBuiltinsTests
 
     #region Null Coalescing with Builtins
 
-    [TestMethod]
+    [TestInfo("FieldExpressionBuiltinsTests_NullCoalesce_WithInfinity")]
     public void NullCoalesce_WithInfinity()
     {
         var expr = FieldExpression<double>.Compile(
@@ -164,7 +164,7 @@ public sealed class FieldExpressionBuiltinsTests
         Assert.IsTrue(double.IsPositiveInfinity(result.Value));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionBuiltinsTests_NullCoalesce_WithMathConstant")]
     public void NullCoalesce_WithMathConstant()
     {
         var expr = FieldExpression<double>.Compile(
@@ -179,7 +179,7 @@ public sealed class FieldExpressionBuiltinsTests
 
     #region Edge Cases
 
-    [TestMethod]
+    [TestInfo("FieldExpressionBuiltinsTests_EdgeCase_InfinityComparison")]
     public void EdgeCase_InfinityComparison()
     {
         var expr = FieldExpression<bool>.Compile(
@@ -190,7 +190,7 @@ public sealed class FieldExpressionBuiltinsTests
         Assert.IsTrue(expr.Evaluate(new BuiltinsTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionBuiltinsTests_EdgeCase_InfinityGreaterThanAll")]
     public void EdgeCase_InfinityGreaterThanAll()
     {
         var expr = FieldExpression<bool>.Compile(
@@ -201,7 +201,7 @@ public sealed class FieldExpressionBuiltinsTests
         Assert.IsTrue(expr.Evaluate(new BuiltinsTestModule()));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionBuiltinsTests_EdgeCase_MathConstantsInExpression")]
     public void EdgeCase_MathConstantsInExpression()
     {
         var expr = FieldExpression<double>.Compile(

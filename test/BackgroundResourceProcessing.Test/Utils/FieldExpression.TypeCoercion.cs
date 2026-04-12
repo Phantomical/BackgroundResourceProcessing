@@ -1,4 +1,5 @@
 using BackgroundResourceProcessing.Utils;
+using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.Utils;
 
@@ -6,8 +7,7 @@ namespace BackgroundResourceProcessing.Test.Utils;
 /// Tests for type coercion and conversion in field expressions.
 /// Tests CoerceToEnum, CoerceToTarget, GetCompatibleValue, and IsCompatibleType.
 /// </summary>
-[TestClass]
-public sealed class FieldExpressionTypeCoercionTests
+public sealed class FieldExpressionTypeCoercionTests : BRPTestBase
 {
     #region Test Helper Classes
 
@@ -35,7 +35,7 @@ public sealed class FieldExpressionTypeCoercionTests
 
     #region Numeric Type Coercion to Double
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_NumericCoercion_ByteToDouble")]
     public void NumericCoercion_ByteToDouble()
     {
         var module = new TypeCoercionModule { byteValue = 255 };
@@ -43,7 +43,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.AreEqual(255.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_NumericCoercion_SByteToDouble")]
     public void NumericCoercion_SByteToDouble()
     {
         var module = new TypeCoercionModule { sbyteValue = -128 };
@@ -55,7 +55,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.AreEqual(-128.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_NumericCoercion_ShortToDouble")]
     public void NumericCoercion_ShortToDouble()
     {
         var module = new TypeCoercionModule { shortValue = 32767 };
@@ -67,7 +67,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.AreEqual(32767.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_NumericCoercion_UShortToDouble")]
     public void NumericCoercion_UShortToDouble()
     {
         var module = new TypeCoercionModule { ushortValue = 65535 };
@@ -79,7 +79,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.AreEqual(65535.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_NumericCoercion_IntToDouble")]
     public void NumericCoercion_IntToDouble()
     {
         var module = new TypeCoercionModule { intValue = 123456 };
@@ -87,7 +87,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.AreEqual(123456.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_NumericCoercion_UIntToDouble")]
     public void NumericCoercion_UIntToDouble()
     {
         var module = new TypeCoercionModule { uintValue = 4000000000 };
@@ -95,7 +95,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.AreEqual(4000000000.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_NumericCoercion_LongToDouble")]
     public void NumericCoercion_LongToDouble()
     {
         var module = new TypeCoercionModule { longValue = 9876543210L };
@@ -103,7 +103,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.AreEqual(9876543210.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_NumericCoercion_ULongToDouble")]
     public void NumericCoercion_ULongToDouble()
     {
         var module = new TypeCoercionModule { ulongValue = 18000000000000000000UL };
@@ -115,7 +115,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.AreEqual(18000000000000000000.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_NumericCoercion_FloatToDouble")]
     public void NumericCoercion_FloatToDouble()
     {
         var module = new TypeCoercionModule { floatValue = 3.14159f };
@@ -134,7 +134,7 @@ public sealed class FieldExpressionTypeCoercionTests
 
     #region Enum Coercion
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_EnumCoercion_StringToEnum")]
     public void EnumCoercion_StringToEnum()
     {
         var module = new TypeCoercionModule { enumString = "NO_FLOW" };
@@ -146,7 +146,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.AreEqual(ResourceFlowMode.NO_FLOW, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_EnumCoercion_EnumFieldDirect")]
     public void EnumCoercion_EnumFieldDirect()
     {
         var module = new TypeCoercionModule { enumValue = ResourceFlowMode.ALL_VESSEL };
@@ -158,7 +158,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.AreEqual(ResourceFlowMode.ALL_VESSEL, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_EnumCoercion_LiteralEnum")]
     public void EnumCoercion_LiteralEnum()
     {
         var expr = FieldExpression<ResourceFlowMode>.Compile(
@@ -176,7 +176,7 @@ public sealed class FieldExpressionTypeCoercionTests
 
     #region Boolean Coercion
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_BooleanCoercion_TrueValue")]
     public void BooleanCoercion_TrueValue()
     {
         var module = new TypeCoercionModule { boolValue = true };
@@ -184,7 +184,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.IsTrue(expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_BooleanCoercion_StringToTrue")]
     public void BooleanCoercion_StringToTrue()
     {
         var module = new TypeCoercionModule { stringValue = "true" };
@@ -192,7 +192,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.IsTrue(expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_BooleanCoercion_StringToFalse")]
     public void BooleanCoercion_StringToFalse()
     {
         var module = new TypeCoercionModule { stringValue = "false" };
@@ -200,7 +200,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.IsFalse(expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_BooleanCoercion_NullToFalse")]
     public void BooleanCoercion_NullToFalse()
     {
         var module = new TypeCoercionModule { nullObject = null };
@@ -208,7 +208,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.IsFalse(expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_BooleanCoercion_NonNullObjectToTrue")]
     public void BooleanCoercion_NonNullObjectToTrue()
     {
         var module = new TypeCoercionModule { objectValue = new object() };
@@ -216,7 +216,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.IsTrue(expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_BooleanCoercion_NumberToTrue")]
     public void BooleanCoercion_NumberToTrue()
     {
         var module = new TypeCoercionModule { intValue = 42 };
@@ -224,7 +224,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.IsTrue(expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_BooleanCoercion_ZeroToTrue")]
     public void BooleanCoercion_ZeroToTrue()
     {
         var module = new TypeCoercionModule { intValue = 0 };
@@ -237,7 +237,7 @@ public sealed class FieldExpressionTypeCoercionTests
 
     #region Nullable Type Coercion
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_NullableCoercion_NullableIntWithValue")]
     public void NullableCoercion_NullableIntWithValue()
     {
         var module = new NullableModule { nullableInt = 42 };
@@ -245,7 +245,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.AreEqual(42.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_NullableCoercion_NullableIntNull")]
     public void NullableCoercion_NullableIntNull()
     {
         var module = new NullableModule { nullableInt = null };
@@ -257,7 +257,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.AreEqual(99.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_NullableCoercion_NullableDoubleWithValue")]
     public void NullableCoercion_NullableDoubleWithValue()
     {
         var module = new NullableModule { nullableDouble = 3.14 };
@@ -282,7 +282,7 @@ public sealed class FieldExpressionTypeCoercionTests
 
     #region String Coercion
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_StringCoercion_NumberStringToDouble")]
     public void StringCoercion_NumberStringToDouble()
     {
         var module = new TypeCoercionModule { stringValue = "123.45" };
@@ -294,7 +294,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.AreEqual(123.45, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_StringCoercion_ScientificNotation")]
     public void StringCoercion_ScientificNotation()
     {
         var module = new TypeCoercionModule { stringValue = "1.5e3" };
@@ -310,7 +310,7 @@ public sealed class FieldExpressionTypeCoercionTests
 
     #region Object Type Coercion
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_ObjectCoercion_IntObject")]
     public void ObjectCoercion_IntObject()
     {
         var module = new TypeCoercionModule { objectValue = 42 };
@@ -322,7 +322,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.AreEqual(42.0, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_ObjectCoercion_DoubleObject")]
     public void ObjectCoercion_DoubleObject()
     {
         var module = new TypeCoercionModule { objectValue = 3.14 };
@@ -334,7 +334,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.AreEqual(3.14, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_ObjectCoercion_StringObject")]
     public void ObjectCoercion_StringObject()
     {
         var module = new TypeCoercionModule { objectValue = "hello" };
@@ -350,7 +350,7 @@ public sealed class FieldExpressionTypeCoercionTests
 
     #region Type Compatibility in Arithmetic
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_TypeCompatibility_MixedArithmetic")]
     public void TypeCompatibility_MixedArithmetic()
     {
         var module = new TypeCoercionModule { intValue = 10, floatValue = 2.5f };
@@ -362,7 +362,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.AreEqual(12.5, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_TypeCompatibility_AllNumericTypes")]
     public void TypeCompatibility_AllNumericTypes()
     {
         var module = new TypeCoercionModule
@@ -386,7 +386,7 @@ public sealed class FieldExpressionTypeCoercionTests
 
     #region Edge Cases
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_EdgeCase_MaxValues")]
     public void EdgeCase_MaxValues()
     {
         var module = new TypeCoercionModule { byteValue = byte.MaxValue, intValue = int.MaxValue };
@@ -398,7 +398,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.AreEqual((double)byte.MaxValue + int.MaxValue, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_EdgeCase_MinValues")]
     public void EdgeCase_MinValues()
     {
         var module = new TypeCoercionModule
@@ -414,7 +414,7 @@ public sealed class FieldExpressionTypeCoercionTests
         Assert.AreEqual((double)sbyte.MinValue + short.MinValue, expr.Evaluate(module));
     }
 
-    [TestMethod]
+    [TestInfo("FieldExpressionTypeCoercionTests_EdgeCase_PrecisionLoss")]
     public void EdgeCase_PrecisionLoss()
     {
         var module = new TypeCoercionModule { longValue = long.MaxValue };

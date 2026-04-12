@@ -3,24 +3,18 @@ extern alias BRPMemory;
 using BackgroundResourceProcessing.BurstSolver;
 using BackgroundResourceProcessing.Collections.Burst;
 using BRPMemory.System;
+using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.Solver;
 
-[TestClass]
-public sealed class LinearProblemTest
+public sealed class LinearProblemTest : BRPTestBase
 {
-    [TestCleanup]
-    public void Cleanup()
-    {
-        TestAllocator.Cleanup();
-    }
-
     // This tests the textbook example from [0]. Which includes the
     // solution so we can easily verify that things are working as
     // expected (along with individual steps).
     //
     // [0]: https://math.libretexts.org/Bookshelves/Applied_Mathematics/Applied_Finite_Mathematics_(Sekhon_and_Bloom)/04%3A_Linear_Programming_The_Simplex_Method/4.02%3A_Maximization_By_The_Simplex_Method
-    [TestMethod]
+    [TestInfo("LinearProblemTest_TestTextbookExample")]
     public void TestTextbookExample()
     {
         LinearProblem problem = new();
@@ -38,7 +32,7 @@ public sealed class LinearProblemTest
 
     // This tests the example from
     // https://optimization.cbe.cornell.edu/index.php?title=Simplex_algorithm
-    [TestMethod]
+    [TestInfo("LinearProblemTest_TestCornellExample")]
     public void TestCornellExample()
     {
         LinearProblem problem = new();
@@ -62,7 +56,7 @@ public sealed class LinearProblemTest
     //
     // It has been tweaked so as to maximize the objective function instead
     // minimize.
-    [TestMethod]
+    [TestInfo("LinearProblemTest_TestWikipediaExample")]
     public void TestWikipediaExample()
     {
         LinearProblem problem = new();
@@ -82,7 +76,7 @@ public sealed class LinearProblemTest
 
     // This is derived from an actual test case that ended up returning NaNs
     // when optimizing.
-    [TestMethod]
+    [TestInfo("LinearProblemTest_RegressionNan1")]
     public void RegressionNan1()
     {
         LinearProblem problem = new();
@@ -108,7 +102,7 @@ public sealed class LinearProblemTest
         Assert.AreEqual(1, soln[x4], 1e-6);
     }
 
-    [TestMethod]
+    [TestInfo("LinearProblemTest_OrConstraint1")]
     public void OrConstraint1()
     {
         LinearProblem problem = new();
@@ -132,7 +126,7 @@ public sealed class LinearProblemTest
         LogUtil.Log($"{soln}");
     }
 
-    [TestMethod]
+    [TestInfo("LinearProblemTest_InferConstantsBasic")]
     public void InferConstantsBasic()
     {
         LinearProblem problem = new();
@@ -151,7 +145,7 @@ public sealed class LinearProblemTest
         Assert.AreEqual(0.0, soln[x2]);
     }
 
-    [TestMethod]
+    [TestInfo("LinearProblemTest_InferConstantsAvx2")]
     public unsafe void InferConstantsAvx2()
     {
         LinearProblem problem = new();
@@ -180,7 +174,7 @@ public sealed class LinearProblemTest
         Assert.AreEqual(1.0, soln[extra]);
     }
 
-    [TestMethod]
+    [TestInfo("LinearProblemTest_TestLargeCoefficient")]
     public void TestLargeCoefficient()
     {
         LinearProblem problem = new();

@@ -1,18 +1,12 @@
 using BackgroundResourceProcessing.BurstSolver;
 using BackgroundResourceProcessing.Collections.Burst;
+using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.BurstSolver;
 
-[TestClass]
-public class LinearConstraintTests
+public class LinearConstraintTests : BRPTestBase
 {
-    [TestCleanup]
-    public void Cleanup()
-    {
-        TestAllocator.Cleanup();
-    }
-
-    [TestMethod]
+    [TestInfo("LinearConstraintTests_TestConstraintState_AllZeros")]
     public void TestConstraintState_AllZeros()
     {
         var variables = new LinearEquation(
@@ -28,7 +22,7 @@ public class LinearConstraintTests
         Assert.AreEqual(ConstraintState.VACUOUS, eq.GetState());
     }
 
-    [TestMethod]
+    [TestInfo("LinearConstraintTests_TestConstraintState_AllPositive")]
     public void TestConstraintState_AllPositive()
     {
         var variables = new LinearEquation(
@@ -44,7 +38,7 @@ public class LinearConstraintTests
         Assert.AreEqual(ConstraintState.VALID, eq.GetState());
     }
 
-    [TestMethod]
+    [TestInfo("LinearConstraintTests_TestConstraintState_AllNegative")]
     public void TestConstraintState_AllNegative()
     {
         var variables = new LinearEquation(
@@ -60,7 +54,7 @@ public class LinearConstraintTests
         Assert.AreEqual(ConstraintState.VALID, eq.GetState());
     }
 
-    [TestMethod]
+    [TestInfo("LinearConstraintTests_TestConstraintState_Mixed")]
     public void TestConstraintState_Mixed()
     {
         var variables = new LinearEquation(
