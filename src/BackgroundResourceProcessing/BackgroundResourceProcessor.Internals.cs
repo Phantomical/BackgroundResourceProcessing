@@ -131,10 +131,9 @@ public sealed partial class BackgroundResourceProcessor
         {
             using var shadow = Shadow.ScheduleShadowState(vessel);
             pendingShadow = shadow;
-            yield return shadow;
 
-            if (!ReferenceEquals(shadow, pendingShadow))
-                yield break;
+            if (!shadow.IsComplete)
+                yield return shadow;
 
             ShadowState = shadow.Complete();
             pendingShadow = null;
@@ -158,7 +157,9 @@ public sealed partial class BackgroundResourceProcessor
             using var solve = processor.ComputeRates();
             solve.Changepoint = changepoint;
             pendingSolve = solve;
-            yield return solve;
+
+            if (!solve.IsComplete)
+                yield return solve;
 
             // If CompletePendingWork already finished this solve, the
             // coroutine should bail out -- post-solve work was already

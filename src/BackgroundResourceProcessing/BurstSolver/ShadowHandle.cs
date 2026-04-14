@@ -54,6 +54,8 @@ internal class ShadowHandle : CustomYieldInstruction, IDisposable
 
     ShadowState cachedResult;
 
+    public bool IsComplete => completed;
+
     /// <summary>
     /// Create a handle for an immediate result. No job is scheduled;
     /// <see cref="keepWaiting"/> returns <c>false</c> immediately.

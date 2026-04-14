@@ -55,6 +55,8 @@ internal class SolveHandle : CustomYieldInstruction, IDisposable
     /// </summary>
     public double Changepoint { get; set; }
 
+    public bool IsComplete => completed;
+
     /// <summary>
     /// Create a handle for a cache-hit result. No job is scheduled;
     /// <see cref="keepWaiting"/> returns <c>false</c> immediately.
