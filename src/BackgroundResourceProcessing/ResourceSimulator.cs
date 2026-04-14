@@ -218,7 +218,8 @@ public sealed class ResourceSimulator
 
         if (changepoint)
         {
-            processor.ComputeRates();
+            using var solve = processor.ComputeRates();
+            solve.Complete();
             processor.UpdateNextChangepoint(currentTime);
         }
 

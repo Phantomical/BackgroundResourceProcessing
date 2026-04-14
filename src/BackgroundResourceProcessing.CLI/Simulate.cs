@@ -52,7 +52,8 @@ namespace BackgroundResourceProcessing.CLI
                 if (i >= options.MaxIters)
                     throw new Exception("Reached maximum number of allowed iterations");
 
-                processor.ComputeRates();
+                using var solve = processor.ComputeRates();
+                solve.Complete();
                 var prev = currentTime;
                 currentTime = processor.UpdateNextChangepoint(currentTime);
 

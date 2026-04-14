@@ -60,6 +60,7 @@ public sealed partial class BackgroundResourceProcessor
         if (vessel == null)
             return;
 
+        CompletePendingWork();
         EventDispatcher.UnregisterChangepointCallbacks(this);
 
         UnregisterCallbacks();
@@ -112,6 +113,12 @@ public sealed partial class BackgroundResourceProcessor
         if (vessel.loaded)
             return;
 
+        CompletePendingWork();
+        changepointCoroutine = StartCoroutine(ChangepointCoroutine(changepoint));
+    }
+
+    private System.Collections.IEnumerator ChangepointCoroutine(double changepoint)
+    {
         using var span = new TraceSpan(() =>
             $"BackgroundResourceProcessor.OnChangepoint({vessel.GetDisplayName()})"
         );
@@ -136,13 +143,50 @@ public sealed partial class BackgroundResourceProcessor
             recompute = true;
         if (processor.UpdateConstraintState())
             recompute = true;
+
         if (recompute)
         {
-            processor.ComputeRates();
-            DispatchOnRatesComputed(changepoint);
+            using var solve = processor.ComputeRates();
+            solve.Changepoint = changepoint;
+            pendingSolve = solve;
+            yield return solve;
+
+            // If CompletePendingWork already finished this solve, the
+            // coroutine should bail out -- post-solve work was already
+            // handled there.
+            if (!ReferenceEquals(solve, pendingSolve))
+                yield break;
+
+            solve.Complete();
+            pendingSolve = null;
         }
 
+        FinishChangepoint(changepoint);
+    }
+
+    private void CompletePendingWork()
+    {
+        if (changepointCoroutine != null)
+        {
+            StopCoroutine(changepointCoroutine);
+            changepointCoroutine = null;
+        }
+
+        if (pendingSolve != null)
+        {
+            var changepoint = pendingSolve.Changepoint;
+            pendingSolve.Complete();
+            pendingSolve.Dispose();
+            pendingSolve = null;
+            FinishChangepoint(changepoint);
+        }
+    }
+
+    private void FinishChangepoint(double changepoint)
+    {
+        DispatchOnRatesComputed(changepoint);
         UpdateNextChangepoint(changepoint);
+
         if (NextChangepoint == changepoint && !ImmediateChangepointRequested)
         {
             LogUtil.Error(
@@ -167,6 +211,8 @@ public sealed partial class BackgroundResourceProcessor
         if (!ReferenceEquals(vessel, evt.host))
             return;
 
+        CompletePendingWork();
+
         using var span = new TraceSpan(() =>
             $"BackgroundResourceProcessor.OnVesselSOIChanged({vessel.GetDisplayName()})"
         );
@@ -177,7 +223,8 @@ public sealed partial class BackgroundResourceProcessor
         UpdateState(state.CurrentTime, true);
         processor.ForceUpdateBehaviours(state);
         processor.UpdateConstraintState();
-        processor.ComputeRates();
+        using var solve = processor.ComputeRates();
+        solve.Complete();
         DispatchOnRatesComputed(state.CurrentTime);
         UpdateNextChangepoint(state.CurrentTime);
 
@@ -223,6 +270,8 @@ public sealed partial class BackgroundResourceProcessor
     #region Implementation Details
     private void LoadVessel()
     {
+        CompletePendingWork();
+
         var currentTime = Planetarium.GetUniversalTime();
 
         UpdateState(currentTime, false);
@@ -236,6 +285,8 @@ public sealed partial class BackgroundResourceProcessor
 
     private void SaveVessel()
     {
+        CompletePendingWork();
+
         // If the vessel is getting destroyed then there is no point in recording
         // the vessel state.
         if (vessel == null)
@@ -257,7 +308,8 @@ public sealed partial class BackgroundResourceProcessor
             onVesselRecord.Fire(this);
         processor.ForceUpdateBehaviours(state);
         processor.UpdateConstraintState();
-        processor.ComputeRates();
+        using var solve = processor.ComputeRates();
+        solve.Complete();
         DispatchOnRatesComputed(currentTime);
         UpdateNextChangepoint(currentTime);
 

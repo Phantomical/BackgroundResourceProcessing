@@ -84,7 +84,7 @@ internal static class Solver
         return ComputeInventoryRates(ref graph, inventoryRates, converterRates, *allocator);
     }
 
-    private static unsafe Result ComputeInventoryRates(
+    internal static Result ComputeInventoryRates(
         ref ResourceGraph graph,
         MemorySpan<double> inventoryRates,
         MemorySpan<double> converterRates,

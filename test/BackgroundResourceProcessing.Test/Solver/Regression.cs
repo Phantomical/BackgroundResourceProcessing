@@ -10,7 +10,8 @@ namespace BackgroundResourceProcessing.Test.Solver
         public void TestCrashSplitOutput()
         {
             var processor = TestUtil.LoadVessel("regression/crash-split-output.cfg");
-            processor.ComputeRates();
+            using var solve = processor.ComputeRates();
+            solve.Complete();
 
             Assert.AreNotEqual(0.0, processor.converters[12].Rate);
         }
@@ -19,28 +20,32 @@ namespace BackgroundResourceProcessing.Test.Solver
         public void TestCrashBadVariableSelection()
         {
             var processor = TestUtil.LoadVessel("regression/crash-bad-var-selection.cfg");
-            processor.ComputeRates();
+            using var solve = processor.ComputeRates();
+            solve.Complete();
         }
 
         [TestInfo("RegressionTests_TestCrashSelectedSlack")]
         public void TestCrashSelectedSlack()
         {
             var processor = TestUtil.LoadVessel("regression/crash-selected-slack.cfg");
-            processor.ComputeRates();
+            using var solve = processor.ComputeRates();
+            solve.Complete();
         }
 
         [TestInfo("RegressionTests_TestFullDumpExcess")]
         public void TestFullDumpExcess()
         {
             var processor = TestUtil.LoadVessel("regression/crash-full-dump-excess.cfg");
-            processor.ComputeRates();
+            using var solve = processor.ComputeRates();
+            solve.Complete();
         }
 
         [TestInfo("RegressionTests_TestDisjunctionInstability")]
         public void TestDisjunctionInstability()
         {
             var processor = TestUtil.LoadVessel("regression/disjunction-instability.cfg");
-            processor.ComputeRates();
+            using var solve = processor.ComputeRates();
+            solve.Complete();
 
             // The first inventory here has ElectricCharge and its rate of
             // change should be exactly 0.
@@ -51,7 +56,8 @@ namespace BackgroundResourceProcessing.Test.Solver
         public void TestUnderflowInstability()
         {
             var processor = TestUtil.LoadVessel("regression/underflow-instability.cfg");
-            processor.ComputeRates();
+            using var solve = processor.ComputeRates();
+            solve.Complete();
 
             // All inventories in this test case should have a rate of 0.
             for (int i = 0; i < processor.inventories.Count; ++i)
@@ -62,7 +68,8 @@ namespace BackgroundResourceProcessing.Test.Solver
         public void TestZeroRates()
         {
             var processor = TestUtil.LoadVessel("regression/zero-rates.cfg");
-            processor.ComputeRates();
+            using var solve = processor.ComputeRates();
+            solve.Complete();
 
             Assert.AreNotEqual(0.0, processor.inventories[2].Rate);
         }
@@ -71,7 +78,8 @@ namespace BackgroundResourceProcessing.Test.Solver
         public void TestFertilizerOutOfThinAir()
         {
             var processor = TestUtil.LoadVessel("regression/fertilizer-out-of-thin-air.cfg");
-            processor.ComputeRates();
+            using var solve = processor.ComputeRates();
+            solve.Complete();
 
             for (int i = 0; i < processor.inventories.Count; ++i)
             {
@@ -86,7 +94,8 @@ namespace BackgroundResourceProcessing.Test.Solver
         public void TestBoiloffIgnored()
         {
             var processor = TestUtil.LoadVessel("regression/boiloff-ignored.cfg");
-            processor.ComputeRates();
+            using var solve = processor.ComputeRates();
+            solve.Complete();
 
             for (int i = 0; i < processor.converters.Count; ++i)
             {
@@ -105,7 +114,8 @@ namespace BackgroundResourceProcessing.Test.Solver
         public void TestBoiloffEcIgnored()
         {
             var processor = TestUtil.LoadVessel("regression/boiloff-ec-ignored.cfg");
-            processor.ComputeRates();
+            using var solve = processor.ComputeRates();
+            solve.Complete();
 
             for (int i = 0; i < processor.inventories.Count; ++i)
             {
@@ -121,14 +131,16 @@ namespace BackgroundResourceProcessing.Test.Solver
         public void TestCrashBadBchoiceAccess()
         {
             var processor = TestUtil.LoadVessel("regression/crash-bad-bchoice-access.cfg");
-            processor.ComputeRates();
+            using var solve = processor.ComputeRates();
+            solve.Complete();
         }
 
         [TestInfo("RegressionTests_TestCrashNoProgress")]
         public void TestCrashNoProgress()
         {
             var processor = TestUtil.LoadVessel("regression/crash-bad-bchoice-access.cfg");
-            processor.ComputeRates();
+            using var solve = processor.ComputeRates();
+            solve.Complete();
             var changepoint = processor.ComputeNextChangepoint(0.0);
 
             Assert.AreNotEqual(0.0, changepoint);
@@ -138,14 +150,16 @@ namespace BackgroundResourceProcessing.Test.Solver
         public void TestCrashCreateSimplexTableau()
         {
             var processor = TestUtil.LoadVessel("regression/crash-create-simplex-tableau.cfg");
-            processor.ComputeRates();
+            using var solve = processor.ComputeRates();
+            solve.Complete();
         }
 
         [TestInfo("RegressionTests_TestZeroRankFunction")]
         public void TestZeroRankFunction()
         {
             var processor = TestUtil.LoadVessel("regression/crash-create-simplex-tableau.cfg");
-            processor.ComputeRates();
+            using var solve = processor.ComputeRates();
+            solve.Complete();
 
             Assert.IsTrue(
                 processor.converters.Any(converter => converter.Rate != 0.0),
@@ -157,7 +171,8 @@ namespace BackgroundResourceProcessing.Test.Solver
         public void TestBoiloffUnexpected()
         {
             var processor = TestUtil.LoadVessel("regression/boiloff-unexpected.cfg");
-            processor.ComputeRates();
+            using var solve = processor.ComputeRates();
+            solve.Complete();
 
             var h2 = processor.GetResourceStates()["LqdHydrogen"];
 
@@ -168,7 +183,8 @@ namespace BackgroundResourceProcessing.Test.Solver
         public void TestSolarPanelZeroRate()
         {
             var processor = TestUtil.LoadVessel("regression/solar-panel-zero-rate.cfg");
-            processor.ComputeRates();
+            using var solve = processor.ComputeRates();
+            solve.Complete();
 
             // Solar panels are converters 6-9. They should have nonzero rates
             // since there are EC consumers (radiators, command, drill) and there
@@ -190,7 +206,8 @@ namespace BackgroundResourceProcessing.Test.Solver
             // state when rates were originally computed, before tanks filled up).
             // EC is still full. Solar panels should produce EC to offset ISRU consumption.
             var processor = TestUtil.LoadVessel("regression/solar-panel-zero-rate-2.cfg");
-            processor.ComputeRates();
+            using var solve = processor.ComputeRates();
+            solve.Complete();
 
             // ISRU should be running (Ox and LF tanks not full)
             Assert.AreNotEqual(

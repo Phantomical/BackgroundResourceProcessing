@@ -73,7 +73,8 @@ namespace BackgroundResourceProcessing.Test.Solver
         public void Crash1Solve()
         {
             var processor = TestUtil.LoadVessel("regression/solver-v2-crash-1.cfg");
-            processor.ComputeRates();
+            using var solve = processor.ComputeRates();
+            solve.Complete();
         }
     }
 }

@@ -8,6 +8,7 @@ using BackgroundResourceProcessing.Converter;
 using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
+using UnityEngine;
 using Shadow = BackgroundResourceProcessing.ShadowState;
 
 namespace BackgroundResourceProcessing;
@@ -28,6 +29,9 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
     private bool IsDirty = false;
 
     private bool ImmediateChangepointRequested = false;
+
+    private BurstSolver.SolveHandle pendingSolve;
+    private Coroutine changepointCoroutine;
 
     #region Events
     /// <summary>
@@ -747,7 +751,10 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
         using var span = new TraceSpan("BackgroundResourceProcessor.StressTest");
 
         for (int i = 0; i < count; ++i)
-            processor.ComputeRates();
+        {
+            using var solve = processor.ComputeRates();
+            solve.Complete();
+        }
     }
 
     internal void RecomputeShadowState()

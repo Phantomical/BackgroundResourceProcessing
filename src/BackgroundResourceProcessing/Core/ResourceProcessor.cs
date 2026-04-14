@@ -9,8 +9,10 @@ using BackgroundResourceProcessing.Converter;
 using BackgroundResourceProcessing.Inventory;
 using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
-using Expansions.Missions;
 using Smooth.Collections;
+using Unity.Collections;
+using Unity.Jobs;
+using AllocatorHandle = BackgroundResourceProcessing.Collections.Burst.AllocatorHandle;
 
 namespace BackgroundResourceProcessing.Core;
 
@@ -122,56 +124,12 @@ internal class ResourceProcessor
     }
     #endregion
 
-    public void ComputeRates()
+    public SolveHandle ComputeRates()
     {
         using var span = new TraceSpan("ResourceProcessor.ComputeRates");
 
-        try
-        {
-            var soln = ComputeRateSolution();
+        BurstCrashHandler.Init();
 
-            foreach (var inventory in inventories)
-                inventory.Rate = 0.0;
-            foreach (var converter in converters)
-                converter.Rate = 0.0;
-
-            for (int i = 0; i < inventories.Count; ++i)
-            {
-                var rate = soln.inventoryRates[i];
-                if (!MathUtil.IsFinite(rate))
-                    throw new Exception($"Rate for inventory {inventories[i].Id} was {rate}");
-                inventories[i].Rate = rate;
-            }
-
-            for (int i = 0; i < converters.Count; ++i)
-            {
-                double rate = soln.converterRates[i];
-                if (!MathUtil.IsFinite(rate))
-                    throw new Exception($"Rate for converter {i} was {rate}");
-                converters[i].Rate = rate;
-            }
-        }
-        catch (Exception e)
-        {
-            foreach (var inventory in inventories)
-                inventory.Rate = 0.0;
-            foreach (var converter in converters)
-                converter.Rate = 0.0;
-
-            DumpCrashReport(e);
-        }
-    }
-
-    public void ClearRates()
-    {
-        foreach (var inventory in inventories)
-            inventory.Rate = 0.0;
-        foreach (var converter in converters)
-            converter.Rate = 0.0;
-    }
-
-    private SolverSolution ComputeRateSolution()
-    {
         int hash = 0;
         if (DebugSettings.Instance?.EnableSolutionCache ?? true)
         {
@@ -184,16 +142,46 @@ internal class ResourceProcessor
                 && entry.Solution.inventoryRates.Length == inventories.Count
             )
             {
-                return entry.Solution;
+                return new SolveHandle(this, entry.Solution);
             }
         }
 
-        var soln = BurstSolver.Solver.ComputeInventoryRates(this);
+        var graph = new ResourceGraph(this, AllocatorHandle.TempJob);
+        int inventoryCount = inventories.Count;
+        int converterCount = converters.Count;
 
+        var invRates = new NativeArray<double>(inventoryCount, Allocator.TempJob);
+        var convRates = new NativeArray<double>(converterCount, Allocator.TempJob);
+        var errCode = new NativeArray<int>(1, Allocator.TempJob);
+
+        var job = new SolverJob
+        {
+            Graph = graph,
+            InventoryRates = invRates,
+            ConverterRates = convRates,
+            ErrorCode = errCode,
+        };
+        var jobHandle = job.Schedule(default);
+
+        return new SolveHandle(this, jobHandle, invRates, convRates, errCode, hash);
+    }
+
+    public void ClearRates()
+    {
+        foreach (var inventory in inventories)
+            inventory.Rate = 0.0;
+        foreach (var converter in converters)
+            converter.Rate = 0.0;
+    }
+
+    internal static void CacheSolution(
+        int hash,
+        ResourceProcessor processor,
+        SolverSolution solution
+    )
+    {
         if (DebugSettings.Instance?.EnableSolutionCache ?? true)
-            SolverCache.Add(hash, new() { Solution = soln, Processor = new(this) });
-
-        return soln;
+            SolverCache.Add(hash, new() { Solution = solution, Processor = new(processor) });
     }
 
     private int ComputeSolverCacheHash()
@@ -1123,7 +1111,7 @@ internal class ResourceProcessor
 
     static bool HasDisplayedSolverCrashError = false;
 
-    private void DumpCrashReport(Exception e)
+    internal void DumpCrashReport(Exception e)
     {
         // Make sure we at least print the error
         LogUtil.Error($"Solver threw an exception: {e}");
