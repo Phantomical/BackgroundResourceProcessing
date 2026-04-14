@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BackgroundResourceProcessing.Mathematics;
-using BackgroundResourceProcessing.Maths;
 using BackgroundResourceProcessing.Tracing;
+using BackgroundResourceProcessing.Utils;
 
 namespace BackgroundResourceProcessing;
 
@@ -151,21 +151,58 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         if (!(settings?.EnableLandedShadows ?? false))
             return DefaultForStar(stars.FirstOrDefault());
 
+        var system = SolarSystem.Record();
+        var currentUT = Planetarium.GetUniversalTime();
+        var planet = vessel.orbit.referenceBody;
+        var planetIndex = (int)SolarSystem.GetBodyIndex(planet);
+
+        var normal = planet.GetSurfaceNVector(vessel.latitude, vessel.longitude);
+        var cosLatitude = Math.Cos(Math.Abs(vessel.latitude) * MathUtil.DEG2RAD);
+
         var state = AlwaysInShadow();
         foreach (var star in stars)
         {
-            LandedShadow shadow = new();
-            shadow.SetReferenceBodies(vessel, star);
-            var terminator = shadow.ComputeTerminatorUT(out var inshadow);
+            var starIndex = (int)SolarSystem.GetBodyIndex(star);
+            var referenceIndex = FindReferenceBodyIndex(planet, star);
 
-            if (!inshadow)
-                return new(Math.Min(terminator, state.NextTerminatorEstimate), inshadow, star);
+            var terminator = Mathematics.LandedShadow.ComputeLandedTerminator(
+                system,
+                planetIndex,
+                starIndex,
+                referenceIndex,
+                normal,
+                cosLatitude,
+                currentUT
+            );
 
-            if (terminator < state.NextTerminatorEstimate)
-                state = new(terminator, inshadow);
+            if (!terminator.InShadow)
+                return new(Math.Min(terminator.UT, state.NextTerminatorEstimate), false, star);
+
+            if (terminator.UT < state.NextTerminatorEstimate)
+                state = new(terminator.UT, true);
         }
 
         return state;
+    }
+
+    private static int FindReferenceBodyIndex(CelestialBody planet, CelestialBody star)
+    {
+        HashSet<CelestialBody> ancestors = [];
+        CelestialBody ancestor = star;
+
+        do
+        {
+            if (!ancestors.Add(ancestor))
+                break;
+            ancestor = ancestor.orbit?.referenceBody;
+        } while (ancestor != null);
+
+        CelestialBody reference = planet;
+
+        while (!ancestors.Contains(reference.referenceBody))
+            reference = reference.referenceBody;
+
+        return (int)SolarSystem.GetBodyIndex(reference);
     }
 
     private static ReferenceBodies GetReferenceBodies(Vessel vessel, CelestialBody star)

@@ -14,6 +14,13 @@ internal struct SystemBody
 
     public double Radius;
 
+    public Vector3d RotationAxis;
+    public double AngularVelocity;
+    public bool Rotates;
+    public bool TidallyLocked;
+    public double RotationPeriod;
+    public double SolarDayLength;
+
     public readonly string Name
     {
         get
@@ -41,6 +48,13 @@ internal struct SystemBody
 
         this.Index = index ?? FlightGlobals.GetBodyIndex(body);
         this.Radius = body.Radius;
+
+        this.RotationAxis = body.RotationAxis;
+        this.AngularVelocity = body.angularV;
+        this.Rotates = body.rotates;
+        this.TidallyLocked = body.tidallyLocked;
+        this.RotationPeriod = body.rotationPeriod;
+        this.SolarDayLength = body.solarDayLength;
     }
 
     public readonly Vector3d GetRelativePositionAtUT(double UT)
