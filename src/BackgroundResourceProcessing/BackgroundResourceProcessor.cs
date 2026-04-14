@@ -30,6 +30,7 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
 
     private bool ImmediateChangepointRequested = false;
 
+    private BurstSolver.ShadowHandle pendingShadow;
     private BurstSolver.SolveHandle pendingSolve;
     private Coroutine changepointCoroutine;
 

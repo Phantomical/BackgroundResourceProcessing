@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using BackgroundResourceProcessing.BurstSolver;
 using BackgroundResourceProcessing.Mathematics;
 using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
+using Unity.Collections;
+using Unity.Jobs;
 
 namespace BackgroundResourceProcessing;
 
@@ -67,7 +70,7 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
     #endregion
 
     #region Shadow State Computations
-    static ShadowState DefaultForStar(CelestialBody star)
+    internal static ShadowState DefaultForStar(CelestialBody star)
     {
         if (star == null)
             return AlwaysInShadow();
@@ -165,7 +168,7 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
             var starIndex = (int)SolarSystem.GetBodyIndex(star);
             var referenceIndex = FindReferenceBodyIndex(planet, star);
 
-            var terminator = Mathematics.LandedShadow.ComputeLandedTerminator(
+            var terminator = LandedShadow.ComputeLandedTerminator(
                 system,
                 planetIndex,
                 starIndex,
@@ -183,6 +186,183 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         }
 
         return state;
+    }
+
+    /// <summary>
+    /// Schedule shadow state computation as an async job.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// <para>
+    /// The returned <see cref="ShadowHandle"/> can be <c>yield return</c>ed
+    /// in a coroutine or completed synchronously with
+    /// <see cref="ShadowHandle.Complete"/>.
+    /// </para>
+    ///
+    /// <para>
+    /// All managed data extraction happens on the main thread before the
+    /// job is scheduled. The heavy computation runs in the job.
+    /// </para>
+    /// </remarks>
+    internal static ShadowHandle ScheduleShadowState(Vessel vessel)
+    {
+        using var span = new TraceSpan("ShadowState.ScheduleShadowState");
+
+        return vessel.situation switch
+        {
+            Vessel.Situations.ORBITING
+            or Vessel.Situations.SUB_ORBITAL
+            or Vessel.Situations.ESCAPING
+            or Vessel.Situations.DOCKED => ScheduleOrbitShadowState(vessel),
+            Vessel.Situations.LANDED
+            or Vessel.Situations.SPLASHED
+            or Vessel.Situations.PRELAUNCH
+            or Vessel.Situations.FLYING => ScheduleLandedShadowState(vessel),
+            _ => new ShadowHandle(AlwaysInSun(Planetarium.fetch?.Sun)),
+        };
+    }
+
+    private static ShadowHandle ScheduleOrbitShadowState(Vessel vessel)
+    {
+        var stars = StarProvider.GetRelevantStars(vessel) ?? [];
+        var settings = HighLogic.CurrentGame?.Parameters.CustomParams<Settings>();
+        if (!(settings?.EnableOrbitShadows ?? false))
+            return new ShadowHandle(DefaultForStar(stars.FirstOrDefault()));
+
+        var system = SolarSystem.Record();
+        var orbit = new Mathematics.Orbit(vessel);
+        var UT = Planetarium.GetUniversalTime();
+
+        List<CelestialBody> validStars = [];
+        List<int> starIndexList = [];
+
+        foreach (var star in stars)
+        {
+            var bodies = GetReferenceBodies(vessel, star);
+            if (ReferenceEquals(bodies.parent, star))
+                return new ShadowHandle(AlwaysInSun(star));
+
+            starIndexList.Add((int)SolarSystem.GetBodyIndex(star));
+            validStars.Add(star);
+        }
+
+        if (validStars.Count == 0)
+            return new ShadowHandle(AlwaysInShadow());
+
+        return ScheduleShadowJob(
+            system,
+            validStars,
+            starIndexList,
+            referenceIndices: null,
+            vesselOrbit: orbit,
+            planetIndex: 0,
+            normal: default,
+            cosLatitude: 0,
+            UT,
+            isLanded: false
+        );
+    }
+
+    private static ShadowHandle ScheduleLandedShadowState(Vessel vessel)
+    {
+        var stars = StarProvider.GetRelevantStars(vessel) ?? [];
+        var settings = HighLogic.CurrentGame?.Parameters.CustomParams<Settings>();
+        if (!(settings?.EnableLandedShadows ?? false))
+            return new ShadowHandle(DefaultForStar(stars.FirstOrDefault()));
+
+        var system = SolarSystem.Record();
+        var currentUT = Planetarium.GetUniversalTime();
+        var planet = vessel.orbit.referenceBody;
+        var planetIndex = (int)SolarSystem.GetBodyIndex(planet);
+
+        var normal = planet.GetSurfaceNVector(vessel.latitude, vessel.longitude);
+        var cosLatitude = Math.Cos(Math.Abs(vessel.latitude) * MathUtil.DEG2RAD);
+
+        List<CelestialBody> validStars = [];
+        List<int> starIndexList = [];
+        List<int> referenceIndexList = [];
+
+        foreach (var star in stars)
+        {
+            starIndexList.Add((int)SolarSystem.GetBodyIndex(star));
+            referenceIndexList.Add(FindReferenceBodyIndex(planet, star));
+            validStars.Add(star);
+        }
+
+        if (validStars.Count == 0)
+            return new ShadowHandle(AlwaysInShadow());
+
+        return ScheduleShadowJob(
+            system,
+            validStars,
+            starIndexList,
+            referenceIndexList,
+            vesselOrbit: default,
+            planetIndex,
+            normal,
+            cosLatitude,
+            currentUT,
+            isLanded: true
+        );
+    }
+
+    private static ShadowHandle ScheduleShadowJob(
+        SystemBody[] system,
+        List<CelestialBody> stars,
+        List<int> starIndices,
+        List<int> referenceIndices,
+        Mathematics.Orbit vesselOrbit,
+        int planetIndex,
+        Vector3d normal,
+        double cosLatitude,
+        double UT,
+        bool isLanded
+    )
+    {
+        BurstCrashHandler.Init();
+
+        int starCount = stars.Count;
+
+        var nativeBodies = new NativeArray<SystemBody>(system.Length, Allocator.TempJob);
+        nativeBodies.CopyFrom(system);
+
+        var nativeStarIndices = new NativeArray<int>(starCount, Allocator.TempJob);
+        for (int i = 0; i < starCount; i++)
+            nativeStarIndices[i] = starIndices[i];
+
+        var nativeReferenceIndices = new NativeArray<int>(starCount, Allocator.TempJob);
+        if (referenceIndices != null)
+        {
+            for (int i = 0; i < starCount; i++)
+                nativeReferenceIndices[i] = referenceIndices[i];
+        }
+
+        var results = new NativeArray<OrbitShadow.Terminator>(starCount, Allocator.TempJob);
+
+        var job = new ShadowJob
+        {
+            Bodies = nativeBodies,
+            StarIndices = nativeStarIndices,
+            ReferenceIndices = nativeReferenceIndices,
+            Results = results,
+            VesselOrbit = vesselOrbit,
+            PlanetIndex = planetIndex,
+            Normal = normal,
+            CosLatitude = cosLatitude,
+            UT = UT,
+            StarCount = starCount,
+            IsLanded = isLanded,
+        };
+        var jobHandle = job.Schedule(default);
+
+        return new ShadowHandle(
+            jobHandle,
+            nativeBodies,
+            nativeStarIndices,
+            nativeReferenceIndices,
+            results,
+            stars
+        );
     }
 
     private static int FindReferenceBodyIndex(CelestialBody planet, CelestialBody star)
