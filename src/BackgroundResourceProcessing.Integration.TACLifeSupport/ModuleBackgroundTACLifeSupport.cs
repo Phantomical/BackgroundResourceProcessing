@@ -118,29 +118,32 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
                 options
             );
 
-            var oxygenBehaviour = new TACLifeSupportBehaviour(
-                [
-                    new()
-                    {
-                        ResourceName = global.Oxygen,
-                        Ratio = sec2.OxygenConsumptionRate * numCrew,
-                        FlowMode = ResourceFlowMode.ALL_VESSEL,
-                    },
-                ],
-                [
-                    new()
-                    {
-                        ResourceName = global.CO2,
-                        Ratio = sec2.CO2ProductionRate * numCrew,
-                        FlowMode = ResourceFlowMode.ALL_VESSEL,
-                        DumpExcess = true,
-                    },
-                ]
-            );
-            OxygenConverterIndex = processor.AddConverter(
-                new Core.ResourceConverter(oxygenBehaviour) { Priority = 10 },
-                options
-            );
+            if (NeedsOxygen(vessel))
+            {
+                var oxygenBehaviour = new TACLifeSupportBehaviour(
+                    [
+                        new()
+                        {
+                            ResourceName = global.Oxygen,
+                            Ratio = sec2.OxygenConsumptionRate * numCrew,
+                            FlowMode = ResourceFlowMode.ALL_VESSEL,
+                        },
+                    ],
+                    [
+                        new()
+                        {
+                            ResourceName = global.CO2,
+                            Ratio = sec2.CO2ProductionRate * numCrew,
+                            FlowMode = ResourceFlowMode.ALL_VESSEL,
+                            DumpExcess = true,
+                        },
+                    ]
+                );
+                OxygenConverterIndex = processor.AddConverter(
+                    new Core.ResourceConverter(oxygenBehaviour) { Priority = 10 },
+                    options
+                );
+            }
         }
 
         // EC is consumed by all crew including frozen
@@ -293,6 +296,21 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
             )
                 controller.KillCrewMember(protoMember, "dehydration", vessel);
         }
+    }
+
+    private static bool NeedsOxygen(Vessel vessel)
+    {
+        if (vessel.mainBody == FlightGlobals.GetHomeBody() || vessel.mainBody.atmosphereContainsOxygen)
+        {
+            double seaLevelPressure = vessel.mainBody.GetPressure(0);
+            if (seaLevelPressure <= 0)
+                return true;
+
+            double atmDensity = vessel.staticPressurekPa / seaLevelPressure;
+            if (atmDensity > 0.2)
+                return false;
+        }
+        return true;
     }
 
     private bool IsEnabled()
