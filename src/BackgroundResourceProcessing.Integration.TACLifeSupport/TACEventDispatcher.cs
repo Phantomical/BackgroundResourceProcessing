@@ -12,12 +12,14 @@ public class TACEventDispatcher : MonoBehaviour
     {
         BackgroundResourceProcessor.onVesselRecord.Add(OnRecord);
         BackgroundResourceProcessor.onVesselRestore.Add(OnRestore);
+        BackgroundResourceProcessor.onVesselChangepoint.Add(OnChangepoint);
     }
 
     void OnDestroy()
     {
         BackgroundResourceProcessor.onVesselRecord.Remove(OnRecord);
         BackgroundResourceProcessor.onVesselRestore.Remove(OnRestore);
+        BackgroundResourceProcessor.onVesselChangepoint.Remove(OnChangepoint);
     }
 
     void OnRecord(BackgroundResourceProcessor processor)
@@ -32,5 +34,12 @@ public class TACEventDispatcher : MonoBehaviour
         processor
             .Vessel.FindVesselModuleImplementing<ModuleBackgroundTACLifeSupport>()
             ?.OnRestore(processor);
+    }
+
+    void OnChangepoint(BackgroundResourceProcessor processor, ChangepointEvent evt)
+    {
+        processor
+            .Vessel.FindVesselModuleImplementing<ModuleBackgroundTACLifeSupport>()
+            ?.OnChangepoint(processor, evt);
     }
 }

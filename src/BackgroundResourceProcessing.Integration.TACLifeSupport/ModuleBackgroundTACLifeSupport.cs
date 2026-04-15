@@ -230,6 +230,71 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
         ClearState();
     }
 
+    /// <summary>
+    /// Called at each BRP changepoint. Fires TAC-LS death/hibernation if a resource
+    /// has been depleted long enough to exceed the threshold.
+    /// </summary>
+    internal void OnChangepoint(BackgroundResourceProcessor processor, ChangepointEvent evt)
+    {
+        if (!IsEnabled())
+            return;
+
+        var tacSettings = TacLifeSupport.Instance?.gameSettings;
+        if (tacSettings == null || !tacSettings.knownVessels.Contains(vessel.id))
+            return;
+
+        var vesselInfo = tacSettings.knownVessels[vessel.id];
+        var controller = LifeSupportController.Instance;
+        var global = TacStartOnce.Instance.globalSettings;
+        var converters = processor.Converters;
+        double now = evt.CurrentChangepoint;
+
+        var foodBehaviour = GetBehaviour(converters, FoodConverterIndex);
+        var waterBehaviour = GetBehaviour(converters, WaterConverterIndex);
+        var oxygenBehaviour = GetBehaviour(converters, OxygenConverterIndex);
+        var ecBehaviour = GetBehaviour(converters, ECConverterIndex);
+
+        // O2 and EC: vessel-level hibernation (no per-kerbal respite)
+        if (
+            oxygenBehaviour?.lastNotSatisfied != null
+            && (now - oxygenBehaviour.lastNotSatisfied.Value) > global.MaxTimeWithoutOxygen
+        )
+            controller.HibernateCrewMembers(vessel, vesselInfo, "O2");
+
+        if (
+            ecBehaviour?.lastNotSatisfied != null
+            && (now - ecBehaviour.lastNotSatisfied.Value) > global.MaxTimeWithoutElectricity
+        )
+            controller.HibernateCrewMembers(vessel, vesselInfo, "EC");
+
+        // Food and water: per-kerbal kill with respite grace period
+        foreach (var crewInfo in vesselInfo.CrewInVessel)
+        {
+            if (crewInfo.DFfrozen || crewInfo.hibernating)
+                continue;
+
+            var protoMember = vessel.protoVessel
+                ?.GetVesselCrew()
+                .Find(c => c.name == crewInfo.name);
+            if (protoMember == null)
+                continue;
+
+            if (
+                foodBehaviour?.lastNotSatisfied != null
+                && (now - foodBehaviour.lastNotSatisfied.Value)
+                    > (global.MaxTimeWithoutFood + crewInfo.respite)
+            )
+                controller.KillCrewMember(protoMember, "starvation", vessel);
+
+            if (
+                waterBehaviour?.lastNotSatisfied != null
+                && (now - waterBehaviour.lastNotSatisfied.Value)
+                    > (global.MaxTimeWithoutWater + crewInfo.respite)
+            )
+                controller.KillCrewMember(protoMember, "dehydration", vessel);
+        }
+    }
+
     private bool IsEnabled()
     {
         var settings = HighLogic.CurrentGame?.Parameters.CustomParams<ModIntegrationSettings>();
