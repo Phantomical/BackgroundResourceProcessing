@@ -89,7 +89,7 @@ namespace BackgroundResourceProcessing.Integration.TACLifeSupport
                     if (water.amount == 0.0)
                         stats.WaterExhaustedUT = info.estimatedTimeWaterDepleted;
                     if (oxygen.amount == 0.0)
-                        stats.OxygenExhaustedUT = info.estimatedTimeWaterDepleted;
+                        stats.OxygenExhaustedUT = info.estimatedTimeOxygenDepleted;
                     if (ec.amount == 0.0)
                         stats.ElectricityExhaustedUT = info.estimatedTimeElectricityDepleted;
 
