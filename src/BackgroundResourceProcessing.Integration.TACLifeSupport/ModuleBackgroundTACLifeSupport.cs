@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Core;
 using Tac;
@@ -70,99 +69,73 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
         {
             int numCrew = vesselInfo.numCrew;
 
-            var foodBehaviour = new TACLifeSupportBehaviour(
-                [
-                    new()
-                    {
-                        ResourceName = global.Food,
-                        Ratio = sec2.FoodConsumptionRate * numCrew,
-                        FlowMode = ResourceFlowMode.ALL_VESSEL,
-                    },
-                ],
-                [
-                    new()
-                    {
-                        ResourceName = global.Waste,
-                        Ratio = sec2.WasteProductionRate * numCrew,
-                        FlowMode = ResourceFlowMode.ALL_VESSEL,
-                        DumpExcess = true,
-                    },
-                ]
-            );
             FoodConverterIndex = processor.AddConverter(
-                new Core.ResourceConverter(foodBehaviour) { Priority = 10 },
+                new Core.ResourceConverter(
+                    new TACLifeSupportBehaviour
+                    {
+                        InputResourceName = global.Food,
+                        PerCrewInputRate = sec2.FoodConsumptionRate,
+                        OutputResourceName = global.Waste,
+                        PerCrewOutputRate = sec2.WasteProductionRate,
+                        NumCrew = numCrew,
+                    }
+                )
+                { Priority = 10 },
                 options
             );
 
-            var waterBehaviour = new TACLifeSupportBehaviour(
-                [
-                    new()
-                    {
-                        ResourceName = global.Water,
-                        Ratio = sec2.WaterConsumptionRate * numCrew,
-                        FlowMode = ResourceFlowMode.ALL_VESSEL,
-                    },
-                ],
-                [
-                    new()
-                    {
-                        ResourceName = global.WasteWater,
-                        Ratio = sec2.WasteWaterProductionRate * numCrew,
-                        FlowMode = ResourceFlowMode.ALL_VESSEL,
-                        DumpExcess = true,
-                    },
-                ]
-            );
             WaterConverterIndex = processor.AddConverter(
-                new Core.ResourceConverter(waterBehaviour) { Priority = 10 },
+                new Core.ResourceConverter(
+                    new TACLifeSupportBehaviour
+                    {
+                        InputResourceName = global.Water,
+                        PerCrewInputRate = sec2.WaterConsumptionRate,
+                        OutputResourceName = global.WasteWater,
+                        PerCrewOutputRate = sec2.WasteWaterProductionRate,
+                        NumCrew = numCrew,
+                    }
+                )
+                { Priority = 10 },
                 options
             );
 
             if (NeedsOxygen(vessel))
             {
-                var oxygenBehaviour = new TACLifeSupportBehaviour(
-                    [
-                        new()
-                        {
-                            ResourceName = global.Oxygen,
-                            Ratio = sec2.OxygenConsumptionRate * numCrew,
-                            FlowMode = ResourceFlowMode.ALL_VESSEL,
-                        },
-                    ],
-                    [
-                        new()
-                        {
-                            ResourceName = global.CO2,
-                            Ratio = sec2.CO2ProductionRate * numCrew,
-                            FlowMode = ResourceFlowMode.ALL_VESSEL,
-                            DumpExcess = true,
-                        },
-                    ]
-                );
                 OxygenConverterIndex = processor.AddConverter(
-                    new Core.ResourceConverter(oxygenBehaviour) { Priority = 10 },
+                    new Core.ResourceConverter(
+                        new TACLifeSupportBehaviour
+                        {
+                            InputResourceName = global.Oxygen,
+                            PerCrewInputRate = sec2.OxygenConsumptionRate,
+                            OutputResourceName = global.CO2,
+                            PerCrewOutputRate = sec2.CO2ProductionRate,
+                            NumCrew = numCrew,
+                        }
+                    )
+                    { Priority = 10 },
                     options
                 );
             }
         }
 
-        // EC is consumed by all crew including frozen
-        var ecRate = vesselInfo.estimatedElectricityConsumptionRate;
-        if (ecRate > 0.0)
+        // EC: base rate scales with occupied parts, per-crew rate scales with numCrew.
+        // numOccupiedParts is fixed at record time (we can't track part occupancy for
+        // unloaded vessels), but numCrew is updated as kerbals die.
+        var ecBase = sec2.BaseElectricityConsumptionRate * vesselInfo.numOccupiedParts;
+        var ecPerCrew = sec2.ElectricityConsumptionRate;
+        if (ecBase + ecPerCrew * vesselInfo.numCrew > 0.0)
         {
-            var ecBehaviour = new TACLifeSupportBehaviour(
-                [
-                    new()
-                    {
-                        ResourceName = global.Electricity,
-                        Ratio = ecRate,
-                        FlowMode = ResourceFlowMode.ALL_VESSEL,
-                    },
-                ],
-                []
-            );
             ECConverterIndex = processor.AddConverter(
-                new Core.ResourceConverter(ecBehaviour) { Priority = 10 },
+                new Core.ResourceConverter(
+                    new TACLifeSupportBehaviour
+                    {
+                        InputResourceName = global.Electricity,
+                        BaseInputRate = ecBase,
+                        PerCrewInputRate = ecPerCrew,
+                        NumCrew = vesselInfo.numCrew,
+                    }
+                )
+                { Priority = 10 },
                 options
             );
         }
@@ -271,6 +244,8 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
             controller.HibernateCrewMembers(vessel, vesselInfo, "EC");
 
         // Food and water: per-kerbal kill with respite grace period
+        int initialCrew = vesselInfo.numCrew;
+        int killed = 0;
         foreach (var crewInfo in vesselInfo.CrewInVessel)
         {
             if (crewInfo.DFfrozen || crewInfo.hibernating)
@@ -287,15 +262,43 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
                 && (now - foodBehaviour.lastNotSatisfied.Value)
                     > (global.MaxTimeWithoutFood + crewInfo.respite)
             )
+            {
                 controller.KillCrewMember(protoMember, "starvation", vessel);
+                killed++;
+                continue;
+            }
 
             if (
                 waterBehaviour?.lastNotSatisfied != null
                 && (now - waterBehaviour.lastNotSatisfied.Value)
                     > (global.MaxTimeWithoutWater + crewInfo.respite)
             )
+            {
                 controller.KillCrewMember(protoMember, "dehydration", vessel);
+                killed++;
+            }
         }
+
+        if (killed > 0)
+        {
+            int survivingCrew = System.Math.Max(0, initialCrew - killed);
+            UpdateCrewRates(survivingCrew, foodBehaviour, waterBehaviour, oxygenBehaviour, ecBehaviour);
+            processor.MarkDirty();
+        }
+    }
+
+    private static void UpdateCrewRates(
+        int count,
+        TACLifeSupportBehaviour foodBehaviour,
+        TACLifeSupportBehaviour waterBehaviour,
+        TACLifeSupportBehaviour oxygenBehaviour,
+        TACLifeSupportBehaviour ecBehaviour
+    )
+    {
+        if (foodBehaviour != null) foodBehaviour.NumCrew = count;
+        if (waterBehaviour != null) waterBehaviour.NumCrew = count;
+        if (oxygenBehaviour != null) oxygenBehaviour.NumCrew = count;
+        if (ecBehaviour != null) ecBehaviour.NumCrew = count;
     }
 
     private static bool NeedsOxygen(Vessel vessel)
