@@ -171,10 +171,26 @@ internal class AllVesselsScreenContent : MonoBehaviour
 
         foreach (var group in grouped)
         {
+            if (group.Key == VesselType.Debris)
+                continue;
+
             DebugUIManager.CreateHeader(_scrollContent, group.Key.ToString());
             DebugUIManager.CreateSeparator(_scrollContent);
 
             foreach (var entry in group.Value)
+            {
+                _entries.Add(BuildVesselEntry(entry.vessel, entry.processor));
+            }
+
+            DebugUIManager.CreateSpacer(_scrollContent);
+        }
+
+        if (grouped.TryGetValue(VesselType.Debris, out var debris))
+        {
+            DebugUIManager.CreateHeader(_scrollContent, VesselType.Debris.ToString());
+            DebugUIManager.CreateSeparator(_scrollContent);
+
+            foreach (var entry in debris)
             {
                 _entries.Add(BuildVesselEntry(entry.vessel, entry.processor));
             }
