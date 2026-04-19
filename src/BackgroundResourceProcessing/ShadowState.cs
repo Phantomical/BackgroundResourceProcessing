@@ -59,8 +59,9 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         {
             var distance =
                 (star.position - vessel.vesselTransform.position).magnitude - star.Radius;
-            return PhysicsGlobals.SolarLuminosity
-                / (4 * Math.PI * distance * distance * PhysicsGlobals.SolarLuminosityAtHome);
+            var homeDistance = FlightGlobals.GetHomeBody()?.orbit?.semiMajorAxis ?? distance;
+            var ratio = homeDistance / distance;
+            return ratio * ratio;
         }
     }
 
