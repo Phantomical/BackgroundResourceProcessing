@@ -10,7 +10,17 @@ using UnityEngine;
 
 namespace BackgroundResourceProcessing.Integration.TACLifeSupport
 {
-    public struct SavedVesselInfo { }
+    public struct SavedVesselInfo
+    {
+        public double FoodExhaustedUT;
+        public double WaterExhaustedUT;
+        public double OxygenExhaustedUT;
+        public double ElectricityExhaustedUT;
+        public VesselInfo.Status FoodStatus;
+        public VesselInfo.Status WaterStatus;
+        public VesselInfo.Status OxygenStatus;
+        public VesselInfo.Status ElectricityStatus;
+    }
 
     /// <summary>
     /// Transpiler patch for TAC-LS LifeSupportMonitoringWindow.DrawWindowContents
@@ -51,7 +61,7 @@ namespace BackgroundResourceProcessing.Integration.TACLifeSupport
         )
         {
             var matcher = new CodeMatcher(instructions, generator);
-            var slot = generator.DeclareLocal(typeof(VesselStats?));
+            var slot = generator.DeclareLocal(typeof(SavedVesselInfo?));
             var info = generator.DeclareLocal(typeof(VesselInfo));
 
             // Find the get_Item call that retrieves KeyValuePair from knownVesselsList
@@ -59,7 +69,7 @@ namespace BackgroundResourceProcessing.Integration.TACLifeSupport
                 .MatchStartForward(new CodeMatch(OpCodes.Callvirt, ListItemGetter))
                 .ThrowIfInvalid("Could not find get_Item call for knownVesselsList");
 
-            VesselStats? stats = default;
+            SavedVesselInfo? stats = default;
             // Insert our call right after get_Item but before stloc.2
             // Stack at this point has: KeyValuePair<Guid, VesselInfo>
             matcher
@@ -96,7 +106,7 @@ namespace BackgroundResourceProcessing.Integration.TACLifeSupport
         public static VesselInfo OverrideVesselInfoEstimates(
             KeyValuePair<Guid, VesselInfo> entry,
             MonoBehaviour window,
-            out VesselStats? saved
+            out SavedVesselInfo? saved
         )
         {
             saved = null;
@@ -124,12 +134,25 @@ namespace BackgroundResourceProcessing.Integration.TACLifeSupport
                     WaterExhaustedUT = info.estimatedTimeWaterDepleted,
                     OxygenExhaustedUT = info.estimatedTimeOxygenDepleted,
                     ElectricityExhaustedUT = info.estimatedTimeElectricityDepleted,
+                    FoodStatus = info.foodStatus,
+                    WaterStatus = info.waterStatus,
+                    OxygenStatus = info.oxygenStatus,
+                    ElectricityStatus = info.electricityStatus,
                 };
 
                 info.estimatedTimeFoodDepleted = stats.FoodExhaustedUT;
                 info.estimatedTimeWaterDepleted = stats.WaterExhaustedUT;
                 info.estimatedTimeOxygenDepleted = stats.OxygenExhaustedUT;
                 info.estimatedTimeElectricityDepleted = stats.ElectricityExhaustedUT;
+
+                if (double.IsPositiveInfinity(stats.FoodExhaustedUT))
+                    info.foodStatus = VesselInfo.Status.GOOD;
+                if (double.IsPositiveInfinity(stats.WaterExhaustedUT))
+                    info.waterStatus = VesselInfo.Status.GOOD;
+                if (double.IsPositiveInfinity(stats.OxygenExhaustedUT))
+                    info.oxygenStatus = VesselInfo.Status.GOOD;
+                if (double.IsPositiveInfinity(stats.ElectricityExhaustedUT))
+                    info.electricityStatus = VesselInfo.Status.GOOD;
             }
             catch (Exception e)
             {
@@ -139,7 +162,7 @@ namespace BackgroundResourceProcessing.Integration.TACLifeSupport
             return info;
         }
 
-        public static void RestoreVesselInfo(VesselInfo info, VesselStats? saved)
+        public static void RestoreVesselInfo(VesselInfo info, SavedVesselInfo? saved)
         {
             if (saved is null)
                 return;
@@ -149,6 +172,10 @@ namespace BackgroundResourceProcessing.Integration.TACLifeSupport
             info.estimatedTimeWaterDepleted = cached.WaterExhaustedUT;
             info.estimatedTimeOxygenDepleted = cached.OxygenExhaustedUT;
             info.estimatedTimeElectricityDepleted = cached.ElectricityExhaustedUT;
+            info.foodStatus = cached.FoodStatus;
+            info.waterStatus = cached.WaterStatus;
+            info.oxygenStatus = cached.OxygenStatus;
+            info.electricityStatus = cached.ElectricityStatus;
         }
 
         static Vessel FindVesselWithId(Guid id)

@@ -80,7 +80,9 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
                         NumCrew = numCrew,
                     }
                 )
-                { Priority = 10 },
+                {
+                    Priority = 10,
+                },
                 options
             );
 
@@ -95,7 +97,9 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
                         NumCrew = numCrew,
                     }
                 )
-                { Priority = 10 },
+                {
+                    Priority = 10,
+                },
                 options
             );
 
@@ -112,7 +116,9 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
                             NumCrew = numCrew,
                         }
                     )
-                    { Priority = 10 },
+                    {
+                        Priority = 10,
+                    },
                     options
                 );
             }
@@ -135,7 +141,9 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
                         NumCrew = vesselInfo.numCrew,
                     }
                 )
-                { Priority = 10 },
+                {
+                    Priority = 10,
+                },
                 options
             );
         }
@@ -251,8 +259,8 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
             if (crewInfo.DFfrozen || crewInfo.hibernating)
                 continue;
 
-            var protoMember = vessel.protoVessel
-                ?.GetVesselCrew()
+            var protoMember = vessel
+                .protoVessel?.GetVesselCrew()
                 .Find(c => c.name == crewInfo.name);
             if (protoMember == null)
                 continue;
@@ -282,7 +290,13 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
         if (killed > 0)
         {
             int survivingCrew = System.Math.Max(0, initialCrew - killed);
-            UpdateCrewRates(survivingCrew, foodBehaviour, waterBehaviour, oxygenBehaviour, ecBehaviour);
+            UpdateCrewRates(
+                survivingCrew,
+                foodBehaviour,
+                waterBehaviour,
+                oxygenBehaviour,
+                ecBehaviour
+            );
             processor.MarkDirty();
         }
     }
@@ -295,15 +309,22 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
         TACLifeSupportBehaviour ecBehaviour
     )
     {
-        if (foodBehaviour != null) foodBehaviour.NumCrew = count;
-        if (waterBehaviour != null) waterBehaviour.NumCrew = count;
-        if (oxygenBehaviour != null) oxygenBehaviour.NumCrew = count;
-        if (ecBehaviour != null) ecBehaviour.NumCrew = count;
+        if (foodBehaviour != null)
+            foodBehaviour.NumCrew = count;
+        if (waterBehaviour != null)
+            waterBehaviour.NumCrew = count;
+        if (oxygenBehaviour != null)
+            oxygenBehaviour.NumCrew = count;
+        if (ecBehaviour != null)
+            ecBehaviour.NumCrew = count;
     }
 
     private static bool NeedsOxygen(Vessel vessel)
     {
-        if (vessel.mainBody == FlightGlobals.GetHomeBody() || vessel.mainBody.atmosphereContainsOxygen)
+        if (
+            vessel.mainBody == FlightGlobals.GetHomeBody()
+            || vessel.mainBody.atmosphereContainsOxygen
+        )
         {
             double seaLevelPressure = vessel.mainBody.GetPressure(0);
             if (seaLevelPressure <= 0)

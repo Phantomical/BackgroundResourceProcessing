@@ -113,13 +113,17 @@ public class TACLifeSupportBehaviour : ConverterBehaviour
     {
         base.OnSave(node);
         node.AddValue("InputResourceName", InputResourceName);
-        if (BaseInputRate != 0) node.AddValue("BaseInputRate", BaseInputRate);
-        if (PerCrewInputRate != 0) node.AddValue("PerCrewInputRate", PerCrewInputRate);
+        if (BaseInputRate != 0)
+            node.AddValue("BaseInputRate", BaseInputRate);
+        if (PerCrewInputRate != 0)
+            node.AddValue("PerCrewInputRate", PerCrewInputRate);
         if (OutputResourceName.Length > 0)
         {
             node.AddValue("OutputResourceName", OutputResourceName);
-            if (BaseOutputRate != 0) node.AddValue("BaseOutputRate", BaseOutputRate);
-            if (PerCrewOutputRate != 0) node.AddValue("PerCrewOutputRate", PerCrewOutputRate);
+            if (BaseOutputRate != 0)
+                node.AddValue("BaseOutputRate", BaseOutputRate);
+            if (PerCrewOutputRate != 0)
+                node.AddValue("PerCrewOutputRate", PerCrewOutputRate);
         }
         node.AddValue("NumCrew", NumCrew);
 

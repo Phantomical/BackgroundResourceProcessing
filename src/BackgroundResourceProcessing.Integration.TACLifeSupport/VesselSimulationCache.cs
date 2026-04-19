@@ -135,7 +135,10 @@ namespace BackgroundResourceProcessing.Integration.TACLifeSupport
 
         private static bool NeedsOxygen(Vessel vessel)
         {
-            if (vessel.mainBody == FlightGlobals.GetHomeBody() || vessel.mainBody.atmosphereContainsOxygen)
+            if (
+                vessel.mainBody == FlightGlobals.GetHomeBody()
+                || vessel.mainBody.atmosphereContainsOxygen
+            )
             {
                 double seaLevelPressure = vessel.mainBody.GetPressure(0);
                 if (seaLevelPressure <= 0)
