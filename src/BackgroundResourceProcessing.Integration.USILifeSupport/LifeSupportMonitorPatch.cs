@@ -14,10 +14,18 @@ namespace BackgroundResourceProcessing.Integration.USILifeSupport;
 [KSPAddon(KSPAddon.Startup.Instantly, true)]
 public class Loader : MonoBehaviour
 {
+    private static readonly Harmony harmony = new(
+        "BackgroundResourceProcessing.Integration.USILifeSupport"
+    );
+
     void Awake()
     {
-        Harmony harmony = new("BackgroundResourceProcessing.Integration.USILifeSupport");
         harmony.PatchAll(typeof(Loader).Assembly);
+    }
+
+    static void OnHotUnload()
+    {
+        harmony.UnpatchAll(harmony.Id);
     }
 }
 

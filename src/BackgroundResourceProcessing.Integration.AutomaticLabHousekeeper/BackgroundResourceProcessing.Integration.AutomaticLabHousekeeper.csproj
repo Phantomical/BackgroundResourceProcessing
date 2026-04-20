@@ -6,6 +6,7 @@
         <GenerateKSPAssemblyDependencyAttributes>true</GenerateKSPAssemblyDependencyAttributes>
 
         <KSPBinaryType>binary</KSPBinaryType>
+        <EnableHotReload>true</EnableHotReload>
     </PropertyGroup>
 
     <ItemGroup>

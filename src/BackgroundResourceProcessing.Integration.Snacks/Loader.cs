@@ -6,9 +6,17 @@ namespace BackgroundResourceProcessing.Integration.Snacks;
 [KSPAddon(KSPAddon.Startup.Instantly, true)]
 public class Loader : MonoBehaviour
 {
+    private static readonly Harmony harmony = new(
+        "BackgroundResourceProcessing.Integration.Snacks"
+    );
+
     void Awake()
     {
-        Harmony harmony = new("BackgroundResourceProcessing.Integration.Snacks");
         harmony.PatchAll(typeof(Loader).Assembly);
+    }
+
+    static void OnHotUnload()
+    {
+        harmony.UnpatchAll(harmony.Id);
     }
 }
