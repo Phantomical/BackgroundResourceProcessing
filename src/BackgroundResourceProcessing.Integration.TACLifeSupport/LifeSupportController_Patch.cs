@@ -149,6 +149,11 @@ public static class LifeSupportController_doWarningProcessing_Patch
             | vesselInfo.electricityStatus;
         __instance.overallLifeSupportStatus |= vesselInfo.overallStatus;
 
+        // TAC-LS's monitoring window shows `currentTime - lastUpdate` as
+        // "last update". Because BRP skips ConsumeResources for these
+        // vessels, lastUpdate would otherwise drift — pin it to now.
+        vesselInfo.lastUpdate = currentTime;
+
         return false;
     }
 
