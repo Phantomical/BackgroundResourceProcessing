@@ -73,6 +73,7 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
                 new Core.ResourceConverter(
                     new TACLifeSupportBehaviour
                     {
+                        SourceModule = "TAC-LS",
                         InputResourceName = global.Food,
                         PerCrewInputRate = sec2.FoodConsumptionRate,
                         OutputResourceName = global.Waste,
@@ -90,6 +91,7 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
                 new Core.ResourceConverter(
                     new TACLifeSupportBehaviour
                     {
+                        SourceModule = "TAC-LS",
                         InputResourceName = global.Water,
                         PerCrewInputRate = sec2.WaterConsumptionRate,
                         OutputResourceName = global.WasteWater,
@@ -109,6 +111,7 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
                     new Core.ResourceConverter(
                         new TACLifeSupportBehaviour
                         {
+                            SourceModule = "TAC-LS",
                             InputResourceName = global.Oxygen,
                             PerCrewInputRate = sec2.OxygenConsumptionRate,
                             OutputResourceName = global.CO2,
@@ -135,6 +138,7 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
                 new Core.ResourceConverter(
                     new TACLifeSupportBehaviour
                     {
+                        SourceModule = "TAC-LS",
                         InputResourceName = global.Electricity,
                         BaseInputRate = ecBase,
                         PerCrewInputRate = ecPerCrew,
