@@ -8,9 +8,12 @@ namespace BackgroundResourceProcessing.Integration.BackgroundResources;
 [KSPAddon(KSPAddon.Startup.Instantly, true)]
 public class Loader : MonoBehaviour
 {
+    private static readonly Harmony harmony = new(
+        "BackgroundResourceProcessing.Integration.BackgroundResources"
+    );
+
     void Awake()
     {
-        var harmony = new Harmony("BackgroundResourceProcessing.Integration.BackgroundResources");
         harmony.PatchAll(typeof(Loader).Assembly);
     }
 
@@ -21,6 +24,11 @@ public class Loader : MonoBehaviour
         LogUtil.Log(
             "Disabling BackgroundResources. Please report all bugs with background resource handling to BackgroundResourceProcessing."
         );
+    }
+
+    static void OnHotUnload()
+    {
+        harmony.UnpatchAll(harmony.Id);
     }
 }
 

@@ -184,6 +184,16 @@ internal class ResourceProcessor
             SolverCache.Add(hash, new() { Solution = solution, Processor = new(processor) });
     }
 
+    /// <summary>
+    /// Drop every cached solver result. Cached entries can hold references
+    /// to behaviour or processor types from a hot-reloaded assembly, which
+    /// become stale once the assembly is swapped.
+    /// </summary>
+    internal static void ClearSolverCache()
+    {
+        SolverCache.Clear();
+    }
+
     private int ComputeSolverCacheHash()
     {
         using var span = new TraceSpan("ResourceProcessor.ComputeSolverCacheHash");
