@@ -21,6 +21,12 @@
         <!-- Properties used by KSPBuildTools -->
         <GameDataOutDir>$(ProjectRootDir)\GameData\BackgroundResourceProcessing</GameDataOutDir>
         <BinariesOutputRelativePath>GameData\BackgroundResourceProcessing\Plugins</BinariesOutputRelativePath>
+
+        <!--
+            This gets emitted as an artifact of using Krafs.Publicizer on an assembly that
+            itself uses Krafs.Publicizer.
+        -->
+        <NoWarn>$(NoWarn);CS0436</NoWarn>
     </PropertyGroup>
 
     <Import
