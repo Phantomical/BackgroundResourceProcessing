@@ -107,8 +107,9 @@ public class ModIntegrationSettings : GameParameters.CustomParameterNode
 
     [GameParameters.CustomParameterUI(
         "Enable TAC-LS Integration",
-        toolTip = "Show resource depletion times in TAC-LS monitoring window based on Background Resource Processing simulation. "
-            + "Provides more accurate predictions for unloaded vessels."
+        toolTip = "Enable Background Resource Processing integration with TAC Life Support. "
+            + "Handles resource consumption for unloaded vessels and provides accurate depletion "
+            + "time predictions in the TAC-LS monitoring window."
     )]
     public bool EnableTACLSIntegration = true;
 

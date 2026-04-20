@@ -89,7 +89,7 @@ namespace BackgroundResourceProcessing.Integration.TACLifeSupport
                     if (water.amount == 0.0)
                         stats.WaterExhaustedUT = info.estimatedTimeWaterDepleted;
                     if (oxygen.amount == 0.0)
-                        stats.OxygenExhaustedUT = info.estimatedTimeWaterDepleted;
+                        stats.OxygenExhaustedUT = info.estimatedTimeOxygenDepleted;
                     if (ec.amount == 0.0)
                         stats.ElectricityExhaustedUT = info.estimatedTimeElectricityDepleted;
 
@@ -133,6 +133,24 @@ namespace BackgroundResourceProcessing.Integration.TACLifeSupport
                 Instance = null;
         }
 
+        private static bool NeedsOxygen(Vessel vessel)
+        {
+            if (
+                vessel.mainBody == FlightGlobals.GetHomeBody()
+                || vessel.mainBody.atmosphereContainsOxygen
+            )
+            {
+                double seaLevelPressure = vessel.mainBody.GetPressure(0);
+                if (seaLevelPressure <= 0)
+                    return true;
+
+                double atmDensity = vessel.staticPressurekPa / seaLevelPressure;
+                if (atmDensity > 0.2)
+                    return false;
+            }
+            return true;
+        }
+
         struct Converters
         {
             public Core.ResourceConverter food = null;
@@ -149,7 +167,8 @@ namespace BackgroundResourceProcessing.Integration.TACLifeSupport
                 {
                     food = new Core.ResourceConverter(GetFoodConverter(numCrew));
                     water = new Core.ResourceConverter(GetWaterConverter(numCrew));
-                    oxygen = new Core.ResourceConverter(GetOxygenConverter(numCrew));
+                    if (NeedsOxygen(vessel))
+                        oxygen = new Core.ResourceConverter(GetOxygenConverter(numCrew));
                 }
 
                 ec = new Core.ResourceConverter(

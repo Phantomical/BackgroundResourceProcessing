@@ -33,6 +33,17 @@
         <InternalsVisibleTo Include="BackgroundResourceProcessing.Test" />
     </ItemGroup>
 
+    <ItemGroup>
+        <PackageReference Include="Krafs.Publicizer" Version="2.3.0">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Publicize Include="TacLifeSupport" />
+    </ItemGroup>
+
     <!--
     It's really easy for old binaries to stick around in GameData and bin
     directories. This step makes sure that doesn't happen.
