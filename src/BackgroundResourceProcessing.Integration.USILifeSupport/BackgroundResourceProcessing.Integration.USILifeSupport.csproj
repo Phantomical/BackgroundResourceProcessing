@@ -5,7 +5,7 @@
         <GenerateKSPAssemblyAttribute>true</GenerateKSPAssemblyAttribute>
         <GenerateKSPAssemblyDependencyAttributes>true</GenerateKSPAssemblyDependencyAttributes>
 
-        <KSPBinaryType>plugin</KSPBinaryType>
+        <KSPBinaryType>binary</KSPBinaryType>
     </PropertyGroup>
 
     <ItemGroup>
@@ -28,6 +28,15 @@
             <HintPath>$(DepSet1)\UmbraSpaceIndustries\LifeSupport\USILifeSupport.dll</HintPath>
             <Private>false</Private>
             <CKANIdentifier>USI-LS</CKANIdentifier>
+            <KSPAssemblyName>USILifeSupport</KSPAssemblyName>
+            <KSPAssemblyVersion>0.0.0</KSPAssemblyVersion>
+        </Reference>
+
+        <Reference Include="USITools.dll">
+            <HintPath>$(DepSet1)\000_USITools\USITools.dll</HintPath>
+            <Private>false</Private>
+            <KSPAssemblyName>USITools</KSPAssemblyName>
+            <KSPAssemblyVersion>0.0.0</KSPAssemblyVersion>
         </Reference>
 
         <InternalsVisibleTo Include="BackgroundResourceProcessing.Test" />

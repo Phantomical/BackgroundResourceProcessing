@@ -5,7 +5,7 @@
         <GenerateKSPAssemblyAttribute>true</GenerateKSPAssemblyAttribute>
         <GenerateKSPAssemblyDependencyAttributes>true</GenerateKSPAssemblyDependencyAttributes>
 
-        <KSPBinaryType>plugin</KSPBinaryType>
+        <KSPBinaryType>binary</KSPBinaryType>
     </PropertyGroup>
 
     <ItemGroup>
@@ -27,6 +27,8 @@
         <Reference Include="SpaceDust.dll">
             <HintPath>$(DepSet1)\SpaceDust\Plugins\SpaceDust.dll</HintPath>
             <Private>false</Private>
+            <KSPAssemblyName>SpaceDust</KSPAssemblyName>
+            <KSPAssemblyVersion>0.0.0</KSPAssemblyVersion>
         </Reference>
 
         <InternalsVisibleTo Include="BackgroundResourceProcessing.Test" />

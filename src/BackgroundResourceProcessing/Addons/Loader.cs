@@ -22,63 +22,11 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
     private static readonly Dictionary<string, List<AssemblyDependency>> Dependencies =
     [
         new(
-            "BackgroundResourceProcessing.Integration.AutomaticLabHousekeeper",
-            [new DirectAssemblyDependency("AutomaticLabHousekeeper", new(1, 0))]
-        ),
-        new(
-            "BackgroundResourceProcessing.Integration.BackgroundResources",
-            [new DirectAssemblyDependency("BackgroundResources", new(1, 12))]
-        ),
-        new(
-            "BackgroundResourceProcessing.Integration.CryoTanks",
-            [new DirectAssemblyDependency("SimpleBoiloff", new(0, 2))]
-        ),
-        new(
-            "BackgroundResourceProcessing.Integration.DeepFreeze",
-            [new KSPAssemblyDependency("DeepFreeze", new(0, 31))]
-        ),
-        new(
-            "BackgroundResourceProcessing.Integration.EL",
-            [new DirectAssemblyDependency("Launchpad", new(6, 99))]
-        ),
-        new(
-            "BackgroundResourceProcessing.Integration.NearFutureSolar",
-            [new DirectAssemblyDependency("NearFutureSolar", new(0, 4))]
-        ),
-        new(
             "BackgroundResourceProcessing.Integration.PersistentThrust.17",
             [
                 new DirectAssemblyDependency("PersistentThrust", new(1, 7, 5)),
                 new DirectAssemblyMaxVersion("PersistentThrust", new(1, 8)),
             ]
-        ),
-        new(
-            "BackgroundResourceProcessing.Integration.SpaceDust",
-            [new DirectAssemblyDependency("SpaceDust", new(0, 5, 4))]
-        ),
-        new(
-            "BackgroundResourceProcessing.Integration.Snacks",
-            [new DirectAssemblyDependency("Snacks", new(1, 0))]
-        ),
-        new(
-            "BackgroundResourceProcessing.Integration.SystemHeat",
-            [new DirectAssemblyDependency("SystemHeat", new(0, 1))]
-        ),
-        new(
-            "BackgroundResourceProcessing.Integration.TACLifeSupport",
-            [new DirectAssemblyDependency("TacLifeSupport", new(0, 18))]
-        ),
-        new(
-            "BackgroundResourceProcessing.Integration.USILifeSupport",
-            [new DirectAssemblyDependency("USILifeSupport", new(1, 0))]
-        ),
-        new(
-            "BackgroundResourceProcessing.Integration.WildBlueTools",
-            [new DirectAssemblyDependency("WildBlueTools", new(1, 0))]
-        ),
-        new(
-            "BackgroundResourceProcessing.Integration.WBIResources",
-            [new DirectAssemblyDependency("WBIResources", new(1, 0))]
         ),
     ];
 
