@@ -5,7 +5,7 @@
         <GenerateKSPAssemblyAttribute>true</GenerateKSPAssemblyAttribute>
         <GenerateKSPAssemblyDependencyAttributes>true</GenerateKSPAssemblyDependencyAttributes>
 
-        <KSPBinaryType>plugin</KSPBinaryType>
+        <KSPBinaryType>binary</KSPBinaryType>
     </PropertyGroup>
 
     <ItemGroup>
@@ -27,6 +27,8 @@
         <Reference Include="AutomaticLabHousekeeper.dll">
             <HintPath>$(DepSet1)\AutomaticLabHousekeeper\AutomaticLabHousekeeper.dll</HintPath>
             <Private>false</Private>
+            <KSPAssemblyName>AutomaticLabHousekeeper</KSPAssemblyName>
+            <KSPAssemblyVersion>0.0.0</KSPAssemblyVersion>
         </Reference>
 
         <InternalsVisibleTo Include="BackgroundResourceProcessing.Test" />
