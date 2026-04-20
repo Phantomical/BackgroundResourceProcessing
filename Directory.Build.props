@@ -38,6 +38,15 @@
     </PropertyGroup>
 
     <!--
+        Opt a project into HotReloadKSP by setting <EnableHotReload>true</EnableHotReload>.
+        This emits [assembly: AssemblyMetadata("HotReload", "true")] which HotReloadKSP
+        scans for to populate its reload menu.
+    -->
+    <ItemGroup Condition=" '$(EnableHotReload)' == 'true' ">
+        <AssemblyMetadata Include="HotReload" Value="true" />
+    </ItemGroup>
+
+    <!--
         KSPBuildTools relies on these properties. However, they aren't
         set when not doing a whole solution build. In that case we make
         things work by defining them ourselves.

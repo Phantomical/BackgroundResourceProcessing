@@ -5,7 +5,9 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using BackgroundResourceProcessing.Collections;
+using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Utils;
+using HarmonyLib;
 using Unity.Burst;
 using UnityEngine;
 
@@ -104,6 +106,7 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
 #endif
 
         CleanupOldShipLogZips();
+        RegisterHotReloadCallback();
 
         // And now we clean up after ourselves.
         Destroy(this);
@@ -301,6 +304,47 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
 
         LogUtil.Log($"Loaded background converters in {elapsed} ms");
     }
+
+    #region Hot-Reload Support
+    private static void RegisterHotReloadCallback()
+    {
+        var assembly = AssemblyLoader
+            .loadedAssemblies.FirstOrDefault(a => a.assembly?.GetName().Name == "HotReload")
+            ?.assembly;
+
+        if (assembly is null)
+            return;
+
+        var type = assembly.GetType("HotReloadKSP.HotReload");
+        if (type is null)
+            return;
+
+        var eventInfo = type.GetEvent(
+            "OnAssemblyHotReload",
+            BindingFlags.Public | BindingFlags.Static
+        );
+        if (eventInfo is null)
+            return;
+
+        var method = SymbolExtensions.GetMethodInfo(() => OnAssemblyHotReload(null, null));
+        var handler = Delegate.CreateDelegate(eventInfo.EventHandlerType, method);
+
+        eventInfo.AddEventHandler(null, handler);
+    }
+
+    private static void OnAssemblyHotReload(Assembly oldAssembly, Assembly newAssembly)
+    {
+        try
+        {
+            TypeRegistry.OnAssemblyHotReloaded();
+            ResourceProcessor.ClearSolverCache();
+        }
+        catch (Exception e)
+        {
+            Debug.LogException(e);
+        }
+    }
+    #endregion
 
     private abstract class AssemblyDependency
     {

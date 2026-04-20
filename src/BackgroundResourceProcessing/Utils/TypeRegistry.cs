@@ -30,6 +30,17 @@ internal class TypeRegistry<T>(string nodeName)
         return entry;
     }
 
+    /// <summary>
+    /// Force the next <see cref="LoadAll"/> to re-scan
+    /// <see cref="AssemblyLoader.loadedAssemblies"/> for <typeparamref name="T"/>
+    /// subclasses. Use after a hot-reload swaps an assembly so that adapters
+    /// from the new assembly are discovered.
+    /// </summary>
+    internal static void MarkUninitialized()
+    {
+        initializedTypes = false;
+    }
+
     internal void LoadAll()
     {
         if (!initializedTypes)
@@ -135,6 +146,20 @@ internal static class TypeRegistry
 
     internal static void Reload()
     {
+        BackgroundConverter.LoadAll();
+        BackgroundInventory.LoadAll();
+    }
+
+    /// <summary>
+    /// Re-scan loaded assemblies and rebuild every BRP type registry. Intended
+    /// to be called after HotReloadKSP swaps an assembly that contains
+    /// adapters or behaviours.
+    /// </summary>
+    internal static void OnAssemblyHotReloaded()
+    {
+        TypeRegistry<BackgroundConverter>.MarkUninitialized();
+        TypeRegistry<BackgroundInventory>.MarkUninitialized();
+        ConverterBehaviour.RegisterAll();
         BackgroundConverter.LoadAll();
         BackgroundInventory.LoadAll();
     }
