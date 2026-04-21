@@ -80,10 +80,14 @@ public class DeepFreezerSimulationCache : SimulationCache<DeepFreezerStats>
 }
 
 /// <summary>
-/// Drives DeepFreeze's "LastUpd" and "TimeRem" UI columns for unloaded vessels
-/// off BRP's simulator. DF's native calculation relies on <c>storedEC</c> being
-/// refreshed externally (previously by BackgroundResources), which we suppress.
-/// Without this patch both values stay frozen at the last BRP changepoint.
+/// Drives DeepFreeze's "LastUpd" and "TimeRem" UI columns off BRP's simulator.
+/// DF's native calculation is a single-rate linear extrapolation of
+/// <c>storedEC</c> — it has no knowledge of eclipses or other future
+/// changepoints, and its per-vessel divisor omits <c>numFrznCrew</c>, so for
+/// multi-kerbal freezers it reports TimeRem that is <c>numFrznCrew</c>× too
+/// large. For unloaded vessels the native calc also relies on <c>storedEC</c>
+/// being refreshed externally (previously by BackgroundResources), which we
+/// suppress.
 /// </summary>
 [HarmonyPatch(typeof(DFIntMemory), "UpdatePredictedVesselEC")]
 static class DFIntMemory_UpdatePredictedVesselEC_Patch
@@ -94,7 +98,7 @@ static class DFIntMemory_UpdatePredictedVesselEC_Patch
         if (!(settings?.EnableDeepFreezeIntegration ?? false))
             return true;
 
-        if (vessel == null || vessel.loaded)
+        if (vessel == null)
             return true;
 
         var processor = vessel.FindVesselModuleImplementing<BackgroundResourceProcessor>();
@@ -104,12 +108,18 @@ static class DFIntMemory_UpdatePredictedVesselEC_Patch
         var cache = DeepFreezerSimulationCache.GetInstance();
         var stats = cache.GetVesselEntry(processor, DeepFreezerStats.SimulateVessel);
 
-        double storedEC = stats.GetEcAtUT(currentTime);
-        vesselInfo.storedEC = storedEC;
-        vesselInfo.lastUpdate = currentTime;
         vesselInfo.predictedECOut = double.IsPositiveInfinity(stats.EcExhaustedUT)
             ? double.PositiveInfinity
             : stats.EcExhaustedUT - currentTime;
+
+        // For loaded vessels, the live DeepFreezer PartModules are authoritative
+        // for storedEC and partInfo, so only override predictedECOut.
+        if (vessel.loaded)
+            return false;
+
+        double storedEC = stats.GetEcAtUT(currentTime);
+        vesselInfo.storedEC = storedEC;
+        vesselInfo.lastUpdate = currentTime;
 
         bool ecAvailable = storedEC > 0.0 || stats.EcState.rate > 0.0;
         foreach (var frzr in DF.DeepFreeze.Instance.KnownFreezerParts)
