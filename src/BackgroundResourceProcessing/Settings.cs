@@ -114,6 +114,13 @@ public class ModIntegrationSettings : GameParameters.CustomParameterNode
     public bool EnableTACLSIntegration = true;
 
     [GameParameters.CustomParameterUI(
+        "Enable DeepFreeze Integration",
+        toolTip = "Enable Background Resource Processing integration with DeepFreeze. "
+            + "Handles EC consumption for unloaded vessels with frozen kerbals."
+    )]
+    public bool EnableDeepFreezeIntegration = true;
+
+    [GameParameters.CustomParameterUI(
         "Enable Persistent Thrust Integration",
         toolTip = "Patch Persistent Thrust's background processing to make use "
             + "of Background Resource Processing"

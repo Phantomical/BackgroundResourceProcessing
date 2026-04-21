@@ -1,5 +1,5 @@
+using System;
 using System.Collections.Generic;
-using System.Reflection;
 using BackgroundResourceProcessing.Behaviour;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Converter;
@@ -20,6 +20,10 @@ public class BackgroundDeepFreezerConverter : BackgroundConverter<DeepFreezer>
 
     public override ModuleBehaviour GetBehaviour(DeepFreezer module)
     {
+        var settings = HighLogic.CurrentGame?.Parameters.CustomParams<ModIntegrationSettings>();
+        if (!(settings?.EnableDeepFreezeIntegration ?? false))
+            return null;
+
         if (module.TotalFrozen <= 0)
             return null;
         if (!module.DFIECReqd)
@@ -38,23 +42,11 @@ public class BackgroundDeepFreezerConverter : BackgroundConverter<DeepFreezer>
                         },
                     ]
                 ),
-                new ConstantConsumer(
-                    [
-                        new()
-                        {
-                            ResourceName = "ElectricCharge",
-                            Ratio = module.DFIFrznChargeRequired / 60.0 * module.TotalFrozen,
-                            FlowMode = ResourceFlowMode.ALL_VESSEL_BALANCE,
-                        },
-                        new()
-                        {
-                            ResourceName = ThawPotentialResource,
-                            Ratio = 1.0,
-                            FlowMode = ResourceFlowMode.NO_FLOW,
-                        },
-                    ]
-                )
+                new BackgroundDeepFreezerECConsumer()
                 {
+                    ThawPotentialResource = ThawPotentialResource,
+                    FrozenKerbals = module.TotalFrozen,
+                    ChargeRatePerKerbal = module.DFIFrznChargeRequired / 60.0,
                     Priority = 10,
                 },
                 new BackgroundDeepFreezerBehaviour()
@@ -71,6 +63,44 @@ public class BackgroundDeepFreezerConverter : BackgroundConverter<DeepFreezer>
         behaviour.AddPushModule(module);
 
         return behaviour;
+    }
+}
+
+/// <summary>
+/// Consumes ElectricCharge proportional to the number of frozen kerbals plus
+/// the per-module ThawPotential gate. The EC rate is dynamic so it can drop
+/// to zero when frozen kerbals die from insufficient EC.
+/// </summary>
+public class BackgroundDeepFreezerECConsumer : ConverterBehaviour
+{
+    [KSPField(isPersistant = true)]
+    public string ThawPotentialResource = "BRPDeepFreezerThawPotential";
+
+    [KSPField(isPersistant = true)]
+    public int FrozenKerbals = 0;
+
+    [KSPField(isPersistant = true)]
+    public double ChargeRatePerKerbal = 0.0;
+
+    public override ConverterResources GetResources(VesselState state)
+    {
+        var inputs = new List<ResourceRatio>
+        {
+            new()
+            {
+                ResourceName = ThawPotentialResource,
+                Ratio = 1.0,
+                FlowMode = ResourceFlowMode.NO_FLOW,
+            },
+            new()
+            {
+                ResourceName = "ElectricCharge",
+                Ratio = FrozenKerbals * ChargeRatePerKerbal,
+                FlowMode = ResourceFlowMode.ALL_VESSEL_BALANCE,
+            },
+        };
+
+        return new() { Inputs = inputs };
     }
 }
 
@@ -137,7 +167,7 @@ public class BackgroundDeepFreezerBehaviour : ConverterBehaviour
         UpdatePartInfo(inventory, df, evt.CurrentTime);
 
         if (inventory.Rate > 0.0)
-            KillFrozenCrew(df);
+            KillFrozenCrew(processor, df);
     }
 
     private void UpdateInventoryRate(ResourceInventory inventory)
@@ -195,7 +225,7 @@ public class BackgroundDeepFreezerBehaviour : ConverterBehaviour
         }
     }
 
-    private void KillFrozenCrew(DF.DeepFreeze df)
+    private void KillFrozenCrew(BackgroundResourceProcessor processor, DF.DeepFreeze df)
     {
         if (!DeathFatal)
             return;
@@ -228,21 +258,32 @@ public class BackgroundDeepFreezerBehaviour : ConverterBehaviour
         }
 
         KerbalsAreDead = true;
+
+        if (deadKerbals.Count > 0 && DecrementSiblingFrozenKerbals(processor, deadKerbals.Count))
+            processor.MarkDirty();
+    }
+
+    private bool DecrementSiblingFrozenKerbals(BackgroundResourceProcessor processor, int killed)
+    {
+        foreach (var converter in processor.Converters)
+        {
+            if (converter.Behaviour is not BackgroundDeepFreezerECConsumer ec)
+                continue;
+            if (converter.FlightId != FlightId)
+                continue;
+            if (converter.ModuleId != ModuleId)
+                continue;
+
+            ec.FrozenKerbals = Math.Max(0, ec.FrozenKerbals - killed);
+            return true;
+        }
+
+        return false;
     }
 }
 
 public class BackgroundDeepFreezerInventory : BackgroundInventory<DeepFreezer>
 {
-    private static readonly FieldInfo DeathRollField = typeof(DeepFreezer).GetField(
-        "deathRoll",
-        BindingFlags.Static | BindingFlags.NonPublic
-    );
-
-    private static readonly FieldInfo DeathCounterField = typeof(DeepFreezer).GetField(
-        "deathCounter",
-        BindingFlags.Instance | BindingFlags.NonPublic
-    );
-
     [KSPField]
     public string ThawPotentialResource = "BRPDeepFreezerThawPotential";
 
@@ -251,6 +292,10 @@ public class BackgroundDeepFreezerInventory : BackgroundInventory<DeepFreezer>
 
     public override List<FakePartResource> GetResources(DeepFreezer module)
     {
+        var settings = HighLogic.CurrentGame?.Parameters.CustomParams<ModIntegrationSettings>();
+        if (!(settings?.EnableDeepFreezeIntegration ?? false))
+            return null;
+
         if (module.TotalFrozen <= 0)
             return null;
         if (!module.DFIECReqd)
@@ -268,7 +313,7 @@ public class BackgroundDeepFreezerInventory : BackgroundInventory<DeepFreezer>
             {
                 ResourceName = UnpoweredTimeResource,
                 Amount = 0.0,
-                MaxAmount = (float)DeathRollField.GetValue(null),
+                MaxAmount = DeepFreezer.deathRoll,
             },
         ];
     }
@@ -280,8 +325,16 @@ public class BackgroundDeepFreezerInventory : BackgroundInventory<DeepFreezer>
 
         var now = Planetarium.GetUniversalTime();
         module.timeSinceLastECtaken = (float)now;
-        DeathCounterField.SetValue(module, now);
 
-        throw new System.NotImplementedException();
+        // If UnpoweredTime reached its maximum while the vessel was unloaded and the
+        // setting is non-fatal, place deathCounter just past the threshold so the
+        // loaded DeepFreezer module triggers emergency thaw immediately on its next
+        // FixedUpdate. In fatal mode kerbals are already dead (handled by KillFrozenCrew),
+        // so we just reset the counter to now.
+        bool deathFatal = DF.DeepFreeze.Instance?.DFIDeathFatal ?? false;
+        if (inventory.Full && !deathFatal)
+            module.deathCounter = now - DeepFreezer.deathRoll - 1.0;
+        else
+            module.deathCounter = now;
     }
 }
