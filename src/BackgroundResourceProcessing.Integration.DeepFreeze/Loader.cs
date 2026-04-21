@@ -10,13 +10,9 @@ public class Loader : MonoBehaviour
         "BackgroundResourceProcessing.Integration.DeepFreeze"
     );
 
-    void Awake()
-    {
-        harmony.PatchAll(typeof(Loader).Assembly);
-    }
-
-    static void OnHotUnload()
+    static void OnHotLoad()
     {
         harmony.UnpatchAll(harmony.Id);
+        harmony.PatchAll(typeof(Loader).Assembly);
     }
 }
