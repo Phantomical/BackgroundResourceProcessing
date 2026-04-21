@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using BackgroundResourceProcessing.Behaviour;
 using BackgroundResourceProcessing.Collections;
@@ -41,23 +42,11 @@ public class BackgroundDeepFreezerConverter : BackgroundConverter<DeepFreezer>
                         },
                     ]
                 ),
-                new ConstantConsumer(
-                    [
-                        new()
-                        {
-                            ResourceName = "ElectricCharge",
-                            Ratio = module.DFIFrznChargeRequired / 60.0 * module.TotalFrozen,
-                            FlowMode = ResourceFlowMode.ALL_VESSEL_BALANCE,
-                        },
-                        new()
-                        {
-                            ResourceName = ThawPotentialResource,
-                            Ratio = 1.0,
-                            FlowMode = ResourceFlowMode.NO_FLOW,
-                        },
-                    ]
-                )
+                new BackgroundDeepFreezerECConsumer()
                 {
+                    ThawPotentialResource = ThawPotentialResource,
+                    FrozenKerbals = module.TotalFrozen,
+                    ChargeRatePerKerbal = module.DFIFrznChargeRequired / 60.0,
                     Priority = 10,
                 },
                 new BackgroundDeepFreezerBehaviour()
@@ -74,6 +63,44 @@ public class BackgroundDeepFreezerConverter : BackgroundConverter<DeepFreezer>
         behaviour.AddPushModule(module);
 
         return behaviour;
+    }
+}
+
+/// <summary>
+/// Consumes ElectricCharge proportional to the number of frozen kerbals plus
+/// the per-module ThawPotential gate. The EC rate is dynamic so it can drop
+/// to zero when frozen kerbals die from insufficient EC.
+/// </summary>
+public class BackgroundDeepFreezerECConsumer : ConverterBehaviour
+{
+    [KSPField(isPersistant = true)]
+    public string ThawPotentialResource = "BRPDeepFreezerThawPotential";
+
+    [KSPField(isPersistant = true)]
+    public int FrozenKerbals = 0;
+
+    [KSPField(isPersistant = true)]
+    public double ChargeRatePerKerbal = 0.0;
+
+    public override ConverterResources GetResources(VesselState state)
+    {
+        var inputs = new List<ResourceRatio>
+        {
+            new()
+            {
+                ResourceName = ThawPotentialResource,
+                Ratio = 1.0,
+                FlowMode = ResourceFlowMode.NO_FLOW,
+            },
+            new()
+            {
+                ResourceName = "ElectricCharge",
+                Ratio = FrozenKerbals * ChargeRatePerKerbal,
+                FlowMode = ResourceFlowMode.ALL_VESSEL_BALANCE,
+            },
+        };
+
+        return new() { Inputs = inputs };
     }
 }
 
@@ -140,7 +167,7 @@ public class BackgroundDeepFreezerBehaviour : ConverterBehaviour
         UpdatePartInfo(inventory, df, evt.CurrentTime);
 
         if (inventory.Rate > 0.0)
-            KillFrozenCrew(df);
+            KillFrozenCrew(processor, df);
     }
 
     private void UpdateInventoryRate(ResourceInventory inventory)
@@ -198,7 +225,7 @@ public class BackgroundDeepFreezerBehaviour : ConverterBehaviour
         }
     }
 
-    private void KillFrozenCrew(DF.DeepFreeze df)
+    private void KillFrozenCrew(BackgroundResourceProcessor processor, DF.DeepFreeze df)
     {
         if (!DeathFatal)
             return;
@@ -231,6 +258,27 @@ public class BackgroundDeepFreezerBehaviour : ConverterBehaviour
         }
 
         KerbalsAreDead = true;
+
+        if (deadKerbals.Count > 0 && DecrementSiblingFrozenKerbals(processor, deadKerbals.Count))
+            processor.MarkDirty();
+    }
+
+    private bool DecrementSiblingFrozenKerbals(BackgroundResourceProcessor processor, int killed)
+    {
+        foreach (var converter in processor.Converters)
+        {
+            if (converter.Behaviour is not BackgroundDeepFreezerECConsumer ec)
+                continue;
+            if (converter.FlightId != FlightId)
+                continue;
+            if (converter.ModuleId != ModuleId)
+                continue;
+
+            ec.FrozenKerbals = Math.Max(0, ec.FrozenKerbals - killed);
+            return true;
+        }
+
+        return false;
     }
 }
 
