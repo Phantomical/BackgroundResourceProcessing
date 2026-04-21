@@ -15,8 +15,9 @@ public class Loader : MonoBehaviour
         harmony.PatchAll(typeof(Loader).Assembly);
     }
 
-    static void OnHotUnload()
+    static void OnHotLoad()
     {
         harmony.UnpatchAll(harmony.Id);
+        harmony.PatchAll(typeof(Loader).Assembly);
     }
 }
