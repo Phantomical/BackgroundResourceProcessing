@@ -555,6 +555,51 @@ internal class ResourceProcessor
         inventoryIds.Clear();
         nextChangepoint = double.PositiveInfinity;
     }
+
+    /// <summary>
+    /// Populate inventories from an unloaded vessel's proto part snapshots.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// Only stock <see cref="ProtoPartResourceSnapshot"/>s are handled here;
+    /// module-backed fake inventories need a live <see cref="PartModule"/>
+    /// and will populate the first time the vessel is loaded and unloaded.
+    /// </remarks>
+    public void InitializeProtoInventories(Vessel vessel)
+    {
+        using var span = new TraceSpan("ResourceProcessor.InitializeProtoInventories");
+
+        lastUpdate = Planetarium.GetUniversalTime();
+        nextChangepoint = double.PositiveInfinity;
+
+        foreach (var part in vessel.protoVessel.protoPartSnapshots)
+        {
+            var flightId = part.flightID;
+
+            foreach (var resource in part.resources)
+            {
+                var inventory = new ResourceInventory(
+                    resource.resourceName,
+                    resource.amount,
+                    resource.maxAmount
+                )
+                {
+                    FlightId = flightId,
+                    OriginalAmount = resource.amount,
+                    Snapshot = resource,
+                };
+
+                var id = inventory.Id;
+                if (inventoryIds.ContainsKey(id))
+                    continue;
+
+                inventoryIds.Add(id, inventories.Count);
+                inventories.Add(inventory);
+            }
+        }
+
+        snapshotsDirty = false;
+    }
     #endregion
 
     /// <summary>
