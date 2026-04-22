@@ -3,9 +3,10 @@ using BackgroundResourceProcessing.Behaviour;
 
 namespace BackgroundResourceProcessing.Converter;
 
-public class BackgroundResourceHarvester : BackgroundResourceConverter<ModuleResourceHarvester>
+public class BackgroundResourceHarvester<T> : BackgroundResourceConverter<T>
+    where T : ModuleResourceHarvester
 {
-    protected override ConstantConverter GetBaseRecipe(ModuleResourceHarvester module)
+    protected override ConstantConverter GetBaseRecipe(T module)
     {
         var recipe = base.GetBaseRecipe(module);
         if (UsePreparedRecipe.Evaluate(module))
@@ -45,7 +46,7 @@ public class BackgroundResourceHarvester : BackgroundResourceConverter<ModuleRes
         return recipe;
     }
 
-    private double GetIntakeMultiplier(ModuleResourceHarvester module)
+    private static double GetIntakeMultiplier(T module)
     {
         // We never have to deal with resource harvesters flying through the
         // atmosphere so this is simpler than the code in ModuleResourceHarvester.
@@ -55,4 +56,10 @@ public class BackgroundResourceHarvester : BackgroundResourceConverter<ModuleRes
             mult = 1.0;
         return mult * module.airSpeedStatic;
     }
+}
+
+public class BackgroundResourceHarvester : BackgroundResourceHarvester<ModuleResourceHarvester>
+{
+    protected override ConstantConverter GetBaseRecipe(ModuleResourceHarvester module) =>
+        base.GetBaseRecipe(module);
 }

@@ -83,6 +83,20 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
         new("onStateUpdate");
 
     /// <summary>
+    /// This event is fired just before a vessel is recorded.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// This fires before any converters or inventories have been collected for
+    /// this vessel, making it the right place to add part modules to the vessel
+    /// that need to be picked up during recording (e.g. marker modules that
+    /// carry fake inventories).
+    /// </remarks>
+    public static readonly EventData<BackgroundResourceProcessor> onBeforeVesselRecord = new(
+        "onBeforeVesselRecord"
+    );
+
+    /// <summary>
     /// This event is fired just after a vessel is recorded.
     /// </summary>
     ///
