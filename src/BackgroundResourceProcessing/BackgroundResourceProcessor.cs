@@ -28,6 +28,9 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
 
     private bool IsDirty = false;
 
+    [KSPField(isPersistant = true)]
+    private bool Initialized = false;
+
     private bool ImmediateChangepointRequested = false;
 
     private BurstSolver.ShadowHandle pendingShadow;

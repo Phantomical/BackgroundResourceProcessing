@@ -47,11 +47,21 @@ public sealed partial class BackgroundResourceProcessor
         {
             LoadVessel();
         }
+        else if (
+            !Initialized
+            && processor.inventories.Count == 0
+            && processor.converters.Count == 0
+        )
+        {
+            processor.InitializeProtoInventories(vessel);
+        }
         else
         {
             processor.RecordProtoInventories(vessel);
             EventDispatcher.RegisterChangepointCallback(this, processor.nextChangepoint);
         }
+
+        Initialized = true;
     }
 
     void OnDestroy()
