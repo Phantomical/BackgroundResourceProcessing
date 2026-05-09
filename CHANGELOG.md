@@ -12,6 +12,21 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ## Unreleased
 
+## v0.3.0
+### Changed
+* DeepFreeze and TAC-LS are now natively supported.
+* Shadow/Sunlit state now happens in a burst-compiled job, it should now
+  perform quite a bit better.
+
+### Added
+* SystemHeat flux is now modelled by BRP. This means that ModuleSystemHeatCryoTank
+  will now be simulated in the background.
+* BRP now auto-imports existing resource inventories when added to a save.
+
+### Fixed
+* Solar panel flux calculations in the background no longer depend on the star
+  the main vessel is orbiting around.
+
 ## v0.2.8
 ### Added
 * Added support for `ModuleSystemHeatCryoTank`
