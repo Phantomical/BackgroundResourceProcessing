@@ -140,13 +140,7 @@ public sealed partial class BackgroundResourceProcessor
         if (ShadowState == null || ShadowState.Value.NextTerminatorEstimate <= changepoint)
         {
             using var shadow = Shadow.ScheduleShadowState(vessel);
-            pendingShadow = shadow;
-
-            if (!shadow.IsComplete)
-                yield return shadow;
-
             ShadowState = shadow.Complete();
-            pendingShadow = null;
         }
 
         var state = GetVesselState(changepoint);
@@ -190,13 +184,6 @@ public sealed partial class BackgroundResourceProcessor
         {
             StopCoroutine(changepointCoroutine);
             changepointCoroutine = null;
-        }
-
-        if (pendingShadow != null)
-        {
-            ShadowState = pendingShadow.Complete();
-            pendingShadow.Dispose();
-            pendingShadow = null;
         }
 
         if (pendingSolve != null)
