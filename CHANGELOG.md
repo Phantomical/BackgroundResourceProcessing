@@ -11,16 +11,22 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 -->
 
 ## Unreleased
+
+## v0.3.1
+### Changed
+* BRP now only integrates with DeepFreeze Updated, instead of the older version.
+  This version made some changes to how code is shipped that makes it too
+  difficult to support both.
+
 ### Fixed
-* Fixed science labs sometimes filling up with science and data after switching
-  away and back. The stock `ModuleScienceConverter` performs its own load-time
-  catch-up, which reprocessed the interval BRP had already simulated in the
-  background. BRP now resets the lab's `lastUpdateTime` on restore to prevent
-  the double processing.
-* Fixed landed solar panels not tracking day/night correctly when unloaded. The
-  surface normal was compared against the sun in a mismatched coordinate frame,
-  which inverted the sunlit/shadow state, and the planet's rotation was modelled
-  in the wrong direction, which desynchronised the predicted day/night cycle.
+* Fixed an issue where science labs were still doing catch-up despite being
+  simulated by BRP.
+* Fixed a number of issues with determining whether vessels are in the shadow
+  of a planet, both landed and in orbit.
+* Fixed an issue where time steps smaller than the minimum precision on the
+  current UT would cause BRP to fail to simulate that vessel.
+* The EPL integration no longer adds size-zero inventories to EL workshops
+  and launchpads.
 
 ## v0.3.0
 ### Changed
