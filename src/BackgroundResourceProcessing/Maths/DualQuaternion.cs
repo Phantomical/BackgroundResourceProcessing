@@ -38,12 +38,12 @@ internal struct DualQuaternion(Dual r, DualVector3 v)
     public readonly DualVector3 Rotate(DualVector3 u)
     {
         var q = Normalized();
-        return (q.Conjugate() * new DualQuaternion(new(0), u) * q).v;
+        return (q * new DualQuaternion(new(0), u) * q.Conjugate()).v;
     }
 
     public readonly DualQuaternion Normalized()
     {
-        var denom = r * r + DualVector3.Dot(v, v);
+        var denom = Dual.Sqrt(r * r + DualVector3.Dot(v, v));
         return new(r / denom, v / denom);
     }
 
@@ -100,12 +100,12 @@ internal struct Dual2Quaternion(Dual2 r, Dual2Vector3 v)
     public readonly Dual2Vector3 Rotate(Dual2Vector3 u)
     {
         var q = Normalized();
-        return (q.Conjugate() * new Dual2Quaternion(new(0), u) * q).v;
+        return (q * new Dual2Quaternion(new(0), u) * q.Conjugate()).v;
     }
 
     public readonly Dual2Quaternion Normalized()
     {
-        var denom = r * r + Dual2Vector3.Dot(v, v);
+        var denom = Dual2.Sqrt(r * r + Dual2Vector3.Dot(v, v));
         return new(r / denom, v / denom);
     }
 

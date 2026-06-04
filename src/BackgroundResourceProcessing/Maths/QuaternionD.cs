@@ -71,7 +71,7 @@ internal struct QuaternionD(double r, Vector3d v)
     public readonly Vector3d Rotate(Vector3d u)
     {
         var q = Normalized();
-        return (q.Conjugate() * new QuaternionD(0, u) * q).v;
+        return (q * new QuaternionD(0, u) * q.Conjugate()).v;
     }
 
     public readonly QuaternionD Inverse()
@@ -97,7 +97,7 @@ internal struct QuaternionD(double r, Vector3d v)
 
     public readonly QuaternionD Normalized()
     {
-        var denom = r * r + Vector3d.Dot(v, v);
+        var denom = Norm();
         return new(r / denom, v / denom);
     }
 
@@ -129,6 +129,11 @@ internal struct QuaternionD(double r, Vector3d v)
         return ToBasis(x, y, z).Inverse();
     }
 
+    /// <summary>
+    /// Give the rotation that transforms from the standard basis into the basis
+    /// given by <paramref name="x"/>, <paramref name="y"/>, and
+    /// <paramref name="z"/> (the inverse of <see cref="FromBasis"/>).
+    /// </summary>
     public static QuaternionD ToBasis(Vector3d x, Vector3d y, Vector3d z)
     {
         return FromUnity(new UnityEngine.QuaternionD(x, y, z));
