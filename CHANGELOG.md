@@ -11,6 +11,11 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 -->
 
 ## Unreleased
+### Fixed
+* Fixed landed solar panels not tracking day/night correctly when unloaded. The
+  surface normal was compared against the sun in a mismatched coordinate frame,
+  which inverted the sunlit/shadow state, and the planet's rotation was modelled
+  in the wrong direction, which desynchronised the predicted day/night cycle.
 
 ## v0.3.0
 ### Changed

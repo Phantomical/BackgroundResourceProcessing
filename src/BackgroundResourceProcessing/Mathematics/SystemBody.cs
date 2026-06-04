@@ -49,7 +49,12 @@ internal struct SystemBody
         this.Index = index ?? FlightGlobals.GetBodyIndex(body);
         this.Radius = body.Radius;
 
-        this.RotationAxis = body.RotationAxis;
+        // body.RotationAxis is expressed in Unity world space, but every other
+        // vector recorded here (orbital positions, the landed surface normal)
+        // lives in KSP's internal (Z-up) orbit frame. Convert the rotation axis
+        // into that frame so LandedShadow rotates the surface normal in the
+        // correct direction (issue #26).
+        this.RotationAxis = Planetarium.Zup.LocalToWorld(body.RotationAxis.xzy);
         this.AngularVelocity = body.angularV;
         this.Rotates = body.rotates;
         this.TidallyLocked = body.tidallyLocked;

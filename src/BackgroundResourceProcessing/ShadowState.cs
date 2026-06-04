@@ -155,38 +155,97 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         if (!(settings?.EnableLandedShadows ?? false))
             return DefaultForStar(stars.FirstOrDefault());
 
-        var system = SolarSystem.Record();
         var currentUT = Planetarium.GetUniversalTime();
         var planet = vessel.orbit.referenceBody;
-        var planetIndex = (int)SolarSystem.GetBodyIndex(planet);
-
-        var normal = planet.GetSurfaceNVector(vessel.latitude, vessel.longitude);
-        var cosLatitude = Math.Cos(Math.Abs(vessel.latitude) * MathUtil.DEG2RAD);
 
         var state = AlwaysInShadow();
         foreach (var star in stars)
         {
-            var starIndex = (int)SolarSystem.GetBodyIndex(star);
-            var referenceIndex = FindReferenceBodyIndex(planet, star);
-
-            var terminator = LandedShadow.ComputeLandedTerminator(
-                system,
-                planetIndex,
-                starIndex,
-                referenceIndex,
-                normal,
-                cosLatitude,
+            var sub = ComputeLandedShadowState(
+                planet,
+                star,
+                vessel.latitude,
+                vessel.longitude,
                 currentUT
             );
 
-            if (!terminator.InShadow)
-                return new(Math.Min(terminator.UT, state.NextTerminatorEstimate), false, star);
+            if (!sub.InShadow)
+                return new(
+                    Math.Min(sub.NextTerminatorEstimate, state.NextTerminatorEstimate),
+                    false,
+                    star
+                );
 
-            if (terminator.UT < state.NextTerminatorEstimate)
-                state = new(terminator.UT, true);
+            if (sub.NextTerminatorEstimate < state.NextTerminatorEstimate)
+                state = new(sub.NextTerminatorEstimate, true);
         }
 
         return state;
+    }
+
+    /// <summary>
+    /// Compute the shadow state for a single star acting on a vessel landed at
+    /// the given coordinates on <paramref name="planet"/>.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// This is the per-star core of <see cref="GetLandedShadowState"/>, factored
+    /// out so that it can be exercised directly (without constructing a full
+    /// <see cref="Vessel"/>) by tests.
+    /// </remarks>
+    internal static ShadowState ComputeLandedShadowState(
+        CelestialBody planet,
+        CelestialBody star,
+        double latitude,
+        double longitude,
+        double currentUT
+    )
+    {
+        var system = SolarSystem.Record();
+        var planetIndex = (int)SolarSystem.GetBodyIndex(planet);
+        var starIndex = (int)SolarSystem.GetBodyIndex(star);
+        var referenceIndex = FindReferenceBodyIndex(planet, star);
+
+        var normal = GetLandedSurfaceNormal(planet, latitude, longitude);
+        var cosLatitude = Math.Cos(Math.Abs(latitude) * MathUtil.DEG2RAD);
+
+        var terminator = LandedShadow.ComputeLandedTerminator(
+            system,
+            planetIndex,
+            starIndex,
+            referenceIndex,
+            normal,
+            cosLatitude,
+            currentUT
+        );
+
+        return terminator.InShadow
+            ? new ShadowState(terminator.UT, true)
+            : new ShadowState(terminator.UT, false, star);
+    }
+
+    /// <summary>
+    /// Get the surface normal for a landed vessel, expressed in the same
+    /// reference frame that <see cref="SolarSystem"/> uses for orbital
+    /// positions.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// <see cref="CelestialBody.GetSurfaceNVector"/> returns the normal in
+    /// Unity world space, whereas <see cref="SolarSystem"/> reconstructs body
+    /// positions in KSP's internal (Z-up) orbit frame. We convert the normal
+    /// into that orbit frame so the dot products in <see cref="LandedShadow"/>
+    /// are meaningful; mixing the two frames silently inverts the lit/shadow
+    /// result for landed vessels (issue #26).
+    /// </remarks>
+    internal static Vector3d GetLandedSurfaceNormal(
+        CelestialBody planet,
+        double latitude,
+        double longitude
+    )
+    {
+        var normal = planet.GetSurfaceNVector(latitude, longitude);
+        return Planetarium.Zup.LocalToWorld(normal.xzy);
     }
 
     /// <summary>
@@ -276,7 +335,7 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         var planet = vessel.orbit.referenceBody;
         var planetIndex = (int)SolarSystem.GetBodyIndex(planet);
 
-        var normal = planet.GetSurfaceNVector(vessel.latitude, vessel.longitude);
+        var normal = GetLandedSurfaceNormal(planet, vessel.latitude, vessel.longitude);
         var cosLatitude = Math.Cos(Math.Abs(vessel.latitude) * MathUtil.DEG2RAD);
 
         List<CelestialBody> validStars = [];

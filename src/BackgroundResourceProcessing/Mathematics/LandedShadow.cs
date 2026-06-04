@@ -344,6 +344,7 @@ internal readonly struct LandedShadow
     Dual ComputeDotAt(Dual UT)
     {
         var pUT = UT - currentUT;
+        // Rotate the surface normal forward in time with the planet's spin.
         var theta = planet.AngularVelocity * pUT;
         if (!planet.Rotates)
             theta = new(0);
@@ -358,6 +359,7 @@ internal readonly struct LandedShadow
     Dual2 ComputeDotAt(Dual2 UT)
     {
         var pUT = UT - currentUT;
+        // Rotate the surface normal forward in time with the planet's spin.
         var theta = planet.AngularVelocity * pUT;
         if (!planet.Rotates)
             theta = new(0);
