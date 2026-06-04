@@ -271,7 +271,7 @@ internal class ResourceProcessor
             else
                 duration = (inv.MaxAmount - inv.Amount) / inv.Rate;
 
-            changepoint = Math.Min(changepoint, currentTime + duration);
+            changepoint = Math.Min(changepoint, ChangepointAfter(currentTime, duration));
         }
 
         foreach (var converter in converters)
@@ -291,10 +291,32 @@ internal class ResourceProcessor
                 if (duration <= 0.0)
                     continue;
 
-                changepoint = Math.Min(changepoint, currentTime + duration);
+                changepoint = Math.Min(changepoint, ChangepointAfter(currentTime, duration));
             }
         }
 
+        return changepoint;
+    }
+
+    /// <summary>
+    /// Compute the absolute time of a changepoint <paramref name="duration"/>
+    /// seconds after <paramref name="currentTime"/>, guaranteeing that the
+    /// result makes forward progress.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// Adding a sub-ULP <paramref name="duration"/> to a large universe time is
+    /// absorbed by floating point (<c>currentTime + duration == currentTime</c>).
+    /// Left unchecked this stalls the changepoint at the current time and trips
+    /// the "failed to progress" guard, disabling the vessel. Nudge the result to
+    /// the next representable time so the changepoint fires (and the near-boundary
+    /// inventory is snapped to its boundary) on the following update instead.
+    /// </remarks>
+    private static double ChangepointAfter(double currentTime, double duration)
+    {
+        double changepoint = currentTime + duration;
+        if (changepoint <= currentTime)
+            changepoint = MathUtil.NextFloat(currentTime);
         return changepoint;
     }
 

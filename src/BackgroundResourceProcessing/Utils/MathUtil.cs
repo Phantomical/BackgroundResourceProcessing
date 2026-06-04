@@ -35,6 +35,34 @@ internal static class MathUtil
         return Math.Abs(a - b) < epsilon;
     }
 
+    /// <summary>
+    /// Returns the smallest representable double that is strictly greater than
+    /// <paramref name="x"/>.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// This matches the semantics of <c>Math.BitIncrement</c>, which is not
+    /// available on .NET Framework 4.8.1.
+    /// </remarks>
+    public static double NextFloat(double x)
+    {
+        long bits = BitConverter.DoubleToInt64Bits(x);
+
+        // NaN and +Infinity have no greater neighbour, so return them unchanged.
+        // -Infinity steps up to the most negative finite value.
+        if ((bits & 0x7FFFFFFFFFFFFFFF) >= 0x7FF0000000000000)
+            return x < 0.0 ? double.MinValue : x;
+
+        // -0.0 (bits == long.MinValue) steps up to the smallest subnormal.
+        if (bits == long.MinValue)
+            return double.Epsilon;
+
+        // Positive values step away from zero (+1); negative values step toward
+        // zero (-1). Both move toward +Infinity.
+        bits += bits < 0 ? -1 : 1;
+        return BitConverter.Int64BitsToDouble(bits);
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static double Clamp(double x, double lo, double hi)
     {
