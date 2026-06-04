@@ -12,6 +12,11 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ## Unreleased
 ### Fixed
+* Fixed science labs sometimes filling up with science and data after switching
+  away and back. The stock `ModuleScienceConverter` performs its own load-time
+  catch-up, which reprocessed the interval BRP had already simulated in the
+  background. BRP now resets the lab's `lastUpdateTime` on restore to prevent
+  the double processing.
 * Fixed landed solar panels not tracking day/night correctly when unloaded. The
   surface normal was compared against the sun in a mismatched coordinate frame,
   which inverted the sunlit/shadow state, and the planet's rotation was modelled
