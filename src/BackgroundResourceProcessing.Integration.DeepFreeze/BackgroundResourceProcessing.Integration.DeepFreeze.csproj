@@ -30,7 +30,15 @@
             <Private>false</Private>
             <CKANIdentifier>DeepFreeze</CKANIdentifier>
             <KSPAssemblyName>DeepFreeze</KSPAssemblyName>
-            <KSPAssemblyVersion>0.31.0</KSPAssemblyVersion>
+            <KSPAssemblyVersion>1.32.0</KSPAssemblyVersion>
+        </Reference>
+
+        <!-- RSTUtils (Utilities) was split out of DeepFreeze.dll into its own
+             assembly in the DeepFreeze Updated fork (>= 1.32.0). -->
+        <Reference Include="REPOSoftTechKSPUtils.dll">
+            <HintPath>$(DepSet2)\REPOSoftTech\DeepFreeze\Plugins\REPOSoftTechKSPUtils.dll</HintPath>
+            <Private>false</Private>
+            <CKANIdentifier>DeepFreeze</CKANIdentifier>
         </Reference>
 
         <InternalsVisibleTo Include="BackgroundResourceProcessing.Test" />
