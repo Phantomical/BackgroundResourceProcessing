@@ -1,4 +1,6 @@
+using System.Collections;
 using System.IO;
+using System.Reflection;
 using System.Text;
 using KSP.Testing;
 using KSP.UI.Screens;
@@ -67,9 +69,46 @@ public class TestRunnerUI : MonoBehaviour
     int passCount;
     int failCount;
 
+    // KSP's TestManager registers an instance of every UnitTest subclass across
+    // all loaded mods. We reach into that list and run only the ones that belong
+    // to this assembly (i.e. derive from BRPTestBase), rather than the stock
+    // TestManager.RunTests() which would run every mod's tests.
+    static readonly FieldInfo TestsField = typeof(TestManager).GetField(
+        "tests",
+        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
+    );
+    static readonly MethodInfo PerformTestMethod = typeof(UnitTest).GetMethod(
+        "PerformTest",
+        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
+    );
+
+    static TestResults RunBRPTests()
+    {
+        var results = new TestResults();
+        var tests = (IEnumerable)TestsField.GetValue(null);
+
+        foreach (UnitTest test in tests)
+        {
+            if (test == null || test is not BRPTestBase)
+                continue;
+
+            var states = (IEnumerable)PerformTestMethod.Invoke(test, null);
+            foreach (TestState state in states)
+            {
+                if (state.Succeeded)
+                    results.success++;
+                else
+                    results.failed++;
+                results.states.Add(state);
+            }
+        }
+
+        return results;
+    }
+
     void RunTests()
     {
-        results = TestManager.RunTests();
+        results = RunBRPTests();
 
         passCount = 0;
         failCount = 0;
