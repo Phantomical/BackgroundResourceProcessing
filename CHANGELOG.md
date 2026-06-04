@@ -12,6 +12,9 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ## Unreleased
 
+### Changed
+* Mark BRP as explicitly conflicting with Kerbalism.
+
 ## v0.3.1
 ### Changed
 * BRP now only integrates with DeepFreeze Updated, instead of the older version.
