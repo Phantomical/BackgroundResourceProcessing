@@ -170,6 +170,13 @@ internal class SolveHandle : CustomYieldInstruction, IDisposable
     /// </summary>
     public void Dispose()
     {
+        // A cache-hit or synchronously-computed handle owns no native
+        // resources, and touching the default job handle / native arrays would
+        // call into the Unity native runtime (which is unavailable outside of
+        // Unity, e.g. in the CLI).
+        if (!isScheduled)
+            return;
+
         jobHandle.Complete();
         jobHandle = default;
 

@@ -146,6 +146,17 @@ internal class ResourceProcessor
             }
         }
 
+        // When running outside of Unity (e.g. the CLI or unit tests via the
+        // test allocator) we cannot schedule a Unity job or allocate a
+        // NativeArray, both of which depend on the Unity native runtime.
+        // Fall back to solving synchronously on the managed heap instead.
+        if (BurstUtil.UseTestAllocator)
+        {
+            var soln = Solver.ComputeInventoryRates(this);
+            CacheSolution(hash, this, soln);
+            return new SolveHandle(this, soln);
+        }
+
         var graph = new ResourceGraph(this, AllocatorHandle.TempJob);
         int inventoryCount = inventories.Count;
         int converterCount = converters.Count;

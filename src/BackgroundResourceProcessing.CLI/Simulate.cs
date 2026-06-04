@@ -26,6 +26,14 @@ namespace BackgroundResourceProcessing.CLI
         )]
         public uint MaxIters { get; set; } = 50;
 
+        [Option(
+            "start-time",
+            HelpText = "The universe time at which to start the simulation. "
+                + "Defaults to 0. Pass the ship file's lastUpdate value to reproduce "
+                + "issues that only manifest at large universe times."
+        )]
+        public double? StartTime { get; set; }
+
         public static int Run(SimulateOptions options)
         {
             Program.Setup(options);
@@ -42,7 +50,7 @@ namespace BackgroundResourceProcessing.CLI
                     File.Delete(file);
             }
 
-            var currentTime = 0.0;
+            var currentTime = options.StartTime ?? 0.0;
             processor.lastUpdate = currentTime;
 
             processor.ValidateReferencedInventories();
