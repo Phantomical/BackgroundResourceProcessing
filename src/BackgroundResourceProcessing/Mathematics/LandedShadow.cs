@@ -296,7 +296,13 @@ internal readonly struct LandedShadow
         for (int i = 0; i < MaxIter; ++i)
         {
             var UT = Dual2.Variable(probe);
-            var sun = GetSunVectorAtUT(UT);
+            // Normalize the sun vector so we solve cos(angle) - cosLatitude == 0
+            // rather than |sun| * cos(angle) - cosLatitude == 0. |sun| is the
+            // planet-star distance (~1e10 m), which would otherwise dominate the
+            // equation and move the extremum far from the true inclination
+            // maximum. This matches GetRelativeInclinationAngle, which is the
+            // function the branch decision is based on.
+            var sun = GetSunVectorAtUT(UT).Normalized();
             var cos = Dual2.Abs(Dual2Vector3.Dot(sun, new(planet.RotationAxis)));
             var diff = cos - cosLatitude;
 
@@ -319,7 +325,12 @@ internal readonly struct LandedShadow
         for (int i = 0; i < MaxIter; ++i)
         {
             var UT = Dual.Variable(probe);
-            var sun = GetSunVectorAtUT(UT);
+            // Normalize the sun vector so we solve cos(angle) - cosLatitude == 0
+            // rather than |sun| * cos(angle) - cosLatitude == 0; see the matching
+            // comment in FindInclinationMaximum. Without this the root lands where
+            // the sun is nearly perpendicular to the spin axis instead of at the
+            // polar-circle boundary, producing a grossly wrong terminator UT.
+            var sun = GetSunVectorAtUT(UT).Normalized();
             var cos = Dual.Abs(DualVector3.Dot(sun, new(planet.RotationAxis)));
             var diff = cos - cosLatitude;
 

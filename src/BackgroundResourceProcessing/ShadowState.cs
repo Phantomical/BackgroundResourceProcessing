@@ -78,23 +78,89 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         return AlwaysInSun(star);
     }
 
-    public static ShadowState GetShadowState(Vessel vessel)
+    /// <summary>
+    /// Combine the per-star shadow terminators for a vessel into a single
+    /// <see cref="ShadowState"/>.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// <para>
+    /// Stars are supplied in descending flux order, so the first star that lights
+    /// the vessel is the strongest one currently lighting it; that star wins.
+    /// </para>
+    ///
+    /// <para>
+    /// The reported terminator is the <em>earlier</em> of (a) when the lighting
+    /// star sets and (b) the soonest sunrise of an even-stronger star that is
+    /// currently shadowed (one listed before it). Emerging from a stronger star's
+    /// umbra increases the available solar flux, so it is a genuine changepoint
+    /// even though <see cref="InShadow"/> stays <c>false</c> across it — hence the
+    /// <c>Math.Min</c> against the running shadow minimum. If every star is
+    /// shadowed, the nearest shadow-exit (sunrise) time is reported instead.
+    /// </para>
+    ///
+    /// <para>
+    /// This is the single source of truth shared by the asynchronous
+    /// (<see cref="BurstSolver.ShadowHandle.Complete"/>) path and mirrors the
+    /// synchronous <see cref="GetOrbitShadowState"/> / <see cref="GetLandedShadowState"/>
+    /// loops so the two cannot diverge.
+    /// </para>
+    /// </remarks>
+    internal static ShadowState AggregateShadowState(
+        ReadOnlySpan<OrbitShadow.Terminator> terminators,
+        IReadOnlyList<CelestialBody> stars
+    )
     {
-        using var span = new TraceSpan("ShadowState.GetShadowState");
+        var state = AlwaysInShadow();
+        for (int i = 0; i < terminators.Length; i++)
+        {
+            var term = terminators[i];
+            var ut = term.UT == double.MaxValue ? double.PositiveInfinity : term.UT;
 
-        var state = GetShadowStateImpl(vessel);
+            // The vessel is lit by this (strongest currently-lit) star. The next
+            // changepoint is either when this star sets (ut) or when an even
+            // stronger, currently-shadowed star rises (state.NextTerminatorEstimate).
+            if (!term.InShadow)
+                return new ShadowState(Math.Min(ut, state.NextTerminatorEstimate), false, stars[i]);
+
+            if (ut < state.NextTerminatorEstimate)
+                state = new ShadowState(ut, true);
+        }
+
+        return state;
+    }
+
+    /// <summary>
+    /// Reject a computed shadow state whose terminator estimate is NaN or already
+    /// in the past, falling back to a safe default for the given star.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// Shared by the synchronous (<see cref="GetShadowState"/>) and asynchronous
+    /// (<see cref="BurstSolver.ShadowHandle.Complete"/>) paths so that every result
+    /// — lit or shadowed — is validated identically.
+    /// </remarks>
+    internal static ShadowState ValidateShadowState(ShadowState state, double currentUT)
+    {
         if (double.IsNaN(state.NextTerminatorEstimate))
         {
             LogUtil.Error("Shadow state calculations returned NaN terminator estimate");
             return DefaultForStar(Planetarium.fetch?.Sun);
         }
-        if (state.NextTerminatorEstimate < Planetarium.GetUniversalTime())
+        if (state.NextTerminatorEstimate < currentUT)
         {
             LogUtil.Error("Shadow state calculations returned a terminator in the past");
             return DefaultForStar(Planetarium.fetch?.Sun);
         }
 
         return state;
+    }
+
+    public static ShadowState GetShadowState(Vessel vessel)
+    {
+        using var span = new TraceSpan("ShadowState.GetShadowState");
+
+        return ValidateShadowState(GetShadowStateImpl(vessel), Planetarium.GetUniversalTime());
     }
 
     private static ShadowState GetShadowStateImpl(Vessel vessel)
@@ -127,10 +193,11 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         var state = AlwaysInShadow();
         foreach (var star in stars)
         {
-            var bodies = GetReferenceBodies(vessel, star);
-            if (ReferenceEquals(bodies.parent, star))
-                return AlwaysInSun(star);
-
+            // A vessel orbiting this star directly is reported lit with an
+            // infinite terminator by ComputeOrbitTerminator itself (it guards the
+            // ParentBodyIndex == starIndex case before building the umbra geometry).
+            // Do not short-circuit here: that would drop an earlier, brighter lit
+            // star and ignore the sunrise of a stronger, currently-shadowed star.
             var terminator = OrbitShadow.ComputeOrbitTerminator(
                 system,
                 orbit,
@@ -138,6 +205,9 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
                 UT
             );
 
+            // Lit by this (strongest currently-lit) star. The changepoint is the
+            // earlier of this star setting and an even-stronger shadowed star
+            // rising; see AggregateShadowState.
             if (!terminator.InShadow)
                 return new(Math.Min(terminator.UT, state.NextTerminatorEstimate), false, star);
 
@@ -169,6 +239,9 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
                 currentUT
             );
 
+            // Lit by this (strongest currently-lit) star. The changepoint is the
+            // earlier of this star setting and an even-stronger shadowed star
+            // rising; see AggregateShadowState.
             if (!sub.InShadow)
                 return new(
                     Math.Min(sub.NextTerminatorEstimate, state.NextTerminatorEstimate),
@@ -298,10 +371,10 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
 
         foreach (var star in stars)
         {
-            var bodies = GetReferenceBodies(vessel, star);
-            if (ReferenceEquals(bodies.parent, star))
-                return new ShadowHandle(AlwaysInSun(star));
-
+            // See GetOrbitShadowState: do not short-circuit when the vessel orbits
+            // this star directly. ComputeOrbitTerminator handles it, and skipping
+            // the remaining stars here is exactly the bug that let the async path
+            // drop an earlier, brighter lit star that the synchronous path keeps.
             starIndexList.Add((int)SolarSystem.GetBodyIndex(star));
             validStars.Add(star);
         }
@@ -445,30 +518,6 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         return (int)SolarSystem.GetBodyIndex(reference);
     }
 
-    private static ReferenceBodies GetReferenceBodies(Vessel vessel, CelestialBody star)
-    {
-        CelestialBody parent = vessel.orbit.referenceBody;
-        CelestialBody planet = null;
-
-        HashSet<CelestialBody> ancestors = [];
-
-        CelestialBody cstar = star;
-        do
-        {
-            if (!ancestors.Add(cstar))
-                break;
-            cstar = cstar.referenceBody;
-        } while (cstar != null);
-
-        CelestialBody cplanet = parent;
-        while (!ancestors.Contains(cplanet))
-        {
-            planet = cplanet;
-            cplanet = cplanet.referenceBody;
-        }
-
-        return new() { parent = parent, planet = planet };
-    }
     #endregion
 
     public static ShadowState? Load(ConfigNode node)
@@ -502,12 +551,6 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         node.AddValue("InShadow", InShadow);
         if (Star != null)
             node.AddValue("Star", Star.bodyName);
-    }
-
-    private struct ReferenceBodies
-    {
-        public CelestialBody planet;
-        public CelestialBody parent;
     }
 }
 

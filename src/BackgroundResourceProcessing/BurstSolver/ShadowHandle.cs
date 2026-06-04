@@ -110,44 +110,24 @@ internal class ShadowHandle : CustomYieldInstruction, IDisposable
                 jobHandle.Complete();
                 jobHandle = default;
 
-                // Aggregate results using the same logic as
-                // ShadowState.GetOrbitShadowState / GetLandedShadowState.
-                var state = ShadowState.AlwaysInShadow();
-                for (int i = 0; i < stars.Count; i++)
-                {
-                    var term = results[i];
-                    if (term.UT == double.MaxValue)
-                        term.UT = double.PositiveInfinity;
+                // Aggregate results through the shared helper so the async path
+                // stays byte-for-byte identical to the synchronous
+                // ShadowState.GetOrbitShadowState / GetLandedShadowState paths.
+                var terminators = new OrbitShadow.Terminator[stars.Count];
+                for (int i = 0; i < terminators.Length; i++)
+                    terminators[i] = results[i];
 
-                    if (!term.InShadow)
-                    {
-                        cachedResult = new ShadowState(
-                            Math.Min(term.UT, state.NextTerminatorEstimate),
-                            false,
-                            stars[i]
-                        );
-                        completed = true;
-                        return cachedResult;
-                    }
-
-                    if (term.UT < state.NextTerminatorEstimate)
-                        state = new ShadowState(term.UT, true);
-                }
-
-                cachedResult = state;
+                cachedResult = ShadowState.AggregateShadowState(terminators, stars);
             }
 
-            // Validate the result the same way GetShadowState does.
-            if (double.IsNaN(cachedResult.NextTerminatorEstimate))
-            {
-                LogUtil.Error("Shadow state calculations returned NaN terminator estimate");
-                cachedResult = ShadowState.DefaultForStar(Planetarium.fetch?.Sun);
-            }
-            else if (cachedResult.NextTerminatorEstimate < Planetarium.GetUniversalTime())
-            {
-                LogUtil.Error("Shadow state calculations returned a terminator in the past");
-                cachedResult = ShadowState.DefaultForStar(Planetarium.fetch?.Sun);
-            }
+            // Validate the result the same way GetShadowState does. Because the
+            // aggregation above no longer returns early for the lit case, a NaN or
+            // past-UT terminator from a lit star is now caught here too (previously
+            // it slipped through unvalidated).
+            cachedResult = ShadowState.ValidateShadowState(
+                cachedResult,
+                Planetarium.GetUniversalTime()
+            );
         }
         catch (Exception e)
         {
