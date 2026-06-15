@@ -12,6 +12,11 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ## Unreleased
 
+## v0.3.2
+## Removed
+* Remove the WildBlueTools integration as all modules we integrated with have
+  been moved to WBIResources, which has its own integration.
+
 ### Changed
 * Mark BRP as explicitly conflicting with Kerbalism.
 
