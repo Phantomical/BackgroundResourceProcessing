@@ -226,5 +226,19 @@ namespace BackgroundResourceProcessing.Test.Solver
                 );
             }
         }
+
+        [TestInfo("RegressionTests_TestEmptyInventoryCharges")]
+        public void TestEmptyInventoryCharges()
+        {
+            // An empty EC store with a producer (+10) and a consumer (-1).
+            // Net production is +9, so the store must charge. A solver bug
+            // negated the empty-inventory rate equation in place, so the
+            // store read back as draining and stayed pinned at 0.
+            var processor = TestUtil.LoadVessel("regression/empty-inventory-charge.cfg");
+            using var solve = processor.ComputeRates();
+            solve.Complete();
+
+            Assert.AreEqual(9.0, processor.inventories[0].Rate);
+        }
     }
 }

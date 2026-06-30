@@ -407,6 +407,17 @@ internal static class Solver
             if (dRates.TryGetValue(inventoryId, out var _dRate))
                 dRate = _dRate;
 
+            // NOTE: AddConstraint takes ownership of the equation it is given
+            // and may mutate it in place (e.g. a `>=` constraint is negated
+            // when standardized into `<= ` form). We still need the original
+            // iRate/dRate equations intact below to recover the inventory
+            // rates from the solution, so every equation handed to
+            // AddConstraint here MUST be cloned first. Failing to clone the
+            // `>= 0` empty-inventory constraint silently negated the stored
+            // iRate, which made empty inventories with a net producer read
+            // back as draining and never accumulate (e.g. empty batteries
+            // under load never charging).
+
             if (dRate == null && inventory.state == InventoryState.Zero)
             {
                 // We can special-case zero-sized inventories to make them
@@ -415,7 +426,7 @@ internal static class Solver
                 // This only applies if none of the outputs involved have
                 // dumpExcess set to true, as in that case the rate can
                 // actually vary.
-                if (!problem.AddConstraint(iRate == 0.0).Match(out err))
+                if (!problem.AddConstraint(iRate.Clone() == 0.0).Match(out err))
                     return err;
                 continue;
             }
@@ -426,7 +437,7 @@ internal static class Solver
             // then that is not included in the constraint.
             if ((inventory.state & InventoryState.Full) == InventoryState.Full)
             {
-                if (!problem.AddConstraint((dRate ?? iRate) <= 0.0).Match(out err))
+                if (!problem.AddConstraint((dRate ?? iRate).Clone() <= 0.0).Match(out err))
                     return err;
             }
 
@@ -436,7 +447,7 @@ internal static class Solver
             // then that is not included in the constraint.
             if ((inventory.state & InventoryState.Empty) == InventoryState.Empty)
             {
-                if (!problem.AddConstraint(iRate >= 0.0).Match(out err))
+                if (!problem.AddConstraint(iRate.Clone() >= 0.0).Match(out err))
                     return err;
             }
         }
