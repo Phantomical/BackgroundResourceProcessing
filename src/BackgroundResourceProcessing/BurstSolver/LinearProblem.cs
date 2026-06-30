@@ -59,11 +59,6 @@ internal struct LinearProblem(AllocatorHandle allocator)
     /// <summary>
     /// Add a single constraint to this linear problem.
     /// </summary>
-    ///
-    /// <remarks>
-    /// Note that this method takes ownership of the constraint. If you don't
-    /// want that then make sure to clone the constraint first.
-    /// </remarks>
     [MustUseReturnValue]
     public Result AddConstraint(LinearConstraint constraint)
     {
@@ -81,7 +76,8 @@ internal struct LinearProblem(AllocatorHandle allocator)
         switch (constraint.relation)
         {
             case Relation.Equal:
-                equalities.Add(new SolverConstraint(constraint));
+                // Clone so we don't store a reference to the caller's buffer.
+                equalities.Add(new SolverConstraint(constraint.Clone()));
                 break;
 
             case Relation.GEqual:
@@ -96,11 +92,6 @@ internal struct LinearProblem(AllocatorHandle allocator)
     /// <summary>
     /// Add a single constraint to this linear problem.
     /// </summary>
-    ///
-    /// <remarks>
-    /// Note that this method takes ownership of the constraint. If you don't
-    /// want that then make sure to clone the constraint first.
-    /// </remarks>
     [MustUseReturnValue]
     public Result AddConstraint(SimpleConstraint constraint)
     {
@@ -138,6 +129,9 @@ internal struct LinearProblem(AllocatorHandle allocator)
     [IgnoreWarning(1370)]
     private static SolverConstraint StandardizeConstraint(LinearConstraint constraint)
     {
+        // Clone the equation up front so the caller can keep using it.
+        constraint.variables = constraint.variables.Clone();
+
         switch (constraint.relation)
         {
             case Relation.GEqual:
