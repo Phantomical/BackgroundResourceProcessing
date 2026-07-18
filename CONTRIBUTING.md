@@ -79,17 +79,9 @@ can then drop into your KSP install's `GameData` folder.
 > On Linux or MacOS you should be able to accomplish the same thing using `ln`.
 
 ## Testing
-There are some tests for some of the more tricky parts of the codebase.
-You can run these by running
-```sh
-dotnet test
-```
-in the repository root.
-
-Note that the tests only cover a subset of the code. It is not possible to test
-parts that require accessing game state, since we don't have that present.
-However, the various data structures and solvers are independent of KSP and can
-be tested fairly easily.
+To run the tests, build the mod, launch KSP, and click the green button that appears
+on the main menu's application launcher. Results are printed to the log and also
+written to `Logs\BackgroundResourceProcessing.Test.log` in your KSP install.
 
 ## Formatting
 We use `csharpier` to format C# code. You can first install it by running

@@ -37,7 +37,11 @@
   <Target Name="CopyTestData" AfterTargets="CopyFilesToOutputDirectory">
     <ItemGroup>
       <TestVessels Include="$(MSBuildThisFileDirectory)vessels\**\*.*" />
+      <!-- Note that this deliberately does not go under PluginData, since KSP's
+           GameDatabase skips those and we need it to load the texture. -->
+      <TestTextures Include="$(MSBuildThisFileDirectory)Textures\**\*.png" />
     </ItemGroup>
     <Copy SourceFiles="@(TestVessels)" DestinationFolder="$(GameDataOutDir)\PluginData\vessels\%(RecursiveDir)" />
+    <Copy SourceFiles="@(TestTextures)" DestinationFolder="$(GameDataOutDir)\Textures\%(RecursiveDir)" />
   </Target>
 </Project>

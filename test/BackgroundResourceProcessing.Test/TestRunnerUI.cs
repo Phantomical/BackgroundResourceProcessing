@@ -17,20 +17,43 @@ public class TestRunnerUI : MonoBehaviour
     Vector2 scroll;
     Rect windowRect = new Rect(100, 100, 600, 700);
 
+    const string ButtonTexturePath = "BackgroundResourceProcessing.Test/Textures/ToolbarButton";
+
     static Texture2D buttonTexture;
 
-    void Start()
+    /// <summary>
+    /// The BRP wordmark, loaded out of GameData. Falls back to a plain green
+    /// square if it isn't there, so a missing texture costs you a nice-looking
+    /// button rather than the ability to run the tests at all.
+    /// </summary>
+    static Texture2D ButtonTexture
     {
-        if (buttonTexture == null)
+        get
         {
+            if (buttonTexture != null)
+                return buttonTexture;
+
+            buttonTexture = GameDatabase.Instance?.GetTexture(ButtonTexturePath, false);
+            if (buttonTexture != null)
+                return buttonTexture;
+
+            Debug.LogWarning(
+                $"[BRP.Test] could not load {ButtonTexturePath}, falling back to a solid colour"
+            );
+
             buttonTexture = new Texture2D(38, 38, TextureFormat.RGBA32, false);
             var pixels = new Color32[38 * 38];
             for (int i = 0; i < pixels.Length; i++)
                 pixels[i] = new Color32(0, 180, 80, 255);
             buttonTexture.SetPixels32(pixels);
             buttonTexture.Apply(false, true);
-        }
 
+            return buttonTexture;
+        }
+    }
+
+    void Start()
+    {
         GameEvents.onGUIApplicationLauncherReady.Add(OnAppLauncherReady);
         if (ApplicationLauncher.Ready)
             OnAppLauncherReady();
@@ -56,7 +79,7 @@ public class TestRunnerUI : MonoBehaviour
             null,
             null,
             ApplicationLauncher.AppScenes.MAINMENU,
-            buttonTexture
+            ButtonTexture
         );
     }
 
