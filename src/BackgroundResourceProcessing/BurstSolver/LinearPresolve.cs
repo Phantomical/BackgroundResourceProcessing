@@ -232,7 +232,7 @@ internal static class LinearPresolve
 
                 for (; x + 8 <= count; x += 8, ptr += 8)
                 {
-                    v256 current = mm256_load_si256(&indices.Ptr[x]);
+                    v256 current = mm256_loadu_si256(&indices.Ptr[x]);
                     v256 d0 = mm256_cmp_pd(mm256_loadu_pd(&ptr[0]), zero, (int)CMP.EQ_OQ);
                     v256 d1 = mm256_cmp_pd(mm256_loadu_pd(&ptr[4]), zero, (int)CMP.EQ_OQ);
 
