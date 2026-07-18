@@ -301,7 +301,9 @@ internal static class Solver
                                 dRates.Add(invId, invRate.Clone());
                         }
                         else if (dRates.ContainsKey(invId))
-                            dRates[invId].Add(rate);
+                        {
+                            dRates[invId].Add(rateVar);
+                        }
 
                         invRate.Add(rateVar);
                     }

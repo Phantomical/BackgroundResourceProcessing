@@ -669,7 +669,15 @@ internal static class LinearPresolve
         bool zero = positive && negative;
 
         if (relation == Relation.GEqual)
+        {
+            // A >= row is classified as though its coefficients had already
+            // been negated, which is how StandardizeConstraint will eventually
+            // rewrite it, and that swaps the all-positive/all-negative flags.
+            // Negating the coefficients negates the constant as well, so every
+            // comparison below has to be made against -constant.
             (positive, negative) = (negative, positive);
+            constant = -constant;
+        }
 
         if (zero)
         {

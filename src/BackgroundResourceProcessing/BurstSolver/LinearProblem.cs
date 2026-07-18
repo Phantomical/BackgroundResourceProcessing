@@ -473,6 +473,7 @@ internal struct LinearProblem(AllocatorHandle allocator)
 
         FOUND_FIRST:
         int index = i;
+        i += 1;
 
         for (; i < coefs.Length; ++i)
         {
@@ -481,11 +482,18 @@ internal struct LinearProblem(AllocatorHandle allocator)
         }
 
         // Only 1 variable, so we can add a simple constraint.
+        //
+        // The coefficient is carried over as-is rather than normalized to 1.
+        // Normalizing means dividing both sides by the coefficient, and
+        // dividing an inequality by a negative number reverses it: a row
+        // saying -x <= -2 (i.e. x >= 2) would come back as x <= 2, turning a
+        // lower bound into an upper one. SimpleSolverConstraint carries a
+        // coefficient precisely so it doesn't have to be normalized away.
         simple.Add(
             new SimpleSolverConstraint()
             {
-                variable = new Variable(index),
-                constant = constant / coefs[index],
+                variable = new Variable(index, coefs[index]),
+                constant = constant,
             }
         );
         return;
@@ -629,7 +637,7 @@ internal struct LinearProblem(AllocatorHandle allocator)
             var tableau = BuildSimplexTableau(func, entry.choices, varMap);
             var selected = new BitSet(tableau.Cols, Allocator);
 
-            if (!Simplex.SolveTableau(tableau, selected))
+            if (!Simplex.SolveTableau(tableau, selected, varMap.Count))
             {
                 // Some variable choices may not be solvable. That's not an
                 // issue, it just means that we don't need to consider

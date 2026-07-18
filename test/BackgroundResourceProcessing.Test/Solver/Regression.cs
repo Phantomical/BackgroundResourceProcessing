@@ -47,8 +47,16 @@ namespace BackgroundResourceProcessing.Test.Solver
             using var solve = processor.ComputeRates();
             solve.Complete();
 
-            // The first inventory here has ElectricCharge and its rate of
-            // change should be exactly 0.
+            // Converter 0 is an EL workshop with negative crew productivity, so
+            // its BRPELWorkHours output ratio is negative. Its two work-hour
+            // inventories are zero-capacity, which pins their rate to exactly 0,
+            // and a negative output cannot satisfy that at any nonzero rate --
+            // so the workshop has to be off.
+            //
+            // This is also what keeps negative output ratios from being clamped
+            // the way negative *inputs* are: doing so here would zero the ratio,
+            // leave the rate unconstrained, and report an idle workshop as
+            // running at 100%.
             Assert.AreEqual(0.0, processor.converters[0].Rate, 0.0);
         }
 
@@ -239,6 +247,60 @@ namespace BackgroundResourceProcessing.Test.Solver
             solve.Complete();
 
             Assert.AreEqual(9.0, processor.inventories[0].Rate);
+        }
+
+        [TestInfo("RegressionTests_TestDumpExcessSplitOutput")]
+        public void TestDumpExcessSplitOutput()
+        {
+            // Converter 0 dumps excess Ore into a full tank, which is what
+            // creates a dRates entry for that tank. Converter 1 then splits its
+            // Ore output between the same full tank and an empty one.
+            //
+            // dRates tracks everything that is *not* dumped, so converter 1's
+            // contribution to the full tank is the amount it routes there --
+            // the per-inventory split variable, not the converter's whole
+            // output. Adding the aggregate makes the full tank's dRate <= 0
+            // constraint read as "converter 1 must be off" instead of
+            // "converter 1 must route its Ore elsewhere", so it shuts down
+            // despite having an empty tank to fill.
+            var processor = TestUtil.LoadVessel("regression/dump-excess-split-output.cfg");
+            using var solve = processor.ComputeRates();
+            solve.Complete();
+
+            Assert.AreEqual(
+                1.0,
+                processor.converters[1].Rate,
+                1e-6,
+                "converter 1 should run at full rate, filling the empty tank"
+            );
+            Assert.AreEqual(
+                2.0,
+                processor.inventories[1].Rate,
+                1e-6,
+                "all of converter 1's output should flow into the empty tank"
+            );
+        }
+
+        [TestInfo("RegressionTests_TestNegativeInputRatio")]
+        public void TestNegativeInputRatio()
+        {
+            // A negative input ratio is nonsense, but nothing between the
+            // behaviour and the LP checks the sign. Subtracting it from the
+            // inventory rate flips it into net production, so the converter
+            // fabricates the resource it claims to consume.
+            //
+            // Note this is specific to inputs. A negative *output* is a
+            // legitimate way to express a net drain and is left alone -- see
+            // TestDisjunctionInstability, whose EL workshop depends on it.
+            var processor = TestUtil.LoadVessel("regression/negative-input-ratio.cfg");
+            using var solve = processor.ComputeRates();
+            solve.Complete();
+
+            Assert.AreEqual(
+                0.0,
+                processor.inventories[0].Rate,
+                "a negative input ratio must not produce resources"
+            );
         }
     }
 }

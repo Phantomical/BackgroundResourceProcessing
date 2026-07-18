@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BackgroundResourceProcessing.Collections.Burst;
+using BackgroundResourceProcessing.Utils;
+using Unity.Burst;
 using Unity.Burst.CompilerServices;
 using Unity.Collections;
 using static BackgroundResourceProcessing.Collections.KeyValuePairExt;
@@ -33,21 +35,51 @@ internal struct GraphConverter
         baseId = id;
         weight = GetPriorityWeight(converter.Priority);
 
-        inputs = CreateRatioMap(converter.Inputs, allocator);
-        outputs = CreateRatioMap(converter.Outputs, allocator);
+        inputs = CreateRatioMap(converter.Inputs, allocator, isInput: true);
+        outputs = CreateRatioMap(converter.Outputs, allocator, isInput: false);
         constraints = new(converter.Required.Count, allocator);
     }
 
     private static SortedLinearMap<int, GraphRatio> CreateRatioMap(
         Collections.SortedMap<int, ResourceRatio> map,
-        AllocatorHandle allocator
+        AllocatorHandle allocator,
+        bool isInput
     )
     {
         SortedLinearMap<int, GraphRatio> res = new(map.Count, allocator);
         foreach (var (resourceId, ratio) in map)
-            res.AddUnchecked(resourceId, new(ratio));
+        {
+            var graphRatio = new GraphRatio(ratio);
+
+            // A negative input ratio is not a smaller draw, it is a draw in the
+            // opposite direction. Inputs are subtracted from an inventory's
+            // rate, so a negative one comes back out as net production and the
+            // converter fabricates the very resource it claims to consume.
+            // Nothing validates ratios on the way in from part configs or
+            // third-party behaviours, and this is the point every one of them
+            // passes through on its way into the LP.
+            //
+            // Negative *outputs* are deliberately left alone. They are a
+            // legitimate way to express a net drain, and the EL integration
+            // relies on exactly that to model a workshop whose crew has
+            // negative productivity.
+            if (isInput && graphRatio.Ratio < 0.0)
+            {
+                WarnNegativeInputRatio(graphRatio.Ratio, ratio.ResourceName);
+                graphRatio.Ratio = 0.0;
+            }
+
+            res.AddUnchecked(resourceId, graphRatio);
+        }
         return res;
     }
+
+    [BurstDiscard]
+    private static void WarnNegativeInputRatio(double ratio, string resourceName) =>
+        LogUtil.Warn(
+            $"Converter had a negative input ratio {ratio} for resource {resourceName}. ",
+            "Treating it as 0 rather than letting it produce the resource."
+        );
 
     public void Merge(in GraphConverter other)
     {

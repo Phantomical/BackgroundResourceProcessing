@@ -271,15 +271,9 @@ internal class ResourceProcessor
         using var span = new TraceSpan("ResourceProcessor.ComputeNextChangepoint");
 
         double changepoint = double.PositiveInfinity;
-        LinearMap<int, ResourceRate> totals = new(32);
 
         foreach (var inv in inventories)
         {
-            var entry = totals.GetEntry(inv.ResourceId);
-            ref var res = ref entry.GetOrInsert(new());
-            res.total += inv.Amount;
-            res.rate += inv.Rate;
-
             if (inv.Rate == 0.0)
                 continue;
 
@@ -292,9 +286,31 @@ internal class ResourceProcessor
             changepoint = Math.Min(changepoint, ChangepointAfter(currentTime, duration));
         }
 
+        LinearMap<int, ResourceRate> totals = new(16);
+
         foreach (var converter in converters)
         {
             changepoint = Math.Min(changepoint, converter.NextChangepoint);
+
+            if (converter.Required.Count == 0)
+                continue;
+
+            // Evaluate a converter's constraint against the inventories it is
+            // connected to.
+            totals.Clear();
+            totals.Reserve(converter.Required.Count);
+
+            foreach (var inventoryId in converter.Constraint)
+            {
+                var inventory = inventories[inventoryId];
+                if (!converter.Required.ContainsKey(inventory.ResourceId))
+                    continue;
+
+                var entry = totals.GetEntry(inventory.ResourceId);
+                ref var res = ref entry.GetOrInsert(new());
+                res.total += inventory.Amount;
+                res.rate += inventory.Rate;
+            }
 
             foreach (var (resourceId, requirement) in converter.Required)
             {

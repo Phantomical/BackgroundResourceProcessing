@@ -27,6 +27,22 @@ internal static partial class Simplex
     const double Epsilon = 1e-9;
     const uint MaxIterations = 1000;
 
+    /// <summary>
+    /// The number of pivots to take under Dantzig's rule before falling back
+    /// to Bland's rule.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// Dantzig's rule (most negative reduced cost, lowest column index
+    /// breaking ties) picks good pivots but can cycle forever on degenerate
+    /// problems, and the problems built here are frequently degenerate -- every
+    /// inventory pinned at empty or full contributes a zero-RHS row. Bland's
+    /// rule cannot cycle but picks worse pivots, so it is only worth switching
+    /// to once a solve has gone on long enough that something is clearly wrong.
+    /// Real problems settle in far fewer pivots than this.
+    /// </remarks>
+    const uint BlandThreshold = 100;
+
     private static bool Trace
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -48,18 +64,36 @@ internal static partial class Simplex
 #endif
 
     [MustUseReturnValue]
-    public static unsafe bool SolveTableau(Matrix tableau, BitSpan selected)
+    public static unsafe bool SolveTableau(Matrix tableau, BitSpan selected, int slackStart)
     {
         if (selected.Capacity < tableau.Cols - 1)
             BurstCrashHandler.Crash(Error.Simplex_SolveTableau_SelectedTooSmall);
 
+        // The column index of the variable that is currently basic in each row.
+        // Row y starts out basic in its own slack variable. Bland's rule needs
+        // this to break ratio-test ties by variable index rather than by row
+        // index, which is what makes it immune to cycling.
+        int* basis = stackalloc int[tableau.Rows];
+        for (int y = 1; y < tableau.Rows; ++y)
+            basis[y] = slackStart + y - 1;
+
         for (uint iter = 0; iter < MaxIterations; ++iter)
         {
-            int pivot = SelectPivot(tableau.GetRowPtr(0), tableau.Cols - 1);
-            if (pivot < 0)
-                break;
+            bool bland = iter >= BlandThreshold;
 
-            int index = SelectRow(tableau, pivot);
+            int pivot = bland
+                ? SelectPivotBland(tableau.GetRowPtr(0), tableau.Cols - 1)
+                : SelectPivot(tableau.GetRowPtr(0), tableau.Cols - 1);
+            if (pivot < 0)
+            {
+                // No improving column left, so the tableau is optimal.
+                if (Trace)
+                    TraceFinal(tableau);
+
+                return true;
+            }
+
+            int index = bland ? SelectRowBland(tableau, pivot, basis) : SelectRow(tableau, pivot);
             if (index < 0)
                 return false;
 
@@ -67,6 +101,7 @@ internal static partial class Simplex
                 TracePivot(pivot, index, tableau);
 
             selected[pivot] = true;
+            basis[index] = pivot;
             tableau.InvScaleRow(index, tableau[index, pivot]);
 
             for (int y = 0; y < tableau.Rows; ++y)
@@ -78,10 +113,64 @@ internal static partial class Simplex
             }
         }
 
-        if (Trace)
-            TraceFinal(tableau);
+        // Running out of iterations means optimality was never reached. Every
+        // pivot preserves feasibility, so the tableau still holds a perfectly
+        // valid-looking point -- returning it would quietly hand back a
+        // suboptimal answer with converters running slower than they should and
+        // nothing anywhere to say so. Report the failure instead.
+        WarnIterationLimit();
+        return false;
+    }
 
-        return true;
+    /// <summary>
+    /// Bland's entering rule: the lowest-index column with a negative reduced
+    /// cost, rather than the most negative one.
+    /// </summary>
+    private static unsafe int SelectPivotBland(
+        [NoAlias] double* row,
+        [AssumeRange(0, int.MaxValue)] int length
+    )
+    {
+        for (int x = 0; x < length; ++x)
+        {
+            if (row[x] < 0.0)
+                return x;
+        }
+
+        return -1;
+    }
+
+    /// <summary>
+    /// Bland's leaving rule: the usual minimum ratio, but ties are broken by
+    /// the lowest-index basic variable instead of by the lowest row.
+    /// </summary>
+    private static unsafe int SelectRowBland(Matrix tableau, int pivot, [NoAlias] int* basis)
+    {
+        int index = -1;
+        double value = double.PositiveInfinity;
+
+        for (int y = 1; y < tableau.Rows; ++y)
+        {
+            double* row = tableau.GetRowPtr(y);
+            double den = row[pivot];
+
+            if (den <= 0.0)
+                continue;
+
+            double ratio = row[tableau.Cols - 1] / den;
+
+            // We ignore all negative ratios
+            if (ratio < 0.0)
+                continue;
+
+            if (index < 0 || ratio < value || (ratio == value && basis[y] < basis[index]))
+            {
+                index = y;
+                value = ratio;
+            }
+        }
+
+        return index;
     }
 
     private static unsafe int SelectPivot(
@@ -339,6 +428,13 @@ internal static partial class Simplex
 
     [IgnoreWarning(1370)]
     private static void ThrowUnsupportedInstructionSet() => throw UnsupportedInstructionSet();
+
+    [BurstDiscard]
+    static void WarnIterationLimit() =>
+        LogUtil.Warn(
+            $"Simplex did not converge within {MaxIterations} iterations. ",
+            "Treating the problem as unsolved rather than returning a suboptimal solution."
+        );
 
     [BurstDiscard]
     static void TraceSelectRow(double y, double num, double den, double ratio)

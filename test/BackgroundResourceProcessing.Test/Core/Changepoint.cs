@@ -65,5 +65,26 @@ namespace BackgroundResourceProcessing.Test.Core
                 $"changepoint {changepoint} should be strictly after currentTime {currentTime}"
             );
         }
+
+        // A converter's REQUIRED_RESOURCE constraint is evaluated against the
+        // inventories its flow mode can actually reach (CONSTRAINT_INVENTORIES),
+        // so the time at which that constraint flips has to be predicted from
+        // the same set of inventories.
+        //
+        // This vessel has a local 4000-unit tank filling at 100/s that the
+        // converter's NO_FLOW constraint watches, plus an unreachable 50000-unit
+        // central tank. The constraint boundary (5000 units in the local tank)
+        // is crossed at t = 10. Summing both tanks instead puts the total at
+        // 54000, far past the 5000 requirement, so the crossing looks like it
+        // already happened and gets dropped — leaving the local tank filling up
+        // at t = 960 as the only changepoint.
+        [TestInfo("ChangepointTests_TestRequiredResourceUsesConstraintInventories")]
+        public void TestRequiredResourceUsesConstraintInventories()
+        {
+            var processor = TestUtil.LoadVessel("changepoint/constraint-flow-mode.cfg");
+            var changepoint = processor.ComputeNextChangepoint(0.0);
+
+            Assert.AreEqual(10.0, changepoint, 1e-6);
+        }
     }
 }
