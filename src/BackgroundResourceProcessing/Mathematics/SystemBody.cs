@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics;
 using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Maths;
@@ -55,7 +56,11 @@ internal struct SystemBody
         // into that frame so LandedShadow rotates the surface normal in the
         // correct direction (issue #26).
         this.RotationAxis = Planetarium.Zup.LocalToWorld(body.RotationAxis.xzy);
-        this.AngularVelocity = body.angularV;
+        // body.angularV is an unsigned magnitude; KSP encodes the spin
+        // direction purely in the sign of rotationPeriod (retrograde bodies
+        // have a negative rotation period). Carry that sign here so
+        // LandedShadow rotates the surface normal the right way around.
+        this.AngularVelocity = body.angularV * Math.Sign(body.rotationPeriod);
         this.Rotates = body.rotates;
         this.TidallyLocked = body.tidallyLocked;
         this.RotationPeriod = body.rotationPeriod;

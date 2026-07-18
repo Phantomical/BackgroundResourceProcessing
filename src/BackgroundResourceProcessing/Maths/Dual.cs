@@ -103,7 +103,8 @@ internal struct Dual(double x, double dx = 0.0)
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Dual operator /(double lhs, Dual rhs)
     {
-        return new(lhs / rhs.x, -rhs.x * rhs.dx / (rhs.x * rhs.x));
+        // d/dt (c/g) = -c*g'/g^2
+        return new(lhs / rhs.x, -lhs * rhs.dx / (rhs.x * rhs.x));
     }
     #endregion
 
@@ -155,8 +156,9 @@ internal struct Dual(double x, double dx = 0.0)
     {
         var norm = x.x * x.x + y.x * y.x;
 
+        // d/dt atan2(y, x) = (x*y' - y*x')/(x^2 + y^2)
         var v = Math.Atan2(y.x, x.x);
-        var dx = (y.x * x.dx - x.x * y.dx) / norm;
+        var dx = (x.x * y.dx - y.x * x.dx) / norm;
 
         return new(v, dx);
     }
@@ -244,9 +246,10 @@ internal struct Dual2(double x, double dx = 0.0, double ddx = 0.0)
 
     public static Dual2 operator /(Dual2 a, Dual2 b)
     {
+        // For q = a/b: q' = (a' - q*b')/b and q'' = (a'' - 2q'b' - q*b'')/b.
         double x = a.x / b.x;
         double dx = (a.dx - x * b.dx) / b.x;
-        double ddx = (-2 * b.dx * dx + a.ddx + x * b.ddx) / b.x;
+        double ddx = (a.ddx - 2 * b.dx * dx - x * b.ddx) / b.x;
 
         return new(x, dx, ddx);
     }
@@ -272,7 +275,7 @@ internal struct Dual2(double x, double dx = 0.0, double ddx = 0.0)
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Dual2 operator -(double a, Dual2 b)
     {
-        return new(a - b.x, b.dx, b.ddx);
+        return new(a - b.x, -b.dx, -b.ddx);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -367,12 +370,14 @@ internal struct Dual2(double x, double dx = 0.0, double ddx = 0.0)
 
     public static Dual2 Atan2(Dual2 y, Dual2 x)
     {
+        // d/dt atan2(y, x) = (x*y' - y*x')/(x^2 + y^2); differentiating again
+        // gives d^2/dt^2 = (x*y'' - y*x'')/(x^2 + y^2) - dv * d/dt(x^2 + y^2)/(x^2 + y^2).
         var v = Math.Atan2(y.x, x.x);
         var invdenom = 1.0 / (x.x * x.x + y.x * y.x);
         var ddenom = 2.0 * (x.x * x.dx + y.x * y.dx) * invdenom;
 
-        var dv = (y.x * x.dx - x.x * y.dx) * invdenom;
-        var ddv = -dv * ddenom + (y.x * x.ddx - x.x * y.ddx) * invdenom;
+        var dv = (x.x * y.dx - y.x * x.dx) * invdenom;
+        var ddv = -dv * ddenom + (x.x * y.ddx - y.x * x.ddx) * invdenom;
 
         return new(v, dv, ddv);
     }

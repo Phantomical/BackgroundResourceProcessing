@@ -176,7 +176,11 @@ internal readonly struct LandedShadow
             // We are currently in the polar circle and there won't be a
             // terminator until the planet proceeds around its orbit.
             UT = FindInclinationExit(UT);
-            if (!IsFinite(UT))
+            // MaxValue is the no-exit sentinel (this code runs under fast-math,
+            // so it cannot use infinity); catch it here rather than relying on
+            // floating-point absorption to keep Newton's method stable at an
+            // absurd UT.
+            if (!IsFinite(UT) || UT == double.MaxValue)
             {
                 return inshadow
                     ? OrbitShadow.Terminator.Shadow(double.MaxValue)
@@ -187,13 +191,20 @@ internal readonly struct LandedShadow
         var dot = ComputeDotAt(Dual2.Variable(UT));
 
         int count = 0;
-        double advance = 0.25 * Math.Min(planet.RotationPeriod, planet.Orbit.Period);
+        // RotationPeriod is negative for retrograde rotators, and SolarDayLength
+        // is negative whenever the sun appears to move backwards across the sky
+        // (a retrograde spin, or a prograde spin slower than the orbit). The
+        // spin direction itself is carried by the sign of AngularVelocity inside
+        // ComputeDotAt; the step sizes and convergence bounds here only care
+        // about the cycle lengths, so use their magnitudes.
+        double advance = 0.25 * Math.Min(Math.Abs(planet.RotationPeriod), planet.Orbit.Period);
+        double quarterDay = 0.25 * Math.Abs(planet.SolarDayLength);
 
         if (Math.Sign(dot.x) * Math.Sign(dot.dx) > 0)
         {
             // Newton's method wants to find a zero in the past. Find the next
             // extreme and flip to the other side.
-            if (Math.Abs(dot.dx / dot.ddx) >= planet.SolarDayLength / 4)
+            if (Math.Abs(dot.dx / dot.ddx) >= quarterDay)
                 UT += advance;
 
             double extremeUT = FindMiddayOrMidnight(UT);
@@ -201,15 +212,15 @@ internal readonly struct LandedShadow
             if (extremeUT < startUT)
             {
                 return inshadow
-                    ? OrbitShadow.Terminator.Shadow(UT + planet.SolarDayLength / 4)
-                    : OrbitShadow.Terminator.Sun(UT + planet.SolarDayLength / 4);
+                    ? OrbitShadow.Terminator.Shadow(UT + quarterDay)
+                    : OrbitShadow.Terminator.Sun(UT + quarterDay);
             }
 
             UT += 2 * (extremeUT - UT);
             dot = ComputeDotAt(Dual2.Variable(UT));
         }
 
-        while (Math.Abs(dot.x / dot.dx) >= planet.SolarDayLength / 4)
+        while (Math.Abs(dot.x / dot.dx) >= quarterDay)
         {
             if (count > 8)
             {

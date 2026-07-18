@@ -45,6 +45,35 @@ public sealed class LandedShadowTests : BRPTestBase
             if (planet.isStar || planet.referenceBody == null)
                 continue;
 
+            // Some scenes only keep a handful of bodies' world state up to date
+            // (e.g. the main menu only updates the menu bodies); everything else
+            // is left wherever the scene last put it while the orbit model keeps
+            // moving. The world-space ground truth below is only meaningful when
+            // the two agree, so skip stale bodies. Flight scenes update every
+            // body, so nothing is skipped there.
+            //
+            // Both halves of the ground truth can go stale independently:
+            // - the heliocentric position must be live along the whole parent
+            //   chain (a live moon of a stale planet still has a stale absolute
+            //   sun direction),
+            // - the body's own rotation transform (which GetSurfaceNVector
+            //   reads) must agree with the rotation model.
+            Vector3d chainWorld = planet.position - FindChainRoot(planet).position;
+            Vector3d chainModel = Vector3d.zero;
+            for (var b = planet; b.orbit != null; b = b.referenceBody)
+                chainModel += (Vector3d)b.orbit.getRelativePositionAtUT(UT);
+            if (Vector3d.Angle(Planetarium.Zup.LocalToWorld(chainWorld.xzy), chainModel) > 0.1)
+                continue;
+            if (Math.Abs(chainWorld.magnitude - chainModel.magnitude) > 0.01 * chainModel.magnitude)
+                continue;
+
+            Vector3d frameWorld = Planetarium.Zup.LocalToWorld(
+                planet.GetSurfaceNVector(0.0, 0.0).xzy
+            );
+            Vector3d frameModel = ShadowState.GetLandedSurfaceNormal(planet, 0.0, 0.0, UT);
+            if (Vector3d.Angle(frameWorld, frameModel) > 0.1)
+                continue;
+
             for (double lat = -45.0; lat <= 45.0; lat += 45.0)
             {
                 for (double lon = 0.0; lon < 360.0; lon += 45.0)
@@ -159,6 +188,17 @@ public sealed class LandedShadowTests : BRPTestBase
             chec_ed > 0,
             "No landed terminators were checked; celestial bodies may not be loaded."
         );
+    }
+
+    /// <summary>
+    /// Walk up the reference-body chain to the body everything ultimately
+    /// orbits (the root star).
+    /// </summary>
+    private static CelestialBody FindChainRoot(CelestialBody body)
+    {
+        while (body.orbit != null)
+            body = body.referenceBody;
+        return body;
     }
 
     /// <summary>

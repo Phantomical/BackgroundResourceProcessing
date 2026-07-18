@@ -279,7 +279,7 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         var starIndex = (int)SolarSystem.GetBodyIndex(star);
         var referenceIndex = FindReferenceBodyIndex(planet, star);
 
-        var normal = GetLandedSurfaceNormal(planet, latitude, longitude);
+        var normal = GetLandedSurfaceNormal(planet, latitude, longitude, currentUT);
         var cosLatitude = Math.Cos(Math.Abs(latitude) * MathUtil.DEG2RAD);
 
         var terminator = LandedShadow.ComputeLandedTerminator(
@@ -304,21 +304,46 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
     /// </summary>
     ///
     /// <remarks>
-    /// <see cref="CelestialBody.GetSurfaceNVector"/> returns the normal in
-    /// Unity world space, whereas <see cref="SolarSystem"/> reconstructs body
-    /// positions in KSP's internal (Z-up) orbit frame. We convert the normal
-    /// into that orbit frame so the dot products in <see cref="LandedShadow"/>
-    /// are meaningful; mixing the two frames silently inverts the lit/shadow
-    /// result for landed vessels (issue #26).
+    /// <para>
+    /// The normal must be expressed in KSP's internal (Z-up) orbit frame — the
+    /// frame <see cref="SolarSystem"/> reconstructs body positions in. Mixing
+    /// frames silently inverts the lit/shadow result for landed vessels
+    /// (issue #26).
+    /// </para>
+    ///
+    /// <para>
+    /// It is reconstructed here from KSP's rotation model
+    /// (<c>initialRotation + 360 * rotPeriodRecip * UT</c> about the polar
+    /// axis) rather than read from the body's world-space transform via
+    /// <see cref="CelestialBody.GetSurfaceNVector"/>. The two agree exactly
+    /// whenever the body's world state is live (converting the world normal
+    /// through <see cref="Planetarium.Zup"/> cancels
+    /// <see cref="Planetarium.InverseRotAngle"/>), but scenes that do not
+    /// update every body (e.g. the main menu) leave stale world transforms
+    /// behind, while the orbit positions the normal is dotted against are
+    /// always computed from the model.
+    /// </para>
     /// </remarks>
     internal static Vector3d GetLandedSurfaceNormal(
         CelestialBody planet,
         double latitude,
-        double longitude
+        double longitude,
+        double currentUT
     )
     {
-        var normal = planet.GetSurfaceNVector(latitude, longitude);
-        return Planetarium.Zup.LocalToWorld(normal.xzy);
+        double rotationAngle = planet.initialRotation % 360.0;
+        if (planet.rotates && planet.rotationPeriod != 0.0)
+            rotationAngle =
+                (planet.initialRotation + 360.0 * planet.rotPeriodRecip * currentUT) % 360.0;
+
+        Planetarium.CelestialFrame frame = default;
+        Planetarium.CelestialFrame.PlanetaryFrame(0.0, 90.0, rotationAngle, ref frame);
+
+        var local = Planetarium.SphericalVector(
+            latitude * MathUtil.DEG2RAD,
+            longitude * MathUtil.DEG2RAD
+        );
+        return frame.LocalToWorld(local);
     }
 
     /// <summary>
@@ -408,7 +433,7 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         var planet = vessel.orbit.referenceBody;
         var planetIndex = (int)SolarSystem.GetBodyIndex(planet);
 
-        var normal = GetLandedSurfaceNormal(planet, vessel.latitude, vessel.longitude);
+        var normal = GetLandedSurfaceNormal(planet, vessel.latitude, vessel.longitude, currentUT);
         var cosLatitude = Math.Cos(Math.Abs(vessel.latitude) * MathUtil.DEG2RAD);
 
         List<CelestialBody> validStars = [];

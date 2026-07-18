@@ -365,7 +365,9 @@ internal struct Orbit
     {
         const int MaxIterations = 8;
 
-        double E = M + 0.85 * Eccentricity * Math.Sin(Math.Sin(M));
+        // Danby's starter, matching stock KSP's solver. The loop below has no
+        // convergence check, so seed quality is the only safety margin.
+        double E = M + 0.85 * Eccentricity * Math.Sign(Math.Sin(M));
         for (int i = 0; i < MaxIterations; ++i)
         {
             double num2 = Eccentricity * Math.Sin(E);
