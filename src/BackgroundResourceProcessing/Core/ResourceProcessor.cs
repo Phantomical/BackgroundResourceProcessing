@@ -10,9 +10,11 @@ using BackgroundResourceProcessing.Inventory;
 using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
 using Smooth.Collections;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using AllocatorHandle = BackgroundResourceProcessing.Collections.Burst.AllocatorHandle;
+using BurstAllocator = BackgroundResourceProcessing.Collections.Burst.BurstAllocator;
 
 namespace BackgroundResourceProcessing.Core;
 
@@ -25,6 +27,7 @@ namespace BackgroundResourceProcessing.Core;
 /// unit tested outside of KSP. Any method that needs access to a KSP
 /// entity needs to have said entity passed in as a parameter.
 /// </remarks>
+[BurstCompile]
 internal class ResourceProcessor
 {
     /// <summary>
@@ -124,7 +127,7 @@ internal class ResourceProcessor
     }
     #endregion
 
-    public SolveHandle ComputeRates()
+    public unsafe SolveHandle ComputeRates()
     {
         using var span = new TraceSpan("ResourceProcessor.ComputeRates");
 
@@ -157,7 +160,12 @@ internal class ResourceProcessor
             return new SolveHandle(this, soln);
         }
 
-        var graph = new ResourceGraph(this, AllocatorHandle.TempJob);
+        var arena = new NativeReference<BurstAllocator>(
+            new(AllocatorHandle.TempJob),
+            Allocator.TempJob
+        );
+
+        var graph = new ResourceGraph(this, new AllocatorHandle(arena.GetUnsafePtr()));
         int inventoryCount = inventories.Count;
         int converterCount = converters.Count;
 
@@ -172,9 +180,19 @@ internal class ResourceProcessor
             ConverterRates = convRates,
             ErrorCode = errCode,
         };
-        var jobHandle = job.Schedule(default);
+        var jobHandle = job.Schedule();
+        jobHandle = new AllocatorDisposeJob(arena).Schedule(jobHandle);
 
         return new SolveHandle(this, jobHandle, invRates, convRates, errCode, hash);
+    }
+
+    [BurstCompile]
+    struct AllocatorDisposeJob(NativeReference<BurstAllocator> allocator) : IJob
+    {
+        [DeallocateOnJobCompletion]
+        public NativeReference<BurstAllocator> allocator = allocator;
+
+        public void Execute() => allocator.Value.Dispose();
     }
 
     public void ClearRates()

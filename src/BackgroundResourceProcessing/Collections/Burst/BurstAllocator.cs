@@ -10,7 +10,7 @@ using Unity.Collections.LowLevel.Unsafe;
 
 namespace BackgroundResourceProcessing.Collections.Burst;
 
-internal unsafe struct BurstAllocator() : IDisposable
+internal unsafe struct BurstAllocator(AllocatorHandle allocator) : IDisposable
 {
     const uint SlabSize = 512 * 1024;
 
@@ -21,8 +21,11 @@ internal unsafe struct BurstAllocator() : IDisposable
         public uint length;
     }
 
-    AllocatorHandle allocator = AllocatorHandle.TempJob;
-    RawList<Slab> slabs = new(8, AllocatorHandle.Temp);
+    AllocatorHandle allocator = allocator;
+    RawList<Slab> slabs = new(8, allocator);
+
+    public BurstAllocator()
+        : this(AllocatorHandle.TempJob) { }
 
     [IgnoreWarning(1370)]
     public T* Allocate<T>(int count)
@@ -109,7 +112,11 @@ internal unsafe struct BurstAllocator() : IDisposable
         slabs.Clear();
     }
 
-    public void Dispose() => Reset();
+    public void Dispose()
+    {
+        Reset();
+        slabs.Dispose();
+    }
 }
 
 internal readonly unsafe struct AllocatorHandle
@@ -118,7 +125,7 @@ internal readonly unsafe struct AllocatorHandle
 
     public static AllocatorHandle Invalid => new(Allocator.Invalid);
     public static AllocatorHandle Temp => new(Allocator.Temp);
-    public static AllocatorHandle TempJob => new(Allocator.Persistent);
+    public static AllocatorHandle TempJob => new(Allocator.TempJob);
     public static AllocatorHandle Persistent => new(Allocator.Persistent);
 
     public AllocatorHandle(BurstAllocator* allocator)

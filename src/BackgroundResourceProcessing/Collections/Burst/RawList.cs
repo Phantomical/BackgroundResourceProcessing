@@ -25,7 +25,7 @@ namespace BackgroundResourceProcessing.Collections.Burst;
 /// </remarks>
 [DebuggerDisplay("Count = {Count}")]
 [DebuggerTypeProxy(typeof(SpanDebugView<>))]
-internal unsafe struct RawList<T>(AllocatorHandle allocator) : IEnumerable<T>
+internal unsafe struct RawList<T>(AllocatorHandle allocator) : IEnumerable<T>, IDisposable
     where T : unmanaged
 {
     T* data = null;
@@ -87,6 +87,12 @@ internal unsafe struct RawList<T>(AllocatorHandle allocator) : IEnumerable<T>
         : this(array.Span, array.Allocator) { }
 
     public readonly RawList<T> Clone() => new(this);
+
+    public void Dispose()
+    {
+        allocator.Free(data);
+        this = default;
+    }
 
     public void Add(T elem)
     {
