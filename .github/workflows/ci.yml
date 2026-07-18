@@ -44,10 +44,12 @@ jobs:
           shopt -s nocaseglob # so globs are case-insensitive
           shopt -s globstar
           shopt -s nullglob
-          mkdir -p ${{ env.RELEASE_STAGING  }}   
-          cp -r -v GameData README* LICENSE* CHANGELOG* ${{ env.RELEASE_STAGING }}
+          mkdir -p ${{ env.RELEASE_STAGING }}/GameData
+          # Deliberately copies only the mod folder. GameData also contains
+          # BackgroundResourceProcessing.Test, which must not be released.
+          cp -r -v GameData/BackgroundResourceProcessing ${{ env.RELEASE_STAGING }}/GameData
+          cp -r -v README* LICENSE* CHANGELOG* ${{ env.RELEASE_STAGING }}
           cp -r -v LICENSE* BackgroundResourceProcessing.ckan ${{ env.RELEASE_STAGING }}/GameData/BackgroundResourceProcessing
-          cd ${{ env.RELEASE_STAGING }}
 
       - uses: actions/upload-artifact@v4
         with:
