@@ -125,6 +125,14 @@ public class BackgroundCryoTank : BackgroundConverter<ModuleCryoTank>
         return behaviour;
     }
 
+    // DoCatchup() (called from Start() on vessel load) boils off fuel for the
+    // interval since LastUpdateTime, which BRP has already simulated. Advance
+    // LastUpdateTime so the catchup interval is ~0.
+    public override void OnRestore(ModuleCryoTank module, Core.ResourceConverter converter)
+    {
+        module.LastUpdateTime = Planetarium.GetUniversalTime();
+    }
+
     internal static List<BoiloffFuel> GetFuels(ModuleCryoTank module)
     {
         return (List<BoiloffFuel>)FuelsField.GetValue(module) ?? [];
