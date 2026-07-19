@@ -218,9 +218,13 @@ public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
     /// <returns></returns>
     protected virtual double GetEfficiencyMultiplier(T module)
     {
+        // Stock bakes the efficiency multiplier into the prepared recipe only
+        // when _preCalculateEfficiency is true; otherwise BaseConverter.FixedUpdate
+        // applies it on top of the recipe. Mirror that here: skip the bonus only
+        // when the prepared recipe already includes it.
         bool useEfficiencyBonus =
             !UsePreparedRecipe.Evaluate(module)
-            || (bool)PreCalculateEfficiencyField.GetValue(module);
+            || !(bool)PreCalculateEfficiencyField.GetValue(module);
 
         double bonus;
         if (OverrideEfficiency != null)
