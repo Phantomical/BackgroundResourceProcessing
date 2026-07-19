@@ -60,11 +60,9 @@ public class BackgroundSystemHeatFissionReactor
 
         if (module.GeneratesElectricity && module.CurrentThrottle > 0)
         {
-            // Pre-divide by throttle because the multiplier already scaled everything;
-            // we want the EC rate at the actual throttle, not throttle².
-            double ecRatio =
-                module.ElectricalGeneration.Evaluate(module.CurrentThrottle)
-                / (module.CurrentThrottle * 0.01);
+            // The curve maps throttle percent directly to the absolute EC rate;
+            // unlike fuel/waste, SystemHeat does not multiply it by throttle.
+            double ecRatio = module.ElectricalGeneration.Evaluate(module.CurrentThrottle);
             outputs.Add(
                 new ResourceRatio()
                 {
@@ -92,7 +90,8 @@ public class BackgroundSystemHeatFissionReactor
             new ResourceRatio()
             {
                 ResourceName = "ElectricCharge",
-                Ratio = module.ElectricalGeneration.Evaluate(100f),
+                // SystemHeat caps auto-throttle generation by core damage.
+                Ratio = module.ElectricalGeneration.Evaluate(100f) * module.CoreIntegrity / 100f,
                 FlowMode = ResourceFlowMode.ALL_VESSEL,
                 DumpExcess = false,
             }
@@ -109,7 +108,8 @@ public class BackgroundSystemHeatFissionReactor
         BRPSystemHeatMarker marker
     )
     {
-        double throttle = module.MinimumThrottle;
+        // MinimumThrottle is a percent (default 25), like CurrentThrottle.
+        double throttle = module.MinimumThrottle * 0.01;
 
         var inputs = ScaleResources(module.inputs, throttle);
         var outputs = ScaleResources(module.outputs, throttle);
@@ -118,7 +118,7 @@ public class BackgroundSystemHeatFissionReactor
             outputs,
             module,
             marker,
-            CalculateWasteHeat(module, module.MinimumThrottle * 100f)
+            CalculateWasteHeat(module, module.MinimumThrottle)
         );
         return MakeBehaviour(inputs, outputs, marker, isPush: true);
     }
