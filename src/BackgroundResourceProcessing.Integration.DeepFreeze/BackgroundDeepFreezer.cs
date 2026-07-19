@@ -166,7 +166,11 @@ public class BackgroundDeepFreezerBehaviour : ConverterBehaviour
         UpdateVesselInfo(df, state, evt.CurrentTime);
         UpdatePartInfo(inventory, df, evt.CurrentTime);
 
-        if (inventory.Rate > 0.0)
+        // DeepFreeze only kills frozen kerbals after deathRoll seconds of
+        // continuous EC starvation, resetting whenever power is restored. The
+        // UnpoweredTime inventory (capacity = deathRoll) tracks that interval,
+        // so the crew dies only once it fills up.
+        if (inventory.Full)
             KillFrozenCrew(processor, df);
     }
 
@@ -329,12 +333,13 @@ public class BackgroundDeepFreezerInventory : BackgroundInventory<DeepFreezer>
         // If UnpoweredTime reached its maximum while the vessel was unloaded and the
         // setting is non-fatal, place deathCounter just past the threshold so the
         // loaded DeepFreezer module triggers emergency thaw immediately on its next
-        // FixedUpdate. In fatal mode kerbals are already dead (handled by KillFrozenCrew),
-        // so we just reset the counter to now.
+        // FixedUpdate. Otherwise carry over the accumulated unpowered time so the
+        // loaded module continues the deathRoll countdown where BRP left off.
+        // (In fatal mode a full inventory means KillFrozenCrew already fired.)
         bool deathFatal = DF.DeepFreeze.Instance?.DFIDeathFatal ?? false;
         if (inventory.Full && !deathFatal)
             module.deathCounter = now - DeepFreezer.deathRoll - 1.0;
         else
-            module.deathCounter = now;
+            module.deathCounter = now - inventory.Amount;
     }
 }
