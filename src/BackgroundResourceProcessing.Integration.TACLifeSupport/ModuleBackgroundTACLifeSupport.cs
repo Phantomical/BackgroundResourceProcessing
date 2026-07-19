@@ -220,7 +220,8 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
 
     /// <summary>
     /// Called at each BRP changepoint. Fires TAC-LS death/hibernation if a resource
-    /// has been depleted long enough to exceed the threshold.
+    /// has been depleted long enough to exceed the threshold, honouring the user's
+    /// Hibernate/Die setting the same way <c>LifeSupportController</c> does.
     /// </summary>
     internal void OnChangepoint(BackgroundResourceProcessor processor, ChangepointEvent evt)
     {
@@ -233,61 +234,137 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
 
         var vesselInfo = tacSettings.knownVessels[vessel.id];
         var controller = LifeSupportController.Instance;
-        var global = TacStartOnce.Instance.globalSettings;
         var converters = processor.Converters;
         double now = evt.CurrentChangepoint;
+
+        // TAC-LS reads its limits from the difficulty params (not globalSettings,
+        // which goes stale once the user edits them) and treats any hibernate
+        // value other than "Die" as hibernation.
+        var sec1 = HighLogic.CurrentGame.Parameters.CustomParams<TAC_SettingsParms>();
+        var sec3 = HighLogic.CurrentGame.Parameters.CustomParams<TAC_SettingsParms_Sec3>();
+        bool die = sec1.hibernate == "Die";
 
         var foodBehaviour = GetBehaviour(converters, FoodConverterIndex);
         var waterBehaviour = GetBehaviour(converters, WaterConverterIndex);
         var oxygenBehaviour = GetBehaviour(converters, OxygenConverterIndex);
         var ecBehaviour = GetBehaviour(converters, ECConverterIndex);
 
-        // O2 and EC: vessel-level hibernation (no per-kerbal respite)
-        if (
-            oxygenBehaviour?.lastNotSatisfied != null
-            && (now - oxygenBehaviour.lastNotSatisfied.Value) > global.MaxTimeWithoutOxygen
-        )
-            controller.HibernateCrewMembers(vessel, vesselInfo, "O2");
-
-        if (
-            ecBehaviour?.lastNotSatisfied != null
-            && (now - ecBehaviour.lastNotSatisfied.Value) > global.MaxTimeWithoutElectricity
-        )
-            controller.HibernateCrewMembers(vessel, vesselInfo, "EC");
-
-        // Food and water: per-kerbal kill with respite grace period
         int initialCrew = vesselInfo.numCrew;
         int killed = 0;
+
+        // O2 and EC are tracked vessel-wide (no per-kerbal respite): hibernation
+        // covers the whole crew, death takes one random kerbal per trigger.
+        if (oxygenBehaviour != null)
+        {
+            if (DeadlineExpired(oxygenBehaviour, now, sec3.MaxTimeWithoutOxygen))
+            {
+                if (die)
+                    killed += KillRandomCrew(
+                        controller,
+                        oxygenBehaviour,
+                        sec3.MaxTimeWithoutOxygen,
+                        now,
+                        60,
+                        600,
+                        "oxygen deprivation"
+                    );
+                else
+                    controller.HibernateCrewMembers(vessel, vesselInfo, "O2");
+            }
+            else if (oxygenBehaviour.lastNotSatisfied == null && !die)
+            {
+                controller.RemoveHibernationStates(vessel, vesselInfo, "O2");
+            }
+        }
+
+        if (ecBehaviour != null)
+        {
+            if (DeadlineExpired(ecBehaviour, now, sec3.MaxTimeWithoutElectricity))
+            {
+                if (die)
+                {
+                    killed += KillRandomCrew(
+                        controller,
+                        ecBehaviour,
+                        sec3.MaxTimeWithoutElectricity,
+                        now,
+                        500,
+                        2000,
+                        "air toxicity"
+                    );
+
+                    // TAC-LS clamps lastElectricity to the current time; O2 has
+                    // no such clamp.
+                    if (ecBehaviour.lastNotSatisfied is double lastEC)
+                        ecBehaviour.lastNotSatisfied = System.Math.Min(lastEC, now);
+                }
+                else
+                {
+                    controller.HibernateCrewMembers(vessel, vesselInfo, "EC");
+                }
+            }
+            else if (ecBehaviour.lastNotSatisfied == null && !die)
+            {
+                controller.RemoveHibernationStates(vessel, vesselInfo, "EC");
+            }
+        }
+
+        // Food and water are per-kerbal with a respite grace period.
         foreach (var crewInfo in vesselInfo.CrewInVessel)
         {
-            if (crewInfo.DFfrozen || crewInfo.hibernating)
+            if (crewInfo.DFfrozen)
                 continue;
 
-            var protoMember = vessel
-                .protoVessel?.GetVesselCrew()
-                .Find(c => c.name == crewInfo.name);
-            if (protoMember == null)
-                continue;
+            bool starved = DeadlineExpired(
+                foodBehaviour,
+                now,
+                sec3.MaxTimeWithoutFood + crewInfo.respite
+            );
+            bool dehydrated = DeadlineExpired(
+                waterBehaviour,
+                now,
+                sec3.MaxTimeWithoutWater + crewInfo.respite
+            );
 
-            if (
-                foodBehaviour?.lastNotSatisfied != null
-                && (now - foodBehaviour.lastNotSatisfied.Value)
-                    > (global.MaxTimeWithoutFood + crewInfo.respite)
-            )
+            if (die)
             {
-                controller.KillCrewMember(protoMember, "starvation", vessel);
+                if (!starved && !dehydrated)
+                    continue;
+
+                var protoMember = vessel
+                    .protoVessel?.GetVesselCrew()
+                    .Find(c => c.name == crewInfo.name);
+                if (protoMember == null)
+                    continue;
+
+                controller.KillCrewMember(
+                    protoMember,
+                    starved ? "starvation" : "dehydration",
+                    vessel
+                );
                 killed++;
-                continue;
             }
-
-            if (
-                waterBehaviour?.lastNotSatisfied != null
-                && (now - waterBehaviour.lastNotSatisfied.Value)
-                    > (global.MaxTimeWithoutWater + crewInfo.respite)
-            )
+            else
             {
-                controller.KillCrewMember(protoMember, "dehydration", vessel);
-                killed++;
+                if (starved)
+                    controller.HibernateCrewMember(crewInfo, vessel, vesselInfo, "Food");
+                else if (
+                    foodBehaviour != null
+                    && foodBehaviour.lastNotSatisfied == null
+                    && crewInfo.hibernating
+                    && crewInfo.lackofFood
+                )
+                    controller.RemoveHibernationState(crewInfo, vessel, "Food");
+
+                if (dehydrated)
+                    controller.HibernateCrewMember(crewInfo, vessel, vesselInfo, "Water");
+                else if (
+                    waterBehaviour != null
+                    && waterBehaviour.lastNotSatisfied == null
+                    && crewInfo.hibernating
+                    && crewInfo.lackofWater
+                )
+                    controller.RemoveHibernationState(crewInfo, vessel, "Water");
             }
         }
 
@@ -303,6 +380,52 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
             );
             processor.MarkDirty();
         }
+    }
+
+    private static bool DeadlineExpired(
+        TACLifeSupportBehaviour behaviour,
+        double now,
+        double maxTimeWithout
+    )
+    {
+        return behaviour?.lastNotSatisfied != null
+            && (now - behaviour.lastNotSatisfied.Value) > maxTimeWithout;
+    }
+
+    /// <summary>
+    /// Replays TAC-LS's fatal O2/EC starvation over the elapsed background time:
+    /// the mod kills one random kerbal each time the threshold is crossed and then
+    /// pushes the depletion timestamp forward by a random stagger interval.
+    /// (TAC-LS's <c>Random.Range(0, crew.Count - 1)</c> off-by-one, which never
+    /// picks the last-listed kerbal, is deliberately not reproduced.)
+    /// </summary>
+    private int KillRandomCrew(
+        LifeSupportController controller,
+        TACLifeSupportBehaviour behaviour,
+        double maxTimeWithout,
+        double now,
+        int minStagger,
+        int maxStagger,
+        string causeOfDeath
+    )
+    {
+        int killed = 0;
+        while (
+            behaviour.lastNotSatisfied != null
+            && (now - behaviour.lastNotSatisfied.Value) > maxTimeWithout
+        )
+        {
+            var crew = vessel.protoVessel?.GetVesselCrew();
+            if (crew == null || crew.Count == 0)
+                break;
+
+            var member = crew[Random.Range(0, crew.Count)];
+            controller.KillCrewMember(member, causeOfDeath, vessel);
+            killed++;
+
+            behaviour.lastNotSatisfied += Random.Range(minStagger, maxStagger);
+        }
+        return killed;
     }
 
     private static void UpdateCrewRates(
