@@ -52,6 +52,14 @@ public class BackgroundCryoTank : BackgroundConverter<ModuleCryoTank>
         List<BoiloffFuel> fuels = [.. GetFuels(module).Where(fuel => fuel.fuelPresent)];
         List<ConverterBehaviour> behaviours = [];
 
+        // ModuleCryoTank cools the tank as a whole: the EC cost is
+        // (module CoolingCost + sum of per-fuel costs) per 1000 units of
+        // _total_ tank capacity. We model cooling per-fuel, so split the
+        // tank-wide cost across fuels in proportion to their capacity.
+        double coolingCost = module.CoolingCost;
+        foreach (var fuel in fuels)
+            coolingCost += fuel.FuelCoolingCost();
+
         foreach (var fuel in fuels)
         {
             string boiloffResource;
@@ -110,7 +118,7 @@ public class BackgroundCryoTank : BackgroundConverter<ModuleCryoTank>
                             new ResourceRatio()
                             {
                                 ResourceName = "ElectricCharge",
-                                Ratio = fuel.FuelCoolingCost() * fuel.FuelAmountMax() * 0.001,
+                                Ratio = coolingCost * fuel.FuelAmountMax() * 0.001,
                                 FlowMode = ResourceFlowMode.NULL,
                             },
                         ]
