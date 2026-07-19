@@ -51,12 +51,10 @@ public sealed class ShadowStateTests : BRPTestBase
     }
 
     /// <summary>
-    /// Locks in the multi-star changepoint behaviour: when the vessel is lit by a
-    /// weaker star but still inside a stronger (earlier-listed) star's umbra,
-    /// emerging from that umbra raises the available power and is therefore a
-    /// genuine changepoint. The reported terminator must be the earlier of the lit
-    /// star's sunset and the stronger star's sunrise — NOT just the lit star's own
-    /// sunset.
+    /// Locks in the multi-star changepoint behaviour: the available solar flux is
+    /// summed over every lit star, so ANY star's rise or set changes the available
+    /// power and is a genuine changepoint. The reported terminator is the minimum
+    /// across all stars, whether or not InShadow flips there.
     /// </summary>
     [TestInfo("ShadowStateTests_AggregateStrongerShadowedSunriseWins")]
     public void AggregateStrongerShadowedSunriseWins()
@@ -71,17 +69,33 @@ public sealed class ShadowStateTests : BRPTestBase
     }
 
     /// <summary>
-    /// The strongest currently-lit star wins outright; a later (weaker) star —
-    /// shadowed or not — does not pull the terminator earlier.
+    /// A weaker, currently-shadowed star's sunrise adds flux and is therefore a
+    /// changepoint even while a stronger star keeps the vessel lit throughout.
     /// </summary>
-    [TestInfo("ShadowStateTests_AggregateFirstLitStarWins")]
-    public void AggregateFirstLitStarWins()
+    [TestInfo("ShadowStateTests_AggregateWeakerShadowedSunriseWins")]
+    public void AggregateWeakerShadowedSunriseWins()
     {
         Term[] terms = [Term.Sun(900.0), Term.Shadow(200.0)];
         var state = ShadowState.AggregateShadowState(terms, NullStars(2));
 
         Assert.IsFalse(state.InShadow);
-        Assert.AreEqual(900.0, state.NextTerminatorEstimate, 0.0);
+        Assert.AreEqual(200.0, state.NextTerminatorEstimate, 0.0);
+        Assert.AreEqual(1, state.LitStars.Count);
+    }
+
+    /// <summary>
+    /// Every currently-lit star is collected for flux summation, and the earliest
+    /// sunset among them is the reported terminator.
+    /// </summary>
+    [TestInfo("ShadowStateTests_AggregateCollectsAllLitStars")]
+    public void AggregateCollectsAllLitStars()
+    {
+        Term[] terms = [Term.Sun(900.0), Term.Sun(500.0)];
+        var state = ShadowState.AggregateShadowState(terms, NullStars(2));
+
+        Assert.IsFalse(state.InShadow);
+        Assert.AreEqual(500.0, state.NextTerminatorEstimate, 0.0);
+        Assert.AreEqual(2, state.LitStars.Count);
     }
 
     [TestInfo("ShadowStateTests_AggregateMaxValueMapsToInfinity")]

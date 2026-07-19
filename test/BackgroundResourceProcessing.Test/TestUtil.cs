@@ -56,6 +56,16 @@ public class TestSetup : UnityEngine.MonoBehaviour
 {
     static bool initialized;
 
+    /// <summary>
+    /// Whether <see cref="LogUtil.Error"/> calls throw
+    /// <see cref="TestLogErrorException"/> instead of logging. The sink is
+    /// installed for the whole game session, so this must only be enabled
+    /// while tests are actually executing: throwing out of arbitrary KSP
+    /// callbacks (e.g. <c>VesselModule.Load</c> during <c>ProtoVessel.Load</c>)
+    /// aborts game loading and leaves half-initialized vessels behind.
+    /// </summary>
+    internal static bool ErrorsAreExceptions = false;
+
     void Awake()
     {
         if (initialized)
@@ -75,17 +85,20 @@ public class TestSetup : UnityEngine.MonoBehaviour
     {
         public void Error(string message)
         {
-            throw new TestLogErrorException(message);
+            if (ErrorsAreExceptions)
+                throw new TestLogErrorException(message);
+
+            UnityEngine.Debug.LogError(message);
         }
 
         public void Log(string message)
         {
-            UnityEngine.Debug.Log($"[BRP.Test] {message}");
+            UnityEngine.Debug.Log(message);
         }
 
         public void Warn(string message)
         {
-            UnityEngine.Debug.LogWarning($"[BRP.Test] {message}");
+            UnityEngine.Debug.LogWarning(message);
         }
     }
 }

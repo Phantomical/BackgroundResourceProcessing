@@ -110,20 +110,28 @@ public class TestRunnerUI : MonoBehaviour
         var results = new TestResults();
         var tests = (IEnumerable)TestsField.GetValue(null);
 
-        foreach (UnitTest test in tests)
+        TestSetup.ErrorsAreExceptions = true;
+        try
         {
-            if (test == null || test is not BRPTestBase)
-                continue;
-
-            var states = (IEnumerable)PerformTestMethod.Invoke(test, null);
-            foreach (TestState state in states)
+            foreach (UnitTest test in tests)
             {
-                if (state.Succeeded)
-                    results.success++;
-                else
-                    results.failed++;
-                results.states.Add(state);
+                if (test == null || test is not BRPTestBase)
+                    continue;
+
+                var states = (IEnumerable)PerformTestMethod.Invoke(test, null);
+                foreach (TestState state in states)
+                {
+                    if (state.Succeeded)
+                        results.success++;
+                    else
+                        results.failed++;
+                    results.states.Add(state);
+                }
             }
+        }
+        finally
+        {
+            TestSetup.ErrorsAreExceptions = false;
         }
 
         return results;

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Reflection;
 using BackgroundResourceProcessing.Behaviour;
 using BackgroundResourceProcessing.Converter;
@@ -14,6 +15,10 @@ public class BackgroundCurvedSolarPanel : BackgroundConverter<ModuleCurvedSolarP
 
     private static readonly FieldInfo PanelTransformsField =
         typeof(ModuleCurvedSolarPanel).GetField("panelTransforms", Flags);
+
+    private static readonly bool KopernicusInstalled = AssemblyLoader.loadedAssemblies.Any(a =>
+        a.name == "Kopernicus"
+    );
 
     /// <summary>
     /// The maximum allowed error in solar power before the solver will be
@@ -39,11 +44,30 @@ public class BackgroundCurvedSolarPanel : BackgroundConverter<ModuleCurvedSolarP
             return null;
 
         var vessel = panel.vessel;
-        var processor = vessel.FindVesselModuleImplementing<BackgroundResourceProcessor>();
-        if (processor == null)
-            return null;
 
-        var star = processor.ShadowState?.Star;
+        // Kopernicus replaces the panel's star handling: its KopernicusSolarPanel
+        // fixer disables ModuleCurvedSolarPanel and produces the EC itself,
+        // summing luminosity-weighted flux over every star while auto-tracking
+        // the brightest visible one. Model that with the standard multi-star
+        // SolarPanelBehaviour aimed at the strongest currently-lit star.
+        //
+        // Without Kopernicus the module's own FixedUpdate runs, which is
+        // hardwired to FlightGlobals.Bodies[0]: it aims at it, raycasts against
+        // it, and scales by pure inverse-square distance to it with no
+        // luminosity factor — regardless of any other stars in the system.
+        CelestialBody star;
+        if (KopernicusInstalled)
+        {
+            var processor = vessel.FindVesselModuleImplementing<BackgroundResourceProcessor>();
+            star = processor?.ShadowState?.Star;
+        }
+        else
+        {
+            star = FlightGlobals.Bodies[0];
+            if (star != null && !star.isStar)
+                star = null;
+        }
+
         if (star == null)
             return null;
 
@@ -126,13 +150,15 @@ public class BackgroundCurvedSolarPanel : BackgroundConverter<ModuleCurvedSolarP
         if (power == 0.0)
             return null;
 
-        var behaviour = new SolarPanelBehaviour
-        {
-            ResourceName = panel.ResourceName,
-            FlowMode = ResourceFlowMode.ALL_VESSEL_BALANCE,
-            MaxError = MaxError,
-            ChargeRate = power,
-        };
+        SolarPanelBehaviour behaviour = KopernicusInstalled
+            ? new SolarPanelBehaviour()
+            : new CurvedSolarPanelBehaviour();
+
+        behaviour.ResourceName = panel.ResourceName;
+        behaviour.FlowMode = ResourceFlowMode.ALL_VESSEL_BALANCE;
+        behaviour.MaxError = MaxError;
+        behaviour.ChargeRate = power;
+        behaviour.StarName = star.bodyName;
 
         return new(behaviour);
     }

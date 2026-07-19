@@ -16,6 +16,14 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
     public bool InShadow = inShadow;
     public CelestialBody Star = star;
 
+    /// <summary>
+    /// Every star currently lighting the vessel, in descending flux order.
+    /// <see cref="Star"/> is the first element. May be <c>null</c> when the
+    /// per-star breakdown is unknown (legacy saves, states constructed from a
+    /// single star); consumers must then fall back to <see cref="Star"/> alone.
+    /// </summary>
+    public List<CelestialBody> LitStars = star != null ? [star] : null;
+
     public static ShadowState AlwaysInSun(CelestialBody star) =>
         new(double.PositiveInfinity, false, star);
 
@@ -26,8 +34,22 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
     /// Get the relative solar flux available for the specified vessel as
     /// compared to the solar flux at home.
     /// </summary>
+    ///
+    /// <remarks>
+    /// The loaded game accumulates <c>vessel.solarFlux</c> over every star, so
+    /// this sums the contribution of every currently-lit star rather than only
+    /// the strongest one.
+    /// </remarks>
     public readonly double GetSolarFluxFactor(Vessel vessel)
     {
+        if (LitStars != null)
+        {
+            double total = 0.0;
+            foreach (var star in LitStars)
+                total += StarProvider.GetSolarFluxFactor(star, vessel);
+            return total;
+        }
+
         return StarProvider.GetSolarFluxFactor(Star, vessel);
     }
     #endregion
@@ -86,24 +108,23 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
     /// <remarks>
     /// <para>
     /// Stars are supplied in descending flux order, so the first star that lights
-    /// the vessel is the strongest one currently lighting it; that star wins.
+    /// the vessel is the strongest one currently lighting it; it becomes
+    /// <see cref="Star"/>, and every lit star is collected into
+    /// <see cref="LitStars"/> for flux summation.
     /// </para>
     ///
     /// <para>
-    /// The reported terminator is the <em>earlier</em> of (a) when the lighting
-    /// star sets and (b) the soonest sunrise of an even-stronger star that is
-    /// currently shadowed (one listed before it). Emerging from a stronger star's
-    /// umbra increases the available solar flux, so it is a genuine changepoint
-    /// even though <see cref="InShadow"/> stays <c>false</c> across it — hence the
-    /// <c>Math.Min</c> against the running shadow minimum. If every star is
-    /// shadowed, the nearest shadow-exit (sunrise) time is reported instead.
+    /// Because the available solar flux is the sum over every lit star, any
+    /// star's rise or set changes the available power and is therefore a genuine
+    /// changepoint: the reported terminator is the minimum across all stars,
+    /// whether or not <see cref="InShadow"/> flips there.
     /// </para>
     ///
     /// <para>
     /// This is the single source of truth shared by the asynchronous
-    /// (<see cref="BurstSolver.ShadowHandle.Complete"/>) path and mirrors the
-    /// synchronous <see cref="GetOrbitShadowState"/> / <see cref="GetLandedShadowState"/>
-    /// loops so the two cannot diverge.
+    /// (<see cref="BurstSolver.ShadowHandle.Complete"/>) and synchronous
+    /// (<see cref="GetOrbitShadowState"/> / <see cref="GetLandedShadowState"/>)
+    /// paths so the two cannot diverge.
     /// </para>
     /// </remarks>
     internal static ShadowState AggregateShadowState(
@@ -111,23 +132,23 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         IReadOnlyList<CelestialBody> stars
     )
     {
-        var state = AlwaysInShadow();
+        var estimate = double.PositiveInfinity;
+        List<CelestialBody> lit = null;
+
         for (int i = 0; i < terminators.Length; i++)
         {
             var term = terminators[i];
             var ut = term.UT == double.MaxValue ? double.PositiveInfinity : term.UT;
 
-            // The vessel is lit by this (strongest currently-lit) star. The next
-            // changepoint is either when this star sets (ut) or when an even
-            // stronger, currently-shadowed star rises (state.NextTerminatorEstimate).
+            estimate = Math.Min(estimate, ut);
             if (!term.InShadow)
-                return new ShadowState(Math.Min(ut, state.NextTerminatorEstimate), false, stars[i]);
-
-            if (ut < state.NextTerminatorEstimate)
-                state = new ShadowState(ut, true);
+                (lit ??= []).Add(stars[i]);
         }
 
-        return state;
+        if (lit == null)
+            return new ShadowState(estimate, true);
+
+        return new ShadowState(estimate, false, lit[0]) { LitStars = lit };
     }
 
     /// <summary>
@@ -190,32 +211,23 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         var orbit = new Mathematics.Orbit(vessel);
         var UT = Planetarium.GetUniversalTime();
 
-        var state = AlwaysInShadow();
-        foreach (var star in stars)
+        // A vessel orbiting a star directly is reported lit with an infinite
+        // terminator by ComputeOrbitTerminator itself (it guards the
+        // ParentBodyIndex == starIndex case before building the umbra geometry),
+        // so every star gets a terminator computed unconditionally — exactly the
+        // per-star results the async ShadowJob produces.
+        var terminators = new OrbitShadow.Terminator[stars.Count];
+        for (int i = 0; i < stars.Count; i++)
         {
-            // A vessel orbiting this star directly is reported lit with an
-            // infinite terminator by ComputeOrbitTerminator itself (it guards the
-            // ParentBodyIndex == starIndex case before building the umbra geometry).
-            // Do not short-circuit here: that would drop an earlier, brighter lit
-            // star and ignore the sunrise of a stronger, currently-shadowed star.
-            var terminator = OrbitShadow.ComputeOrbitTerminator(
+            terminators[i] = OrbitShadow.ComputeOrbitTerminator(
                 system,
                 orbit,
-                (int)SolarSystem.GetBodyIndex(star),
+                (int)SolarSystem.GetBodyIndex(stars[i]),
                 UT
             );
-
-            // Lit by this (strongest currently-lit) star. The changepoint is the
-            // earlier of this star setting and an even-stronger shadowed star
-            // rising; see AggregateShadowState.
-            if (!terminator.InShadow)
-                return new(Math.Min(terminator.UT, state.NextTerminatorEstimate), false, star);
-
-            if (terminator.UT < state.NextTerminatorEstimate)
-                state = new(terminator.UT, true);
         }
 
-        return state;
+        return AggregateShadowState(terminators, stars);
     }
 
     private static ShadowState GetLandedShadowState(Vessel vessel)
@@ -228,32 +240,29 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         var currentUT = Planetarium.GetUniversalTime();
         var planet = vessel.orbit.referenceBody;
 
-        var state = AlwaysInShadow();
-        foreach (var star in stars)
+        var system = SolarSystem.Record();
+        var planetIndex = (int)SolarSystem.GetBodyIndex(planet);
+        var normal = GetLandedSurfaceNormal(planet, vessel.latitude, vessel.longitude, currentUT);
+        var cosLatitude = Math.Cos(Math.Abs(vessel.latitude) * MathUtil.DEG2RAD);
+
+        // Compute every star's terminator unconditionally — exactly the per-star
+        // results the async ShadowJob produces — then aggregate them through the
+        // shared helper.
+        var terminators = new OrbitShadow.Terminator[stars.Count];
+        for (int i = 0; i < stars.Count; i++)
         {
-            var sub = ComputeLandedShadowState(
-                planet,
-                star,
-                vessel.latitude,
-                vessel.longitude,
+            terminators[i] = LandedShadow.ComputeLandedTerminator(
+                system,
+                planetIndex,
+                (int)SolarSystem.GetBodyIndex(stars[i]),
+                FindReferenceBodyIndex(planet, stars[i]),
+                normal,
+                cosLatitude,
                 currentUT
             );
-
-            // Lit by this (strongest currently-lit) star. The changepoint is the
-            // earlier of this star setting and an even-stronger shadowed star
-            // rising; see AggregateShadowState.
-            if (!sub.InShadow)
-                return new(
-                    Math.Min(sub.NextTerminatorEstimate, state.NextTerminatorEstimate),
-                    false,
-                    star
-                );
-
-            if (sub.NextTerminatorEstimate < state.NextTerminatorEstimate)
-                state = new(sub.NextTerminatorEstimate, true);
         }
 
-        return state;
+        return AggregateShadowState(terminators, stars);
     }
 
     /// <summary>
@@ -565,9 +574,32 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
             if (body == null)
                 return null;
             state.Star = body;
+
+            // Older saves have no LitStar entries; fall back to the single
+            // primary star.
+            state.LitStars = ResolveLitStars(node) ?? [state.Star];
         }
 
         return state;
+    }
+
+    private static List<CelestialBody> ResolveLitStars(ConfigNode node)
+    {
+        var names = node.GetValues("LitStar");
+        if (names == null || names.Length == 0)
+            return null;
+
+        List<CelestialBody> stars = [];
+        foreach (var name in names)
+        {
+            var body = PSystemManager.Instance?.localBodies?.Find(body =>
+                body.isStar && body.bodyName == name
+            );
+            if (body != null)
+                stars.Add(body);
+        }
+
+        return stars.Count != 0 ? stars : null;
     }
 
     public readonly void Save(ConfigNode node)
@@ -576,6 +608,14 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         node.AddValue("InShadow", InShadow);
         if (Star != null)
             node.AddValue("Star", Star.bodyName);
+        if (LitStars != null)
+        {
+            foreach (var star in LitStars)
+            {
+                if (star != null)
+                    node.AddValue("LitStar", star.bodyName);
+            }
+        }
     }
 }
 

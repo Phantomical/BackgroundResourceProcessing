@@ -69,6 +69,23 @@ public class SolarPanelBehaviour : ConverterBehaviour
     [KSPField(isPersistant = true)]
     public FloatCurve TimeEfficiencyCurve = null;
 
+    /// <summary>
+    /// The name of the star this panel's rates are computed against
+    /// (generally the panel's tracking body). When unset, the strongest
+    /// currently-lit star from the vessel's shadow state is used.
+    /// </summary>
+    [KSPField]
+    public string StarName = null;
+
+    private CelestialBody starBody = null;
+
+    protected override void OnSave(ConfigNode node)
+    {
+        base.OnSave(node);
+        if (StarName != null)
+            node.AddValue(nameof(StarName), StarName);
+    }
+
     public override ConverterResources GetResources(VesselState state)
     {
         double rate = ChargeRate;
@@ -107,10 +124,32 @@ public class SolarPanelBehaviour : ConverterBehaviour
         return resources;
     }
 
+    /// <summary>
+    /// Get the star that this panel's rates are computed against.
+    /// </summary>
+    protected CelestialBody GetStar(VesselState state)
+    {
+        if (starBody != null)
+            return starBody;
+
+        if (!string.IsNullOrEmpty(StarName))
+        {
+            starBody = PSystemManager.Instance?.localBodies?.Find(body =>
+                body.isStar && body.bodyName == StarName
+            );
+            if (starBody != null)
+                return starBody;
+        }
+
+        return state.ShadowState.Star;
+    }
+
     protected virtual double GetSolarDistance(VesselState state)
     {
-        var star = state.ShadowState.Star;
-        return (star.position - Vessel.vesselTransform.position).magnitude - star.Radius;
+        // Stock evaluates powerCurve at the raw center-to-center distance
+        // (ModuleDeployableSolarPanel does not subtract the star's radius).
+        var star = GetStar(state);
+        return (star.position - Vessel.vesselTransform.position).magnitude;
     }
 
     /// <summary>
@@ -165,7 +204,7 @@ public class SolarPanelBehaviour : ConverterBehaviour
         // - We ignore differences due to places within the current SOI.
         //   These should generally be small enough to not matter.
 
-        var bodies = GetReferenceBodies(Vessel);
+        var bodies = GetReferenceBodies(Vessel, GetStar(state));
 
         var orbit = bodies.planet?.orbit ?? Vessel.orbit;
         var distance = orbit.GetRadiusAtUT(state.CurrentTime);
@@ -179,8 +218,14 @@ public class SolarPanelBehaviour : ConverterBehaviour
         }
         else
         {
-            hi = distance * Mathf.Sqrt(1f + MaxError);
-            lo = distance * Mathf.Sqrt(1f - MaxError);
+            // The rate scales with the inverse square of the distance to the
+            // star's surface (see IStarProvider.GetSolarFluxFactor), so the
+            // error boundaries are computed on the surface distance and then
+            // converted back to orbital radii.
+            var radius = bodies.star?.Radius ?? 0.0;
+            var surface = distance - radius;
+            hi = surface * Mathf.Sqrt(1f + MaxError) + radius;
+            lo = surface * Mathf.Sqrt(1f - MaxError) + radius;
         }
 
         if (lo <= orbit.PeR && orbit.ApR <= hi)
@@ -202,28 +247,43 @@ public class SolarPanelBehaviour : ConverterBehaviour
     }
 
     /// <summary>
-    /// Get the last parent body before the sun.
+    /// Walk up the SOI chain to the star the rate calculation is measured
+    /// against, along with its immediate child in the chain.
     /// </summary>
-    /// <param name="vessel"></param>
+    ///
     /// <returns>
-    /// The body, or <c>null</c> if the vessel is orbiting the sun directly.
+    /// The star and the last body before it (<c>planet</c> is <c>null</c> if
+    /// the vessel orbits the star directly). Stars can themselves orbit other
+    /// stars in multi-star systems, so the walk only stops early at a star
+    /// when it is <paramref name="star"/>; if the target is not an ancestor
+    /// (or none was supplied), the first star in the chain is used instead.
     /// </returns>
-    private ReferenceBodies GetReferenceBodies(Vessel vessel)
+    private ReferenceBodies GetReferenceBodies(Vessel vessel, CelestialBody star)
     {
         CelestialBody current = null;
         CelestialBody parent = vessel.orbit.referenceBody;
 
-        while (!parent.isStar)
+        ReferenceBodies fallback = new();
+        bool haveFallback = false;
+
+        while (parent != null)
         {
-            // We somehow aren't orbiting any stars whatsoever?
-            if (parent.orbit == null || parent.orbit.referenceBody == null)
-                return new();
+            if (ReferenceEquals(parent, star))
+                return new() { star = parent, planet = current };
+
+            if (parent.isStar && !haveFallback)
+            {
+                fallback = new() { star = parent, planet = current };
+                haveFallback = true;
+            }
 
             current = parent;
-            parent = parent.orbit.referenceBody;
+            parent = parent.orbit?.referenceBody;
         }
 
-        return new() { star = parent, planet = current };
+        // We never found the target star; use the first star in the chain
+        // (or nothing at all if we somehow aren't orbiting any star).
+        return fallback;
     }
 
     // Get the true anomaly at the next time the orbit will be at radius r.

@@ -144,6 +144,7 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
         behaviour.MaxError = MaxError;
         behaviour.LaunchUT = panel.launchUT;
         behaviour.ChargeRate = power;
+        behaviour.StarName = panel.trackingBody.bodyName;
 
         return new(behaviour);
     }

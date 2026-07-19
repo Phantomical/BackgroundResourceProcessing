@@ -8,6 +8,14 @@ namespace BackgroundResourceProcessing.Integration.Kopernicus;
 public class KopernicusStarProvider : ShadowState.IStarProvider
 {
     /// <summary>
+    /// The solar flux, in W/m^2, at which Kopernicus' KopernicusSolarPanel
+    /// fixer produces exactly a panel's rated output. The fixer computes
+    /// <c>nominalRate / 24.4 / 56.37091313591871</c> EC per W/m^2 of per-star
+    /// flux, so this is the flux basis its output is normalized against.
+    /// </summary>
+    private const double PanelRatedFlux = 24.4 * 56.37091313591871;
+
+    /// <summary>
     /// A cutoff below which we don't bother trying to generate power for a
     /// star.
     /// </summary>
@@ -41,15 +49,26 @@ public class KopernicusStarProvider : ShadowState.IStarProvider
         var spos = body.position;
         var vpos = vessel.vesselTransform.position;
 
-        // Kopernicus' solarLuminosity is actually the equivalent for KSP's
-        // SolarLuminosityAtHome. We just need to compute the luminosity ratios
-        // and distance ratios to get the solar flux multiplication factor.
+        // Kopernicus' solarLuminosity is the star's flux in W/m^2 at the home
+        // body's SMA, measured from the star's surface. Note that we must NOT
+        // normalize against PhysicsGlobals.SolarLuminosityAtHome here:
+        // LightShifter.ApplyPhysics overwrites that global with whichever
+        // star's physics was applied last (usually the tracked star's own
+        // luminosity), which would silently cancel the luminosity factor.
         var distance = (spos - vpos).magnitude - body.Radius;
         var homeBodySMA = KopernicusStar.HomeBodySMA;
         var distanceRatio = homeBodySMA / distance;
-        var luminosityRatio = star.shifter.solarLuminosity / PhysicsGlobals.SolarLuminosityAtHome;
+        var flux = star.shifter.solarLuminosity * distanceRatio * distanceRatio;
 
-        return luminosityRatio * distanceRatio * distanceRatio;
+        // In multi-star systems panels are driven by the KopernicusSolarPanel
+        // fixer, which rates panels against the fixed PanelRatedFlux basis. In
+        // single-star systems the stock module runs instead and its output is
+        // relative to the star's own luminosity-at-home.
+        var basis = KopernicusStar.Stars.Count > 1 ? PanelRatedFlux : star.shifter.solarLuminosity;
+        if (basis <= 0.0)
+            return 0.0;
+
+        return flux / basis;
     }
 
     private struct StarComparer(Vessel vessel) : IComparer<KopernicusStar>
