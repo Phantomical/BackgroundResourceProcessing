@@ -38,7 +38,7 @@ internal static class UnloadedResourceProcessing_GetResourceTotals_Patch
 [HarmonyPatch(nameof(UnloadedResourceProcessing.RequestResource))]
 internal static class UnloadedResourceProcessing_RequestResource_Patch
 {
-    static bool RequestResource(
+    static bool Prefix(
         ProtoVessel vessel,
         string resourceName,
         double amount,
