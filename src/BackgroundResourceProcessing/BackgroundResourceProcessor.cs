@@ -396,6 +396,7 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
 
         var elapsed = Planetarium.GetUniversalTime() - LastChangepoint;
         state.amount += state.rate * elapsed;
+        state.amount = MathUtil.Clamp(state.amount, 0, state.maxAmount);
         return state;
     }
 
@@ -739,7 +740,14 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
         {
             foreach (var inventory in inventories)
             {
-                var frac = inventory.Available / available;
+                // `available` is summed over stored amounts when removing and
+                // over free space when adding, so the per-inventory weight must
+                // match: stored amount for removal, free space for addition.
+                // Weighting removal by free space corrupts inventories (wrong
+                // quantity and weights that need not sum to 1, so amounts can go
+                // negative).
+                var weight = amount < 0.0 ? inventory.Amount : inventory.Available;
+                var frac = weight / available;
                 inventory.Amount += frac * amount;
             }
         }

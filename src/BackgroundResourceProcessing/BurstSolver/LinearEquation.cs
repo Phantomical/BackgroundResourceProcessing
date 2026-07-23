@@ -34,8 +34,12 @@ internal struct LinearEquation(RawList<double> values)
 
     public readonly MemorySpan<double> Span => values.Span;
 
+    // The parameterless form is only used by the test DSL. It runs inside
+    // Unity (or the CLI with the test allocator enabled), so it defaults to a
+    // real Unity allocator rather than an invalid handle. Temp is auto-reclaimed
+    // each frame, so nothing has to dispose these transient equations.
     public LinearEquation()
-        : this([]) { }
+        : this(AllocatorHandle.Temp) { }
 
     public LinearEquation(AllocatorHandle allocator)
         : this(new RawList<double>(allocator)) { }

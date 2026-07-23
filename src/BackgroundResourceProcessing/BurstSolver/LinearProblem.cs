@@ -37,6 +37,13 @@ internal struct LinearProblem(AllocatorHandle allocator)
 
     RawArray<double> cachedTableauMemory = default;
 
+    // The parameterless form is only used by the test DSL. It chains to the
+    // primary constructor so the field initializers above run with a real Unity
+    // allocator instead of the invalid default handle. Temp is auto-reclaimed
+    // each frame, so nothing has to dispose these transient problems.
+    public LinearProblem()
+        : this(AllocatorHandle.Temp) { }
+
     #region Variable Creation
     public Variable CreateVariable()
     {

@@ -119,9 +119,11 @@ internal struct ResourceGraph
         // We need to save this at the start as we'll be removing
         // inventories as we go.
         var inventoryCount = inventoryIds.Length;
+        var idEnum = inventoryIds.GetEnumerator();
 
-        foreach (var inventoryId in inventories.Keys)
+        while (idEnum.MoveNext())
         {
+            int inventoryId = idEnum.Current;
             if (!inventories.ContainsKey(inventoryId))
                 continue;
             ref var inventory = ref inventories.GetUnchecked(inventoryId);

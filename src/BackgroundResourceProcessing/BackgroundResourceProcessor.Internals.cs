@@ -286,6 +286,12 @@ public sealed partial class BackgroundResourceProcessor
     {
         CompletePendingWork();
 
+        // The vessel is now loaded and handles its own changepoints in real
+        // time, so drop any changepoint callback that was queued while it was
+        // unloaded. Otherwise repeated load/unload cycles (station keeping,
+        // rendezvous) pile up duplicate queue entries for the scene's lifetime.
+        EventDispatcher.UnregisterChangepointCallbacks(this);
+
         var currentTime = Planetarium.GetUniversalTime();
 
         UpdateState(currentTime, false);
