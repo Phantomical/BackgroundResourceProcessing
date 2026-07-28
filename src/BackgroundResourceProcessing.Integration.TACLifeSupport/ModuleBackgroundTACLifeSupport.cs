@@ -105,7 +105,7 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
                 options
             );
 
-            if (NeedsOxygen(vessel))
+            if (LifeSupportUtils.NeedsOxygen(vessel, vesselInfo))
             {
                 OxygenConverterIndex = processor.AddConverter(
                     new Core.ResourceConverter(
@@ -444,24 +444,6 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
             oxygenBehaviour.NumCrew = count;
         if (ecBehaviour != null)
             ecBehaviour.NumCrew = count;
-    }
-
-    private static bool NeedsOxygen(Vessel vessel)
-    {
-        if (
-            vessel.mainBody == FlightGlobals.GetHomeBody()
-            || vessel.mainBody.atmosphereContainsOxygen
-        )
-        {
-            double seaLevelPressure = vessel.mainBody.GetPressure(0);
-            if (seaLevelPressure <= 0)
-                return true;
-
-            double atmDensity = vessel.staticPressurekPa / seaLevelPressure;
-            if (atmDensity > 0.2)
-                return false;
-        }
-        return true;
     }
 
     private bool IsEnabled()

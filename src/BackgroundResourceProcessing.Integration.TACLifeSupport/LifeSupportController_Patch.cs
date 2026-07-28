@@ -175,9 +175,15 @@ public static class LifeSupportController_doWarningProcessing_Patch
         estimatedDepleted = exhaustedUT;
 
         var state = processor.GetCurrentResourceState(resourceName);
+
+        // ShowWarnings only looks at what's in the tank right now, so an eclipse dip
+        // would warn about a vessel we know never runs out. Hand it a full tank
+        // instead — warning percent caps at 90, so that always comes back GOOD.
+        var remaining = double.IsPositiveInfinity(exhaustedUT) ? state.maxAmount : state.amount;
+
         controller.ShowWarnings(
             vesselInfo.vesselName,
-            state.amount,
+            remaining,
             state.maxAmount,
             0.0,
             displayName,

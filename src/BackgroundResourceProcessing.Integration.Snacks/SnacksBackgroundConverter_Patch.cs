@@ -163,7 +163,10 @@ static class SnacksBackgroundConverter_Methods_Patch
     {
         var settings = HighLogic.CurrentGame.Parameters.CustomParams<ModIntegrationSettings>();
         if (!(settings?.EnableWildBlueIntegration ?? false))
+        {
             SupplyAmountFunc(instance, resourceName, supply, flowMode, dumpExcess);
+            return;
+        }
 
         var vessel = proto.vesselRef;
         var processor = vessel.FindVesselModuleImplementing<BackgroundResourceProcessor>();
