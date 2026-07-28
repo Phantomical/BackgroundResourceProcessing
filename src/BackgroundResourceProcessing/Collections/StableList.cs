@@ -108,15 +108,23 @@ internal struct StableList<T> : IList<T>, ICollection<T>, IEnumerable<T>
         }
     }
 
+    /// <summary>
+    /// Place <paramref name="item"/> at <paramref name="index"/>, extending
+    /// the list with empty slots if it does not reach that far.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// Unlike <see cref="IList{T}.Insert"/>, this does not shift the elements
+    /// that follow: indices in this list are stable, so an item always ends up
+    /// at exactly the index it was given. Loading a saved list depends on that,
+    /// including the holes left behind by removed elements.
+    /// </remarks>
     public void Insert(int index, T item)
     {
-        if (index < 0 || index > Count)
+        if (index < 0)
             throw new ArgumentOutOfRangeException(nameof(index));
-        if (index == Count)
-        {
-            var newcount = index + 1;
-            list.AddRange(Enumerable.Repeat<T>(null, newcount - Count));
-        }
+        if (index >= Count)
+            list.AddRange(Enumerable.Repeat<T>(null, index + 1 - Count));
 
         this[index] = item;
     }

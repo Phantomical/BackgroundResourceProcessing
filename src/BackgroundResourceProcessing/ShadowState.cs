@@ -557,7 +557,7 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
     public static ShadowState? Load(ConfigNode node)
     {
         ShadowState state = default;
-        if (!node.TryGetValue("NextTerminatorEstimate", ref state.NextTerminatorEstimate))
+        if (!node.TryGetDouble("NextTerminatorEstimate", ref state.NextTerminatorEstimate))
             return null;
         if (!node.TryGetValue("InShadow", ref state.InShadow))
             return null;

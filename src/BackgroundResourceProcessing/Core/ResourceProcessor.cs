@@ -82,7 +82,10 @@ internal class ResourceProcessor
 
             ResourceInventory inventory = new();
             inventory.Load(iNode);
-            if (!inventoryIds.TryAddExt(inventory.Id, inventories.Count))
+            // Note that idx is not necessarily inventories.Count: a vessel that
+            // has had an inventory removed saves sparse indices, and they need
+            // to stay exactly where they were.
+            if (!inventoryIds.TryAddExt(inventory.Id, idx))
                 throw new Exception($"An inventory with id {inventory.Id} has already been added");
             inventories.Insert(idx, inventory);
 
@@ -100,10 +103,56 @@ internal class ResourceProcessor
             converters.Insert(idx, converter);
 
             converter.LoadLegacyEdges(cNode, inventoryIds);
+            PruneDanglingInventoryEdges(converter, idx);
             converter.ComputeConstraintStates(this);
 
             index += 1;
         }
+    }
+
+    /// <summary>
+    /// Remove any inventory indices recorded on the converter that do not
+    /// refer to an inventory that was actually loaded.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// Save files can be edited by hand or written by an older version of the
+    /// mod. Without this, a single dangling index takes down the load of the
+    /// entire vessel module: it is dereferenced by the unguarded
+    /// <see cref="ResourceConverter.ComputeConstraintStates"/> call during load,
+    /// and later on by the graph builder.
+    /// </remarks>
+    private void PruneDanglingInventoryEdges(ResourceConverter converter, int index)
+    {
+        PruneDanglingInventoryEdges(converter.Push, index, "PUSH_INVENTORIES");
+        PruneDanglingInventoryEdges(converter.Pull, index, "PULL_INVENTORIES");
+        PruneDanglingInventoryEdges(converter.Constraint, index, "CONSTRAINT_INVENTORIES");
+    }
+
+    private void PruneDanglingInventoryEdges(DynamicBitSet set, int index, string name)
+    {
+        List<int> dangling = null;
+
+        foreach (var inventory in set)
+        {
+            if (inventory < inventories.Count && inventories[inventory] is not null)
+                continue;
+
+            dangling ??= [];
+            dangling.Add(inventory);
+        }
+
+        if (dangling is null)
+            return;
+
+        foreach (var inventory in dangling)
+            set[inventory] = false;
+
+        LogUtil.Error(
+            $"Converter {index} had {name} entries referring to inventories that do not exist ",
+            $"({string.Join(", ", dangling.Select(i => i.ToString()).ToArray())}). ",
+            "They have been dropped."
+        );
     }
 
     public void Save(ConfigNode node)
@@ -385,8 +434,11 @@ internal class ResourceProcessor
                 );
 
                 var inventory = new ResourceInventory(resource);
-                inventoryIds.Add(inventory.Id, inventories.Count);
-                inventories.Add(inventory);
+                // Add returns the slot it actually used, which is not the same
+                // as the new Count if it reused the hole left by a removed
+                // inventory.
+                var index = inventories.Add(inventory);
+                inventoryIds.Add(inventory.Id, index);
             }
 
             foreach (var module in part.Modules)
@@ -446,8 +498,8 @@ internal class ResourceProcessor
                     {
                         MassIncludedInDryMass = adapter.InventoryMassIncludedInDryMass,
                     };
-                    inventoryIds.Add(inventory.Id, inventories.Count);
-                    inventories.Add(inventory);
+                    var index = inventories.Add(inventory);
+                    inventoryIds.Add(inventory.Id, index);
                 }
             }
         }
@@ -660,8 +712,8 @@ internal class ResourceProcessor
                 if (inventoryIds.ContainsKey(id))
                     continue;
 
-                inventoryIds.Add(id, inventories.Count);
-                inventories.Add(inventory);
+                var index = inventories.Add(inventory);
+                inventoryIds.Add(id, index);
             }
         }
 

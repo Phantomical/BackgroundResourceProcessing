@@ -32,6 +32,37 @@ public sealed class FieldExpressionTests : BRPTestBase
         Assert.AreEqual(expr.Evaluate(module), 5.0);
     }
 
+    class NullCoalesceCounter : PartModule
+    {
+        public int Calls = 0;
+
+        public string MaybeNull()
+        {
+            Calls += 1;
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The left operand of <c>??</c> must only be evaluated once. It used to be
+    /// emitted a second time as the null check, which ran any side effects
+    /// (method calls) twice.
+    /// </summary>
+    [TestInfo("FieldExpressionTests_NullCoalesceEvaluatesLhsOnce")]
+    public void NullCoalesceEvaluatesLhsOnce()
+    {
+        NullCoalesceCounter module = new();
+
+        var expr = FieldExpression<double>.Compile(
+            "%.MaybeNull() ?? 5",
+            new(),
+            typeof(NullCoalesceCounter)
+        );
+
+        Assert.AreEqual(5.0, expr.Evaluate(module));
+        Assert.AreEqual(1, module.Calls);
+    }
+
     [TestInfo("FieldExpressionTests_ParseEnum")]
     public void ParseEnum()
     {

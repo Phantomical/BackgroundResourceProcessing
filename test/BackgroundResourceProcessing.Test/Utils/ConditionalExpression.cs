@@ -122,6 +122,29 @@ public sealed class ConditionalExpressionTests : BRPTestBase
 
         expr = Compile("typeof(%FlowMode) == \"ResourceFlowMode\"");
         Assert.IsTrue(expr.Evaluate(module));
+
+        // typeof used to report the CLR type of the expression tree node rather
+        // than the type of the value the expression evaluates to. It only
+        // actually differed for the nodes whose CLR class happens to be sealed,
+        // which is what these two used to hit: `UnaryExpression` and
+        // `LogicalBinaryExpression`.
+        expr = Compile("typeof(!%False) == \"Boolean\"");
+        Assert.IsTrue(expr.Evaluate(module));
+
+        expr = Compile("typeof(5 == 5) == \"Boolean\"");
+        Assert.IsTrue(expr.Evaluate(module));
+
+        expr = Compile("typeof(\"a string\") == \"String\"");
+        Assert.IsTrue(expr.Evaluate(module));
+
+        expr = Compile("typeof(5) == \"Double\"");
+        Assert.IsTrue(expr.Evaluate(module));
+
+        expr = Compile("typeof(%Input) == \"ResourceRatio\"");
+        Assert.IsTrue(expr.Evaluate(module));
+
+        expr = Compile("typeof(%Field1) == \"String\"");
+        Assert.IsTrue(expr.Evaluate(module));
     }
 
     [TestInfo("ConditionalExpressionTests_TestStringFieldAccess")]

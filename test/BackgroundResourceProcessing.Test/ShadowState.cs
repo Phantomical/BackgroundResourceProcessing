@@ -172,4 +172,40 @@ public sealed class ShadowStateTests : BRPTestBase
     }
 
     #endregion
+
+    #region Load
+
+    /// <summary>
+    /// An infinite terminator estimate is the common case for anything that
+    /// never enters shadow, so it must survive a save/load roundtrip. Stock
+    /// <c>ConfigNode.TryGetValue</c> cannot parse "Infinity" and used to make
+    /// <see cref="ShadowState.Load"/> discard the whole persisted state.
+    /// </summary>
+    [TestInfo("ShadowStateTests_LoadInfiniteTerminator")]
+    public void LoadInfiniteTerminator()
+    {
+        ConfigNode node = new();
+        ShadowState.AlwaysInShadow().Save(node);
+
+        var state = ShadowState.Load(node);
+
+        Assert.IsTrue(state != null);
+        Assert.IsTrue(state.Value.InShadow);
+        Assert.IsTrue(double.IsPositiveInfinity(state.Value.NextTerminatorEstimate));
+    }
+
+    [TestInfo("ShadowStateTests_LoadFiniteTerminator")]
+    public void LoadFiniteTerminator()
+    {
+        ConfigNode node = new();
+        new ShadowState(1234.5, true).Save(node);
+
+        var state = ShadowState.Load(node);
+
+        Assert.IsTrue(state != null);
+        Assert.IsTrue(state.Value.InShadow);
+        Assert.AreEqual(1234.5, state.Value.NextTerminatorEstimate, 0.0);
+    }
+
+    #endregion
 }

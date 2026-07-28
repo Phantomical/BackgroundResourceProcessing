@@ -470,8 +470,12 @@ internal ref struct Parser(Lexer lexer, ConfigNode node, Type target)
         Expression obj = ParseExpression();
         ExpectToken(TokenKind.RPAREN);
 
-        var type = obj.GetType();
-        if (type.IsValueType || type.IsSealed)
+        // The static type of the expression is only guaranteed to be the type
+        // of the value it evaluates to if it is a non-nullable value type.
+        // Anything else may be null, or an instance of a derived type, so we
+        // have to ask for the type at runtime.
+        var type = obj.Type;
+        if (type.IsValueType && !IsNullableT(type, out var _))
             return Expression.Constant(type, typeof(Type));
 
         return CallMethod(() => Methods.DoGetType(null), obj);
@@ -956,7 +960,7 @@ internal ref struct Parser(Lexer lexer, ConfigNode node, Type target)
             return Expression.Block(
                 [p],
                 Expression.Assign(p, lhs),
-                Condition(IsNotNull(lhs), p, rhs)
+                Condition(IsNotNull(p), p, rhs)
             );
         }
     }

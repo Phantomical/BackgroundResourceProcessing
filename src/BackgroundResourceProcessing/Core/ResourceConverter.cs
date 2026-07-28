@@ -289,20 +289,43 @@ public class ResourceConverter(ConverterBehaviour behaviour)
 
         for (int i = 0; i < indices.Length; ++i)
         {
-            if (!uint.TryParse(indices[i], out var result))
+            if (!TryParseIndex(indices[i], out var index))
                 continue;
-            max = (int)result;
+            max = Math.Max(max, index);
         }
 
         var set = new DynamicBitSet(max + 1);
         for (int i = 0; i < indices.Length; ++i)
         {
-            if (!uint.TryParse(indices[i], out var result))
+            if (!TryParseIndex(indices[i], out var index))
                 continue;
-            set[(int)result] = true;
+            set[index] = true;
         }
 
         return set;
+    }
+
+    /// <summary>
+    /// Parse an inventory index, rejecting anything that could not possibly
+    /// be a valid index.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// Indices that don't fit in an <c>int</c> would wrap around to a negative
+    /// number and take out the whole load with an exception. Indices that are
+    /// merely out of range for this vessel are dropped later by
+    /// <see cref="ResourceProcessor.Load"/>, once the inventory count is known.
+    /// </remarks>
+    private static bool TryParseIndex(string text, out int index)
+    {
+        index = -1;
+        if (!uint.TryParse(text, out var parsed))
+            return false;
+        if (parsed > int.MaxValue)
+            return false;
+
+        index = (int)parsed;
+        return true;
     }
 
     private static void SaveBitSet(ConfigNode node, DynamicBitSet set)
