@@ -50,6 +50,26 @@ public class TACLifeSupportBehaviour : ConverterBehaviour
     /// </summary>
     public double? lastNotSatisfied = null;
 
+    /// <summary>
+    /// How long the crew can go without this resource before TAC-LS kills or
+    /// hibernates them. A changepoint is scheduled at that deadline so that it
+    /// is evaluated on time instead of at whatever changepoint happens next.
+    /// Infinity means no changepoint is scheduled.
+    /// </summary>
+    public double MaxTimeWithout = double.PositiveInfinity;
+
+    /// <summary>
+    /// The value of <see cref="lastNotSatisfied"/> before the most recent
+    /// <see cref="OnRatesComputed"/>, i.e. over the interval that just ended.
+    /// <c>OnRatesComputed</c> runs before the changepoint handler, so if the
+    /// resource came back at this changepoint <see cref="lastNotSatisfied"/>
+    /// has already been cleared and the outage would otherwise be forgiven.
+    /// </summary>
+    internal double? previousNotSatisfied = null;
+
+    double Deadline =>
+        lastNotSatisfied is double last ? last + MaxTimeWithout : double.PositiveInfinity;
+
     public override ConverterResources GetResources(VesselState state)
     {
         double inputRate = BaseInputRate + PerCrewInputRate * NumCrew;
@@ -76,7 +96,13 @@ public class TACLifeSupportBehaviour : ConverterBehaviour
                 }
             );
 
-        return new() { Inputs = inputs, Outputs = outputs };
+        var deadline = Deadline;
+        return new()
+        {
+            Inputs = inputs,
+            Outputs = outputs,
+            NextChangepoint = deadline > state.CurrentTime ? deadline : double.PositiveInfinity,
+        };
     }
 
     public override void OnRatesComputed(
@@ -87,10 +113,15 @@ public class TACLifeSupportBehaviour : ConverterBehaviour
     {
         base.OnRatesComputed(processor, converter, evt);
 
+        previousNotSatisfied = lastNotSatisfied;
         if (converter.Rate < 1.0)
             lastNotSatisfied ??= evt.CurrentTime; // Record first time of shortage
         else
             lastNotSatisfied = null; // Resource restored
+
+        var deadline = Deadline;
+        if (deadline > evt.CurrentTime && deadline < converter.NextChangepoint)
+            converter.NextChangepoint = deadline;
     }
 
     protected override void OnLoad(ConfigNode node)
@@ -103,6 +134,7 @@ public class TACLifeSupportBehaviour : ConverterBehaviour
         node.TryGetValue("BaseOutputRate", ref BaseOutputRate);
         node.TryGetValue("PerCrewOutputRate", ref PerCrewOutputRate);
         node.TryGetValue("NumCrew", ref NumCrew);
+        node.TryGetValue("MaxTimeWithout", ref MaxTimeWithout);
 
         double t = 0;
         if (node.TryGetValue("lastNotSatisfied", ref t))
@@ -126,6 +158,8 @@ public class TACLifeSupportBehaviour : ConverterBehaviour
                 node.AddValue("PerCrewOutputRate", PerCrewOutputRate);
         }
         node.AddValue("NumCrew", NumCrew);
+        if (!double.IsPositiveInfinity(MaxTimeWithout))
+            node.AddValue("MaxTimeWithout", MaxTimeWithout);
 
         if (lastNotSatisfied != null)
             node.AddValue("lastNotSatisfied", (double)lastNotSatisfied);

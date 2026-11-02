@@ -63,6 +63,7 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
 
         var global = TacStartOnce.Instance.globalSettings;
         var sec2 = HighLogic.CurrentGame.Parameters.CustomParams<TAC_SettingsParms_Sec2>();
+        var sec3 = HighLogic.CurrentGame.Parameters.CustomParams<TAC_SettingsParms_Sec3>();
         var options = new AddConverterOptions { LinkToAll = true };
 
         // Each behaviour's lastNotSatisfied is seeded with TAC-LS's own "last
@@ -87,6 +88,7 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
                         PerCrewOutputRate = sec2.WasteProductionRate,
                         NumCrew = numCrew,
                         lastNotSatisfied = vesselInfo.lastFood,
+                        MaxTimeWithout = sec3.MaxTimeWithoutFood,
                     }
                 )
                 {
@@ -106,6 +108,7 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
                         PerCrewOutputRate = sec2.WasteWaterProductionRate,
                         NumCrew = numCrew,
                         lastNotSatisfied = vesselInfo.lastWater,
+                        MaxTimeWithout = sec3.MaxTimeWithoutWater,
                     }
                 )
                 {
@@ -127,6 +130,7 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
                             PerCrewOutputRate = sec2.CO2ProductionRate,
                             NumCrew = numCrew,
                             lastNotSatisfied = vesselInfo.lastOxygen,
+                            MaxTimeWithout = sec3.MaxTimeWithoutOxygen,
                         }
                     )
                     {
@@ -279,10 +283,13 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
                         600,
                         "oxygen deprivation"
                     );
-                else
+                else if (oxygenBehaviour.lastNotSatisfied != null)
                     controller.HibernateCrewMembers(vessel, vesselInfo, "O2");
             }
-            else if (oxygenBehaviour.lastNotSatisfied == null && !die)
+
+            // Hibernation only lasts while the resource is short, so wake the
+            // crew if it came back, even if the deadline expired just now.
+            if (oxygenBehaviour.lastNotSatisfied == null && !die)
             {
                 controller.RemoveHibernationStates(vessel, vesselInfo, "O2");
             }
@@ -309,12 +316,13 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
                     if (ecBehaviour.lastNotSatisfied is double lastEC)
                         ecBehaviour.lastNotSatisfied = System.Math.Min(lastEC, now);
                 }
-                else
+                else if (ecBehaviour.lastNotSatisfied != null)
                 {
                     controller.HibernateCrewMembers(vessel, vesselInfo, "EC");
                 }
             }
-            else if (ecBehaviour.lastNotSatisfied == null && !die)
+
+            if (ecBehaviour.lastNotSatisfied == null && !die)
             {
                 controller.RemoveHibernationStates(vessel, vesselInfo, "EC");
             }
@@ -357,7 +365,7 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
             }
             else
             {
-                if (starved)
+                if (starved && foodBehaviour.lastNotSatisfied != null)
                     controller.HibernateCrewMember(crewInfo, vessel, vesselInfo, "Food");
                 else if (
                     foodBehaviour != null
@@ -367,7 +375,7 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
                 )
                     controller.RemoveHibernationState(crewInfo, vessel, "Food");
 
-                if (dehydrated)
+                if (dehydrated && waterBehaviour.lastNotSatisfied != null)
                     controller.HibernateCrewMember(crewInfo, vessel, vesselInfo, "Water");
                 else if (
                     waterBehaviour != null
@@ -393,14 +401,21 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
         }
     }
 
+    /// <summary>
+    /// Whether the resource was short for longer than
+    /// <paramref name="maxTimeWithout"/> by the end of the interval that just
+    /// ended. This uses the shortage start from before the rates were
+    /// recomputed, so an outage still counts even if the resource came back
+    /// at this changepoint.
+    /// </summary>
     private static bool DeadlineExpired(
         TACLifeSupportBehaviour behaviour,
         double now,
         double maxTimeWithout
     )
     {
-        return behaviour?.lastNotSatisfied != null
-            && (now - behaviour.lastNotSatisfied.Value) > maxTimeWithout;
+        return behaviour?.previousNotSatisfied != null
+            && (now - behaviour.previousNotSatisfied.Value) > maxTimeWithout;
     }
 
     /// <summary>
@@ -422,8 +437,8 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
     {
         int killed = 0;
         while (
-            behaviour.lastNotSatisfied != null
-            && (now - behaviour.lastNotSatisfied.Value) > maxTimeWithout
+            behaviour.previousNotSatisfied != null
+            && (now - behaviour.previousNotSatisfied.Value) > maxTimeWithout
         )
         {
             var crew = vessel.protoVessel?.GetVesselCrew();
@@ -434,7 +449,12 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
             controller.KillCrewMember(member, causeOfDeath, vessel);
             killed++;
 
-            behaviour.lastNotSatisfied += Random.Range(minStagger, maxStagger);
+            behaviour.previousNotSatisfied += Random.Range(minStagger, maxStagger);
+
+            // If the resource is still short then the stagger carries over to
+            // the ongoing outage. If it came back then the outage is over.
+            if (behaviour.lastNotSatisfied != null)
+                behaviour.lastNotSatisfied = behaviour.previousNotSatisfied;
         }
         return killed;
     }
