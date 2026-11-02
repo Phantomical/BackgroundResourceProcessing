@@ -158,6 +158,7 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
                         PerCrewInputRate = ecPerCrew,
                         NumCrew = vesselInfo.numCrew,
                         lastNotSatisfied = vesselInfo.lastElectricity,
+                        MaxTimeWithout = GetMaxTimeWithoutElectricity(sec3, global),
                     }
                 )
                 {
@@ -295,16 +296,20 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
             }
         }
 
+        var maxTimeWithoutEC = GetMaxTimeWithoutElectricity(
+            sec3,
+            TacStartOnce.Instance.globalSettings
+        );
         if (ecBehaviour != null)
         {
-            if (DeadlineExpired(ecBehaviour, now, sec3.MaxTimeWithoutElectricity))
+            if (DeadlineExpired(ecBehaviour, now, maxTimeWithoutEC))
             {
                 if (die)
                 {
                     killed += KillRandomCrew(
                         controller,
                         ecBehaviour,
-                        sec3.MaxTimeWithoutElectricity,
+                        maxTimeWithoutEC,
                         now,
                         500,
                         2000,
@@ -408,6 +413,21 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
     /// recomputed, so an outage still counts even if the resource came back
     /// at this changepoint.
     /// </summary>
+    /// <summary>
+    /// TAC-LS scales the EC deadline by
+    /// <c>Max(ElectricityMaxDeltaTime, TimeWarp.CurrentRateIndex)</c>. The warp
+    /// index is 0 when TAC-LS catches a vessel up on load, which is the case
+    /// we model, so only <c>ElectricityMaxDeltaTime</c> applies here.
+    /// </summary>
+    private static double GetMaxTimeWithoutElectricity(
+        TAC_SettingsParms_Sec3 sec3,
+        GlobalSettings global
+    )
+    {
+        var scale = global?.ElectricityMaxDeltaTime ?? 1;
+        return sec3.MaxTimeWithoutElectricity * System.Math.Max(scale, 0);
+    }
+
     private static bool DeadlineExpired(
         TACLifeSupportBehaviour behaviour,
         double now,
