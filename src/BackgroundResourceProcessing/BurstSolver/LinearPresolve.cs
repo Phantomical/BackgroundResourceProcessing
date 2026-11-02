@@ -435,7 +435,9 @@ internal static class LinearPresolve
         double* avx2_f = stackalloc double[4];
         var avx2_vf = stackalloc v256[4];
 
-        for (int pc = 0, pr = 0; pc < tableau.Cols && pr < stop; ++pc)
+        // The last column holds the constants. Pivoting on it would clear the
+        // constant of every other row, so only pivot on variable columns.
+        for (int pc = 0, pr = 0; pc < tableau.Cols - 1 && pr < stop; ++pc)
         {
             int rmax = -1;
             double vmax = 0.0;
