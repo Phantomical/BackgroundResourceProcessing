@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using BackgroundResourceProcessing.Behaviour;
@@ -23,6 +24,12 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
     static bool GetKopernicusROFlag(PartModule fixer)
     {
         var field = fixer.GetType().GetField("ROFlag", Flags);
+        return field?.GetValue(fixer) is bool flag && flag;
+    }
+
+    static bool GetKopernicusManualTracking(PartModule fixer)
+    {
+        var field = fixer.GetType().GetField("manualTracking", Flags);
         return field?.GetValue(fixer) is bool flag && flag;
     }
 
@@ -69,6 +76,11 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
         if (kopernicusFixer == null)
             power *= panel.flowMult * panel.efficiencyMult;
 
+        // The fixer sums the light from every star and automatically points
+        // the panel at the brightest one that is visible, so record the
+        // panel's exposure to each star instead of a single angle of attack.
+        List<SolarPanelBehaviour.StarTracking> tracking = null;
+
         switch (vessel.situation)
         {
             // Docked is a weird one. It could really be anything.
@@ -82,6 +94,12 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
                 //
                 // This isn't quite the same as how things behave in KSP,
                 // but it is a reasonable simplification to make here.
+                if (kopernicusFixer != null)
+                {
+                    tracking = GetOrbitStarTracking(panel, kopernicusFixer);
+                    break;
+                }
+
                 var sun = GetTargetDirection(panel);
                 if (!GetPanelLOS(panel, sun, orbitLayerMask))
                     return null;
@@ -97,7 +115,11 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
             case Vessel.Situations.LANDED:
             case Vessel.Situations.PRELAUNCH:
             case Vessel.Situations.SPLASHED:
-                if (OnTidallyLockedPlanet(panel))
+                if (kopernicusFixer != null)
+                {
+                    tracking = GetLandedStarTracking(panel, kopernicusFixer);
+                }
+                else if (OnTidallyLockedPlanet(panel, panel.trackingBody))
                 {
                     // If we're tracking the parent star of a tidally locked
                     // planet then we can use our current orientation.
@@ -107,32 +129,7 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
                 }
                 else
                 {
-                    // So landed solar panels require some special consideration.
-                    // We don't want to constantly be re-evaluating panel AoAs
-                    // but at the same time we want to at least be somewhat
-                    // accurate.
-                    //
-                    // The solution I've gone with here is to evaluate the panel's
-                    // AoA at 5 different points and then used a weighted average
-                    // of those points to compute the effective AoA factor.
-
-                    ComputeLandedSunVectors(panel, out var sunrise, out var noon, out var sunset);
-                    var midpoint1 = (sunrise + noon).normalized;
-                    var midpoint2 = (sunset + noon).normalized;
-
-                    double weightedAoA = 0.0;
-                    if (GetPanelLOS(panel, sunrise, landedLayerMask))
-                        weightedAoA += 0.125 * GetOptimalPanelAoAFactor(panel, sunrise);
-                    if (GetPanelLOS(panel, midpoint1, landedLayerMask))
-                        weightedAoA += 0.25 * GetOptimalPanelAoAFactor(panel, midpoint1);
-                    if (GetPanelLOS(panel, noon, landedLayerMask))
-                        weightedAoA += 0.25 * GetOptimalPanelAoAFactor(panel, noon);
-                    if (GetPanelLOS(panel, midpoint2, landedLayerMask))
-                        weightedAoA += 0.25 * GetOptimalPanelAoAFactor(panel, midpoint2);
-                    if (GetPanelLOS(panel, sunset, landedLayerMask))
-                        weightedAoA += 0.125 * GetOptimalPanelAoAFactor(panel, sunset);
-
-                    power *= weightedAoA;
+                    power *= GetLandedAveragedAoAFactor(panel);
                 }
 
                 // It's possible to be both LANDED and underwater, so we
@@ -150,8 +147,10 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
 
         if (power == 0.0)
             return null;
+        if (tracking != null && !HasAnyExposure(tracking))
+            return null;
 
-        var behaviour = new SolarPanelBehaviour();
+        var behaviour = new SolarPanelBehaviour { Tracking = tracking };
         if (panel.useCurve && kopernicusFixer == null)
             behaviour.PowerCurve = panel.powerCurve;
         // The Kopernicus fixer only applies panel wear when ROFlag is set.
@@ -182,6 +181,205 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
         var sun = (target - start).normalized;
 
         return GetOptimalPanelAoAFactor(panel, sun);
+    }
+
+    /// <summary>
+    /// Compute the panel's exposure to every relevant star, for each star
+    /// that the panel could be pointed at, while in orbit.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// A tracking panel rotates about its pivot axis to face the star it is
+    /// tracking. The light it then gets from another star depends on the
+    /// angle between that star and the panel's facing.
+    /// </remarks>
+    private List<SolarPanelBehaviour.StarTracking> GetOrbitStarTracking(
+        ModuleDeployableSolarPanel panel,
+        PartModule fixer
+    )
+    {
+        var stars = GetCandidateStars(panel);
+        var directions = new Vector3d[stars.Count];
+        var visible = new bool[stars.Count];
+
+        for (int i = 0; i < stars.Count; ++i)
+        {
+            directions[i] = GetTargetDirection(panel, stars[i]);
+            visible[i] = GetPanelLOS(panel, directions[i], orbitLayerMask);
+        }
+
+        List<SolarPanelBehaviour.StarTracking> tracking = [];
+        for (int i = 0; i < stars.Count; ++i)
+        {
+            if (!IsTrackable(panel, fixer, stars[i]))
+                continue;
+
+            var entry = new SolarPanelBehaviour.StarTracking { StarName = stars[i].bodyName };
+            for (int j = 0; j < stars.Count; ++j)
+            {
+                double factor = 0.0;
+                if (visible[j])
+                    factor = GetTrackedAoAFactor(panel, directions[i], directions[j], i == j);
+
+                entry.Exposures.Add(new() { StarName = stars[j].bodyName, Factor = factor });
+            }
+
+            tracking.Add(entry);
+        }
+
+        return tracking;
+    }
+
+    /// <summary>
+    /// Compute the panel's exposure to every relevant star while landed.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// Over a day every star sweeps across the sky, so the exposure to each
+    /// star is approximated by the same day-averaged AoA used for a single
+    /// star, regardless of which star the panel is pointed at. On a planet
+    /// that is tidally locked to a star, that star stays fixed in the sky and
+    /// the panel's current orientation is used instead.
+    /// </remarks>
+    private List<SolarPanelBehaviour.StarTracking> GetLandedStarTracking(
+        ModuleDeployableSolarPanel panel,
+        PartModule fixer
+    )
+    {
+        var stars = GetCandidateStars(panel);
+        double? averaged = null;
+
+        List<SolarPanelBehaviour.StarExposure> exposures = [];
+        foreach (var star in stars)
+        {
+            double factor;
+            if (OnTidallyLockedPlanet(panel, star))
+                factor = GetOptimalPanelAoAFactor(panel, GetTargetDirection(panel, star));
+            else
+                factor = averaged ??= GetLandedAveragedAoAFactor(panel);
+
+            exposures.Add(new() { StarName = star.bodyName, Factor = factor });
+        }
+
+        List<SolarPanelBehaviour.StarTracking> tracking = [];
+        foreach (var star in stars)
+        {
+            if (!IsTrackable(panel, fixer, star))
+                continue;
+
+            tracking.Add(new() { StarName = star.bodyName, Exposures = [.. exposures] });
+        }
+
+        return tracking;
+    }
+
+    /// <summary>
+    /// Get the stars that are relevant to this panel. This is every star that
+    /// is bright enough to matter, along with the star the panel is currently
+    /// tracking.
+    /// </summary>
+    private static List<CelestialBody> GetCandidateStars(ModuleDeployableSolarPanel panel)
+    {
+        List<CelestialBody> stars = [];
+        foreach (var star in ShadowState.StarProvider.GetRelevantStars(panel.vessel) ?? [])
+        {
+            if (star != null && star.isStar && !stars.Contains(star))
+                stars.Add(star);
+        }
+
+        if (!stars.Contains(panel.trackingBody))
+            stars.Add(panel.trackingBody);
+
+        return stars;
+    }
+
+    /// <summary>
+    /// Can the panel end up pointed at <paramref name="star"/>? With manual
+    /// tracking enabled the fixer leaves the panel pointed at its current
+    /// target instead of following the brightest star.
+    /// </summary>
+    private static bool IsTrackable(
+        ModuleDeployableSolarPanel panel,
+        PartModule fixer,
+        CelestialBody star
+    )
+    {
+        if (!GetKopernicusManualTracking(fixer))
+            return true;
+
+        return ReferenceEquals(star, panel.trackingBody);
+    }
+
+    private static bool HasAnyExposure(List<SolarPanelBehaviour.StarTracking> tracking)
+    {
+        foreach (var entry in tracking)
+        {
+            foreach (var exposure in entry.Exposures)
+            {
+                if (exposure.Factor > 0.0)
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Get the AoA factor for light coming from <paramref name="star"/> while
+    /// the panel is pointed at <paramref name="tracked"/>. Both directions
+    /// must be normalized.
+    /// </summary>
+    private double GetTrackedAoAFactor(
+        ModuleDeployableSolarPanel panel,
+        Vector3d tracked,
+        Vector3d star,
+        bool same
+    )
+    {
+        if (same || !panel.isTracking)
+            return GetOptimalPanelAoAFactor(panel, star);
+
+        // The panel rotates about its pivot axis until it faces the tracked
+        // star as closely as it can, so it ends up facing the component of
+        // the tracked direction that is perpendicular to that axis.
+        Vector3d axis = panel.panelRotationTransform.up;
+        var facing = tracked - axis * Vector3d.Dot(axis, tracked);
+        if (facing.magnitude < 1e-6)
+            return 0.0;
+
+        return Math.Max(Vector3d.Dot(facing.normalized, star), 0.0);
+    }
+
+    /// <summary>
+    /// So landed solar panels require some special consideration. We don't
+    /// want to constantly be re-evaluating panel AoAs but at the same time we
+    /// want to at least be somewhat accurate.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// The solution I've gone with here is to evaluate the panel's AoA at 5
+    /// different points and then used a weighted average of those points to
+    /// compute the effective AoA factor.
+    /// </remarks>
+    private double GetLandedAveragedAoAFactor(ModuleDeployableSolarPanel panel)
+    {
+        ComputeLandedSunVectors(panel, out var sunrise, out var noon, out var sunset);
+        var midpoint1 = (sunrise + noon).normalized;
+        var midpoint2 = (sunset + noon).normalized;
+
+        double weightedAoA = 0.0;
+        if (GetPanelLOS(panel, sunrise, landedLayerMask))
+            weightedAoA += 0.125 * GetOptimalPanelAoAFactor(panel, sunrise);
+        if (GetPanelLOS(panel, midpoint1, landedLayerMask))
+            weightedAoA += 0.25 * GetOptimalPanelAoAFactor(panel, midpoint1);
+        if (GetPanelLOS(panel, noon, landedLayerMask))
+            weightedAoA += 0.25 * GetOptimalPanelAoAFactor(panel, noon);
+        if (GetPanelLOS(panel, midpoint2, landedLayerMask))
+            weightedAoA += 0.25 * GetOptimalPanelAoAFactor(panel, midpoint2);
+        if (GetPanelLOS(panel, sunset, landedLayerMask))
+            weightedAoA += 0.125 * GetOptimalPanelAoAFactor(panel, sunset);
+
+        return weightedAoA;
     }
 
     /// <summary>
@@ -307,10 +505,13 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
         sunset = -sunrise;
     }
 
-    private Vector3d GetTargetDirection(ModuleDeployableSolarPanel panel)
+    private Vector3d GetTargetDirection(ModuleDeployableSolarPanel panel) =>
+        GetTargetDirection(panel, panel.trackingBody);
+
+    private static Vector3d GetTargetDirection(ModuleDeployableSolarPanel panel, CelestialBody body)
     {
         var start = ScaledSpace.LocalToScaledSpace(panel.panelRotationTransform.position);
-        var target = panel.trackingBody.scaledBody.transform.position;
+        var target = body.scaledBody.transform.position;
 
         return (target - start).normalized;
     }
@@ -318,10 +519,12 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
     /// <summary>
     /// Is this vessel's parent planet tidally locked to the target star?
     /// </summary>
-    private bool OnTidallyLockedPlanet(ModuleDeployableSolarPanel panel)
+    private static bool OnTidallyLockedPlanet(
+        ModuleDeployableSolarPanel panel,
+        CelestialBody target
+    )
     {
         var vessel = panel.vessel;
-        var target = panel.trackingBody;
         var parent = vessel.orbit.referenceBody;
 
         if (parent == null)

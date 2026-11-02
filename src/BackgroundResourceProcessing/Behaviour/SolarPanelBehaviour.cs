@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using BackgroundResourceProcessing.Utils;
 using UnityEngine;
 
@@ -77,13 +78,106 @@ public class SolarPanelBehaviour : ConverterBehaviour
     [KSPField]
     public string StarName = null;
 
+    /// <summary>
+    /// The light this panel receives from each star, depending on which star
+    /// it is pointed at. When set, <see cref="ChargeRate"/> excludes the
+    /// panel's angle of attack and the panel tracks the brightest
+    /// currently-lit star, like Kopernicus' multi-star panel fixer does.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// The entry for star A lists the exposure factor for every star while
+    /// the panel is pointed at A. A single entry means the panel only ever
+    /// points at that star (e.g. Kopernicus' manual tracking mode).
+    /// </remarks>
+    public List<StarTracking> Tracking = null;
+
+    /// <summary>
+    /// The exposure of a panel to each star while it is pointed at
+    /// <see cref="StarName"/>.
+    /// </summary>
+    public class StarTracking
+    {
+        public string StarName;
+        public List<StarExposure> Exposures = [];
+
+        public double GetExposure(CelestialBody star)
+        {
+            if (star == null)
+                return 0.0;
+
+            foreach (var exposure in Exposures)
+            {
+                if (exposure.StarName == star.bodyName)
+                    return exposure.Factor;
+            }
+
+            return 0.0;
+        }
+    }
+
+    public struct StarExposure
+    {
+        public string StarName;
+        public double Factor;
+    }
+
     private CelestialBody starBody = null;
+    private readonly Dictionary<string, CelestialBody> starCache = [];
 
     protected override void OnSave(ConfigNode node)
     {
         base.OnSave(node);
         if (StarName != null)
             node.AddValue(nameof(StarName), StarName);
+
+        if (Tracking != null)
+        {
+            foreach (var tracking in Tracking)
+            {
+                var tnode = node.AddNode("TRACKING");
+                tnode.AddValue("star", tracking.StarName);
+
+                foreach (var exposure in tracking.Exposures)
+                {
+                    var enode = tnode.AddNode("EXPOSURE");
+                    enode.AddValue("star", exposure.StarName);
+                    enode.AddValue("factor", exposure.Factor);
+                }
+            }
+        }
+    }
+
+    protected override void OnLoad(ConfigNode node)
+    {
+        base.OnLoad(node);
+
+        var tnodes = node.GetNodes("TRACKING");
+        if (tnodes.Length == 0)
+            return;
+
+        Tracking = [];
+        foreach (var tnode in tnodes)
+        {
+            var tracking = new StarTracking { StarName = tnode.GetValue("star") };
+            if (tracking.StarName == null)
+                continue;
+
+            foreach (var enode in tnode.GetNodes("EXPOSURE"))
+            {
+                var name = enode.GetValue("star");
+                double factor = 0.0;
+                if (name == null || !enode.TryGetDouble("factor", ref factor))
+                    continue;
+
+                tracking.Exposures.Add(new() { StarName = name, Factor = factor });
+            }
+
+            Tracking.Add(tracking);
+        }
+
+        if (Tracking.Count == 0)
+            Tracking = null;
     }
 
     public override ConverterResources GetResources(VesselState state)
@@ -92,6 +186,10 @@ public class SolarPanelBehaviour : ConverterBehaviour
         if (state.ShadowState.InShadow)
         {
             rate = 0.0;
+        }
+        else if (Tracking != null)
+        {
+            rate *= GetTrackedRateFactor(state);
         }
         else if (PowerCurve != null)
         {
@@ -129,6 +227,9 @@ public class SolarPanelBehaviour : ConverterBehaviour
     /// </summary>
     protected CelestialBody GetStar(VesselState state)
     {
+        if (Tracking != null)
+            return FindStar(SelectTracking(state).StarName) ?? state.ShadowState.Star;
+
         if (starBody != null)
             return starBody;
 
@@ -142,6 +243,96 @@ public class SolarPanelBehaviour : ConverterBehaviour
         }
 
         return state.ShadowState.Star;
+    }
+
+    /// <summary>
+    /// Pick the star the panel is pointed at: the brightest currently-lit
+    /// star that it can track. If none of the lit stars can be tracked then
+    /// the panel stays pointed at the first star it knows about.
+    /// </summary>
+    internal StarTracking SelectTracking(VesselState state)
+    {
+        var lit = state.ShadowState.LitStars;
+        if (lit == null && state.ShadowState.Star != null)
+            lit = [state.ShadowState.Star];
+
+        if (lit != null)
+        {
+            // LitStars is ordered by descending flux, so the first match is
+            // the brightest star the panel can point at.
+            foreach (var star in lit)
+            {
+                if (star == null)
+                    continue;
+
+                foreach (var tracking in Tracking)
+                {
+                    if (tracking.StarName == star.bodyName)
+                        return tracking;
+                }
+            }
+        }
+
+        return Tracking[0];
+    }
+
+    /// <summary>
+    /// Compute the factor applied to <see cref="ChargeRate"/> when the
+    /// panel's exposure to each star is known. This sums the light from
+    /// every lit star given the panel's orientation towards the tracked star.
+    /// </summary>
+    private double GetTrackedRateFactor(VesselState state)
+    {
+        var tracking = SelectTracking(state);
+
+        if (PowerCurve != null)
+        {
+            var star = FindStar(tracking.StarName);
+            if (star == null)
+                return 0.0;
+
+            return tracking.GetExposure(star)
+                * PowerCurve.Evaluate((float)GetSolarDistance(state))
+                * GetPowerMultiplier(state);
+        }
+
+        var lit = state.ShadowState.LitStars;
+        if (lit == null)
+        {
+            var star = state.ShadowState.Star;
+            if (star == null)
+                return 0.0;
+
+            return tracking.GetExposure(star)
+                * ShadowState.StarProvider.GetSolarFluxFactor(star, Vessel);
+        }
+
+        double factor = 0.0;
+        foreach (var star in lit)
+        {
+            var exposure = tracking.GetExposure(star);
+            if (exposure <= 0.0)
+                continue;
+
+            factor += exposure * ShadowState.StarProvider.GetSolarFluxFactor(star, Vessel);
+        }
+
+        return factor;
+    }
+
+    private CelestialBody FindStar(string name)
+    {
+        if (string.IsNullOrEmpty(name))
+            return null;
+        if (starCache.TryGetValue(name, out var body) && body != null)
+            return body;
+
+        body = PSystemManager.Instance?.localBodies?.Find(body =>
+            body.isStar && body.bodyName == name
+        );
+        if (body != null)
+            starCache[name] = body;
+        return body;
     }
 
     protected virtual double GetSolarDistance(VesselState state)
