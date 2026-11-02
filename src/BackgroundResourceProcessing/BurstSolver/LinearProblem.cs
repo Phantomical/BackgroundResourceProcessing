@@ -642,9 +642,9 @@ internal struct LinearProblem(AllocatorHandle allocator)
 
             BuildVarMap(ref varMap, entry.choices, binaryIndices);
             var tableau = BuildSimplexTableau(func, entry.choices, varMap);
-            var selected = new BitSet(tableau.Cols, Allocator);
+            var basis = new RawArray<int>(tableau.Rows, Allocator);
 
-            var result = Simplex.SolveTableau(tableau, selected, varMap.Count);
+            var result = Simplex.SolveTableau(tableau, basis, varMap.Count);
             if (result == Simplex.Result.Unbounded)
             {
                 // Some variable choices may not be solvable. That's not an
@@ -663,7 +663,7 @@ internal struct LinearProblem(AllocatorHandle allocator)
             LinearSolution? csoln = null;
             if (BurstUtil.SolverTrace)
             {
-                csoln = ExtractTableauSolution(tableau, entry.choices, varMap, selected);
+                csoln = ExtractTableauSolution(tableau, entry.choices, varMap, basis);
                 TraceStepSolution(csoln.Value, score);
             }
 
@@ -673,7 +673,7 @@ internal struct LinearProblem(AllocatorHandle allocator)
             if (score <= best)
                 continue;
 
-            var current = csoln ?? ExtractTableauSolution(tableau, entry.choices, varMap, selected);
+            var current = csoln ?? ExtractTableauSolution(tableau, entry.choices, varMap, basis);
 
             // If the solution has set variables that we were going to recurse
             // on anyway then we should just set those and avoid doing extra
@@ -993,7 +993,7 @@ internal struct LinearProblem(AllocatorHandle allocator)
         Matrix tableau,
         MemorySpan<BinaryChoice> choices,
         RawIntMap<int> varMap,
-        BitSpan selected
+        MemorySpan<int> basis
     )
     {
         var inverse = new RawIntMap<int>(tableau.Cols, Allocator);
@@ -1002,18 +1002,18 @@ internal struct LinearProblem(AllocatorHandle allocator)
 
         var values = new RawArray<double>(VariableCount, Allocator);
 
-        foreach (var x in selected)
+        // Read values off of the basis tracked by the simplex solver. This is
+        // exact, unlike inferring basic variables from unit columns, which
+        // gives the wrong answer when two variables have identical columns.
+        for (int y = 1; y < tableau.Rows; ++y)
         {
-            // We may have selected one of the slack variables. However we
-            // don't set those in the solution.
-            if (x >= VariableCount)
-                break;
+            var x = basis[y];
 
-            if (!inverse.TryGetValue(x, out var index))
+            // Slack variables are not part of the solution.
+            if (x < 0 || x >= varMap.Count)
                 continue;
 
-            var y = FindSetColumnValue(tableau, x);
-            if (y == -1)
+            if (!inverse.TryGetValue(x, out var index))
                 continue;
 
             values[index] = tableau[y, tableau.Cols - 1];
@@ -1049,26 +1049,6 @@ internal struct LinearProblem(AllocatorHandle allocator)
         return soln;
     }
 
-    private static int FindSetColumnValue(Matrix tableau, int column)
-    {
-        int row = -1;
-
-        for (int i = 0; i < tableau.Rows; ++i)
-        {
-            var elem = tableau[i, column];
-            if (elem == 0.0)
-                continue;
-            if (elem != 1.0)
-                return -1;
-
-            if (row < 0)
-                row = i;
-            else
-                return -1;
-        }
-
-        return row;
-    }
     #endregion
 
     #region Matrix Cache

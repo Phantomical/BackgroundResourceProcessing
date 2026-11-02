@@ -94,16 +94,25 @@ internal static partial class Simplex
 #endif
 
     [MustUseReturnValue]
-    public static unsafe Result SolveTableau(Matrix tableau, BitSpan selected, int slackStart)
+    /// <summary>
+    /// Solve the tableau in-place.
+    /// </summary>
+    /// <param name="tableau"></param>
+    /// <param name="basis">
+    /// Receives the column index of the variable that is basic in each row
+    /// (index 0, the objective row, is unused). The value of a basic variable
+    /// is the RHS of its row, every other variable is 0.
+    /// </param>
+    /// <param name="slackStart">The column of the first slack variable.</param>
+    public static unsafe Result SolveTableau(Matrix tableau, MemorySpan<int> basis, int slackStart)
     {
-        if (selected.Capacity < tableau.Cols - 1)
-            BurstCrashHandler.Crash(Error.Simplex_SolveTableau_SelectedTooSmall);
+        if (basis.Length < tableau.Rows)
+            BurstCrashHandler.Crash(Error.Simplex_SolveTableau_BasisTooSmall);
 
-        // The column index of the variable that is currently basic in each row.
-        // Row y starts out basic in its own slack variable. Bland's rule needs
-        // this to break ratio-test ties by variable index rather than by row
-        // index, which is what makes it immune to cycling.
-        int* basis = stackalloc int[tableau.Rows];
+        // Row y starts out basic in its own slack variable. Bland's rule also
+        // needs this to break ratio-test ties by variable index rather than by
+        // row index, which is what makes it immune to cycling.
+        basis[0] = -1;
         for (int y = 1; y < tableau.Rows; ++y)
             basis[y] = slackStart + y - 1;
 
@@ -144,7 +153,6 @@ internal static partial class Simplex
             if (Trace)
                 TracePivot(pivot, index, tableau);
 
-            selected[pivot] = true;
             basis[index] = pivot;
             tableau.InvScaleRow(index, tableau[index, pivot]);
 
@@ -188,7 +196,7 @@ internal static partial class Simplex
     /// Bland's leaving rule: the usual minimum ratio, but ties are broken by
     /// the lowest-index basic variable instead of by the lowest row.
     /// </summary>
-    private static unsafe int SelectRowBland(Matrix tableau, int pivot, [NoAlias] int* basis)
+    private static unsafe int SelectRowBland(Matrix tableau, int pivot, MemorySpan<int> basis)
     {
         int index = -1;
         double value = double.PositiveInfinity;

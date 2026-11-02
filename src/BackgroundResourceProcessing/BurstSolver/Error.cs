@@ -64,7 +64,7 @@ internal enum Error : byte
     LinearProblem_StandardizeConstraint_InvalidRelation,
     LinearProblem_BuildVarMap_WrongVariableCount,
 
-    Simplex_SolveTableau_SelectedTooSmall,
+    Simplex_SolveTableau_BasisTooSmall,
 
     RawList_PopEmpty,
     RawList_IndexOutOfRange,
@@ -187,8 +187,8 @@ internal static class BurstError
                 "variable count was not the right length"
             ),
 
-            Error.Simplex_SolveTableau_SelectedTooSmall => new ArgumentException(
-                "selected was too small for tableau"
+            Error.Simplex_SolveTableau_BasisTooSmall => new ArgumentException(
+                "basis was too small for tableau"
             ),
 
             Error.AdjacencyMatrix_RemoveUnequalColumns_ColumnIndexOutOfRange =>
