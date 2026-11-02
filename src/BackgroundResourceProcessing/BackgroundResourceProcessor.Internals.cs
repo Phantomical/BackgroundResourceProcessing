@@ -145,11 +145,11 @@ public sealed partial class BackgroundResourceProcessor
             $"Updating vessel {vessel.GetDisplayName()} at changepoint {changepoint}"
         );
 
-        if (ShadowState == null || ShadowState.Value.NextTerminatorEstimate <= changepoint)
-        {
-            using var shadow = ShadowStateType.ScheduleShadowState(vessel);
-            ShadowState = shadow.Complete();
-        }
+        // The EventDispatcher computes the shadow state for this changepoint
+        // in a batched job ahead of time, so this should normally not be
+        // needed. It is kept as a synchronous fallback.
+        if (NeedsShadowStateUpdate(changepoint))
+            ShadowState = ShadowStateType.GetShadowState(vessel);
 
         var state = GetVesselState(changepoint);
 
@@ -188,6 +188,34 @@ public sealed partial class BackgroundResourceProcessor
         }
 
         FinishChangepoint(changepoint);
+    }
+
+    /// <summary>
+    /// Whether the shadow state needs to be recomputed before running the
+    /// changepoint at <paramref name="changepoint"/>.
+    /// </summary>
+    internal bool NeedsShadowStateUpdate(double changepoint)
+    {
+        if (vessel == null || vessel.loaded)
+            return false;
+
+        return ShadowState == null || ShadowState.Value.NextTerminatorEstimate <= changepoint;
+    }
+
+    /// <summary>
+    /// Apply a shadow state computed by a <see cref="Shadow.ShadowBatch"/>,
+    /// unless the shadow state has been changed since the batch was started
+    /// (i.e. <see cref="ShadowStateVersion"/> no longer matches
+    /// <paramref name="version"/>), in which case the newer state is kept.
+    /// </summary>
+    internal void ApplyBatchedShadowState(ShadowState state, uint version)
+    {
+        if (vessel == null || vessel.loaded)
+            return;
+        if (ShadowStateVersion != version)
+            return;
+
+        ShadowState = state;
     }
 
     private void CompletePendingWork()

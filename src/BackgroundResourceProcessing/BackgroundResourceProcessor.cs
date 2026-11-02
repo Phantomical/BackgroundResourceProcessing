@@ -123,7 +123,24 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
     /// <summary>
     /// The current state of the vessel WRT to being in the planet's shadow.
     /// </summary>
-    public ShadowState? ShadowState { get; private set; } = null;
+    public ShadowState? ShadowState
+    {
+        get => shadowState;
+        private set
+        {
+            shadowState = value;
+            ShadowStateVersion += 1;
+        }
+    }
+
+    private ShadowState? shadowState = null;
+
+    /// <summary>
+    /// Incremented every time <see cref="ShadowState"/> is assigned. Used to
+    /// detect when a shadow state computed by an in-flight
+    /// <see cref="Shadow.ShadowBatch"/> has been superseded.
+    /// </summary>
+    internal uint ShadowStateVersion { get; private set; } = 0;
 
     // This is the actual API that is meant to be used by other code for
     // interacting with this module.
