@@ -66,14 +66,22 @@ public sealed partial class BackgroundResourceProcessor
 
     void OnDestroy()
     {
-        // Prevent a nullref exception during vesselmodule enumeration.
         if (vessel == null)
-            return;
+        {
+            // Vessel.OnDestroy destroys its vessel modules without unloading
+            // them first. There is no vessel left to finish a changepoint
+            // for, so just drop any pending work. We still need to unsubscribe
+            // from everything, otherwise every later game save will call into
+            // this dead module.
+            DiscardPendingWork();
+        }
+        else
+        {
+            CompletePendingWork();
+        }
 
-        CompletePendingWork();
         EventDispatcher.UnregisterChangepointCallbacks(this);
-
-        UnregisterCallbacks();
+        GameEvents.onGameStateSave.Remove(OnGameStateSave);
     }
 
     public override void OnLoadVessel()
@@ -200,6 +208,22 @@ public sealed partial class BackgroundResourceProcessor
         }
     }
 
+    private void DiscardPendingWork()
+    {
+        if (changepointCoroutine != null)
+        {
+            StopCoroutine(changepointCoroutine);
+            changepointCoroutine = null;
+        }
+
+        if (pendingSolve != null)
+        {
+            pendingSolve.Complete();
+            pendingSolve.Dispose();
+            pendingSolve = null;
+        }
+    }
+
     private void FinishChangepoint(double changepoint)
     {
         DispatchOnRatesComputed(changepoint);
@@ -269,7 +293,7 @@ public sealed partial class BackgroundResourceProcessor
     // We use this event to save the vessel state _before_ we actually get saved.
     private void OnGameStateSave(ConfigNode _)
     {
-        if (!vessel.loaded)
+        if (vessel == null || !vessel.loaded)
             return;
 
         using var span = new TraceSpan("BackgroundResourceProcessor.OnGameStateSave");
@@ -307,7 +331,10 @@ public sealed partial class BackgroundResourceProcessor
         // If the vessel is getting destroyed then there is no point in recording
         // the vessel state.
         if (vessel == null)
+        {
             processor.ClearVesselState();
+            return;
+        }
 
         var currentTime = Planetarium.GetUniversalTime();
 
@@ -439,12 +466,6 @@ public sealed partial class BackgroundResourceProcessor
     {
         if (vessel.loaded)
             GameEvents.onGameStateSave.Add(OnGameStateSave);
-    }
-
-    private void UnregisterCallbacks()
-    {
-        if (vessel.loaded)
-            GameEvents.onGameStateSave.Remove(OnGameStateSave);
     }
     #endregion
 }
