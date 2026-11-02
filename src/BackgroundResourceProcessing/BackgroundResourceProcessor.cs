@@ -626,7 +626,22 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
         var added = AddResourceImpl(resourceName, resourceId, amount, includeModuleInventories);
 
         if (added != 0.0)
+        {
+            // UpdateState treats the proto snapshot as the source of truth when
+            // it next updates snapshots, so write the new amounts back now.
+            // Otherwise this change is silently reverted at the next changepoint.
+            foreach (var inventory in GetResourceEnumerator(resourceId, includeModuleInventories))
+            {
+                if (inventory.Snapshot == null)
+                    continue;
+
+                inventory.Snapshot.amount = inventory.Amount;
+                inventory.Snapshot.UpdateConfigNodeAmounts();
+                inventory.OriginalAmount = inventory.Amount;
+            }
+
             MarkDirty();
+        }
 
         return added;
     }
