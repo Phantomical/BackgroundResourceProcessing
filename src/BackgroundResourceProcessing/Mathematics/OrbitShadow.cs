@@ -209,7 +209,14 @@ internal readonly struct OrbitShadow
         // we can estimate A as sqrt(abs(ddx)).
         var scale = Math.Sqrt(Math.Abs(Dual2Vector3.Dot(new(csun), csun2).ddx));
         // We can then plug this back in to solve cos(A*t) - cos α == 0 for t.
-        var offset = Math.Acos(cosa) / scale;
+        //
+        // cosa can round to just outside [-1, 1] for grazing geometry, and
+        // scale is 0 if the sun direction doesn't change at all (e.g. the
+        // star and planet share a parent). Either would make the estimate
+        // NaN or infinite, so fall back to waiting one orbit instead.
+        var offset = Math.Acos(MathUtil.Clamp(cosa, -1.0, 1.0)) / scale;
+        if (!MathUtil.IsFinite(offset))
+            return minUT + vessel.Period;
 
         var UT = minUT + offset;
         for (int i = 0; i < MaxIter; ++i)
@@ -226,6 +233,9 @@ internal readonly struct OrbitShadow
             if (MathUtil.ApproxEqual(delta, 0.0))
                 break;
         }
+
+        if (!MathUtil.IsFinite(UT))
+            return minUT + vessel.Period;
 
         return Math.Max(UT, minUT + vessel.Period);
     }
