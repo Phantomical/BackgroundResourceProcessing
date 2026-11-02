@@ -177,7 +177,9 @@ internal class EventDispatcher : MonoBehaviour
 
     void OnVesselRecord(BackgroundResourceProcessor processor)
     {
-        if (!Available)
+        // When the integration is disabled BonVoyage runs its own battery
+        // simulation, so we must neither drain EC nor touch its speed.
+        if (!IsEnabled)
             return;
 
         var controller = GetControllerOfVessel(BV.Instance, processor.Vessel);
@@ -196,7 +198,7 @@ internal class EventDispatcher : MonoBehaviour
 
     void OnVesselChangepoint(BackgroundResourceProcessor processor, ChangepointEvent evt)
     {
-        if (!Available)
+        if (!IsEnabled)
             return;
 
         var controller = GetControllerOfVessel(BV.Instance, processor.Vessel);
