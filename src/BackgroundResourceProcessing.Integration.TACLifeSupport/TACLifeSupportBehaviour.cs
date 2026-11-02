@@ -119,9 +119,12 @@ public class TACLifeSupportBehaviour : ConverterBehaviour
         else
             lastNotSatisfied = null; // Resource restored
 
+        // The deadline is the only changepoint this behaviour has. GetResources
+        // may have scheduled one from a shortage that has just been cleared
+        // (e.g. lastNotSatisfied is seeded from TAC-LS when recording), so
+        // replace it rather than only ever bringing it forward.
         var deadline = Deadline;
-        if (deadline > evt.CurrentTime && deadline < converter.NextChangepoint)
-            converter.NextChangepoint = deadline;
+        converter.NextChangepoint = deadline > evt.CurrentTime ? deadline : double.PositiveInfinity;
     }
 
     protected override void OnLoad(ConfigNode node)
