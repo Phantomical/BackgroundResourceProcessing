@@ -11,6 +11,11 @@ namespace BackgroundResourceProcessing.Integration.DeepFreeze;
 [HarmonyPatch]
 static class BGRDeepFreezer_ProcessHandler_Patch
 {
+    // BackgroundResources is optional. Without this, TargetMethod returns null
+    // when it isn't installed, which throws out of PatchAll and prevents every
+    // other patch in this assembly from being applied.
+    static bool Prepare() => AccessTools.TypeByName("BackgroundResources.DeepFreezer") != null;
+
     static MethodBase TargetMethod() =>
         AccessTools.Method("BackgroundResources.DeepFreezer:ProcessHandler");
 
