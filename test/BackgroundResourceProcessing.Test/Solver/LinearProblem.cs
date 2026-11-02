@@ -74,6 +74,47 @@ public sealed class LinearProblemTest : BRPTestBase
         Assert.AreEqual(5.0, soln[z], 1e-6);
     }
 
+    // Many independent OR constraints where the relaxed optimum already
+    // satisfies one side of each. This should be solved without branching on
+    // every disjunction, which would take 2^20 LP solves.
+    [TestInfo("LinearProblemTest_ManySatisfiedDisjunctions")]
+    public void ManySatisfiedDisjunctions()
+    {
+        const int N = 20;
+        LinearProblem problem = new();
+        var xs = new Variable[N];
+        var ys = new Variable[N];
+        var func = new LinearEquation();
+
+        for (int i = 0; i < N; ++i)
+        {
+            var x = problem.CreateVariable();
+            var y = problem.CreateVariable();
+            xs[i] = x;
+            ys[i] = y;
+
+            problem.AddConstraint(x <= 1).Unwrap();
+            problem.AddConstraint(y <= 1).Unwrap();
+            problem
+                .AddOrConstraint(
+                    new LinearEquation() { x, -1.0 * y } <= 0.0,
+                    new LinearEquation() { y } <= 0.25
+                )
+                .Unwrap();
+
+            func.Add(x);
+            func.Add(0.5 * y);
+        }
+
+        var soln = problem.Maximize(func).Unwrap();
+
+        for (int i = 0; i < N; ++i)
+        {
+            Assert.AreEqual(1.0, soln[xs[i]], 1e-6);
+            Assert.AreEqual(1.0, soln[ys[i]], 1e-6);
+        }
+    }
+
     // An objective with no constraints at all has no fixed maximum.
     [TestInfo("LinearProblemTest_UnconstrainedIsUnbounded")]
     public void UnconstrainedIsUnbounded()

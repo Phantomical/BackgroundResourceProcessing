@@ -687,6 +687,31 @@ internal struct LinearProblem(AllocatorHandle allocator)
 
             var current = csoln ?? ExtractTableauSolution(tableau, entry.choices, varMap, basis);
 
+            // The big-M relaxation essentially never sets the decision
+            // variables to exactly 0 or 1, so without this every disjunction
+            // would get branched on, doubling the work for each one.
+            //
+            // If the relaxed optimum already satisfies one side of every
+            // undecided disjunction then it is a feasible point of the integer
+            // problem. Since it is also the optimum of the relaxation, which is
+            // an upper bound for the entire subtree, it is optimal for this
+            // subtree and we can stop here.
+            if (AllDisjunctionsSatisfied(current, entry.choices))
+            {
+                for (int i = 0; i < disjunctions.Count; ++i)
+                {
+                    if (entry.choices[i] != BinaryChoice.Unknown)
+                        continue;
+
+                    entry.choices[i] = IsSatisfied(current, disjunctions[i].lhs)
+                        ? BinaryChoice.Left
+                        : BinaryChoice.Right;
+                }
+
+                entry.depth = disjunctions.Count;
+                current = ExtractTableauSolution(tableau, entry.choices, varMap, basis);
+            }
+
             // If the solution has set variables that we were going to recurse
             // on anyway then we should just set those and avoid doing extra
             // solver iterations.
@@ -860,6 +885,30 @@ internal struct LinearProblem(AllocatorHandle allocator)
     {
         if (BurstUtil.SolverTrace)
             LogUtil.Log($"Final solution {soln} with score {score}");
+    }
+
+    private readonly bool AllDisjunctionsSatisfied(
+        LinearSolution soln,
+        MemorySpan<BinaryChoice> choices
+    )
+    {
+        for (int i = 0; i < disjunctions.Count; ++i)
+        {
+            if (choices[i] != BinaryChoice.Unknown)
+                continue;
+
+            var dis = disjunctions[i];
+            if (!IsSatisfied(soln, dis.lhs) && !IsSatisfied(soln, dis.rhs))
+                return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsSatisfied(LinearSolution soln, SolverConstraint constraint)
+    {
+        var tol = 1e-9 * Math.Max(1.0, Math.Abs(constraint.constant));
+        return soln.Evaluate(constraint.variables) <= constraint.constant + tol;
     }
 
     [IgnoreWarning(1370)]
