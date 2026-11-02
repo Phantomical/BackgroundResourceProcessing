@@ -644,13 +644,19 @@ internal struct LinearProblem(AllocatorHandle allocator)
             var tableau = BuildSimplexTableau(func, entry.choices, varMap);
             var selected = new BitSet(tableau.Cols, Allocator);
 
-            if (!Simplex.SolveTableau(tableau, selected, varMap.Count))
+            var result = Simplex.SolveTableau(tableau, selected, varMap.Count);
+            if (result == Simplex.Result.Unbounded)
             {
                 // Some variable choices may not be solvable. That's not an
                 // issue, it just means that we don't need to consider
                 // any more changes here.
                 continue;
             }
+
+            // If we hit the iteration limit then the tableau still holds a
+            // feasible point, it just may not be optimal. Using it is much
+            // better than treating this branch as infeasible, which could
+            // discard the only feasible branch and fail the whole solve.
 
             var score = tableau[0, tableau.Cols - 1];
 

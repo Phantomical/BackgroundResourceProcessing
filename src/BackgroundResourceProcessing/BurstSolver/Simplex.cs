@@ -25,23 +25,53 @@ namespace BackgroundResourceProcessing.BurstSolver;
 internal static partial class Simplex
 {
     const double Epsilon = 1e-9;
-    const uint MaxIterations = 1000;
 
     /// <summary>
-    /// The number of pivots to take under Dantzig's rule before falling back
-    /// to Bland's rule.
+    /// The minimum number of pivots allowed before giving up. The actual limit
+    /// scales with the size of the tableau, see <see cref="MaxIterationsFor"/>.
+    /// </summary>
+    const uint MinMaxIterations = 1000;
+
+    /// <summary>
+    /// The number of consecutive degenerate pivots to take under Dantzig's
+    /// rule before falling back to Bland's rule.
     /// </summary>
     ///
     /// <remarks>
     /// Dantzig's rule (most negative reduced cost, lowest column index
     /// breaking ties) picks good pivots but can cycle forever on degenerate
     /// problems, and the problems built here are frequently degenerate -- every
-    /// inventory pinned at empty or full contributes a zero-RHS row. Bland's
-    /// rule cannot cycle but picks worse pivots, so it is only worth switching
-    /// to once a solve has gone on long enough that something is clearly wrong.
-    /// Real problems settle in far fewer pivots than this.
+    /// inventory pinned at empty or full contributes a zero-RHS row. Cycling
+    /// can only happen through degenerate pivots (ones that leave the
+    /// objective unchanged), so we only switch to Bland's rule, which cannot
+    /// cycle but picks worse pivots, once a long run of them shows that the
+    /// solve has stalled. Large problems that are steadily improving keep
+    /// using Dantzig's rule.
     /// </remarks>
-    const uint BlandThreshold = 100;
+    const uint BlandThreshold = 50;
+
+    public enum Result : byte
+    {
+        /// <summary>
+        /// The tableau is at an optimal solution.
+        /// </summary>
+        Optimal,
+
+        /// <summary>
+        /// The objective is unbounded along some column.
+        /// </summary>
+        Unbounded,
+
+        /// <summary>
+        /// The iteration limit was hit before reaching optimality. Every pivot
+        /// preserves feasibility so the tableau still holds a feasible point,
+        /// but it may not be optimal.
+        /// </summary>
+        IterationLimit,
+    }
+
+    static uint MaxIterationsFor(Matrix tableau) =>
+        Math.Max(MinMaxIterations, 10u * (uint)(tableau.Rows + tableau.Cols));
 
     private static bool Trace
     {
@@ -64,7 +94,7 @@ internal static partial class Simplex
 #endif
 
     [MustUseReturnValue]
-    public static unsafe bool SolveTableau(Matrix tableau, BitSpan selected, int slackStart)
+    public static unsafe Result SolveTableau(Matrix tableau, BitSpan selected, int slackStart)
     {
         if (selected.Capacity < tableau.Cols - 1)
             BurstCrashHandler.Crash(Error.Simplex_SolveTableau_SelectedTooSmall);
@@ -77,9 +107,16 @@ internal static partial class Simplex
         for (int y = 1; y < tableau.Rows; ++y)
             basis[y] = slackStart + y - 1;
 
-        for (uint iter = 0; iter < MaxIterations; ++iter)
+        uint maxIterations = MaxIterationsFor(tableau);
+        uint stalled = 0;
+        bool bland = false;
+
+        for (uint iter = 0; iter < maxIterations; ++iter)
         {
-            bool bland = iter >= BlandThreshold;
+            // Once we switch to Bland's rule we stay there, switching back
+            // could reintroduce cycling.
+            if (stalled >= BlandThreshold)
+                bland = true;
 
             int pivot = bland
                 ? SelectPivotBland(tableau.GetRowPtr(0), tableau.Cols - 1)
@@ -90,12 +127,19 @@ internal static partial class Simplex
                 if (Trace)
                     TraceFinal(tableau);
 
-                return true;
+                return Result.Optimal;
             }
 
             int index = bland ? SelectRowBland(tableau, pivot, basis) : SelectRow(tableau, pivot);
             if (index < 0)
-                return false;
+                return Result.Unbounded;
+
+            // A pivot is degenerate if the leaving row has a zero RHS, in
+            // which case the objective does not change.
+            if (tableau[index, tableau.Cols - 1] == 0.0)
+                stalled += 1;
+            else
+                stalled = 0;
 
             if (Trace)
                 TracePivot(pivot, index, tableau);
@@ -114,14 +158,12 @@ internal static partial class Simplex
         }
 
         // Running out of iterations means optimality was never reached. Every
-        // pivot preserves feasibility, so the tableau still holds a perfectly
-        // valid-looking point -- returning it would quietly hand back a
-        // suboptimal answer with converters running slower than they should and
-        // nothing anywhere to say so. Report the failure instead.
+        // pivot preserves feasibility, so the tableau still holds a valid point.
+        // Report that distinctly so callers don't mistake it for infeasibility.
         //
         // Note that we don't log here: this runs within SolverJob on a worker
         // thread, where logging is not safe.
-        return false;
+        return Result.IterationLimit;
     }
 
     /// <summary>
