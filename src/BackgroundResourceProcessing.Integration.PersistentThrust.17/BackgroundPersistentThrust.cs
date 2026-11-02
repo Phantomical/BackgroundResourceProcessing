@@ -169,7 +169,11 @@ public sealed class BackgroundPersistentThrust : VesselModule
     {
         double UT = Planetarium.GetUniversalTime();
         var orbit = Vessel.GetOrbit();
-        var orbitalVelocityAtUt = orbit.getOrbitalVelocityAtUT(UT);
+        // getOrbitalVelocityAtUT returns a vector in the orbit frame (z-up),
+        // but positions and OrbitExtensions.Perturb (which swizzles its input
+        // back with .xzy) work in world space. Convert it the same way
+        // PersistentThrust's own background update does.
+        var orbitalVelocityAtUt = orbit.getOrbitalVelocityAtUT(UT).xzy;
 
         Vector3d thrustVector = Vector3d.zero;
         switch (autopilotMode)
@@ -181,30 +185,30 @@ public sealed class BackgroundPersistentThrust : VesselModule
                 thrustVector = -orbitalVelocityAtUt;
                 break;
             case VesselAutopilot.AutopilotMode.Normal:
-                thrustVector = Vector3.Cross(
+                thrustVector = Vector3d.Cross(
                     orbitalVelocityAtUt,
                     orbit.getPositionAtUT(UT) - Vessel.mainBody.getPositionAtUT(UT)
                 );
                 break;
             case VesselAutopilot.AutopilotMode.Antinormal:
-                thrustVector = -Vector3.Cross(
+                thrustVector = -Vector3d.Cross(
                     orbitalVelocityAtUt,
                     orbit.getPositionAtUT(UT) - Vessel.mainBody.getPositionAtUT(UT)
                 );
                 break;
             case VesselAutopilot.AutopilotMode.RadialIn:
-                thrustVector = -Vector3.Cross(
+                thrustVector = -Vector3d.Cross(
                     orbitalVelocityAtUt,
-                    Vector3.Cross(
+                    Vector3d.Cross(
                         orbitalVelocityAtUt,
                         Vessel.orbit.getPositionAtUT(UT) - orbit.referenceBody.position
                     )
                 );
                 break;
             case VesselAutopilot.AutopilotMode.RadialOut:
-                thrustVector = Vector3.Cross(
+                thrustVector = Vector3d.Cross(
                     orbitalVelocityAtUt,
-                    Vector3.Cross(
+                    Vector3d.Cross(
                         orbitalVelocityAtUt,
                         Vessel.orbit.getPositionAtUT(UT) - orbit.referenceBody.position
                     )
