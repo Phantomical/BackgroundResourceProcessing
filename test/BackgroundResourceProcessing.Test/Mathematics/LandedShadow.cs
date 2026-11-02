@@ -180,7 +180,8 @@ public sealed class LandedShadowTests : BRPTestBase
 
             // We only need to search a little over one rotation to be guaranteed
             // a terminator (away from the poles).
-            double span = planet.rotationPeriod * 1.5;
+            // rotationPeriod is negative for retrograde rotators.
+            double span = Math.Abs(planet.rotationPeriod) * 1.5;
             double truthUT = FindTruthTerminator(planet, sun, lat, lon, now, span);
             if (truthUT < 0.0)
                 continue;

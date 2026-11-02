@@ -235,6 +235,85 @@ public sealed class LandedShadowRetrogradeTests : BRPTestBase
     }
 
     /// <summary>
+    /// Start <paramref name="offset"/> seconds after a terminator crossing and
+    /// check that the solver finds the next crossing rather than the one that
+    /// was just passed.
+    /// </summary>
+    void CheckJustAfterCrossing(
+        double orbitPeriod,
+        double rotationPeriod,
+        double offset,
+        string label
+    )
+    {
+        var savedBurst = DebugSettings.Instance.EnableBurst;
+        DebugSettings.Instance.EnableBurst = false;
+        try
+        {
+            var bodies = BuildSystem(orbitPeriod, rotationPeriod);
+            var normal = Normal();
+            double solarDay = Math.Abs(bodies[1].SolarDayLength);
+
+            double crossing = FindTruthTerminator(bodies, normal, CurrentUT, 1.5 * solarDay);
+            Assert.IsTrue(crossing > CurrentUT, $"{label}: test setup error: no crossing");
+
+            double now = crossing + offset;
+            double truthUT = FindTruthTerminator(bodies, normal, now, 1.5 * solarDay);
+            Assert.IsTrue(truthUT > now, $"{label}: test setup error: no next crossing");
+
+            // The surface normal at `now`, rotated with the planet's signed spin.
+            double theta = bodies[1].AngularVelocity * (now - CurrentUT);
+            var rotated = QuaternionD.FromAngleAxis(theta, bodies[1].RotationAxis).Rotate(normal);
+
+            var term = LandedShadow.ComputeLandedTerminator(
+                bodies,
+                planetIndex: 1,
+                starIndex: 0,
+                referenceIndex: 1,
+                rotated,
+                cosLatitude: 1.0,
+                now
+            );
+
+            Assert.IsTrue(
+                term.UT > now,
+                $"{label}: predicted terminator at UT {term.UT:F1} is not after "
+                    + $"the current UT {now:F1}"
+            );
+            Assert.IsTrue(
+                Math.Abs(term.UT - truthUT) <= Math.Max(60.0, 1e-4 * (truthUT - now)),
+                $"{label}: predicted terminator at UT {term.UT:F1} "
+                    + $"(+{term.UT - now:F0}s) but the true crossing is at "
+                    + $"UT {truthUT:F1} (+{truthUT - now:F0}s)"
+            );
+        }
+        finally
+        {
+            DebugSettings.Instance.EnableBurst = savedBurst;
+        }
+    }
+
+    /// <summary>
+    /// Retrograde rotators whose rotation period is comparable to their orbital
+    /// period have a solar day much shorter than the rotation period. A step of
+    /// a quarter rotation then overshoots the next extremum, and starting just
+    /// after a crossing used to converge back onto that crossing.
+    /// </summary>
+    [TestInfo("LandedShadowRetrogradeTests_TestRetrogradeJustAfterCrossing")]
+    public void TestRetrogradeJustAfterCrossing()
+    {
+        foreach (var ratio in new[] { 0.3, 0.5, 1.0, 2.0 })
+        {
+            CheckJustAfterCrossing(
+                orbitPeriod: 1.0e7,
+                rotationPeriod: -1.0e7 * ratio,
+                offset: 10.0,
+                label: $"retrograde |T|/P={ratio}"
+            );
+        }
+    }
+
+    /// <summary>
     /// A retrograde rotator (rotationPeriod &lt; 0, |rotation| much shorter than
     /// the orbit): the spin carries the landed point the "wrong way" around, and
     /// the solar day length is negative.

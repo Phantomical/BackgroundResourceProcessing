@@ -197,8 +197,15 @@ internal readonly struct LandedShadow
         // spin direction itself is carried by the sign of AngularVelocity inside
         // ComputeDotAt; the step sizes and convergence bounds here only care
         // about the cycle lengths, so use their magnitudes.
-        double advance = 0.25 * Math.Min(Math.Abs(planet.RotationPeriod), planet.Orbit.Period);
         double quarterDay = 0.25 * Math.Abs(planet.SolarDayLength);
+        // For retrograde rotators the solar day is shorter than the rotation
+        // period, so a quarter rotation can step past the next extremum and
+        // mirror back to before the crossing we just passed. Keep each step
+        // well within a quarter of a solar day.
+        double advance = Math.Min(
+            0.25 * Math.Min(Math.Abs(planet.RotationPeriod), planet.Orbit.Period),
+            0.5 * quarterDay
+        );
 
         if (Math.Sign(dot.x) * Math.Sign(dot.dx) > 0)
         {
@@ -235,6 +242,18 @@ internal readonly struct LandedShadow
         }
 
         var terminatorUT = FindTerminator(UT);
+
+        // Newton's method can still converge to the crossing we've just
+        // passed. Rather than report a terminator in the past, schedule a
+        // recompute a little later, by which point we'll be clear of it. This
+        // is kept short so that we don't step over the next crossing.
+        if (!(terminatorUT > startUT) || !IsFinite(terminatorUT))
+        {
+            return inshadow
+                ? OrbitShadow.Terminator.Shadow(startUT + 0.5 * quarterDay)
+                : OrbitShadow.Terminator.Sun(startUT + 0.5 * quarterDay);
+        }
+
         return inshadow
             ? OrbitShadow.Terminator.Shadow(terminatorUT)
             : OrbitShadow.Terminator.Sun(terminatorUT);
