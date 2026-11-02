@@ -65,6 +65,13 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
         var sec2 = HighLogic.CurrentGame.Parameters.CustomParams<TAC_SettingsParms_Sec2>();
         var options = new AddConverterOptions { LinkToAll = true };
 
+        // Each behaviour's lastNotSatisfied is seeded with TAC-LS's own "last
+        // time this resource was consumed" timestamp. If the resource is
+        // available then the first OnRatesComputed clears it again, but if
+        // the vessel was already running short when it was recorded this
+        // carries the existing outage over instead of restarting the clock
+        // (and giving the crew a fresh grace period) on every unload.
+
         if (vesselInfo.numCrew > 0)
         {
             int numCrew = vesselInfo.numCrew;
@@ -79,6 +86,7 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
                         OutputResourceName = global.Waste,
                         PerCrewOutputRate = sec2.WasteProductionRate,
                         NumCrew = numCrew,
+                        lastNotSatisfied = vesselInfo.lastFood,
                     }
                 )
                 {
@@ -97,6 +105,7 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
                         OutputResourceName = global.WasteWater,
                         PerCrewOutputRate = sec2.WasteWaterProductionRate,
                         NumCrew = numCrew,
+                        lastNotSatisfied = vesselInfo.lastWater,
                     }
                 )
                 {
@@ -117,6 +126,7 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
                             OutputResourceName = global.CO2,
                             PerCrewOutputRate = sec2.CO2ProductionRate,
                             NumCrew = numCrew,
+                            lastNotSatisfied = vesselInfo.lastOxygen,
                         }
                     )
                     {
@@ -143,6 +153,7 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
                         BaseInputRate = ecBase,
                         PerCrewInputRate = ecPerCrew,
                         NumCrew = vesselInfo.numCrew,
+                        lastNotSatisfied = vesselInfo.lastElectricity,
                     }
                 )
                 {
