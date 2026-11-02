@@ -1320,13 +1320,16 @@ internal struct LinearProblem(AllocatorHandle allocator)
         public int depth;
         public RawArray<BinaryChoice> choices;
 
+        // PriorityQueue is a min-heap, so "smaller" entries are dequeued
+        // first. We want a depth-first search with the best (highest) score
+        // breaking ties, so both comparisons are reversed.
         public readonly int CompareTo(QueueEntry entry)
         {
-            int cmp = depth.CompareTo(entry.depth);
+            int cmp = entry.depth.CompareTo(depth);
             if (cmp != 0)
                 return cmp;
 
-            return score.CompareTo(entry.score);
+            return entry.score.CompareTo(score);
         }
     }
     #endregion
