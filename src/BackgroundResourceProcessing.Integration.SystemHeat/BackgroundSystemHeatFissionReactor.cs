@@ -101,17 +101,23 @@ public class BackgroundSystemHeatFissionReactor
             floor = MathUtil.Clamp(minEC / maxEC, 0.0, 1.0);
         }
 
+        // Waste heat follows SystemHeat's heat curve rather than scaling
+        // linearly with throttle, so evaluate it at the floor's throttle and
+        // give the rest to the demand-driven converter.
+        double floorHeat = CalculateWasteHeat(module, (float)(floor * 100.0));
+        double restHeat = System.Math.Max(maxHeat - floorHeat, 0.0);
+
         List<ConverterBehaviour> converters = [];
         if (floor > 0.0)
         {
             converters.Add(
-                MakeAutoConverter(module, marker, floor, maxEC, maxHeat, dumpExcess: true)
+                MakeAutoConverter(module, marker, floor, maxEC, floorHeat, dumpExcess: true)
             );
         }
         if (floor < 1.0)
         {
             converters.Add(
-                MakeAutoConverter(module, marker, 1.0 - floor, maxEC, maxHeat, dumpExcess: false)
+                MakeAutoConverter(module, marker, 1.0 - floor, maxEC, restHeat, dumpExcess: false)
             );
         }
 
@@ -129,7 +135,7 @@ public class BackgroundSystemHeatFissionReactor
         BRPSystemHeatMarker marker,
         double fraction,
         double maxEC,
-        double maxHeat,
+        double heat,
         bool dumpExcess
     )
     {
@@ -146,9 +152,10 @@ public class BackgroundSystemHeatFissionReactor
             }
         );
 
-        // Heat scales along with the resources, so that the solver scales
-        // both proportionally when EC demand is below maximum.
-        AppendHeatFluxDirect(outputs, module, marker, maxHeat * fraction);
+        // Heat scales along with the resources within this converter, so that
+        // the solver scales both proportionally when EC demand is below
+        // maximum.
+        AppendHeatFluxDirect(outputs, module, marker, heat);
         return new ConstantConverter(inputs, outputs, []);
     }
 
