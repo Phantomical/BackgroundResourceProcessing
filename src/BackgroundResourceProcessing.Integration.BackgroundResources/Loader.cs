@@ -50,4 +50,12 @@ public static class UnloadedResources_OnAwake_Patch
 
         LoggedBackgroundProcessingField.SetValue(__instance, true);
     }
+
+    // OnAwake reassigns BackgroundProcessingInstalled from an assembly name
+    // check that never matches BRP, which re-enables BackgroundResources' own
+    // unloaded vessel processing in every scene. Force it back on afterwards.
+    static void Postfix()
+    {
+        UnloadedResources.BackgroundProcessingInstalled = true;
+    }
 }
