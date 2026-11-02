@@ -198,6 +198,9 @@ internal class EventDispatcher : MonoBehaviour
             return;
 
         var processor = vessel.FindVesselModuleImplementing<BackgroundResourceProcessor>();
+        if (processor is null)
+            return;
+
         var converter = GetBonVoyageConverter(processor);
         if (converter == null)
             return;
@@ -218,6 +221,9 @@ internal class EventDispatcher : MonoBehaviour
             return;
 
         var processor = vessel.FindVesselModuleImplementing<BackgroundResourceProcessor>();
+        if (processor is null)
+            return;
+
         var converter = GetBonVoyageConverter(processor);
         if (converter == null)
             return;

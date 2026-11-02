@@ -143,10 +143,26 @@ internal static class RoverShipController_Update_Patch
         yield return ShipController.GetMethod("Update", Instance);
     }
 
-    static void Postfix(object __instance)
+    static void Prefix(object __instance, out bool __state)
+    {
+        __state = (bool)ActiveField.GetValue(__instance);
+    }
+
+    static void Postfix(object __instance, bool __state)
     {
         var active = (bool)ActiveField.GetValue(__instance);
         var vessel = (Vessel)VesselField.GetValue(__instance);
+
+        // Track the autopilot starting and stopping (e.g. on arrival or when
+        // power runs out). We watch the active flag instead of State because
+        // BonVoyage sets State to Idle and then back to Moving on every update.
+        if (EventDispatcher.IsEnabled && __state != active)
+        {
+            if (active)
+                EventDispatcher.OnAutopilotActivated(__instance);
+            else
+                EventDispatcher.OnAutopilotDeactivated(__instance);
+        }
 
         if (vessel == null || vessel.isActiveVessel || !active)
             return;
@@ -171,56 +187,6 @@ internal static class RoverShipController_Update_Patch
 
         if (shadow != processor.ShadowState.Value.InShadow)
             processor.RefreshShadowState();
-    }
-}
-
-[HarmonyPatch]
-internal static class BVController_Ctor_Patch
-{
-    const BindingFlags Instance =
-        BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
-    static readonly MethodInfo AddOnStateChangedMethod = EventDispatcher.BVController.GetMethod(
-        "add_OnStateChanged",
-        Instance
-    );
-    static readonly PropertyInfo StateProperty = EventDispatcher.BVController.GetProperty(
-        "State",
-        Instance
-    );
-
-    static MethodBase TargetMethod() =>
-        EventDispatcher.BVController.GetConstructor(
-            BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
-            null,
-            [typeof(Vessel), typeof(ConfigNode)],
-            null
-        );
-
-    static void Postfix(object __instance)
-    {
-        AddOnStateChangedMethod.Invoke(__instance, [new EventHandler(OnStateChanged)]);
-    }
-
-    static void OnStateChanged(object controller, EventArgs _)
-    {
-        if (!EventDispatcher.IsEnabled)
-            return;
-
-        Enum state = (Enum)StateProperty.GetValue(controller);
-        int value = Convert.ToInt32(state);
-
-        switch (value)
-        {
-            case 0: // Idle
-            case 1: // ControllerDisabled
-            case 4: // AwaitingSunlight
-                EventDispatcher.OnAutopilotDeactivated(controller);
-                break;
-
-            case 3: // Moving
-                EventDispatcher.OnAutopilotActivated(controller);
-                break;
-        }
     }
 }
 
