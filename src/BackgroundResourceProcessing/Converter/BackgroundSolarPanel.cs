@@ -18,6 +18,14 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
     [KSPField]
     public float MaxError = 0.1f;
 
+    const string KopernicusSolarPanelModule = "KopernicusSolarPanel";
+
+    static bool GetKopernicusROFlag(PartModule fixer)
+    {
+        var field = fixer.GetType().GetField("ROFlag", Flags);
+        return field?.GetValue(fixer) is bool flag && flag;
+    }
+
     private readonly int landedLayerMask =
         (1 << LayerMask.NameToLayer("PhysicalObjects"))
         | (1 << LayerMask.NameToLayer("TerrainColliders"))
@@ -50,7 +58,16 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
             return null;
 
         var vessel = panel.vessel;
-        double power = panel.chargeRate * panel.flowMult * panel.efficiencyMult;
+
+        // Kopernicus' multi-star fixer (only added when there is more than
+        // one star) zeroes the stock module's output and generates power
+        // itself from chargeRate and the normalized stellar flux alone. It
+        // does not apply flowMult, efficiencyMult or the stock powerCurve.
+        var kopernicusFixer = panel.part.Modules.GetModule(KopernicusSolarPanelModule);
+
+        double power = panel.chargeRate;
+        if (kopernicusFixer == null)
+            power *= panel.flowMult * panel.efficiencyMult;
 
         switch (vessel.situation)
         {
@@ -135,9 +152,11 @@ public class BackgroundSolarPanel : BackgroundConverter<ModuleDeployableSolarPan
             return null;
 
         var behaviour = new SolarPanelBehaviour();
-        if (panel.useCurve)
+        if (panel.useCurve && kopernicusFixer == null)
             behaviour.PowerCurve = panel.powerCurve;
-        behaviour.TimeEfficiencyCurve = panel.timeEfficCurve;
+        // The Kopernicus fixer only applies panel wear when ROFlag is set.
+        if (kopernicusFixer == null || GetKopernicusROFlag(kopernicusFixer))
+            behaviour.TimeEfficiencyCurve = panel.timeEfficCurve;
 
         behaviour.ResourceName = panel.resourceName;
         behaviour.FlowMode = ResourceFlowMode.ALL_VESSEL_BALANCE;
