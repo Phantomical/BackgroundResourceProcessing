@@ -83,24 +83,72 @@ public class BackgroundSystemHeatFissionReactor
         BRPSystemHeatMarker marker
     )
     {
-        var inputs = module.inputs.ToList();
-        var outputs = module.outputs.ToList();
+        // SystemHeat caps auto-throttle generation by core damage.
+        double maxEC = module.ElectricalGeneration.Evaluate(100f) * module.CoreIntegrity / 100f;
+        double maxHeat = CalculateWasteHeat(module, 100f);
+
+        // CalculateGoalThrottle never commands less than the throttle that
+        // generates the EC of MinimumThrottle, and HandleResourceActivities
+        // burns fuel at that throttle regardless of demand, dumping any EC
+        // that doesn't fit. Model that floor as a separate converter that
+        // dumps its EC, and the rest of the throttle range as a converter
+        // whose EC output is limited by demand.
+        double floor = 1.0;
+        if (maxEC > 0.0)
+        {
+            double minEC = module.ElectricalGeneration.Evaluate(module.MinimumThrottle);
+            floor = System.Math.Max(0.0, System.Math.Min(minEC / maxEC, 1.0));
+        }
+
+        List<ConverterBehaviour> converters = [];
+        if (floor > 0.0)
+        {
+            converters.Add(
+                MakeAutoConverter(module, marker, floor, maxEC, maxHeat, dumpExcess: true)
+            );
+        }
+        if (floor < 1.0)
+        {
+            converters.Add(
+                MakeAutoConverter(module, marker, 1.0 - floor, maxEC, maxHeat, dumpExcess: false)
+            );
+        }
+
+        if (converters.Count == 0)
+            return null;
+
+        var behaviour = new ModuleBehaviour(converters);
+        if (marker != null)
+            behaviour.AddPushModule(marker);
+        return behaviour;
+    }
+
+    private static ConstantConverter MakeAutoConverter(
+        ModuleSystemHeatFissionReactor module,
+        BRPSystemHeatMarker marker,
+        double fraction,
+        double maxEC,
+        double maxHeat,
+        bool dumpExcess
+    )
+    {
+        var inputs = ScaleResources(module.inputs, fraction);
+        var outputs = ScaleResources(module.outputs, fraction);
 
         outputs.Add(
             new ResourceRatio()
             {
                 ResourceName = "ElectricCharge",
-                // SystemHeat caps auto-throttle generation by core damage.
-                Ratio = module.ElectricalGeneration.Evaluate(100f) * module.CoreIntegrity / 100f,
+                Ratio = maxEC * fraction,
                 FlowMode = ResourceFlowMode.ALL_VESSEL,
-                DumpExcess = false,
+                DumpExcess = dumpExcess,
             }
         );
 
-        // Resources are at 100% throttle; heat must also be at 100% so the
-        // solver scales both proportionally when EC demand is below maximum.
-        AppendHeatFluxDirect(outputs, module, marker, CalculateWasteHeat(module, 100f));
-        return MakeBehaviour(inputs, outputs, marker, isPush: true);
+        // Heat scales along with the resources, so that the solver scales
+        // both proportionally when EC demand is below maximum.
+        AppendHeatFluxDirect(outputs, module, marker, maxHeat * fraction);
+        return new ConstantConverter(inputs, outputs, []);
     }
 
     private static ModuleBehaviour GetMinimumThrottleBehaviour(
