@@ -173,8 +173,6 @@ public class BackgroundELLaunchpadInventory : BackgroundInventory<ELLaunchpad>
 
         if (inventory.ResourceName != WorkHoursResource)
             return;
-        if (inventory.Amount == 0.0)
-            return;
 
         var control = launchpad.control;
         if (control == null)
@@ -185,6 +183,15 @@ public class BackgroundELLaunchpadInventory : BackgroundInventory<ELLaunchpad>
         var vessel = launchpad.vessel;
         var workNet = vessel.FindVesselModuleImplementing<ELVesselWorkNet>();
         if (workNet == null)
+            return;
+
+        // BRP has been responsible for this build while the vessel was
+        // unloaded, even if no progress was made (e.g. because a resource ran
+        // out). Prevent EL from doing its own catch-up, which would otherwise
+        // apply up to a full catch-up interval of work on load.
+        workNet.lastUpdate = Planetarium.GetUniversalTime();
+
+        if (inventory.Amount == 0.0)
             return;
 
         var workHours = inventory.Amount;
@@ -222,10 +229,6 @@ public class BackgroundELLaunchpadInventory : BackgroundInventory<ELLaunchpad>
                 bres.amount += ratio * remaining;
             }
         }
-
-        // Prevent EL from doing its own catch-up, since we have already
-        // updated the relevant work sinks.
-        workNet.lastUpdate = Planetarium.GetUniversalTime();
     }
 
     private static BuildResource FindResource(List<BuildResource> list, string name)
