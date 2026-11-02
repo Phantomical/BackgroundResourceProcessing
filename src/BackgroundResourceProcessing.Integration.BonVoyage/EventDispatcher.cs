@@ -129,6 +129,44 @@ internal class EventDispatcher : MonoBehaviour
     {
         BackgroundResourceProcessor.onVesselRecord.Add(OnVesselRecord);
         BackgroundResourceProcessor.onVesselChangepoint.Add(OnVesselChangepoint);
+
+        if (IsEnabled)
+            RefreshLegacyConverters();
+    }
+
+    /// <summary>
+    /// Older versions recorded the rover's power draw as an output, so the
+    /// converter was linked to push into the vessel's inventories instead of
+    /// pulling from them. The behaviour now loads the power draw as an input,
+    /// but the converter keeps the links and resources it was saved with.
+    /// Fix those up now instead of leaving the rover producing power (or,
+    /// once refreshed, unable to draw any) until it is next loaded.
+    /// </summary>
+    static void RefreshLegacyConverters()
+    {
+        var vessels = FlightGlobals.Vessels;
+        if (vessels is null)
+            return;
+
+        var now = Planetarium.GetUniversalTime();
+        foreach (var vessel in vessels)
+        {
+            if (vessel is null || vessel.loaded)
+                continue;
+
+            var processor = vessel.FindVesselModuleImplementing<BackgroundResourceProcessor>();
+            if (processor is null)
+                continue;
+
+            var converter = GetBonVoyageConverter(processor);
+            if (converter is null || converter.Push.IsEmpty || !converter.Pull.IsEmpty)
+                continue;
+
+            converter.Pull.AddAll(converter.Push);
+            converter.Push.Clear();
+            converter.NextChangepoint = now;
+            processor.MarkDirty();
+        }
     }
 
     void OnDestroy()
