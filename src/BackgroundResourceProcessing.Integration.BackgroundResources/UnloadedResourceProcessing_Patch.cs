@@ -25,12 +25,12 @@ internal static class UnloadedResourceProcessing_GetResourceTotals_Patch
         var processor =
             vessel?.vesselRef?.FindVesselModuleImplementing<BackgroundResourceProcessor>();
         if (processor == null)
-            return false;
+            return true;
 
         var state = processor.GetResourceState(resourceName);
         amount = state.amount;
         maxAmount = state.maxAmount;
-        return true;
+        return false;
     }
 }
 
@@ -50,13 +50,13 @@ internal static class UnloadedResourceProcessing_RequestResource_Patch
         var processor =
             vessel?.vesselRef?.FindVesselModuleImplementing<BackgroundResourceProcessor>();
         if (processor == null)
-            return false;
+            return true;
 
         if (pushing)
             amountReceived = processor.AddResource(resourceName, amount);
         else
             amountReceived = processor.RemoveResource(resourceName, amount);
 
-        return true;
+        return false;
     }
 }
