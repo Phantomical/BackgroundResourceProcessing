@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using BackgroundResourceProcessing.Behaviour;
 using BackgroundResourceProcessing.Converter;
+using BackgroundResourceProcessing.Utils;
 using SystemHeat;
 
 namespace BackgroundResourceProcessing.Integration.SystemHeat;
@@ -97,7 +98,7 @@ public class BackgroundSystemHeatFissionReactor
         if (maxEC > 0.0)
         {
             double minEC = module.ElectricalGeneration.Evaluate(module.MinimumThrottle);
-            floor = System.Math.Max(0.0, System.Math.Min(minEC / maxEC, 1.0));
+            floor = MathUtil.Clamp(minEC / maxEC, 0.0, 1.0);
         }
 
         List<ConverterBehaviour> converters = [];

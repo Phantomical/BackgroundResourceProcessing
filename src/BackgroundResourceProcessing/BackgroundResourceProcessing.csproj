@@ -50,11 +50,23 @@
 
     <InternalsVisibleTo Include="BackgroundResourceProcessing.Test" />
     <InternalsVisibleTo Include="BackgroundResourceProcessing.CLI" />
+    <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.AutomaticLabHousekeeper" />
+    <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.BackgroundResources" />
+    <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.BonVoyage" />
+    <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.CryoTanks" />
+    <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.DeepFreeze" />
+    <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.EL" />
+    <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.Kopernicus" />
+    <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.MKS" />
+    <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.NEOS" />
+    <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.NearFutureSolar" />
+    <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.PersistentThrust.17" />
+    <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.Snacks" />
     <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.SpaceDust" />
+    <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.SystemHeat" />
     <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.TACLifeSupport" />
     <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.USILifeSupport" />
-    <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.BackgroundResources" />
-    <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.PersistentThrust.17" />
+    <InternalsVisibleTo Include="BackgroundResourceProcessing.Integration.WBIResources" />
   </ItemGroup>
 
   <!-- KSPBurst Dependencies -->
