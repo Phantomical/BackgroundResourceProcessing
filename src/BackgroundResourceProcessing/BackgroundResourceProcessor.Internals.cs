@@ -155,6 +155,10 @@ public sealed partial class BackgroundResourceProcessor
             recompute = true;
         if (processor.UpdateConstraintState())
             recompute = true;
+        // Inventories or converters were modified externally (e.g. via
+        // AddResource), which none of the checks above will necessarily see.
+        if (IsDirty)
+            recompute = true;
 
         if (recompute)
         {
@@ -251,19 +255,12 @@ public sealed partial class BackgroundResourceProcessor
         if (!IsDirty)
             return;
 
-        var currentTime = Planetarium.GetUniversalTime();
-        if (processor.UpdateConstraintState())
-        {
-            processor.nextChangepoint = currentTime;
-        }
-        else
-        {
-            var prevChangepoint = NextChangepoint;
-            UpdateNextChangepoint(currentTime);
-
-            if (prevChangepoint == NextChangepoint)
-                return;
-        }
+        // Something modified the vessel's inventories, converters, or shadow
+        // state directly. The current rates may no longer be valid so
+        // schedule an immediate changepoint, which will re-solve because
+        // IsDirty is still set. The solution cache makes this cheap if
+        // nothing relevant actually changed.
+        processor.nextChangepoint = Planetarium.GetUniversalTime();
 
         EventDispatcher.UnregisterChangepointCallbacks(this);
         EventDispatcher.RegisterChangepointCallback(this, NextChangepoint);
