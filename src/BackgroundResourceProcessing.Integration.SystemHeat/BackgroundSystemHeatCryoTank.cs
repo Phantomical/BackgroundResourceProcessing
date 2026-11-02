@@ -12,9 +12,10 @@ namespace BackgroundResourceProcessing.Integration.SystemHeat;
 // cooling state as it was when the vessel last unloaded) to decide whether
 // boiloff should occur in the background:
 //
-//   BoiloffOccuring = false → cooling was active; we model the heat-flux draw
-//                             of the cooling system at low priority so that an
-//                             overloaded loop causes boiloff to begin on reload.
+//   BoiloffOccuring = false → cooling was active; we add the cooling system's
+//                             heat to the tank's loop, the same way that
+//                             ModuleSystemHeatCryoTank.ResolveHeat does, so
+//                             that radiators on the loop have to reject it.
 //   BoiloffOccuring = true  → boiloff was happening, continue it in background.
 //
 // OnRestore updates LastUpdateTime so that DoCatchup() (called from Start()
@@ -62,21 +63,28 @@ public class BackgroundSystemHeatCryoTank : BackgroundConverter<ModuleSystemHeat
         if (marker == null || module.heatModule == null)
             return null;
 
-        float coolingCost = module.GetTotalCoolingCost();
-        if (coolingCost <= 0)
+        // GetTotalCoolingCost is the heat per 1000 units of capacity. This
+        // matches how ModuleSystemHeatCryoTank computes finalCoolingHeatCost.
+        double coolingCost =
+            module.GetTotalCoolingCost() * module.GetTotalMaxResouceAmount() / 1000.0;
+        if (module.isJettisoned)
+            coolingCost *= module.JettisonCoolingScale;
+        if (!(coolingCost > 0.0))
             return null;
 
-        var fluxInput = new ResourceRatio()
+        // The tank adds this heat to its loop, so it is an output, the same as
+        // reactor waste heat. Radiators on the loop consume it.
+        var fluxOutput = new ResourceRatio()
         {
             ResourceName = SystemHeatFlux.ResourceName(module.heatModule.currentLoopID),
             Ratio = coolingCost,
             FlowMode = ResourceFlowMode.ALL_VESSEL,
-            DumpExcess = false,
+            DumpExcess = true,
         };
 
-        var converter = new ConstantConverter([fluxInput], [], []) { Priority = -10 };
+        var converter = new ConstantConverter([], [fluxOutput], []);
         var behaviour = new ModuleBehaviour(converter);
-        behaviour.AddPullModule(marker);
+        behaviour.AddPushModule(marker);
         return behaviour;
     }
 
