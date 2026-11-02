@@ -118,7 +118,9 @@ internal static partial class Simplex
         // valid-looking point -- returning it would quietly hand back a
         // suboptimal answer with converters running slower than they should and
         // nothing anywhere to say so. Report the failure instead.
-        WarnIterationLimit();
+        //
+        // Note that we don't log here: this runs within SolverJob on a worker
+        // thread, where logging is not safe.
         return false;
     }
 
@@ -428,13 +430,6 @@ internal static partial class Simplex
 
     [IgnoreWarning(1370)]
     private static void ThrowUnsupportedInstructionSet() => throw UnsupportedInstructionSet();
-
-    [BurstDiscard]
-    static void WarnIterationLimit() =>
-        LogUtil.Warn(
-            $"Simplex did not converge within {MaxIterations} iterations. ",
-            "Treating the problem as unsolved rather than returning a suboptimal solution."
-        );
 
     [BurstDiscard]
     static void TraceSelectRow(double y, double num, double den, double ratio)

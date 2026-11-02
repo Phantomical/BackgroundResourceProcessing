@@ -382,9 +382,11 @@ public sealed partial class BackgroundResourceProcessor
                 using var writer = new StreamWriter(entry.Open());
                 writer.Write(serialized);
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                LogUtil.Error($"Failed to log ship to zip: {e}");
+                // This runs on a thread pool thread, where logging is not safe.
+                // Failing to write the debug zip is not important enough to
+                // bounce back to the main thread for.
             }
         });
     }

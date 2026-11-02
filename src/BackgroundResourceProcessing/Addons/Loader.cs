@@ -134,9 +134,9 @@ internal sealed class BackgroundResourceProcessingLoader : MonoBehaviour
                         File.Delete(file);
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                LogUtil.Error($"Failed to clean up old ship log zips: {e}");
+                // This runs on a thread pool thread, where logging is not safe.
             }
         });
     }
