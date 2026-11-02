@@ -85,21 +85,14 @@ internal struct StableList<T> : IList<T>, ICollection<T>, IEnumerable<T>
 
         if (index == Count - 1)
         {
-            if (tail > index)
-            {
-                tail = index;
-                list.RemoveAt(index);
-                return;
-            }
-
-            int i;
-            for (i = index - 1; i >= tail; ++i)
-            {
-                if (list[i] is not null)
-                    break;
-            }
+            // Remove the last element along with any holes immediately
+            // before it so that the list never ends in a hole.
+            int i = index;
+            while (i > 0 && list[i - 1] is null)
+                --i;
 
             list.RemoveRange(i, Count - i);
+            tail = Math.Min(tail, i);
             return;
         }
         else

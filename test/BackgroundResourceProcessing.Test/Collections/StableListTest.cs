@@ -48,4 +48,66 @@ public sealed class StableListTests : BRPTestBase
         Assert.AreEqual("a", list[0]);
         Assert.AreEqual("c", list[1]);
     }
+
+    [TestInfo("StableListTests_RemoveLastAfterRefill")]
+    public void RemoveLastAfterRefill()
+    {
+        StableList<string> list = [];
+
+        list.Add("a");
+        list.Add("b");
+        list.Add("c");
+        list.RemoveAt(1);
+        Assert.AreEqual(1, list.Add("d"));
+
+        // [a, d, c]: removing the last element must only remove c.
+        list.RemoveAt(2);
+
+        Assert.AreEqual(2, list.Count);
+        Assert.AreEqual("a", list[0]);
+        Assert.AreEqual("d", list[1]);
+    }
+
+    [TestInfo("StableListTests_RemoveLastTrimsTrailingHoles")]
+    public void RemoveLastTrimsTrailingHoles()
+    {
+        StableList<string> list = [];
+
+        list.Add("a");
+        list.Add("b");
+        list.Add("c");
+        list.Add("d");
+        list.RemoveAt(1);
+        list.RemoveAt(2);
+
+        // [a, null, null, d]: removing d also trims the holes, but keeps a.
+        list.RemoveAt(3);
+
+        Assert.AreEqual(1, list.Count);
+        Assert.AreEqual("a", list[0]);
+
+        // The next add goes right after a.
+        Assert.AreEqual(1, list.Add("e"));
+        Assert.AreEqual(2, list.Count);
+    }
+
+    [TestInfo("StableListTests_RemoveLastWithHoleBefore")]
+    public void RemoveLastWithHoleBefore()
+    {
+        StableList<string> list = [];
+
+        list.Add("a");
+        list.Add("b");
+        list.Add("c");
+        list.Add("d");
+        list.RemoveAt(1);
+
+        // [a, null, c, d]: removing d must keep c.
+        list.RemoveAt(3);
+
+        Assert.AreEqual(3, list.Count);
+        Assert.AreEqual("a", list[0]);
+        Assert.IsTrue(list[1] is null);
+        Assert.AreEqual("c", list[2]);
+    }
 }
