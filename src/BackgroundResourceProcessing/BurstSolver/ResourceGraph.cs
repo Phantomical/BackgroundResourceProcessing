@@ -111,10 +111,11 @@ internal struct ResourceGraph
     public unsafe void MergeEquivalentInventories()
     {
         int words = inputs.ColumnWords;
-        ulong* mem = stackalloc ulong[words * 2];
+        ulong* mem = stackalloc ulong[words * 3];
 
         BitSet removed = new(mem, words);
         BitSet equal = new(mem + words, words);
+        BitSet visited = new(mem + 2 * words, words);
 
         // We need to save this at the start as we'll be removing
         // inventories as we go.
@@ -126,6 +127,13 @@ internal struct ResourceGraph
             int inventoryId = idEnum.Current;
             if (!inventories.ContainsKey(inventoryId))
                 continue;
+
+            // Multiple ids can map to the same inventory (including ones we
+            // merge below), but there is nothing new to find on a repeat visit.
+            if (visited[inventoryId])
+                continue;
+            visited[inventoryId] = true;
+
             ref var inventory = ref inventories.GetUnchecked(inventoryId);
 
             // This ensures that the only bits are set are those that:
