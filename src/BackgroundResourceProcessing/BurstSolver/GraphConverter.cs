@@ -126,6 +126,18 @@ internal struct GraphConverter
         if (!outputs.KeysEqual(other.outputs))
             return false;
 
+        // Merge keeps only one DumpExcess flag per output, so merging a
+        // converter that dumps an output with one that doesn't would let the
+        // merged converter dump the other's output too.
+        for (int i = 0; i < outputs.Count; ++i)
+        {
+            if (
+                outputs.GetEntryAtIndex(i).Value.DumpExcess
+                != other.outputs.GetEntryAtIndex(i).Value.DumpExcess
+            )
+                return false;
+        }
+
         return ConstraintEquals(in constraints, in other.constraints);
     }
 

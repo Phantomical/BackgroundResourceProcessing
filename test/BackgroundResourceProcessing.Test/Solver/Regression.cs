@@ -281,6 +281,30 @@ namespace BackgroundResourceProcessing.Test.Solver
             );
         }
 
+        [TestInfo("RegressionTests_TestMergeMixedDumpExcess")]
+        public void TestMergeMixedDumpExcess()
+        {
+            // Converter 0 dumps its EC and converter 1 doesn't. Both feed the
+            // same full battery, so converter 1 must shut off. They used to be
+            // merged into a single converter that dumped everything.
+            var processor = TestUtil.LoadVessel("regression/merge-mixed-dump-excess.cfg");
+            using var solve = processor.ComputeRates();
+            solve.Complete();
+
+            Assert.AreEqual(
+                1.0,
+                processor.converters[0].Rate,
+                1e-6,
+                "the dumping converter should keep running"
+            );
+            Assert.AreEqual(
+                0.0,
+                processor.converters[1].Rate,
+                1e-6,
+                "the non-dumping converter has nowhere to put its output"
+            );
+        }
+
         [TestInfo("RegressionTests_TestNegativeInputRatio")]
         public void TestNegativeInputRatio()
         {
