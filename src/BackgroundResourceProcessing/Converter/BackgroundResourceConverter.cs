@@ -107,8 +107,12 @@ public abstract class BackgroundResourceConverter<T> : BackgroundConverter<T>
             outputs = recipe.Outputs;
             required = recipe.Requirements.Select(req => new ResourceConstraint(req));
 
-            fillAmount = recipe.FillAmount;
-            takeAmount = recipe.TakeAmount;
+            // Stock PrepareRecipe implementations call ConversionRecipe.Clear,
+            // which resets these to 1. BaseConverter.FixedUpdate only applies
+            // the module's values after PrepareRecipe returns, so we need to
+            // do the same. Still respect a recipe that sets a lower limit.
+            fillAmount = Math.Min(recipe.FillAmount, module.FillAmount);
+            takeAmount = Math.Min(recipe.TakeAmount, module.TakeAmount);
         }
         else
         {
