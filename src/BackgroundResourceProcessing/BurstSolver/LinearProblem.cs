@@ -283,6 +283,21 @@ internal struct LinearProblem(AllocatorHandle allocator)
             return BurstError.SolutionDidNotSatisfyConstraints();
         }
 
+        foreach (var dis in disjunctions)
+        {
+            double lhs = soln.Evaluate(dis.lhs.variables);
+            if (lhs <= dis.lhs.constant + tol)
+                continue;
+
+            double rhs = soln.Evaluate(dis.rhs.variables);
+            if (rhs <= dis.rhs.constant + tol)
+                continue;
+
+            if (!BurstUtil.IsBurstCompiled)
+                ThrowCheckSolutionFailure(soln, dis.lhs, lhs);
+            return BurstError.SolutionDidNotSatisfyConstraints();
+        }
+
         return Result.Ok;
     }
 
