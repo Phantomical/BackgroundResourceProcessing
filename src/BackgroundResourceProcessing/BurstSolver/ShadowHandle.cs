@@ -132,7 +132,7 @@ internal class ShadowHandle : CustomYieldInstruction, IDisposable
         catch (Exception e)
         {
             LogUtil.Error($"Shadow state computation threw an exception: {e}");
-            cachedResult = ShadowState.DefaultForStar(Planetarium.fetch?.Sun);
+            cachedResult = ShadowState.FallbackShadowState(Planetarium.GetUniversalTime());
         }
 
         completed = true;

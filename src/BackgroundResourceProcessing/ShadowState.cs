@@ -163,19 +163,40 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
     /// </remarks>
     internal static ShadowState ValidateShadowState(ShadowState state, double currentUT)
     {
+        // A bad terminator estimate doesn't mean the lit/shadowed state is
+        // wrong, so keep that and only replace the estimate with a retry a
+        // short time from now. Falling back to "always lit" with an infinite
+        // estimate would mean the shadow state never gets recomputed, so a
+        // vessel in shadow would run its solar panels until next loaded.
         if (double.IsNaN(state.NextTerminatorEstimate))
         {
             LogUtil.Error("Shadow state calculations returned NaN terminator estimate");
-            return DefaultForStar(Planetarium.fetch?.Sun);
+            state.NextTerminatorEstimate = currentUT + ShadowRetryInterval;
+            return state;
         }
         if (state.NextTerminatorEstimate < currentUT)
         {
             LogUtil.Error("Shadow state calculations returned a terminator in the past");
-            return DefaultForStar(Planetarium.fetch?.Sun);
+            state.NextTerminatorEstimate = currentUT + ShadowRetryInterval;
+            return state;
         }
 
         return state;
     }
+
+    /// <summary>
+    /// How long to wait before recomputing the shadow state when a shadow
+    /// calculation fails.
+    /// </summary>
+    internal const double ShadowRetryInterval = 120.0;
+
+    /// <summary>
+    /// The shadow state to use when the shadow calculation failed outright.
+    /// This is lit by the root star, but only until a retry shortly after
+    /// <paramref name="currentUT"/>.
+    /// </summary>
+    internal static ShadowState FallbackShadowState(double currentUT) =>
+        new(currentUT + ShadowRetryInterval, false, Planetarium.fetch?.Sun);
 
     public static ShadowState GetShadowState(Vessel vessel)
     {

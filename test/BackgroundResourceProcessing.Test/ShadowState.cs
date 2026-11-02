@@ -113,8 +113,8 @@ public sealed class ShadowStateTests : BRPTestBase
     #region ValidateShadowState
 
     // The default test log sink throws on any error, so swap in one that counts
-    // errors instead. ValidateShadowState logs (an expected) error before falling
-    // back, and we want to assert on both the log and the returned fallback.
+    // errors instead. ValidateShadowState logs (an expected) error before
+    // retrying, and we want to assert on both the log and the returned state.
     sealed class CountingSink : LogUtil.ILogSink
     {
         public int Errors;
@@ -144,21 +144,31 @@ public sealed class ShadowStateTests : BRPTestBase
     [TestInfo("ShadowStateTests_ValidateRejectsNaN")]
     public void ValidateRejectsNaN()
     {
-        var (result, errors) = Validate(new ShadowState(double.NaN, false), 100.0);
+        var (result, errors) = Validate(new ShadowState(double.NaN, true), 100.0);
 
         Assert.AreEqual(1, errors); // NaN was detected and logged
-        // Both fallbacks (AlwaysInSun / AlwaysInShadow) carry an infinite estimate.
-        Assert.IsFalse(double.IsNaN(result.NextTerminatorEstimate));
-        Assert.IsTrue(double.IsPositiveInfinity(result.NextTerminatorEstimate));
+        // The computed lit/shadowed state is kept, and the estimate is replaced
+        // with a finite retry so that the state gets recomputed soon.
+        Assert.IsTrue(result.InShadow);
+        Assert.AreEqual(
+            100.0 + ShadowState.ShadowRetryInterval,
+            result.NextTerminatorEstimate,
+            0.0
+        );
     }
 
     [TestInfo("ShadowStateTests_ValidateRejectsPastTerminator")]
     public void ValidateRejectsPastTerminator()
     {
-        var (result, errors) = Validate(new ShadowState(50.0, false), 100.0);
+        var (result, errors) = Validate(new ShadowState(50.0, true), 100.0);
 
         Assert.AreEqual(1, errors); // past terminator was detected and logged
-        Assert.IsTrue(double.IsPositiveInfinity(result.NextTerminatorEstimate));
+        Assert.IsTrue(result.InShadow);
+        Assert.AreEqual(
+            100.0 + ShadowState.ShadowRetryInterval,
+            result.NextTerminatorEstimate,
+            0.0
+        );
     }
 
     [TestInfo("ShadowStateTests_ValidatePassesFutureTerminator")]
