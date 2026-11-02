@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using BackgroundResourceProcessing.Addons;
 using BackgroundResourceProcessing.Tracing;
 using Steamworks;
-using Shadow = BackgroundResourceProcessing.ShadowState;
+using ShadowStateType = BackgroundResourceProcessing.ShadowState;
 
 namespace BackgroundResourceProcessing;
 
@@ -119,7 +119,7 @@ public sealed partial class BackgroundResourceProcessor
 
         ConfigNode shadow = null;
         if (node.TryGetNode("SHADOW_STATE", ref shadow))
-            ShadowState = Shadow.Load(shadow);
+            ShadowState = ShadowStateType.Load(shadow);
 
         foreach (var converter in processor.converters)
             converter.Behaviour?.Vessel = vessel;
@@ -147,7 +147,7 @@ public sealed partial class BackgroundResourceProcessor
 
         if (ShadowState == null || ShadowState.Value.NextTerminatorEstimate <= changepoint)
         {
-            using var shadow = Shadow.ScheduleShadowState(vessel);
+            using var shadow = ShadowStateType.ScheduleShadowState(vessel);
             ShadowState = shadow.Complete();
         }
 
@@ -259,7 +259,7 @@ public sealed partial class BackgroundResourceProcessor
             $"BackgroundResourceProcessor.OnVesselSOIChanged({vessel.GetDisplayName()})"
         );
 
-        ShadowState = Shadow.GetShadowState(vessel);
+        ShadowState = ShadowStateType.GetShadowState(vessel);
         var state = GetVesselState();
 
         UpdateState(state.CurrentTime, true);
@@ -348,7 +348,7 @@ public sealed partial class BackgroundResourceProcessor
         if (processor.lastUpdate == currentTime)
             return;
 
-        ShadowState = Shadow.GetShadowState(vessel);
+        ShadowState = ShadowStateType.GetShadowState(vessel);
         var state = GetVesselState(currentTime);
 
         using (var eventspan = new TraceSpan("onBeforeVesselRecord"))

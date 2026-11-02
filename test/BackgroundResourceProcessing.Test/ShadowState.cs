@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using KSP.Testing;
-using Term = BackgroundResourceProcessing.Mathematics.OrbitShadow.Terminator;
+using Term = BackgroundResourceProcessing.Shadow.OrbitShadow.Terminator;
 
 namespace BackgroundResourceProcessing.Test;
 

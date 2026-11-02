@@ -1,4 +1,5 @@
 using BackgroundResourceProcessing.Mathematics;
+using BackgroundResourceProcessing.Shadow;
 using KSP.Testing;
 using BRPOrbit = BackgroundResourceProcessing.Mathematics.Orbit;
 

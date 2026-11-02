@@ -9,7 +9,7 @@ using BackgroundResourceProcessing.Core;
 using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
 using UnityEngine;
-using Shadow = BackgroundResourceProcessing.ShadowState;
+using ShadowStateType = BackgroundResourceProcessing.ShadowState;
 
 namespace BackgroundResourceProcessing;
 
@@ -454,7 +454,7 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
     /// <returns></returns>
     public VesselState GetVesselState(double UT)
     {
-        ShadowState ??= Shadow.GetShadowState(vessel);
+        ShadowState ??= ShadowStateType.GetShadowState(vessel);
         return new VesselState(UT) { Processor = this, ShadowState = ShadowState.Value };
     }
 
@@ -802,7 +802,7 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
 
     internal void RecomputeShadowState()
     {
-        ShadowState = Shadow.GetShadowState(Vessel);
+        ShadowState = ShadowStateType.GetShadowState(Vessel);
     }
     #endregion
 

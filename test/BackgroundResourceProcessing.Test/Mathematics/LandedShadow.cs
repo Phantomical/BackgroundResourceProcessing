@@ -1,4 +1,5 @@
 using System;
+using BackgroundResourceProcessing.Shadow;
 using KSP.Testing;
 
 namespace BackgroundResourceProcessing.Test.Mathematics;

@@ -2,12 +2,15 @@ using System;
 using System.Net.NetworkInformation;
 using BackgroundResourceProcessing.BurstSolver;
 using BackgroundResourceProcessing.Collections.Burst;
+using BackgroundResourceProcessing.Mathematics;
 using BackgroundResourceProcessing.Maths;
 using BackgroundResourceProcessing.Utils;
 using Unity.Burst;
 using Unity.Burst.CompilerServices;
 
-namespace BackgroundResourceProcessing.Mathematics;
+namespace BackgroundResourceProcessing.Shadow;
+
+using Orbit = BackgroundResourceProcessing.Mathematics.Orbit;
 
 internal readonly struct OrbitShadow
 {

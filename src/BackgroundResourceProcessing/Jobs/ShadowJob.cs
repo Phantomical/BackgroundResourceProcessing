@@ -1,5 +1,6 @@
 using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Mathematics;
+using BackgroundResourceProcessing.Shadow;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;

@@ -4,6 +4,7 @@ using System.Linq;
 using BackgroundResourceProcessing.BurstSolver;
 using BackgroundResourceProcessing.Jobs;
 using BackgroundResourceProcessing.Mathematics;
+using BackgroundResourceProcessing.Shadow;
 using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
 using Unity.Collections;
@@ -123,7 +124,7 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
     ///
     /// <para>
     /// This is the single source of truth shared by the asynchronous
-    /// (<see cref="BurstSolver.ShadowHandle.Complete"/>) and synchronous
+    /// (<see cref="Shadow.ShadowHandle.Complete"/>) and synchronous
     /// (<see cref="GetOrbitShadowState"/> / <see cref="GetLandedShadowState"/>)
     /// paths so the two cannot diverge.
     /// </para>
@@ -159,7 +160,7 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
     ///
     /// <remarks>
     /// Shared by the synchronous (<see cref="GetShadowState"/>) and asynchronous
-    /// (<see cref="BurstSolver.ShadowHandle.Complete"/>) paths so that every result
+    /// (<see cref="Shadow.ShadowHandle.Complete"/>) paths so that every result
     /// — lit or shadowed — is validated identically.
     /// </remarks>
     internal static ShadowState ValidateShadowState(ShadowState state, double currentUT)

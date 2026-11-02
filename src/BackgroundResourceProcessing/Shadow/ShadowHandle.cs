@@ -5,7 +5,7 @@ using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
 
-namespace BackgroundResourceProcessing.BurstSolver;
+namespace BackgroundResourceProcessing.Shadow;
 
 /// <summary>
 /// Represents an in-flight or completed shadow state computation.
