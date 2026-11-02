@@ -27,6 +27,14 @@ internal static partial class Simplex
     const double Epsilon = 1e-9;
 
     /// <summary>
+    /// Reduced costs and pivot elements with a magnitude below this are
+    /// treated as zero. Pivoting on a value that is really just accumulated
+    /// rounding error (especially in rows scaled by big-M constants) amplifies
+    /// that error throughout the tableau.
+    /// </summary>
+    const double PivotEpsilon = 1e-12;
+
+    /// <summary>
     /// The minimum number of pivots allowed before giving up. The actual limit
     /// scales with the size of the tableau, see <see cref="MaxIterationsFor"/>.
     /// </summary>
@@ -185,7 +193,7 @@ internal static partial class Simplex
     {
         for (int x = 0; x < length; ++x)
         {
-            if (row[x] < 0.0)
+            if (row[x] < -PivotEpsilon)
                 return x;
         }
 
@@ -206,7 +214,7 @@ internal static partial class Simplex
             double* row = tableau.GetRowPtr(y);
             double den = row[pivot];
 
-            if (den <= 0.0)
+            if (den <= PivotEpsilon)
                 continue;
 
             double ratio = row[tableau.Cols - 1] / den;
@@ -233,7 +241,7 @@ internal static partial class Simplex
         if (IsAvx2Supported)
         {
             var vpivot = mm256_set1_epi64x(-1);
-            var vvalue = mm256_set1_pd(0.0);
+            var vvalue = mm256_set1_pd(-PivotEpsilon);
             var indices = mm256_set_epi64x(3, 2, 1, 0);
 
             int i = 0;
@@ -278,7 +286,7 @@ internal static partial class Simplex
         else
         {
             int pivot = -1;
-            double value = 0.0;
+            double value = -PivotEpsilon;
 
             for (int x = 0; x < length; ++x)
             {
@@ -306,7 +314,7 @@ internal static partial class Simplex
             double num = row[tableau.Cols - 1];
             double ratio = num / den;
 
-            if (den <= 0.0)
+            if (den <= PivotEpsilon)
                 continue;
 
             // We ignore all negative ratios
