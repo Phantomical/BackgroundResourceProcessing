@@ -22,7 +22,76 @@ public sealed class FieldExpressionLogicTests : BRPTestBase
         public double doubleValue = 3.14;
         public object nullObject = null;
         public object nonNullObject = new();
+        public object boxedA = 5;
+        public object boxedB = 5;
+        public object boxedC = 6;
+        public LogicTestModule other = null;
     }
+
+    #region Reference Truthiness and Boxed Equality
+
+    [TestInfo("FieldExpressionLogicTests_ClassField_Null_IsFalse")]
+    public void ClassField_Null_IsFalse()
+    {
+        var expr = FieldExpression<bool>.Compile("%other", new(), typeof(LogicTestModule));
+        Assert.AreEqual(false, expr.Evaluate(new LogicTestModule()));
+    }
+
+    [TestInfo("FieldExpressionLogicTests_ClassField_NonNull_IsTrue")]
+    public void ClassField_NonNull_IsTrue()
+    {
+        var module = new LogicTestModule { other = new LogicTestModule() };
+        var expr = FieldExpression<bool>.Compile("%other", new(), typeof(LogicTestModule));
+        Assert.AreEqual(true, expr.Evaluate(module));
+    }
+
+    [TestInfo("FieldExpressionLogicTests_ClassField_InAnd")]
+    public void ClassField_InAnd()
+    {
+        var module = new LogicTestModule { other = new LogicTestModule() };
+        var expr = FieldExpression<bool>.Compile(
+            "%other && %trueValue",
+            new(),
+            typeof(LogicTestModule)
+        );
+        Assert.AreEqual(true, expr.Evaluate(module));
+        Assert.AreEqual(false, expr.Evaluate(new LogicTestModule()));
+    }
+
+    [TestInfo("FieldExpressionLogicTests_BoxedEquality_EqualValues")]
+    public void BoxedEquality_EqualValues()
+    {
+        var expr = FieldExpression<bool>.Compile(
+            "%boxedA == %boxedB",
+            new(),
+            typeof(LogicTestModule)
+        );
+        Assert.AreEqual(true, expr.Evaluate(new LogicTestModule()));
+    }
+
+    [TestInfo("FieldExpressionLogicTests_BoxedInequality_EqualValues")]
+    public void BoxedInequality_EqualValues()
+    {
+        var expr = FieldExpression<bool>.Compile(
+            "%boxedA != %boxedB",
+            new(),
+            typeof(LogicTestModule)
+        );
+        Assert.AreEqual(false, expr.Evaluate(new LogicTestModule()));
+    }
+
+    [TestInfo("FieldExpressionLogicTests_BoxedEquality_DifferentValues")]
+    public void BoxedEquality_DifferentValues()
+    {
+        var expr = FieldExpression<bool>.Compile(
+            "%boxedA == %boxedC",
+            new(),
+            typeof(LogicTestModule)
+        );
+        Assert.AreEqual(false, expr.Evaluate(new LogicTestModule()));
+    }
+
+    #endregion
 
     #region Basic Boolean Operators
 

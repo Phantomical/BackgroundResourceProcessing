@@ -970,7 +970,9 @@ internal ref struct Parser(Lexer lexer, ConfigNode node, Type target)
         var lt = lhs.Type;
         var rt = rhs.Type;
 
-        if (lt == rt)
+        // Dynamically typed values are boxed, so Expression.Equal on them would
+        // only compare references. They need to go through DoEquals instead.
+        if (lt == rt && lt != typeof(object))
             return Expression.Equal(lhs, rhs);
 
         if (lt == typeof(Type) && rt == typeof(string))
@@ -1077,7 +1079,7 @@ internal ref struct Parser(Lexer lexer, ConfigNode node, Type target)
                 expr
             );
 
-        return Expression.ReferenceEqual(expr, Expression.Constant(null, et));
+        return Expression.ReferenceNotEqual(expr, Expression.Constant(null, et));
     }
 
     static Expression CoerceToObject(Expression expr)
