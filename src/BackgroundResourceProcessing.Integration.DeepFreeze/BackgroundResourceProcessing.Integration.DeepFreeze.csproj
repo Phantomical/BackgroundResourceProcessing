@@ -29,8 +29,12 @@
             <HintPath>$(DepSet2)\REPOSoftTech\DeepFreeze\Plugins\DeepFreeze.dll</HintPath>
             <Private>false</Private>
             <CKANIdentifier>DeepFreeze</CKANIdentifier>
-            <KSPAssemblyName>DeepFreeze</KSPAssemblyName>
-            <KSPAssemblyVersion>1.32.0</KSPAssemblyVersion>
+            <!-- KSP matches dependencies against the KSPAssembly name, not
+                 the DLL name. DeepFreeze Updated renamed this between
+                 releases ("DeepFreeze Updated..." in 1.32,
+                 "DeepFreeze Continued..." in 1.33). -->
+            <KSPAssemblyName>DeepFreeze Continued...</KSPAssemblyName>
+            <KSPAssemblyVersion>1.33.0</KSPAssemblyVersion>
         </Reference>
 
         <!-- RSTUtils (Utilities) was split out of DeepFreeze.dll into its own
