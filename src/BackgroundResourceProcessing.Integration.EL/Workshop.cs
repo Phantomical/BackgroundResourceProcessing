@@ -25,24 +25,55 @@ public class BackgroundELWorkshop : BackgroundConverter<ELWorkshop>
         if (ResourceName == null)
             return null;
 
+        // EL sums the productivity of every active work source on the vessel,
+        // and individual workshops can have negative productivity (e.g. when
+        // crewed by unskilled kerbals). Work only happens when that total is
+        // positive. Model this by having the first active source on the
+        // vessel produce the clamped total and the others produce nothing.
+        // A negative output would otherwise reach the solver as consumption.
+        List<ELWorkSource> sources = null;
+        if (workshop.workNet)
+            sources = (List<ELWorkSource>)SourcesField.GetValue(workshop.workNet);
+
+        double productivity;
+        if (sources != null)
+        {
+            ELWorkSource first = null;
+            productivity = 0.0;
+            foreach (var source in sources)
+            {
+                if (source == null || !source.isActive)
+                    continue;
+
+                first ??= source;
+                productivity += source.Productivity;
+            }
+
+            if (!ReferenceEquals(first, workshop))
+                return null;
+        }
+        else
+        {
+            productivity = workshop.Productivity;
+        }
+
+        if (productivity <= 0.0)
+            return null;
+
         var output = new ResourceRatio()
         {
             ResourceName = ResourceName,
-            Ratio = workshop.Productivity * BaseRate,
+            Ratio = productivity * BaseRate,
         };
 
         var behaviour = new ModuleBehaviour(new ConstantProducer([output]));
 
-        if (workshop.workNet)
+        if (sources != null)
         {
-            var sources = (List<ELWorkSource>)SourcesField.GetValue(workshop.workNet);
-            if (sources != null)
+            foreach (var source in sources)
             {
-                foreach (var source in sources)
-                {
-                    if (source is PartModule partModule)
-                        behaviour.AddPushModule(partModule);
-                }
+                if (source is PartModule partModule)
+                    behaviour.AddPushModule(partModule);
             }
         }
 
