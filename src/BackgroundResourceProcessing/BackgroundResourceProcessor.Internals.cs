@@ -90,7 +90,7 @@ public sealed partial class BackgroundResourceProcessor
 
         LoadVessel();
 
-        GameEvents.onGameStateSave.Add(OnGameStateSave);
+        SubscribeGameStateSave();
     }
 
     public override void OnUnloadVessel()
@@ -471,7 +471,19 @@ public sealed partial class BackgroundResourceProcessor
     private void RegisterCallbacks()
     {
         if (vessel.loaded)
-            GameEvents.onGameStateSave.Add(OnGameStateSave);
+            SubscribeGameStateSave();
+    }
+
+    /// <summary>
+    /// Subscribe to <c>onGameStateSave</c> at most once. A vessel that is
+    /// loaded when the module starts goes through both <c>Start</c> and
+    /// <c>OnLoadVessel</c>, and <c>EventData.Remove</c> only removes one
+    /// subscription, so a duplicate would outlive the module.
+    /// </summary>
+    private void SubscribeGameStateSave()
+    {
+        GameEvents.onGameStateSave.Remove(OnGameStateSave);
+        GameEvents.onGameStateSave.Add(OnGameStateSave);
     }
     #endregion
 }
