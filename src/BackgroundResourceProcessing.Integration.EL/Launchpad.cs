@@ -13,10 +13,20 @@ namespace BackgroundResourceProcessing.Integration.EL;
 /// </summary>
 ///
 /// <remarks>
+/// <para>
 ///   This module works by taking a <see cref="WorkHoursResource"/> and
 ///   either consuming or building the required resources for the ship
 ///   being built. It expects a <see cref="BackgroundELLaunchpadInventory"/>
 ///   to be present on the same module which will update the EL WorkNet.
+/// </para>
+///
+/// <para>
+///   EL builds every resource independently: <c>ELBuildControl.DoWork_Build</c>
+///   splits the available work between the resources that still need building
+///   and that have stock on the pad, so running out of one resource doesn't
+///   stall the others. We model that with one converter per resource, each of
+///   which records its progress in its own inventory on the launchpad.
+/// </para>
 /// </remarks>
 public class BackgroundELLaunchpad : BackgroundConverter<ELLaunchpad>
 {
@@ -35,77 +45,74 @@ public class BackgroundELLaunchpad : BackgroundConverter<ELLaunchpad>
             return null;
         if (!control.isActive)
             return null;
+        if (control.paused)
+            return null;
 
-        var work = control.CalculateWork();
-        List<ResourceRatio> inputs =
-        [
-            new ResourceRatio()
-            {
-                ResourceName = WorkHoursResource,
-                Ratio = work,
-                FlowMode = ResourceFlowMode.ALL_VESSEL,
-            },
-        ];
-
-        List<ResourceRatio> outputs =
-        [
-            new()
-            {
-                ResourceName = WorkHoursResource,
-                Ratio = work,
-                FlowMode = ResourceFlowMode.NO_FLOW,
-            },
-        ];
-
+        List<ConverterBehaviour> converters = [];
         if (control.state == ELBuildControl.State.Building)
         {
-            var required = control.builtStuff.required;
-
-            foreach (var res in required)
+            foreach (var res in control.builtStuff.required)
             {
-                if (res.amount == 0.0)
+                if (res.amount <= 0.0)
                     continue;
 
-                inputs.Add(
-                    new ResourceRatio()
+                var work = res.kerbalHours * res.amount;
+                if (!(work > 0.0))
+                    continue;
+
+                List<ResourceRatio> inputs =
+                [
+                    WorkInput(work),
+                    new()
                     {
                         ResourceName = res.name,
                         Ratio = res.amount,
                         FlowMode = ResourceFlowMode.ALL_VESSEL_BALANCE,
-                    }
-                );
+                    },
+                ];
+                List<ResourceRatio> outputs = [ProgressOutput(res.name, work)];
+
+                converters.Add(new ConstantConverter(inputs, outputs, []));
             }
         }
         else if (control.state == ELBuildControl.State.Canceling)
         {
-            var built = control.builtStuff.required;
             var cost = control.buildCost.required;
-
-            foreach (var bres in built)
+            foreach (var bres in control.builtStuff.required)
             {
-                var cres = FindResource(cost, bres.name);
-                var remaining = cres.amount - bres.amount;
+                var cres = BackgroundELLaunchpadInventory.FindResource(cost, bres.name);
+                if (cres == null)
+                    continue;
 
+                var remaining = cres.amount - bres.amount;
                 if (remaining <= 0.0)
                     continue;
 
-                outputs.Add(
-                    new ResourceRatio()
+                var work = bres.kerbalHours * remaining;
+                if (!(work > 0.0))
+                    continue;
+
+                List<ResourceRatio> inputs = [WorkInput(work)];
+                List<ResourceRatio> outputs =
+                [
+                    ProgressOutput(bres.name, work),
+                    new()
                     {
                         ResourceName = bres.name,
                         Ratio = remaining,
                         FlowMode = ResourceFlowMode.ALL_VESSEL_BALANCE,
                         DumpExcess = true,
-                    }
-                );
+                    },
+                ];
+
+                converters.Add(new ConstantConverter(inputs, outputs, []));
             }
         }
-        else
-        {
-            return null;
-        }
 
-        ModuleBehaviour behaviour = new(new ConstantConverter(inputs, outputs));
+        if (converters.Count == 0)
+            return null;
+
+        ModuleBehaviour behaviour = new(converters);
         behaviour.AddPushModule(module);
 
         var workNet = control.workNet;
@@ -125,27 +132,43 @@ public class BackgroundELLaunchpad : BackgroundConverter<ELLaunchpad>
         return behaviour;
     }
 
-    private static BuildResource FindResource(List<BuildResource> list, string name)
-    {
-        foreach (var res in list)
+    private ResourceRatio WorkInput(double work) =>
+        new()
         {
-            if (res.name == name)
-                return res;
-        }
+            ResourceName = WorkHoursResource,
+            Ratio = work,
+            FlowMode = ResourceFlowMode.ALL_VESSEL,
+        };
 
-        return null;
-    }
+    private ResourceRatio ProgressOutput(string resourceName, double work) =>
+        new()
+        {
+            ResourceName = BackgroundELLaunchpadInventory.ProgressResourceName(
+                WorkHoursResource,
+                resourceName
+            ),
+            Ratio = work,
+            FlowMode = ResourceFlowMode.NO_FLOW,
+        };
 }
 
 /// <summary>
-/// An inventory representing the amount of <see cref="WorkHoursResource"/>
-/// that need to be produced before the vessel is complete. On resume it
-/// updates the state of its linked <see cref="ELLaunchpad"/>.
+/// The inventories that track how much work has been done on each resource of
+/// the ship being built (or cancelled). On resume it updates the state of its
+/// linked <see cref="ELLaunchpad"/>.
 /// </summary>
 public class BackgroundELLaunchpadInventory : BackgroundInventory<ELLaunchpad>
 {
     [KSPField]
     public string WorkHoursResource = "BRPELWorkHours";
+
+    /// <summary>
+    /// The name of the inventory that tracks the work done on one build
+    /// resource. These only ever exist as background inventories so they
+    /// don't need a resource definition.
+    /// </summary>
+    internal static string ProgressResourceName(string workHoursResource, string resourceName) =>
+        $"{workHoursResource}:{resourceName}";
 
     public override List<FakePartResource> GetResources(ELLaunchpad launchpad)
     {
@@ -155,23 +178,60 @@ public class BackgroundELLaunchpadInventory : BackgroundInventory<ELLaunchpad>
         if (!control.isActive)
             return null;
 
-        var work = control.CalculateWork();
-        var output = new FakePartResource()
+        List<FakePartResource> resources = [];
+        if (control.state == ELBuildControl.State.Building)
         {
-            ResourceName = WorkHoursResource,
+            foreach (var res in control.builtStuff.required)
+            {
+                if (res.amount <= 0.0)
+                    continue;
+
+                var work = res.kerbalHours * res.amount;
+                if (!(work > 0.0))
+                    continue;
+
+                resources.Add(Progress(res.name, work));
+            }
+        }
+        else if (control.state == ELBuildControl.State.Canceling)
+        {
+            var cost = control.buildCost.required;
+            foreach (var bres in control.builtStuff.required)
+            {
+                var cres = FindResource(cost, bres.name);
+                if (cres == null)
+                    continue;
+
+                var work = bres.kerbalHours * (cres.amount - bres.amount);
+                if (!(work > 0.0))
+                    continue;
+
+                resources.Add(Progress(bres.name, work));
+            }
+        }
+
+        return resources;
+    }
+
+    private FakePartResource Progress(string resourceName, double work) =>
+        new()
+        {
+            ResourceName = ProgressResourceName(WorkHoursResource, resourceName),
             Amount = 0.0,
             MaxAmount = work,
         };
-
-        return [output];
-    }
 
     public override void UpdateResource(ELLaunchpad launchpad, ResourceInventory inventory)
     {
         // The main thing we need to do here is to update the launchpad's
         // tracked resources to account for the work done in the background.
 
-        if (inventory.ResourceName != WorkHoursResource)
+        var prefix = WorkHoursResource + ":";
+
+        // Older versions tracked the progress of every resource together in a
+        // single inventory named after the work hours resource.
+        bool legacy = inventory.ResourceName == WorkHoursResource;
+        if (!legacy && !inventory.ResourceName.StartsWith(prefix))
             return;
 
         var control = launchpad.control;
@@ -194,19 +254,19 @@ public class BackgroundELLaunchpadInventory : BackgroundInventory<ELLaunchpad>
         if (inventory.Amount == 0.0)
             return;
 
-        var workHours = inventory.Amount;
         var total = inventory.MaxAmount;
         if (total <= 0.0 || !MathUtil.IsFinite(total))
             return;
 
-        var ratio = MathUtil.Clamp01(workHours / total);
+        var ratio = MathUtil.Clamp01(inventory.Amount / total);
+        string only = legacy ? null : inventory.ResourceName.Substring(prefix.Length);
 
         if (control.state == ELBuildControl.State.Building)
         {
-            var required = control.builtStuff.required;
-
-            foreach (var res in required)
+            foreach (var res in control.builtStuff.required)
             {
+                if (only != null && res.name != only)
+                    continue;
                 if (res.amount <= 0.0)
                     continue;
 
@@ -220,9 +280,14 @@ public class BackgroundELLaunchpadInventory : BackgroundInventory<ELLaunchpad>
 
             foreach (var bres in built)
             {
-                var cres = FindResource(cost, bres.name);
-                var remaining = cres.amount - bres.amount;
+                if (only != null && bres.name != only)
+                    continue;
 
+                var cres = FindResource(cost, bres.name);
+                if (cres == null)
+                    continue;
+
+                var remaining = cres.amount - bres.amount;
                 if (remaining <= 0.0)
                     continue;
 
@@ -231,7 +296,7 @@ public class BackgroundELLaunchpadInventory : BackgroundInventory<ELLaunchpad>
         }
     }
 
-    private static BuildResource FindResource(List<BuildResource> list, string name)
+    internal static BuildResource FindResource(List<BuildResource> list, string name)
     {
         foreach (var res in list)
         {
