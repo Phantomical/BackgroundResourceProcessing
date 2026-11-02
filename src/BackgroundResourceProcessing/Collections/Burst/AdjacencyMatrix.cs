@@ -134,8 +134,8 @@ internal unsafe struct AdjacencyMatrix : IEnumerable<BitSpan>
                         var vrow = loadu_si128(&data[i * ColumnWords]);
                         var vword =
                             word == 0
-                                ? shuffle_epi32(vrow, SHUFFLE(0, 1, 0, 1))
-                                : shuffle_epi32(vrow, SHUFFLE(2, 3, 2, 3));
+                                ? shuffle_epi32(vrow, SHUFFLE(1, 0, 1, 0))
+                                : shuffle_epi32(vrow, SHUFFLE(3, 2, 3, 2));
                         // ulong invmask = ((row[word] >> bit) & 1) - 1;
                         var vinvmask = sub_epi64(and_si128(srl_epi64(vword, vbit), ones), ones);
 
@@ -301,12 +301,12 @@ internal unsafe struct AdjacencyMatrix : IEnumerable<BitSpan>
 
     struct Shuffle0() : IShuffleMask
     {
-        public readonly int Shuffle => SHUFFLE(0, 1, 0, 1);
+        public readonly int Shuffle => SHUFFLE(1, 0, 1, 0);
     }
 
     struct Shuffle1() : IShuffleMask
     {
-        public readonly int Shuffle => SHUFFLE(2, 3, 2, 3);
+        public readonly int Shuffle => SHUFFLE(3, 2, 3, 2);
     }
 
     private readonly unsafe bool RemoveUnequalColumns_Variant2<T>(ulong* span, int bit, T provider)
