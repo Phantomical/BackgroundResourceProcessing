@@ -5,7 +5,7 @@ using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 
-namespace BackgroundResourceProcessing.BurstSolver;
+namespace BackgroundResourceProcessing.Jobs;
 
 [BurstCompile]
 internal unsafe struct ShadowJob : IJob

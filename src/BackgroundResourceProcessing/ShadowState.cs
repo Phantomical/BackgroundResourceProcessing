@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BackgroundResourceProcessing.BurstSolver;
+using BackgroundResourceProcessing.Jobs;
 using BackgroundResourceProcessing.Mathematics;
 using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;

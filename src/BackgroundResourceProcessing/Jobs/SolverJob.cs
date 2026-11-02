@@ -1,10 +1,11 @@
+using BackgroundResourceProcessing.BurstSolver;
 using BackgroundResourceProcessing.Collections.Burst;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 
-namespace BackgroundResourceProcessing.BurstSolver;
+namespace BackgroundResourceProcessing.Jobs;
 
 [BurstCompile]
 internal unsafe struct SolverJob : IJob

@@ -7,6 +7,7 @@ using BackgroundResourceProcessing.BurstSolver;
 using BackgroundResourceProcessing.Collections;
 using BackgroundResourceProcessing.Converter;
 using BackgroundResourceProcessing.Inventory;
+using BackgroundResourceProcessing.Jobs;
 using BackgroundResourceProcessing.Tracing;
 using BackgroundResourceProcessing.Utils;
 using Smooth.Collections;
@@ -234,15 +235,6 @@ internal class ResourceProcessor
         jobHandle = new AllocatorDisposeJob(arena).Schedule(jobHandle);
 
         return new SolveHandle(this, jobHandle, invRates, convRates, errCode, hash);
-    }
-
-    [BurstCompile]
-    struct AllocatorDisposeJob(NativeReference<BurstAllocator> allocator) : IJob
-    {
-        [DeallocateOnJobCompletion]
-        public NativeReference<BurstAllocator> allocator = allocator;
-
-        public void Execute() => allocator.Value.Dispose();
     }
 
     public void ClearRates()
