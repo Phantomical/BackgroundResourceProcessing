@@ -386,7 +386,14 @@ internal static class Methods
             uint ui => ui,
             long l => l,
             ulong ul => ul,
-            string s => double.TryParse(s, out var sd) ? sd : null,
+            string s => double.TryParse(
+                s,
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var sd
+            )
+                ? sd
+                : null,
             _ => null,
         };
     }

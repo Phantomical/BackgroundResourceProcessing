@@ -412,7 +412,14 @@ internal ref struct Parser(Lexer lexer, ConfigNode node, Type target)
     {
         var token = ExpectToken(TokenKind.NUMBER);
         var text = token.ToString();
-        if (!double.TryParse(text, out var value))
+        if (
+            !double.TryParse(
+                text,
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var value
+            )
+        )
             throw RenderError($"invalid number literal `{text}`");
 
         return Expression.Constant(value);
@@ -1140,7 +1147,14 @@ internal ref struct Parser(Lexer lexer, ConfigNode node, Type target)
                 return Expression.Constant((double)ul);
             if (value is string str)
             {
-                if (double.TryParse(str, out var parsed))
+                if (
+                    double.TryParse(
+                        str,
+                        System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out var parsed
+                    )
+                )
                     return Expression.Constant(parsed);
             }
         }

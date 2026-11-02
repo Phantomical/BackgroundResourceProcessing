@@ -188,7 +188,11 @@ internal ref struct Lexer(ReadOnlySpan<char> text)
 
         try
         {
-            double.Parse(slice.ToString());
+            double.Parse(
+                slice.ToString(),
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture
+            );
         }
         catch (Exception e)
         {
