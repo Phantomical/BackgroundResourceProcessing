@@ -132,4 +132,12 @@ public class ModIntegrationSettings : GameParameters.CustomParameterNode
         toolTip = "Patch BonVoyage to use Background Resource Processing's simulation"
     )]
     public bool EnableBonVoyageIntegration = true;
+
+    [GameParameters.CustomParameterUI(
+        "Enable MKS Planetary Logistics Integration",
+        toolTip = "Flow an unloaded MKS colony's surplus/deficit of warehoused resources "
+            + "to and from the planet-wide Planetary Logistics pool in the background, "
+            + "keeping the shared pool consistent across colonies."
+    )]
+    public bool EnableMKSPlanetaryLogistics = true;
 }

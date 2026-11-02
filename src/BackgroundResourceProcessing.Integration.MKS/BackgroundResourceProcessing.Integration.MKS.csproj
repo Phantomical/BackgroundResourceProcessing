@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <Description>BackgroundResourceProcessing USI MKS Integration</Description>
+
+        <GenerateKSPAssemblyAttribute>true</GenerateKSPAssemblyAttribute>
+        <GenerateKSPAssemblyDependencyAttributes>true</GenerateKSPAssemblyDependencyAttributes>
+
+        <KSPBinaryType>binary</KSPBinaryType>
+        <EnableHotReload>true</EnableHotReload>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference
+            Include="$(ProjectDir)/../BackgroundResourceProcessing/BackgroundResourceProcessing.csproj">
+            <KSPAssemblyName>BackgroundResourceProcessing</KSPAssemblyName>
+            <KSPAssemblyVersion>$(Version)</KSPAssemblyVersion>
+            <Private>false</Private>
+        </ProjectReference>
+
+        <!-- MKS itself (Planetary Logistics manager + pool entries). -->
+        <Reference Include="KolonyTools.dll">
+            <HintPath>$(DepSet1)\UmbraSpaceIndustries\MKS\KolonyTools.dll</HintPath>
+            <Private>false</Private>
+            <CKANIdentifier>UKS</CKANIdentifier>
+            <!-- KolonyTools has no KSPAssembly attribute, which KSP treats as 0.0.0. -->
+            <KSPAssemblyName>KolonyTools</KSPAssemblyName>
+            <KSPAssemblyVersion>0.0.0</KSPAssemblyVersion>
+        </Reference>
+
+        <!-- USITools carries USI_ModuleResourceWarehouse + LogisticsTools. -->
+        <Reference Include="USITools.dll">
+            <HintPath>$(DepSet1)\000_USITools\USITools.dll</HintPath>
+            <Private>false</Private>
+            <KSPAssemblyName>USITools</KSPAssemblyName>
+            <KSPAssemblyVersion>0.0.0</KSPAssemblyVersion>
+        </Reference>
+
+        <InternalsVisibleTo Include="BackgroundResourceProcessing.Test" />
+    </ItemGroup>
+
+    <!--
+    It's really easy for old binaries to stick around in GameData and bin
+    directories. This step makes sure that doesn't happen.
+    -->
+    <Target Name="PostClean" AfterTargets="Clean">
+        <RemoveDir Directories="$(ProjectDir)\bin" />
+    </Target>
+</Project>
