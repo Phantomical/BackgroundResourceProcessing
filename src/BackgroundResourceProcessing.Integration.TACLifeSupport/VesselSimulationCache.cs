@@ -58,12 +58,20 @@ namespace BackgroundResourceProcessing.Integration.TACLifeSupport
             var options = new AddConverterOptions { LinkToAll = true };
             var converters = new Converters(vessel, info);
 
-            simulator.AddConverter(converters.ec, vesselState, options);
-            if (converters.food is not null)
+            // The simulator is cloned from the processor, so it already
+            // contains the TAC-LS converters that were recorded for this
+            // vessel. Only add the ones that are missing, otherwise the
+            // consumption gets counted twice.
+            var module = vessel.FindVesselModuleImplementing<ModuleBackgroundTACLifeSupport>();
+            bool HasConverter(int index) => module is not null && index >= 0;
+
+            if (!HasConverter(module?.ECConverterIndex ?? -1))
+                simulator.AddConverter(converters.ec, vesselState, options);
+            if (converters.food is not null && !HasConverter(module?.FoodConverterIndex ?? -1))
                 simulator.AddConverter(converters.food, vesselState, options);
-            if (converters.water is not null)
+            if (converters.water is not null && !HasConverter(module?.WaterConverterIndex ?? -1))
                 simulator.AddConverter(converters.water, vesselState, options);
-            if (converters.oxygen is not null)
+            if (converters.oxygen is not null && !HasConverter(module?.OxygenConverterIndex ?? -1))
                 simulator.AddConverter(converters.oxygen, vesselState, options);
 
             var stats = new VesselStats
