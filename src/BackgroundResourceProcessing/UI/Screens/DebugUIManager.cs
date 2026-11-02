@@ -626,8 +626,9 @@ internal static class DebugUIManager
     )
     {
         var valueTmp = CreateTableRow(parent, name, "");
-        var timeLabel =
-            valueTmp.transform.parent.gameObject.AddComponent<Components.RelativeTimeLabel>();
+        // This must go on the value label itself. The row's first label is the
+        // name, so attaching it to the row would overwrite the name instead.
+        var timeLabel = valueTmp.gameObject.AddComponent<Components.RelativeTimeLabel>();
         timeLabel.UT = initialUT;
         return timeLabel;
     }

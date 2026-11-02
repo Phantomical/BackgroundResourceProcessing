@@ -1,4 +1,5 @@
 using System.Text;
+using BackgroundResourceProcessing.Utils;
 using TMPro;
 using UnityEngine;
 
@@ -11,6 +12,7 @@ internal class RelativeTimeLabel : MonoBehaviour
 
     TextMeshProUGUI _label;
     int _updateSeconds;
+    bool _showingNever;
 
     void Awake()
     {
@@ -19,6 +21,9 @@ internal class RelativeTimeLabel : MonoBehaviour
 
     void Update()
     {
+        if (_showingNever && !MathUtil.IsFinite(UT))
+            return;
+
         var now = Planetarium.GetUniversalTime();
         var seconds = (int)(UT - now);
         if (seconds == _updateSeconds)
@@ -37,11 +42,14 @@ internal class RelativeTimeLabel : MonoBehaviour
         if (_label == null)
             return;
 
-        if (double.IsInfinity(UT) || double.IsNaN(UT))
+        if (!MathUtil.IsFinite(UT))
         {
             _label.text = "Never";
+            _showingNever = true;
             return;
         }
+
+        _showingNever = false;
 
         var time = KSPUtil.PrintTime(UT - now, 3, false);
         _label.text = Prefix != null ? Prefix + time : time;
