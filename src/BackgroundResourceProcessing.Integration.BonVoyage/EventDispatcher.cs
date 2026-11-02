@@ -22,11 +22,23 @@ internal class EventDispatcher : MonoBehaviour
     internal static readonly FieldInfo BVRequiredPowerField;
     internal static readonly FieldInfo BVVesselField;
 
-    internal static readonly FieldInfo RoverAverageSpeedField;
+    // The day-time average speed lives on the controller's movement
+    // controller (BonVoyage.MovementControllers.Controller), while the night
+    // time speed lives on the controller itself.
+    internal static readonly FieldInfo RoverMoveControllerField;
     internal static readonly FieldInfo RoverAverageSpeedAtNightField;
 
-    internal static readonly FieldInfo ShipAverageSpeedField;
+    internal static readonly FieldInfo ShipMoveControllerField;
     internal static readonly FieldInfo ShipAverageSpeedAtNightField;
+
+    internal static readonly FieldInfo MoveControllerAverageSpeedField;
+
+    /// <summary>
+    /// Whether all the BonVoyage members we need were found. If BonVoyage
+    /// changes its internals then we disable the integration instead of
+    /// throwing on every record and changepoint.
+    /// </summary>
+    internal static readonly bool Available;
 
     static EventDispatcher()
     {
@@ -48,17 +60,70 @@ internal class EventDispatcher : MonoBehaviour
         BVActiveField = BVController.GetField("active", Instance);
         BVRequiredPowerField = BVController.GetField("requiredPower", Instance);
 
-        RoverAverageSpeedField = RoverController.GetField("averageSpeed", Instance);
+        RoverMoveControllerField = RoverController.GetField("moveController", Instance);
         RoverAverageSpeedAtNightField = RoverController.GetField("averageSpeedAtNight", Instance);
 
-        ShipAverageSpeedField = ShipController.GetField("averageSpeed", Instance);
+        ShipMoveControllerField = ShipController.GetField("moveController", Instance);
         ShipAverageSpeedAtNightField = ShipController.GetField("averageSpeedAtNight", Instance);
+
+        var moveController = assembly.GetType("BonVoyage.MovementControllers.Controller");
+        MoveControllerAverageSpeedField = moveController?.GetField("averageSpeed", Instance);
+
+        bool available = true;
+        void Check(object member, string name)
+        {
+            if (member is not null)
+                return;
+
+            Debug.LogError(
+                $"[BackgroundResourceProcessing] BonVoyage integration: could not find {name}. The BonVoyage integration will be disabled."
+            );
+            available = false;
+        }
+
+        Check(GetControllerOfVesselMethod, "BonVoyage.GetControllerOfVessel");
+        Check(BVVesselField, "BVController.vessel");
+        Check(BVActiveField, "BVController.active");
+        Check(BVRequiredPowerField, "BVController.requiredPower");
+        Check(RoverMoveControllerField, "RoverController.moveController");
+        Check(RoverAverageSpeedAtNightField, "RoverController.averageSpeedAtNight");
+        Check(ShipMoveControllerField, "ShipController.moveController");
+        Check(ShipAverageSpeedAtNightField, "ShipController.averageSpeedAtNight");
+        Check(MoveControllerAverageSpeedField, "MovementControllers.Controller.averageSpeed");
+
+        Available = available;
+    }
+
+    static double GetAverageSpeed(object controller, FieldInfo moveControllerField)
+    {
+        var moveController = moveControllerField.GetValue(controller);
+        if (moveController is null)
+            return 0.0;
+
+        return (double)MoveControllerAverageSpeedField.GetValue(moveController);
+    }
+
+    static void SetAverageSpeed(
+        object controller,
+        FieldInfo moveControllerField,
+        FieldInfo atNightField,
+        double speed
+    )
+    {
+        var moveController = moveControllerField.GetValue(controller);
+        if (moveController is not null)
+            MoveControllerAverageSpeedField.SetValue(moveController, speed);
+
+        atNightField.SetValue(controller, speed);
     }
 
     internal static bool IsEnabled =>
-        HighLogic
-            .CurrentGame?.Parameters?.CustomParams<ModIntegrationSettings>()
-            ?.EnableBonVoyageIntegration ?? false;
+        Available
+        && (
+            HighLogic
+                .CurrentGame?.Parameters?.CustomParams<ModIntegrationSettings>()
+                ?.EnableBonVoyageIntegration ?? false
+        );
 
     void Start()
     {
@@ -74,6 +139,9 @@ internal class EventDispatcher : MonoBehaviour
 
     void OnVesselRecord(BackgroundResourceProcessor processor)
     {
+        if (!Available)
+            return;
+
         var controller = GetControllerOfVessel(BV.Instance, processor.Vessel);
         if (controller is null)
             return;
@@ -90,6 +158,9 @@ internal class EventDispatcher : MonoBehaviour
 
     void OnVesselChangepoint(BackgroundResourceProcessor processor, ChangepointEvent evt)
     {
+        if (!Available)
+            return;
+
         var controller = GetControllerOfVessel(BV.Instance, processor.Vessel);
         if (controller is null)
             return;
@@ -105,15 +176,19 @@ internal class EventDispatcher : MonoBehaviour
 
         var type = controller.GetType();
         if (type == RoverController)
-        {
-            RoverAverageSpeedField.SetValue(controller, averageSpeed);
-            RoverAverageSpeedAtNightField.SetValue(controller, averageSpeed);
-        }
+            SetAverageSpeed(
+                controller,
+                RoverMoveControllerField,
+                RoverAverageSpeedAtNightField,
+                averageSpeed
+            );
         else if (type == ShipController)
-        {
-            ShipAverageSpeedField.SetValue(controller, averageSpeed);
-            ShipAverageSpeedAtNightField.SetValue(controller, averageSpeed);
-        }
+            SetAverageSpeed(
+                controller,
+                ShipMoveControllerField,
+                ShipAverageSpeedAtNightField,
+                averageSpeed
+            );
     }
 
     internal static void OnAutopilotActivated(object controller)
@@ -159,7 +234,7 @@ internal class EventDispatcher : MonoBehaviour
     static void RecordRoverController(object controller, BackgroundResourceProcessor processor)
     {
         var requiredPower = (double)BVRequiredPowerField.GetValue(controller);
-        var averageSpeed = (double)RoverAverageSpeedField.GetValue(controller);
+        var averageSpeed = GetAverageSpeed(controller, RoverMoveControllerField);
 
         processor.AddConverter(
             new Core.ResourceConverter(
@@ -185,7 +260,7 @@ internal class EventDispatcher : MonoBehaviour
     static void RecordShipController(object controller, BackgroundResourceProcessor processor)
     {
         var requiredPower = (double)BVRequiredPowerField.GetValue(controller);
-        var averageSpeed = (double)ShipAverageSpeedField.GetValue(controller);
+        var averageSpeed = GetAverageSpeed(controller, ShipMoveControllerField);
 
         processor.AddConverter(
             new Core.ResourceConverter(
