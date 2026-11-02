@@ -589,7 +589,17 @@ internal struct LinearProblem(AllocatorHandle allocator)
         TracePresolvedProblem(func);
 
         if (simple.Count == 0 && constraints.Count == 0 && disjunctions.Count == 0)
+        {
+            // With no constraints left any variable with a positive objective
+            // coefficient can be increased without bound.
+            foreach (var var in func)
+            {
+                if (var.Coef > 0.0)
+                    return BurstError.Unsolvable();
+            }
+
             return ExtractEmptySolution();
+        }
 
         var varMapData = stackalloc RawIntMap<int>.Entry[VariableCount];
         var binaryIndicesData = stackalloc RawIntMap<int>.Entry[VariableCount];
@@ -647,10 +657,12 @@ internal struct LinearProblem(AllocatorHandle allocator)
             var result = Simplex.SolveTableau(tableau, basis, varMap.Count);
             if (result == Simplex.Result.Unbounded)
             {
-                // Some variable choices may not be solvable. That's not an
-                // issue, it just means that we don't need to consider
-                // any more changes here.
-                continue;
+                // Every branch has the same constraint coefficients as the
+                // relaxation, with only the constants differing (and fewer
+                // rows active). A direction along which the relaxation is
+                // unbounded therefore stays unbounded in every feasible branch
+                // below it, so the whole problem has no fixed maximum.
+                return BurstError.Unsolvable();
             }
 
             // If we hit the iteration limit then the tableau still holds a

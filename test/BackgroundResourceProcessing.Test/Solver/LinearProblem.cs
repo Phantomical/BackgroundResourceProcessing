@@ -74,6 +74,44 @@ public sealed class LinearProblemTest : BRPTestBase
         Assert.AreEqual(5.0, soln[z], 1e-6);
     }
 
+    // An objective with no constraints at all has no fixed maximum.
+    [TestInfo("LinearProblemTest_UnconstrainedIsUnbounded")]
+    public void UnconstrainedIsUnbounded()
+    {
+        LinearProblem problem = new();
+        var x = problem.CreateVariable();
+
+        var result = problem.Maximize([2.0 * x]);
+        Assert.IsTrue(result.IsErr);
+    }
+
+    // A problem whose constraints leave a direction of unbounded increase
+    // should be reported as unsolvable rather than returning a finite point.
+    [TestInfo("LinearProblemTest_UnboundedColumn")]
+    public void UnboundedColumn()
+    {
+        LinearProblem problem = new();
+        var x = problem.CreateVariable();
+        var y = problem.CreateVariable();
+
+        problem.AddConstraint(new LinearEquation() { x, -1.0 * y } <= 4.0).Unwrap();
+
+        var result = problem.Maximize([x, y]);
+        Assert.IsTrue(result.IsErr);
+    }
+
+    // A negative objective coefficient on an unconstrained variable is fine:
+    // the optimum is just 0.
+    [TestInfo("LinearProblemTest_UnconstrainedNegativeObjective")]
+    public void UnconstrainedNegativeObjective()
+    {
+        LinearProblem problem = new();
+        var x = problem.CreateVariable();
+
+        var soln = problem.Maximize([-2.0 * x]).Unwrap();
+        Assert.AreEqual(0.0, soln[x]);
+    }
+
     // This is derived from an actual test case that ended up returning NaNs
     // when optimizing.
     [TestInfo("LinearProblemTest_RegressionNan1")]
