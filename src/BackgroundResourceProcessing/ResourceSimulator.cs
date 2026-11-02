@@ -163,6 +163,8 @@ public sealed class ResourceSimulator
             for (int i = count - 1; i >= 0; --i)
             {
                 var inventory = Inventories[i];
+                if (inventory is null)
+                    continue;
                 if (inventory.ModuleId is not null)
                     continue;
 
@@ -176,9 +178,9 @@ public sealed class ResourceSimulator
         }
 
         Dirty = true;
-        processor.converters.Add(converter);
+        var index = processor.converters.Add(converter);
         processor.UpdateConstraintState(converter);
-        return processor.converters.Count - 1;
+        return index;
     }
 
     /// <summary>
@@ -189,8 +191,7 @@ public sealed class ResourceSimulator
     /// <returns></returns>
     public int AddInventory(Core.ResourceInventory inventory)
     {
-        processor.inventories.Add(inventory);
-        return processor.inventories.Count - 1;
+        return processor.inventories.Add(inventory);
     }
 
     /// <summary>

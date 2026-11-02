@@ -13,6 +13,7 @@ using Smooth.Collections;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
+using static BackgroundResourceProcessing.Collections.KeyValuePairExt;
 using AllocatorHandle = BackgroundResourceProcessing.Collections.Burst.AllocatorHandle;
 using BurstAllocator = BackgroundResourceProcessing.Collections.Burst.BurstAllocator;
 
@@ -280,15 +281,21 @@ internal class ResourceProcessor
 
         hasher.Add(inventories.Count, converters.Count);
         var ispan = new TraceSpan("Inventory Hashes");
-        int count = inventories.Count;
-        for (int i = 0; i < count; ++i)
-            inventories[i].SolverHash(ref hasher);
+        // Hash entries along with their indices, since the lists may contain
+        // holes left behind by removed entries.
+        foreach (var (i, inventory) in inventories.Entries)
+        {
+            hasher.Add(i);
+            inventory.SolverHash(ref hasher);
+        }
         ispan.Dispose();
 
         var cspan = new TraceSpan("Converter Hashes");
-        count = converters.Count;
-        for (int i = 0; i < count; ++i)
-            converters[i].SolverHash(ref hasher);
+        foreach (var (i, converter) in converters.Entries)
+        {
+            hasher.Add(i);
+            converter.SolverHash(ref hasher);
+        }
         cspan.Dispose();
 
         hasher.Add(this);
@@ -1174,13 +1181,11 @@ internal class ResourceProcessor
     /// </remarks>
     internal void ValidateReferencedInventories()
     {
-        for (int i = 0; i < converters.Count; ++i)
+        foreach (var (i, converter) in converters.Entries)
         {
-            var converter = converters[i];
-
             foreach (var pull in converter.Pull)
             {
-                if (pull >= inventories.Count || pull < 0)
+                if (pull >= inventories.Count || pull < 0 || inventories[pull] is null)
                     throw new Exception(
                         $"Converter with id {i} has pull reference to nonexistant inventory {pull}"
                     );
@@ -1188,7 +1193,7 @@ internal class ResourceProcessor
 
             foreach (var push in converter.Push)
             {
-                if (push >= inventories.Count || push < 0)
+                if (push >= inventories.Count || push < 0 || inventories[push] is null)
                     throw new Exception(
                         $"Converter with id {i} has push reference to nonexistant inventory {push}"
                     );
@@ -1196,7 +1201,7 @@ internal class ResourceProcessor
 
             foreach (var push in converter.Constraint)
             {
-                if (push >= inventories.Count || push < 0)
+                if (push >= inventories.Count || push < 0 || inventories[push] is null)
                     throw new Exception(
                         $"Converter with id {i} has constraint reference to nonexistant inventory {push}"
                     );
@@ -1207,8 +1212,18 @@ internal class ResourceProcessor
     internal ResourceProcessor CloneForSimulator()
     {
         var clone = (ResourceProcessor)MemberwiseClone();
-        clone.inventories = [.. inventories.Select(inv => inv.CloneForSimulator())];
-        clone.converters = [.. converters.Select(conv => conv.CloneForSimulator())];
+
+        // Clone at the same indices: converters refer to inventories by
+        // index and inventoryIds is shared, so compacting away holes here
+        // would leave them pointing at the wrong entries.
+        clone.inventories = new(inventories.Count);
+        foreach (var (i, inventory) in inventories.Entries)
+            clone.inventories.Insert(i, inventory.CloneForSimulator());
+
+        clone.converters = new(converters.Count);
+        foreach (var (i, converter) in converters.Entries)
+            clone.converters.Insert(i, converter.CloneForSimulator());
+
         return clone;
     }
 

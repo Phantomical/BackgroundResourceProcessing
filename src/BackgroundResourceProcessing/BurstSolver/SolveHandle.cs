@@ -4,6 +4,7 @@ using BackgroundResourceProcessing.Utils;
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
+using static BackgroundResourceProcessing.Collections.KeyValuePairExt;
 
 namespace BackgroundResourceProcessing.BurstSolver;
 
@@ -133,22 +134,20 @@ internal class SolveHandle : CustomYieldInstruction, IDisposable
             foreach (var converter in processor.converters)
                 converter.Rate = 0.0;
 
-            for (int i = 0; i < processor.inventories.Count; ++i)
+            foreach (var (i, inventory) in processor.inventories.Entries)
             {
                 var rate = soln.inventoryRates[i];
                 if (!MathUtil.IsFinite(rate))
-                    throw new Exception(
-                        $"Rate for inventory {processor.inventories[i].Id} was {rate}"
-                    );
-                processor.inventories[i].Rate = rate;
+                    throw new Exception($"Rate for inventory {inventory.Id} was {rate}");
+                inventory.Rate = rate;
             }
 
-            for (int i = 0; i < processor.converters.Count; ++i)
+            foreach (var (i, converter) in processor.converters.Entries)
             {
                 double rate = soln.converterRates[i];
                 if (!MathUtil.IsFinite(rate))
                     throw new Exception($"Rate for converter {i} was {rate}");
-                processor.converters[i].Rate = rate;
+                converter.Rate = rate;
             }
         }
         catch (Exception e)

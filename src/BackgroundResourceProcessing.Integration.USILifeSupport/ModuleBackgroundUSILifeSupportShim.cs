@@ -102,6 +102,8 @@ public class ModuleBackgroundUSILifeSupport : VesselModule
         for (int i = 0; i < inventories.Count; ++i)
         {
             var inventory = inventories[i];
+            if (inventory is null)
+                continue;
 
             if (inventory.ResourceName == "Supplies")
                 supplies.Add(i);

@@ -126,4 +126,31 @@ public sealed class ProcessorLoadTests : BRPTestBase
         Assert.IsTrue(converter.Constraint.Contains(1));
         Assert.AreEqual(ConstraintState.ENABLED, converter.ConstraintState);
     }
+
+    // A processor whose inventory list has a hole should still solve, and
+    // cloning it for the simulator should keep every entry at its index.
+    [TestInfo("ProcessorLoadTests_SparseIndicesSolveAndClone")]
+    public void SparseIndicesSolveAndClone()
+    {
+        var processor = TestUtil.LoadVessel("constraint/at-least-enabled.cfg");
+
+        foreach (var conv in processor.converters)
+        {
+            conv.Push[0] = false;
+            conv.Pull[0] = false;
+            conv.Constraint[0] = false;
+        }
+        processor.inventories[0] = null;
+
+        using (var solve = processor.ComputeRates())
+            solve.Complete();
+
+        var clone = processor.CloneForSimulator();
+        Assert.AreEqual(processor.inventories.Count, clone.inventories.Count);
+        Assert.IsTrue(clone.inventories[0] is null, "the hole should be preserved");
+        Assert.AreEqual(processor.inventories[1].ResourceName, clone.inventories[1].ResourceName);
+
+        using (var solve = clone.ComputeRates())
+            solve.Complete();
+    }
 }

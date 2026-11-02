@@ -509,6 +509,8 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
             for (int i = count - 1; i >= 0; --i)
             {
                 var inventory = Inventories[i];
+                if (inventory is null)
+                    continue;
                 if (inventory.ModuleId is not null)
                     continue;
 
@@ -521,8 +523,9 @@ public sealed partial class BackgroundResourceProcessor : VesselModule
             }
         }
 
-        var index = processor.converters.Count;
-        processor.converters.Add(converter);
+        // Add may reuse a hole left behind by a removed converter, so the
+        // index is whatever slot it actually used.
+        var index = processor.converters.Add(converter);
         processor.UpdateConstraintState(converter);
         MarkDirty();
         return index;
