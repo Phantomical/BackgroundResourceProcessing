@@ -48,14 +48,38 @@ public abstract class BackgroundSpaceObjectDrill<T> : BackgroundResourceConverte
 
             recipe.Inputs.Add(GetPowerConsumption(module));
 
+            // ModuleAsteroidDrill.PrepareRecipe skips resources with
+            // negligible abundance and dumps whatever doesn't fit, but only
+            // drills while at least one resource has room. We can't express
+            // that "any output has room" condition directly, so dump the
+            // resources this vessel has no storage for and leave the rest as
+            // regular outputs. A vessel with only an Ore tank then still
+            // mines Ore from a multi-resource asteroid, and still stops once
+            // that tank is full.
+            var storable = GetStorableResources(module.vessel);
+            bool anyStorable = false;
             foreach (var resource in resources)
             {
+                if (resource.abundance <= 1e-9)
+                    continue;
+                if (storable.Contains(resource.resourceName))
+                    anyStorable = true;
+            }
+
+            foreach (var resource in resources)
+            {
+                if (resource.abundance <= 1e-9)
+                    continue;
+
                 var definition = PartResourceLibrary.Instance.GetDefinition(resource.resourceName);
+                if (definition == null)
+                    continue;
+
                 var ratio = new ResourceRatio
                 {
                     ResourceName = resource.resourceName,
                     Ratio = resource.abundance * efficiency,
-                    DumpExcess = false,
+                    DumpExcess = anyStorable && !storable.Contains(resource.resourceName),
                     FlowMode = ResourceFlowMode.NULL,
                 };
 
@@ -79,6 +103,24 @@ public abstract class BackgroundSpaceObjectDrill<T> : BackgroundResourceConverte
             behaviour.AddPullModule(info);
 
         return behaviour;
+    }
+
+    static HashSet<string> GetStorableResources(Vessel vessel)
+    {
+        var storable = new HashSet<string>();
+        if (vessel == null)
+            return storable;
+
+        foreach (var part in vessel.parts)
+        {
+            foreach (var resource in part.Resources)
+            {
+                if (resource.maxAmount > 0.0)
+                    storable.Add(resource.resourceName);
+            }
+        }
+
+        return storable;
     }
 
     protected virtual Part GetDrillPotato(T module)
