@@ -375,6 +375,24 @@ namespace BackgroundResourceProcessing.Test.Collections.Burst
             Assert.IsFalse(matrix[1, 5]);
         }
 
+        [TestInfo("AdjacencyMatrixTests_FillUpperDiagonal_WordMultipleRows_FillsCorrectly")]
+        public void FillUpperDiagonal_WordMultipleRows_FillsCorrectly()
+        {
+            // Rows that are an exact multiple of 64 have no partial last word.
+            // This previously wrote one word past the end of the last row.
+            foreach (var n in new[] { 64, 128 })
+            {
+                var matrix = new AdjacencyMatrix(n, n, AllocatorHandle.Temp);
+                matrix.FillUpperDiagonal();
+
+                for (int r = 0; r < n; ++r)
+                {
+                    for (int c = 0; c < n; ++c)
+                        Assert.AreEqual(c > r, matrix[r, c], $"n={n} r={r} c={c}");
+                }
+            }
+        }
+
         [TestInfo("AdjacencyMatrixTests_FillUpperDiagonal_WideMatrix_FillsCorrectly")]
         public void FillUpperDiagonal_WideMatrix_FillsCorrectly()
         {

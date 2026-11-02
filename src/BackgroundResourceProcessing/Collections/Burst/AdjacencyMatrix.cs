@@ -234,7 +234,10 @@ internal unsafe struct AdjacencyMatrix : IEnumerable<BitSpan>
             for (int i = word + 1; i < rowWords; ++i)
                 row[i] = ulong.MaxValue;
 
-            row[lastWord] &= himask;
+            // When Rows is a multiple of 64 there is no partial last word and
+            // lastWord may be one past the end of the row.
+            if (lastBit != 0)
+                row[lastWord] &= himask;
         }
     }
 
