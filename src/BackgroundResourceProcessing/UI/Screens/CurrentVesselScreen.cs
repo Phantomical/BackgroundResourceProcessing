@@ -172,7 +172,7 @@ internal class CurrentVesselScreenContent : MonoBehaviour
 
     void OnEnable()
     {
-        Populate();
+        RecordAndPopulate();
     }
 
     void Update()
@@ -188,6 +188,23 @@ internal class CurrentVesselScreenContent : MonoBehaviour
     {
         ClearDynamic(_resourceContent);
         ClearDynamic(_converterContent);
+    }
+
+    /// <summary>
+    /// Re-record the active vessel and then repopulate. Recording fires every
+    /// integration's record hooks and re-solves the vessel, so this is only
+    /// done on request rather than on the periodic refresh.
+    /// </summary>
+    void RecordAndPopulate()
+    {
+        if (HighLogic.LoadedSceneIsFlight)
+        {
+            var processor =
+                FlightGlobals.ActiveVessel?.FindVesselModuleImplementing<BackgroundResourceProcessor>();
+            processor?.DebugRecordVesselState();
+        }
+
+        Populate();
     }
 
     void Populate()
@@ -223,8 +240,6 @@ internal class CurrentVesselScreenContent : MonoBehaviour
             _nextChangepoint.UT = double.PositiveInfinity;
             return;
         }
-
-        processor.DebugRecordVesselState();
 
         _vesselNameLabel.text = vessel.GetDisplayName();
         _vesselStatusLabel.text = vessel.loaded ? "Loaded" : "Unloaded";
@@ -359,7 +374,7 @@ internal class RefreshButton : DebugScreenButton
 {
     protected override void OnClick()
     {
-        GetComponentInParent<CurrentVesselScreenContent>()?.SendMessage("Populate");
+        GetComponentInParent<CurrentVesselScreenContent>()?.SendMessage("RecordAndPopulate");
     }
 }
 
@@ -386,6 +401,8 @@ internal class ExportShipButton : DebugScreenButton
         );
         var exportDir = System.IO.Path.Combine(pluginDir, @"..\Exports");
         System.IO.Directory.CreateDirectory(exportDir);
+
+        processor.DebugRecordVesselState();
 
         ConfigNode root = new();
         ConfigNode node = root.AddNode("BRP_SHIP");

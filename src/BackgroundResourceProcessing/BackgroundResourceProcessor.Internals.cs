@@ -99,7 +99,7 @@ public sealed partial class BackgroundResourceProcessor
 
         GameEvents.onGameStateSave.Remove(OnGameStateSave);
 
-        SaveVessel();
+        SaveVessel(logShip: true);
         EventDispatcher.RegisterChangepointCallback(this, NextChangepoint);
     }
 
@@ -298,7 +298,7 @@ public sealed partial class BackgroundResourceProcessor
 
         using var span = new TraceSpan("BackgroundResourceProcessor.OnGameStateSave");
 
-        SaveVessel();
+        SaveVessel(logShip: true);
     }
     #endregion
 
@@ -324,7 +324,12 @@ public sealed partial class BackgroundResourceProcessor
         ShadowState = null;
     }
 
-    private void SaveVessel()
+    /// <param name="logShip">
+    /// Whether to also write the recorded state to a zip in the logs folder.
+    /// This is only done for game saves and vessel unloads, since other
+    /// callers (e.g. the simulator or the debug UI) can record frequently.
+    /// </param>
+    private void SaveVessel(bool logShip = false)
     {
         CompletePendingWork();
 
@@ -359,7 +364,8 @@ public sealed partial class BackgroundResourceProcessor
         DispatchOnRatesComputed(currentTime);
         UpdateNextChangepoint(currentTime);
 
-        LogShipToZip();
+        if (logShip)
+            LogShipToZip();
     }
 
     private static readonly char[] InvalidFileNameChars = Path.GetInvalidFileNameChars();
