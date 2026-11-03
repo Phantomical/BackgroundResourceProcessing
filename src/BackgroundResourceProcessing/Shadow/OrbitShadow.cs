@@ -210,7 +210,7 @@ internal readonly struct OrbitShadow
                 return Terminator.Shadow(SolveTerminator(UT, hiUT, returnShadowSide: false));
             }
 
-            var minimum = ComputeShadowPoint(loUT, hiUT, ComputeUTOfVesselMidpointTA(loUT, hiUT));
+            var minimum = ComputeShadowPoint(loUT, hiUT);
             if (minimum.Shadow)
                 return Terminator.Sun(SolveTerminator(minimum.UT, loUT, returnShadowSide: true));
         }
@@ -241,18 +241,7 @@ internal readonly struct OrbitShadow
             if (!(hiUT > loUT))
                 return Terminator.Failure();
 
-            // The most reliable point to find a shadow region is exactly the
-            // midpoint (by true anomaly) between the two boundary times.
-            //
-            // We put in extra effort here to actually compute this because
-            // there are otherwise decent chances that we won't start the search
-            // at a point that actually converges to a minimum.
-            var prevUT = StepPrevRegionBoundary(hiUT);
-            var startUT = MathUtil.IsFinite(prevUT)
-                ? ComputeUTOfVesselMidpointTA(prevUT, hiUT)
-                : 0.5 * (loUT + hiUT);
-
-            minimum = ComputeShadowPoint(loUT, hiUT, Math.Max(startUT, loUT));
+            minimum = ComputeShadowPoint(loUT, hiUT);
             if (minimum.Shadow)
                 return Terminator.Sun(SolveTerminator(minimum.UT, UT, returnShadowSide: true));
 
@@ -284,7 +273,7 @@ internal readonly struct OrbitShadow
         if (!(loUT >= UT && hiUT > loUT))
             return Terminator.Failure();
 
-        minimum = ComputeShadowPoint(loUT, hiUT, ComputeUTOfVesselMidpointTA(loUT, hiUT));
+        minimum = ComputeShadowPoint(loUT, hiUT);
         if (minimum.Shadow)
             return Terminator.Sun(SolveTerminator(minimum.UT, loUT, returnShadowSide: true));
 
@@ -302,7 +291,7 @@ internal readonly struct OrbitShadow
     Terminator ComputeOrbitTerminatorOneSided(double UT)
     {
         var hiUT = UT + vessel.Period;
-        var minimum = ComputeShadowPoint(UT, hiUT, UT + 0.5 * vessel.Period);
+        var minimum = ComputeShadowPoint(UT, hiUT);
         if (minimum.Shadow)
             return Terminator.Sun(SolveTerminator(minimum.UT, UT, returnShadowSide: true));
 
@@ -482,20 +471,6 @@ internal readonly struct OrbitShadow
     }
 
     /// <summary>
-    /// Compute the previous region boundary before the current one.
-    ///
-    /// This assumes that <paramref name="UT"/> is the UT of a region boundary.
-    /// Returns NaN if no boundary was found.
-    /// </summary>
-    double StepPrevRegionBoundary(double UT)
-    {
-        if (!MathUtil.IsFinite(UT))
-            return double.NaN;
-
-        return StepRegionBoundary(UT, UT - vessel.Period);
-    }
-
-    /// <summary>
     /// Find the boundary that is about π of true anomaly after the boundary at
     /// <paramref name="UT"/>, searching forward from <paramref name="fromUT"/>.
     /// </summary>
@@ -541,20 +516,179 @@ internal readonly struct OrbitShadow
     }
 
     /// <summary>
-    /// Find a UT such that the vessel is in the planet's shadow. If the orbit
-    /// does not intersect the planet's shadow then it returns the UT with the
-    /// minumum distance.
+    /// The number of times a shadow window is recomputed with the sun
+    /// direction at the window, to account for the sun moving during the arc.
     /// </summary>
-    /// <returns></returns>
-    unsafe ShadowMinimum ComputeShadowPoint(double loUT, double hiUT, double startUT)
-    {
-        var minimum = ComputeShadowPointSimple(loUT, hiUT, startUT);
-        if (minimum is not null)
-            return (ShadowMinimum)minimum;
+    const int SunRefineIter = 3;
 
-        return ComputeShadowPointFallback(loUT, hiUT);
+    /// <summary>
+    /// Find a UT in <c>[loUT, hiUT]</c> at which the vessel is in the planet's
+    /// shadow. The vessel must be lit at <paramref name="loUT"/>. If there is
+    /// more than one shadow window then this returns a point in the first one.
+    /// If there is no shadow in the range then the result has
+    /// <see cref="ShadowMinimum.Shadow"/> set to false.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// The shadow windows are computed for a fixed sun direction, but the sun
+    /// can move a long way during one arc (several degrees for a vessel around
+    /// a moon, or tens of degrees for a high orbit around Moho). That is enough
+    /// to make a grazing window disappear if the wrong sun direction is used.
+    /// The shadow is centred on the point where the vessel passes behind the
+    /// planet, so the windows are computed with the sun direction at that
+    /// time (see <see cref="ComputeAntiSunPassUT"/>), and then each one is
+    /// refined with the sun direction at the window itself.
+    /// </remarks>
+    [SkipLocalsInit]
+    unsafe ShadowMinimum ComputeShadowPoint(double loUT, double hiUT)
+    {
+        double* centres = stackalloc double[MaxShadowWindows];
+        double* refined = stackalloc double[MaxShadowWindows];
+
+        var noShadow = new ShadowMinimum { UT = 0.5 * (loUT + hiUT), Dist = 1.0 };
+        if (!(hiUT > loUT))
+            return noShadow;
+
+        var refUT = ComputeAntiSunPassUT(loUT, hiUT);
+        var count = ComputeShadowWindowCentres(refUT, centres);
+
+        var best = noShadow;
+        for (int i = 0; i < count; ++i)
+        {
+            var UT = GetNearestUTAtTrueAnomaly(centres[i], refUT);
+
+            // Move the estimate to the window computed with the sun direction
+            // at the estimate itself.
+            for (int k = 0; k < SunRefineIter && MathUtil.IsFinite(UT); ++k)
+            {
+                var n = ComputeShadowWindowCentres(UT, refined);
+                var nearest = double.NaN;
+                for (int j = 0; j < n; ++j)
+                {
+                    var candidate = GetNearestUTAtTrueAnomaly(refined[j], UT);
+                    if (double.IsNaN(nearest) || Math.Abs(candidate - UT) < Math.Abs(nearest - UT))
+                        nearest = candidate;
+                }
+
+                if (double.IsNaN(nearest))
+                    break;
+                UT = nearest;
+            }
+
+            if (!(UT >= loUT && UT <= hiUT))
+                continue;
+            if (best.Shadow && UT >= best.UT)
+                continue;
+
+            var dist = GetUmbraDistance(UT);
+            if (dist <= 0.0)
+            {
+                best = new() { UT = UT, Dist = dist };
+                continue;
+            }
+
+            // The window is computed for a cylindrical shadow with a fixed sun
+            // direction, which is a little different from the real shadow. If
+            // the centre is just outside of the real shadow then search for the
+            // minimum nearby.
+            var minimum = ComputeShadowPointSimple(loUT, hiUT, UT);
+            if (minimum is ShadowMinimum m && m.Shadow && !(best.Shadow && m.UT >= best.UT))
+                best = m;
+        }
+
+        // A window that only just grazes the shadow can disappear entirely
+        // with the sun direction at the pass, since the closest approach to
+        // the shadow axis can be a little before or after it. The real shadow
+        // distance includes the sun's motion, so look for its minimum near the
+        // pass.
+        if (!best.Shadow && ComputeShadowPointSimple(loUT, hiUT, refUT) is ShadowMinimum near)
+        {
+            if (near.Shadow)
+                best = near;
+        }
+
+        return best;
     }
 
+    /// <summary>
+    /// How precisely <see cref="ComputeAntiSunPassUT"/> needs to find the pass,
+    /// in seconds. It is only used to pick a sun direction, so this can be
+    /// coarse.
+    /// </summary>
+    const double AntiSunTolerance = 1.0;
+
+    /// <summary>
+    /// Find the time in <c>[loUT, hiUT]</c> at which the vessel passes the
+    /// anti-sun direction, taking the motion of the sun into account.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// This is where <c>ŝ(t)·(n̂ × r(t)) = 0</c>, i.e. the sun direction has no
+    /// component along the vessel's direction of travel. Over an anti-sunward
+    /// arc it goes from positive at the start (the vessel is heading towards
+    /// the anti-sun point) to negative at the end, so it can be bisected. If
+    /// the range isn't a whole anti-sunward arc and there is no sign change,
+    /// whichever of the ends and the midpoint is closest to the anti-sun
+    /// direction is used instead.
+    /// </remarks>
+    double ComputeAntiSunPassUT(double loUT, double hiUT)
+    {
+        if (!(GetAlongTrackSunComponent(loUT) > 0.0 && GetAlongTrackSunComponent(hiUT) < 0.0))
+        {
+            var midUT = 0.5 * (loUT + hiUT);
+            var bestUT = midUT;
+            var bestCos = GetAntiSunCosine(midUT);
+
+            var loCos = GetAntiSunCosine(loUT);
+            if (loCos > bestCos)
+                (bestUT, bestCos) = (loUT, loCos);
+
+            var hiCos = GetAntiSunCosine(hiUT);
+            if (hiCos > bestCos)
+                bestUT = hiUT;
+
+            return bestUT;
+        }
+
+        for (int i = 0; i < MaxBracketIter && hiUT - loUT > AntiSunTolerance; ++i)
+        {
+            var midUT = 0.5 * (loUT + hiUT);
+            if (GetAlongTrackSunComponent(midUT) > 0.0)
+                loUT = midUT;
+            else
+                hiUT = midUT;
+        }
+
+        return 0.5 * (loUT + hiUT);
+    }
+
+    /// <summary>
+    /// <c>ŝ·(n̂ × r̂)</c>: the component of the sun direction along the vessel's
+    /// direction of travel.
+    /// </summary>
+    double GetAlongTrackSunComponent(double UT)
+    {
+        var sun = GetSunVectorAtUT(UT);
+        var along = Vector3d.Cross(vessel.OrbitFrame.Z, vessel.GetRelativePositionAtUT(UT));
+        return Vector3d.Dot(sun, along) / (sun.magnitude * along.magnitude);
+    }
+
+    /// <summary>
+    /// The cosine of the angle between the vessel's position and the anti-sun
+    /// direction.
+    /// </summary>
+    double GetAntiSunCosine(double UT)
+    {
+        var sun = GetSunVectorAtUT(UT);
+        var pos = vessel.GetRelativePositionAtUT(UT);
+        return Vector3d.Dot(sun, pos) / (sun.magnitude * pos.magnitude);
+    }
+
+    /// <summary>
+    /// Search for a point in shadow by running Newton's method on the shadow
+    /// distance from <paramref name="startUT"/> towards a local minimum.
+    /// Returns null if it leaves <c>[loUT, hiUT]</c> or heads towards a maximum.
+    /// </summary>
     ShadowMinimum? ComputeShadowPointSimple(double loUT, double hiUT, double startUT)
     {
         double UT = startUT;
@@ -590,50 +724,138 @@ internal readonly struct OrbitShadow
         return new() { UT = UT, Dist = f.x };
     }
 
-    [SkipLocalsInit]
-    unsafe ShadowMinimum ComputeShadowPointFallback(double loUT, double hiUT)
+    /// <summary>
+    /// The UT closest to <paramref name="UT"/> at which the vessel is at true
+    /// anomaly <paramref name="tA"/>.
+    /// </summary>
+    double GetNearestUTAtTrueAnomaly(double tA, double UT)
     {
-        double loTA = vessel.GetTrueAnomalyAtUT(loUT);
-        double hiTA = vessel.GetTrueAnomalyAtUT(hiUT);
-        if (hiTA <= loTA)
-            hiTA += 2 * Math.PI;
+        if (vessel.Eccentricity >= 1.0)
+            return vessel.GetUTAtTrueAnomaly(tA, UT);
 
-        double* UTs = stackalloc double[64];
-        double* fs = stackalloc double[64];
+        var next = vessel.GetUTAtTrueAnomaly(tA, UT);
+        var prev = next - vessel.Period;
+        return UT - prev < next - UT ? prev : next;
+    }
 
-        double step = (hiTA - loTA) * (1.0 / 63.0);
-        for (int i = 0; i < 64; ++i)
+    /// <summary>
+    /// The maximum number of shadow windows on a single orbit.
+    /// </summary>
+    const int MaxShadowWindows = 4;
+
+    /// <summary>
+    /// Compute the true anomaly of the middle of each window in which the
+    /// vessel's orbit passes through the planet's shadow, using the sun
+    /// direction at <paramref name="UT"/>.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// <para>
+    /// This treats the shadow as a cylinder of radius R behind the planet,
+    /// which is the classic condition from Escobal (1965). With ŝ the unit sun
+    /// direction, P̂ and Q̂ the vessel's perifocal axes and p its semi-latus
+    /// rectum, the vessel is at <c>r = p / (1 + e cos ν)</c> and
+    /// <c>ŝ·v = r(β₁ cos ν + β₂ sin ν) = r K cos(ν - φ)</c>. It is in the
+    /// cylinder when <c>ŝ·v &gt; 0</c> and
+    /// </para>
+    ///
+    /// <code>
+    /// S(ν) = R²(1 + e cos ν)² + p²K² cos²(ν - φ) - p² &gt; 0
+    /// </code>
+    ///
+    /// <para>
+    /// With <c>u = ν - φ</c> and <c>t = tan(u/2)</c>, <c>S·(1 + t²)²</c> is a
+    /// quartic in t, so every edge of the shadow on the orbit is a real root
+    /// of that quartic. <c>t = ∞</c> is the point on the orbit that faces the
+    /// sun most directly, which can never be in shadow. Windows are found
+    /// exactly, however narrow they are, so this does not miss the shadow on
+    /// high orbits like a sampled search can.
+    /// </para>
+    /// </remarks>
+    [SkipLocalsInit]
+    unsafe int ComputeShadowWindowCentres(double UT, double* centres)
+    {
+        var sunV = GetSunVectorAtUT(UT);
+        var sunD = sunV.magnitude;
+        if (!(sunD > 0.0))
+            return 0;
+        var sun = sunV / sunD;
+
+        var b1 = Vector3d.Dot(sun, vessel.OrbitFrame.X);
+        var b2 = Vector3d.Dot(sun, vessel.OrbitFrame.Y);
+        var K2 = b1 * b1 + b2 * b2;
+        if (!(K2 > 1e-24))
+            return 0;
+
+        var phi = Math.Atan2(b2, b1);
+        var e = vessel.Eccentricity;
+        var rho = planet.Radius / vessel.SemiLatusRectum;
+        var rho2 = rho * rho;
+        if (!MathUtil.IsFinite(rho2))
+            return 0;
+
+        // 1 + e cos(u + φ) = 1 + E1 cos u - E2 sin u
+        var E1 = e * Math.Cos(phi);
+        var E2 = e * Math.Sin(phi);
+
+        // (1 + E1 cos u - E2 sin u)(1 + t²) = q0 + q1 t + q2 t²
+        var q0 = 1.0 + E1;
+        var q1 = -2.0 * E2;
+        var q2 = 1.0 - E1;
+
+        // S(u)(1 + t²)² / p², with cos u (1 + t²) = 1 - t².
+        double* c = stackalloc double[5];
+        c[0] = rho2 * q0 * q0 + K2 - 1.0;
+        c[1] = rho2 * 2.0 * q0 * q1;
+        c[2] = rho2 * (q1 * q1 + 2.0 * q0 * q2) - 2.0 * K2 - 2.0;
+        c[3] = rho2 * 2.0 * q1 * q2;
+        c[4] = rho2 * q2 * q2 + K2 - 1.0;
+
+        double* roots = stackalloc double[4];
+        var rootCount = PolynomialRoots.Solve(c, 4, roots);
+
+        // Only the anti-sunward half, |u| < π/2, can be in shadow. The edges of
+        // that half are lit (they are at r > R on the shadow's edge plane), so
+        // the windows are the intervals between consecutive roots inside it
+        // where S > 0.
+        double* bounds = stackalloc double[6];
+        int boundCount = 0;
+        bounds[boundCount++] = -0.5 * Math.PI;
+        for (int i = 0; i < rootCount; ++i)
         {
-            double tA = loTA + i * step;
-            double UT = vessel.GetUTAtTrueAnomaly(tA, loUT);
-            double f = GetUmbraDistance(UT);
+            var u = 2.0 * Math.Atan(roots[i]);
+            if (Math.Abs(u) < 0.5 * Math.PI)
+                bounds[boundCount++] = u;
+        }
+        bounds[boundCount++] = 0.5 * Math.PI;
 
-            if (f < 0.0)
-                return new() { UT = UT, Dist = f };
-
-            UTs[i] = UT;
-            fs[i] = f;
+        // Insertion sort, there are at most 6 entries.
+        for (int i = 1; i < boundCount; ++i)
+        {
+            var value = bounds[i];
+            int j = i - 1;
+            for (; j >= 0 && bounds[j] > value; --j)
+                bounds[j + 1] = bounds[j];
+            bounds[j + 1] = value;
         }
 
-        int minI = 0;
-        double minUT = loUT;
-        double min = double.MaxValue;
-
-        for (int i = 0; i < 64; ++i)
+        int count = 0;
+        for (int i = 0; i + 1 < boundCount && count < MaxShadowWindows; ++i)
         {
-            if (fs[i] >= min)
+            var u = 0.5 * (bounds[i] + bounds[i + 1]);
+            var cu = Math.Cos(u);
+            var radial = 1.0 + E1 * cu - E2 * Math.Sin(u);
+
+            // Hyperbolic orbits only cover part of the ellipse equation.
+            if (!(radial > 0.0))
                 continue;
 
-            minI = i;
-            minUT = UTs[i];
-            min = fs[i];
+            var S = rho2 * radial * radial + K2 * cu * cu - 1.0;
+            if (S > 0.0)
+                centres[count++] = u + phi;
         }
 
-        loUT = UTs[MathUtil.Clamp(minI - 1, 0, 63)];
-        hiUT = UTs[MathUtil.Clamp(minI + 1, 0, 63)];
-
-        var minimum = ComputeShadowPointSimple(loUT, hiUT, minUT);
-        return minimum ?? new() { UT = minUT, Dist = min };
+        return count;
     }
 
     /// <summary>
@@ -868,18 +1090,6 @@ internal readonly struct OrbitShadow
 
         var sun = planetp - starp;
         return DualVector3.Dot(sun, vesselp);
-    }
-
-    double ComputeUTOfVesselMidpointTA(double loUT, double hiUT)
-    {
-        var loTA = vessel.GetTrueAnomalyAtUT(loUT);
-        var hiTA = vessel.GetTrueAnomalyAtUT(hiUT);
-
-        if (hiTA < loTA)
-            hiTA += 2 * Math.PI;
-
-        var midTA = 0.5 * (loTA + hiTA);
-        return vessel.GetUTAtTrueAnomaly(midTA, loUT);
     }
 
     Vector3d GetSunVectorAtUT(double UT)
