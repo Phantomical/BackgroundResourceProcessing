@@ -431,8 +431,11 @@ internal struct Orbit
 
         if (Eccentricity < 1.0)
         {
-            // Ensure that the return UT is in the future.
-            nUT += Period * Max(Ceiling((UT - nUT) / Period), 0.0);
+            // Return the first time at or after UT. nUT can be up to a period
+            // and a half away from UT in either direction (ObTAtEpoch can be
+            // negative), so this needs to be able to move it back as well as
+            // forward.
+            nUT += Period * Ceiling((UT - nUT) / Period);
         }
 
         return nUT;

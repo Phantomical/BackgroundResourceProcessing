@@ -40,6 +40,42 @@ public sealed class OrbitTests : BRPTestBase
         Assert.AreEqual(2895.60450391238, UT, 1e-6);
     }
 
+    /// <summary>
+    /// GetUTAtTrueAnomaly must return the <em>first</em> time at or after UT
+    /// at which the orbit reaches the true anomaly, even when ObTAtEpoch is
+    /// negative and the epoch is recent. It used to only ever add periods, so
+    /// it could return a time a whole orbit too late.
+    /// </summary>
+    [TestInfo("OrbitTests_TestGetUTAtTrueAnomalyIsNextOccurrence")]
+    public void TestGetUTAtTrueAnomalyIsNextOccurrence()
+    {
+        var orbit = circular;
+        orbit.Eccentricity = 0.9;
+        orbit.SemiLatusRectum = orbit.SemiMajorAxis * (1.0 - 0.9 * 0.9);
+        orbit.MeanAnomalyAtEpoch = -2.5;
+        orbit.ObTAtEpoch = orbit.MeanAnomalyAtEpoch / orbit.MeanMotion;
+        orbit.Epoch = CurrentUT;
+
+        for (int i = 0; i < 64; ++i)
+        {
+            var UT = CurrentUT + i * orbit.Period / 37.0;
+            for (int j = 0; j < 16; ++j)
+            {
+                var tA = -Math.PI + j * (2.0 * Math.PI / 16.0);
+                var result = orbit.GetUTAtTrueAnomaly(tA, UT);
+
+                Assert.IsTrue(
+                    result >= UT - 1e-6 && result < UT + orbit.Period,
+                    $"GetUTAtTrueAnomaly({tA}, {UT}) returned {result}, which is not within one period after UT"
+                );
+
+                var actual = orbit.GetTrueAnomalyAtUT(result);
+                var diff = Math.IEEERemainder(actual - tA, 2.0 * Math.PI);
+                Assert.AreEqual(0.0, diff, 1e-6);
+            }
+        }
+    }
+
     [TestInfo("OrbitTests_TestGetObTAtKnownTA")]
     public void TestGetObTAtKnownTA()
     {
