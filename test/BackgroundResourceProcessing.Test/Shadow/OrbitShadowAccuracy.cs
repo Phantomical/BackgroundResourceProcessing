@@ -76,16 +76,17 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
         in Orbit orbit,
         double UT,
         double horizon,
-        bool burst = false
+        bool burst = false,
+        int star = Kerbol
     )
     {
-        var reference = new ShadowReference(bodies, in orbit);
+        var reference = new ShadowReference(bodies, in orbit, star);
         var margin = reference.Margin(UT);
         if (Math.Abs(margin) < EdgeMargin)
             return new() { Outcome = Outcome.Skipped };
 
         var start = margin < 0.0;
-        var term = Compute(bodies, in orbit, UT, burst);
+        var term = Compute(bodies, in orbit, UT, burst, star);
         var next = reference.NextTransition(UT, horizon);
         var desc = Describe(in orbit);
 
@@ -133,10 +134,26 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
     }
 
     static string Describe(in Orbit orbit) =>
-        $"parent {Info[(int)orbit.ParentBodyIndex].Name}, sma {orbit.SemiMajorAxis:R}, "
+        $"parent {DescribeBody((int)orbit.ParentBodyIndex)}, sma {orbit.SemiMajorAxis:R}, "
         + $"ecc {orbit.Eccentricity:R}, inc {orbit.Inclination / Deg:R}°, "
         + $"lan {orbit.LAN / Deg:R}°, argPe {orbit.ArgumentOfPeriapsis / Deg:R}°, "
         + $"M0 {orbit.MeanAnomalyAtEpoch:R}";
+
+    /// <summary>
+    /// The name of a body in <see cref="ShadowTestSystem"/>, or of an installed
+    /// body when testing against the installed system.
+    /// </summary>
+    static string DescribeBody(int index)
+    {
+        if (installedNames is not null && index >= 0 && index < installedNames.Length)
+            return installedNames[index];
+        if (index >= 0 && index < Info.Length)
+            return Info[index].Name;
+        return $"body {index}";
+    }
+
+    [ThreadStatic]
+    static string[] installedNames;
 
     /// <summary>
     /// The angle of a planet around the star at <paramref name="UT"/>. This
@@ -257,6 +274,234 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
     /// </summary>
     [TestInfo("OrbitShadowAccuracy_GridSweep")]
     public void GridSweep() => RunGrid(300, 1234, burst: false);
+    #endregion
+
+    #region Multiple stars
+    /// <summary>
+    /// Random orbits around planets lit by a star that is not their ancestor,
+    /// or that is an ancestor more than one level up:
+    /// <list type="bullet">
+    ///   <item>Kerbin and the Mun lit by Kerbol B, which orbits Kerbol like
+    ///   Kerbin does, so the planet doesn't orbit the star and they share a
+    ///   parent;</item>
+    ///   <item>Tabbo lit by Kerbol, which is the parent of Tabbo's star.</item>
+    /// </list>
+    /// </summary>
+    [TestInfo("OrbitShadowAccuracy_MultipleStars")]
+    public void MultipleStars()
+    {
+        var bodies = Create();
+        var rng = new Random(4321);
+        var failures = new List<string>();
+        var counts = new int[5];
+        int total = 0;
+
+        (int Parent, int Star)[] pairs =
+        [
+            (Kerbin, KerbolB),
+            (Mun, KerbolB),
+            (Tabbo, Kerbol),
+            (Tabbo, KerbolB),
+        ];
+
+        foreach (var (parent, star) in pairs)
+        {
+            for (int i = 0; i < 100; ++i)
+            {
+                var orbit = RandomOrbit(rng, bodies, parent, Info[parent]);
+                var year = bodies[parent == Mun ? Kerbin : parent].Orbit.Period;
+                var UT = rng.NextDouble() * year;
+
+                var result = Check(bodies, in orbit, UT, 2.5 * orbit.Period, star: star);
+                counts[(int)result.Outcome] += 1;
+                total += 1;
+                if (result.Outcome == Outcome.Failed)
+                    failures.Add($"star {DescribeBody(star)}: {result.Message}");
+            }
+        }
+
+        LogUtil.Log(
+            $"[BRP.Test] OrbitShadow multiple stars: {counts[(int)Outcome.Exact]} exact, "
+                + $"{counts[(int)Outcome.Early]} early, {counts[(int)Outcome.Failed]} failed"
+        );
+
+        AssertNoFailures(failures, total, "multiple star cases");
+    }
+
+    /// <summary>
+    /// A random orbit around <paramref name="parent"/> that stays above the
+    /// surface and inside the SOI.
+    /// </summary>
+    static Orbit RandomOrbit(Random rng, SystemBody[] bodies, int parent, BodyInfo info)
+    {
+        while (true)
+        {
+            var ecc = GridEccentricities[rng.Next(GridEccentricities.Length)];
+            var minPe = 1.05 * info.Radius;
+            var maxPe = 0.9 * info.SOI * (1.0 - ecc) / (1.0 + ecc);
+            if (maxPe <= minPe)
+                continue;
+
+            var pe = minPe * Math.Pow(maxPe / minPe, rng.NextDouble());
+            return MakeOrbit(
+                parent,
+                info.Mu,
+                pe / (1.0 - ecc),
+                ecc,
+                rng.NextDouble() * Math.PI,
+                rng.NextDouble() * 2 * Math.PI,
+                rng.NextDouble() * 2 * Math.PI,
+                rng.NextDouble() * 2 * Math.PI - Math.PI
+            );
+        }
+    }
+
+    /// <summary>
+    /// Random orbits around every body in the installed solar system, lit by
+    /// every star in it. With a planet pack like Kcalbeloh installed this
+    /// covers stars orbiting a black hole together with their planets, and
+    /// planets lit by stars other than their own.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// Stars are taken from Kopernicus if it is installed, or are just the
+    /// root body otherwise. Only orbital data is used, so this works at the
+    /// main menu.
+    /// </remarks>
+    [TestInfo("OrbitShadowAccuracy_InstalledSystem")]
+    public void InstalledSystem()
+    {
+        var celestial = FlightGlobals.Bodies;
+        if (celestial is null || celestial.Count == 0)
+            return;
+
+        var bodies = SolarSystem.Record();
+        var stars = FindStars(celestial);
+        var rng = new Random(9876);
+        var failures = new List<string>();
+        var counts = new int[5];
+        int total = 0;
+        int ancestor = 0;
+        int other = 0;
+
+        var names = new string[celestial.Count];
+        for (int i = 0; i < names.Length; ++i)
+            names[i] = celestial[i].bodyName;
+
+        installedNames = names;
+        try
+        {
+            for (int b = 0; b < celestial.Count; ++b)
+            {
+                var body = celestial[b];
+                if (!bodies[b].HasOrbit || stars.Contains(b))
+                    continue;
+
+                var info = new BodyInfo(
+                    body.bodyName,
+                    body.Radius,
+                    body.gravParameter,
+                    body.sphereOfInfluence
+                );
+
+                foreach (var star in stars)
+                {
+                    bool isAncestor = IsAncestor(bodies, star, b);
+
+                    for (int i = 0; i < 4; ++i)
+                    {
+                        var orbit = RandomOrbit(rng, bodies, b, info);
+                        var UT = rng.NextDouble() * bodies[b].Orbit.Period;
+
+                        var result = Check(bodies, in orbit, UT, 2.5 * orbit.Period, star: star);
+                        counts[(int)result.Outcome] += 1;
+                        total += 1;
+                        if (isAncestor)
+                            ancestor += 1;
+                        else
+                            other += 1;
+
+                        if (result.Outcome == Outcome.Failed)
+                            failures.Add(
+                                $"star {names[star]} ({(isAncestor ? "ancestor" : "not an ancestor")}): "
+                                    + result.Message
+                            );
+                    }
+                }
+            }
+        }
+        finally
+        {
+            installedNames = null;
+        }
+
+        LogUtil.Log(
+            $"[BRP.Test] OrbitShadow installed system: {celestial.Count} bodies, "
+                + $"{stars.Count} stars, {ancestor} cases with an ancestor star, {other} "
+                + $"with another star: {counts[(int)Outcome.Exact]} exact, "
+                + $"{counts[(int)Outcome.Early]} early, {counts[(int)Outcome.Skipped]} skipped, "
+                + $"{counts[(int)Outcome.Failed]} failed"
+        );
+
+        AssertNoFailures(failures, total, "installed system cases");
+    }
+
+    static bool IsAncestor(SystemBody[] bodies, int star, int body)
+    {
+        for (int depth = 0; depth < bodies.Length; ++depth)
+        {
+            if (!bodies[body].HasOrbit)
+                return false;
+
+            var parent = bodies[body].Orbit.ParentBodyIndex ?? -1;
+            if (parent < 0)
+                return false;
+            if (parent == star)
+                return true;
+            body = parent;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Find the indices of the stars, using Kopernicus if it is installed.
+    /// </summary>
+    static List<int> FindStars(List<CelestialBody> celestial)
+    {
+        var stars = new List<int>();
+
+        Type kopernicusStar = null;
+        foreach (var loaded in AssemblyLoader.loadedAssemblies)
+        {
+            kopernicusStar = loaded.assembly.GetType("Kopernicus.Components.KopernicusStar");
+            if (kopernicusStar is not null)
+                break;
+        }
+
+        var field = kopernicusStar?.GetField(
+            "Stars",
+            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static
+        );
+        if (field?.GetValue(null) is System.Collections.IEnumerable list)
+        {
+            var sunField = kopernicusStar.GetField("sun");
+            foreach (var star in list)
+            {
+                if (sunField?.GetValue(star) is CelestialBody sun)
+                {
+                    var index = celestial.IndexOf(sun);
+                    if (index >= 0 && !stars.Contains(index))
+                        stars.Add(index);
+                }
+            }
+        }
+
+        if (stars.Count == 0 && Planetarium.fetch?.Sun is CelestialBody root)
+            stars.Add(celestial.IndexOf(root));
+
+        return stars;
+    }
     #endregion
 
     #region Burst parity
@@ -564,16 +809,22 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
     /// result is also checked against the reference, so that an eclipse that
     /// is skipped over entirely is reported as a failure.
     /// </summary>
-    static Simulation Simulate(SystemBody[] bodies, in Orbit orbit, double UT, double duration)
+    static Simulation Simulate(
+        SystemBody[] bodies,
+        in Orbit orbit,
+        double UT,
+        double duration,
+        int star = Kerbol
+    )
     {
-        var reference = new ShadowReference(bodies, in orbit);
+        var reference = new ShadowReference(bodies, in orbit, star);
         var failures = new List<string>();
         var end = UT + duration;
         int recomputes = 0;
 
         while (UT < end && recomputes < 100_000)
         {
-            var term = Compute(bodies, in orbit, UT);
+            var term = Compute(bodies, in orbit, UT, star: star);
             var state = ShadowState.ValidateShadowState(
                 new(term.UT, term.InShadow),
                 UT,
@@ -632,17 +883,34 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
         var year = bodies[Kerbin].Orbit.Period;
         var failures = new List<string>();
 
-        (string, Orbit)[] orbits =
+        (string, Orbit, int)[] orbits =
         [
-            ("polar", MakeOrbitPe(bodies, Kerbin, 2_000_000, 0.0, 90 * Deg, 0.4, 0.0, 0.0)),
-            ("polar eccentric", MakeOrbitPe(bodies, Kerbin, 800_000, 0.5, 85 * Deg, 1.3, 2.0, 0.0)),
-            ("inclined", MakeOrbitPe(bodies, Kerbin, 5_000_000, 0.1, 40 * Deg, 2.1, 0.7, 0.0)),
-            ("munar polar", MakeOrbitPe(bodies, Mun, 400_000, 0.2, 90 * Deg, 0.9, 1.0, 0.0)),
+            ("polar", MakeOrbitPe(bodies, Kerbin, 2_000_000, 0.0, 90 * Deg, 0.4, 0.0, 0.0), Kerbol),
+            (
+                "polar eccentric",
+                MakeOrbitPe(bodies, Kerbin, 800_000, 0.5, 85 * Deg, 1.3, 2.0, 0.0),
+                Kerbol
+            ),
+            (
+                "inclined",
+                MakeOrbitPe(bodies, Kerbin, 5_000_000, 0.1, 40 * Deg, 2.1, 0.7, 0.0),
+                Kerbol
+            ),
+            (
+                "munar polar",
+                MakeOrbitPe(bodies, Mun, 400_000, 0.2, 90 * Deg, 0.9, 1.0, 0.0),
+                Kerbol
+            ),
+            (
+                "polar, lit by Kerbol B",
+                MakeOrbitPe(bodies, Kerbin, 2_000_000, 0.0, 90 * Deg, 0.4, 0.0, 0.0),
+                KerbolB
+            ),
         ];
 
-        foreach (var (name, orbit) in orbits)
+        foreach (var (name, orbit, star) in orbits)
         {
-            var sim = Simulate(bodies, in orbit, 1.0e5, year);
+            var sim = Simulate(bodies, in orbit, 1.0e5, year, star);
             failures.AddRange(sim.Failures);
 
             LogUtil.Log(

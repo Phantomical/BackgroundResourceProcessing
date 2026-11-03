@@ -20,6 +20,17 @@ internal static class ShadowTestSystem
     public const int Jool = 4;
     public const int Laythe = 5;
 
+    /// <summary>
+    /// A second star, orbiting Kerbol. It is not an ancestor of any of the
+    /// stock bodies, and it shares Kerbol as a parent with Kerbin.
+    /// </summary>
+    public const int KerbolB = 6;
+
+    /// <summary>
+    /// A planet orbiting <see cref="KerbolB"/>, which is lit by both stars.
+    /// </summary>
+    public const int Tabbo = 7;
+
     const double Deg = Math.PI / 180.0;
 
     public const double KerbolMu = 1.1723328e18;
@@ -40,6 +51,8 @@ internal static class ShadowTestSystem
         new("Moho", 250_000, 1.6860938e11, 9_646_663),
         new("Jool", 6_000_000, 2.82528e14, 2_455_985_200),
         new("Laythe", 500_000, 1.962e12, 3_723_645),
+        new("Kerbol B", 100_000_000, 2.0e17, 8_000_000_000),
+        new("Tabbo", 400_000, 8.0e11, 20_000_000),
     ];
 
     /// <summary>
@@ -71,6 +84,14 @@ internal static class ShadowTestSystem
             MakeOrbit(Kerbol, KerbolMu, 68_773_560_320, 0.05, 1.304 * Deg, 52 * Deg, 0, 0.1)
         );
         bodies[Laythe] = Body(Laythe, MakeOrbit(Jool, Info[Jool].Mu, 27_184_000, 0, 0, 0, 0, 3.14));
+        bodies[KerbolB] = Body(
+            KerbolB,
+            MakeOrbit(Kerbol, KerbolMu, 40_000_000_000, 0.1, 10 * Deg, 30 * Deg, 45 * Deg, 1.0)
+        );
+        bodies[Tabbo] = Body(
+            Tabbo,
+            MakeOrbit(KerbolB, Info[KerbolB].Mu, 2_000_000_000, 0.05, 20 * Deg, 80 * Deg, 0, 2.0)
+        );
 
         return bodies;
     }
