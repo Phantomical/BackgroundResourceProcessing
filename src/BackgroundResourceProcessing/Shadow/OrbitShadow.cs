@@ -982,7 +982,20 @@ internal readonly struct OrbitShadow
     double SolveTerminator(double shadowUT, double litUT, bool returnShadowSide)
     {
         SolveBracketed(RootFunction.Umbra, ref shadowUT, ref litUT);
-        return returnShadowSide ? shadowUT : litUT;
+
+        var result = returnShadowSide ? shadowUT : litUT;
+        var other = returnShadowSide ? litUT : shadowUT;
+
+        // The bracket can end up with one end within rounding error of the
+        // root, where the dual number evaluation used by the solver and
+        // IsInShadowAtUT may disagree on the sign. The state at the result is
+        // what the next computation starts from, so make sure that it agrees,
+        // moving further into the destination side if necessary.
+        var step = Math.Sign(result - other) * RootTolerance;
+        for (int i = 0; i < 4 && IsInShadowAtUT(result) != returnShadowSide; ++i)
+            result += step;
+
+        return result;
     }
 
     enum RootFunction
