@@ -222,28 +222,17 @@ internal static class ShadowTestSystem
     }
 
     /// <summary>
-    /// Run the solver under test on either the managed or the Burst path.
+    /// Run the solver under test, with Burst if it is enabled. This is safe to
+    /// call from several threads at once, once the Burst function pointer has
+    /// been compiled by a call on the main thread (which
+    /// <see cref="ParallelCases"/> takes care of).
     /// </summary>
     public static OrbitShadow.Terminator Compute(
         SystemBody[] bodies,
         in Orbit vessel,
         double UT,
-        bool burst = false,
         int star = Kerbol
-    )
-    {
-        var settings = DebugSettings.Instance;
-        var saved = settings.EnableBurst;
-        settings.EnableBurst = burst;
-        try
-        {
-            return OrbitShadow.ComputeOrbitTerminator(bodies, vessel, star, UT);
-        }
-        finally
-        {
-            settings.EnableBurst = saved;
-        }
-    }
+    ) => OrbitShadow.ComputeOrbitTerminator(bodies, vessel, star, UT);
 }
 
 /// <summary>

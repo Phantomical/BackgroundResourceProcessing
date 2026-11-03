@@ -76,7 +76,6 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
         in Orbit orbit,
         double UT,
         double horizon,
-        bool burst = false,
         int star = Kerbol
     )
     {
@@ -86,7 +85,7 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
             return new() { Outcome = Outcome.Skipped };
 
         var start = margin < 0.0;
-        var term = Compute(bodies, in orbit, UT, burst, star);
+        var term = Compute(bodies, in orbit, UT, star);
         var next = reference.NextTransition(UT, horizon);
         var desc = Describe(in orbit);
 
@@ -198,6 +197,16 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
         return Outcome.Exact;
     }
 
+    /// <summary>
+    /// <see cref="Check"/>, returning the failure message if it failed and
+    /// null otherwise.
+    /// </summary>
+    static string CheckFailure(SystemBody[] bodies, in Orbit orbit, double UT, double horizon)
+    {
+        var result = Check(bodies, in orbit, UT, horizon);
+        return result.Outcome == Outcome.Failed ? result.Message : null;
+    }
+
     static string Describe(in Orbit orbit) =>
         $"parent {DescribeBody((int)orbit.ParentBodyIndex)}, sma {orbit.SemiMajorAxis:R}, "
         + $"ecc {orbit.Eccentricity:R}, inc {orbit.Inclination / Deg:R}°, "
@@ -217,8 +226,9 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
         return $"body {index}";
     }
 
-    [ThreadStatic]
-    static string[] installedNames;
+    // Not thread static, since cases are checked on worker threads. Tests run
+    // one at a time, so only one test sets this at once.
+    static volatile string[] installedNames;
 
     /// <summary>
     /// The angle of a planet around the star at <paramref name="UT"/>. This
@@ -299,16 +309,23 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
         return cases;
     }
 
-    static void RunGrid(int count, int seed, bool burst)
+    static void RunGrid(int count, int seed)
     {
         var bodies = Create();
         var failures = new List<string>();
         var counts = new int[5];
         int solverFailures = 0;
 
-        foreach (var c in GenerateGrid(bodies, count, seed))
+        var cases = GenerateGrid(bodies, count, seed);
+        var results = ParallelCases.Run(
+            cases.Count,
+            i => Check(bodies, cases[i].Orbit, cases[i].UT, 2.5 * cases[i].Orbit.Period)
+        );
+
+        for (int i = 0; i < cases.Count; ++i)
         {
-            var result = Check(bodies, in c.Orbit, c.UT, 2.5 * c.Orbit.Period, burst);
+            var c = cases[i];
+            var result = results[i];
             counts[(int)result.Outcome] += 1;
             if (result.Terminator.Failed)
             {
@@ -322,7 +339,7 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
         }
 
         LogUtil.Log(
-            $"[BRP.Test] OrbitShadow grid (seed {seed}, burst {burst}): "
+            $"[BRP.Test] OrbitShadow grid (seed {seed}): "
                 + $"{counts[(int)Outcome.Exact]} exact, {counts[(int)Outcome.Early]} early, "
                 + $"{counts[(int)Outcome.NoTransition]} with no transition, "
                 + $"{counts[(int)Outcome.Skipped]} skipped, {counts[(int)Outcome.Failed]} failed, "
@@ -338,7 +355,7 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
     /// the planet's year.
     /// </summary>
     [TestInfo("OrbitShadowAccuracy_GridSweep")]
-    public void GridSweep() => RunGrid(300, 1234, burst: false);
+    public void GridSweep() => RunGrid(300, 1234);
     #endregion
 
     #region Multiple stars
@@ -369,20 +386,36 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
             (Tabbo, KerbolB),
         ];
 
+        var cases = new List<(Orbit Orbit, double UT, int Star)>();
         foreach (var (parent, star) in pairs)
         {
             for (int i = 0; i < 100; ++i)
             {
                 var orbit = RandomOrbit(rng, bodies, parent, Info[parent]);
                 var year = bodies[parent == Mun ? Kerbin : parent].Orbit.Period;
-                var UT = rng.NextDouble() * year;
-
-                var result = Check(bodies, in orbit, UT, 2.5 * orbit.Period, star: star);
-                counts[(int)result.Outcome] += 1;
-                total += 1;
-                if (result.Outcome == Outcome.Failed)
-                    failures.Add($"star {DescribeBody(star)}: {result.Message}");
+                cases.Add((orbit, rng.NextDouble() * year, star));
             }
+        }
+
+        var results = ParallelCases.Run(
+            cases.Count,
+            i =>
+                Check(
+                    bodies,
+                    cases[i].Orbit,
+                    cases[i].UT,
+                    2.5 * cases[i].Orbit.Period,
+                    star: cases[i].Star
+                )
+        );
+
+        for (int i = 0; i < cases.Count; ++i)
+        {
+            var result = results[i];
+            counts[(int)result.Outcome] += 1;
+            total += 1;
+            if (result.Outcome == Outcome.Failed)
+                failures.Add($"star {DescribeBody(cases[i].Star)}: {result.Message}");
         }
 
         LogUtil.Log(
@@ -453,6 +486,7 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
         for (int i = 0; i < names.Length; ++i)
             names[i] = celestial[i].bodyName;
 
+        var cases = new List<(Orbit Orbit, double UT, int Star, bool IsAncestor)>();
         installedNames = names;
         try
         {
@@ -471,28 +505,43 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
 
                 foreach (var star in stars)
                 {
-                    bool isAncestor = IsAncestor(bodies, star, b);
-
                     for (int i = 0; i < 4; ++i)
                     {
                         var orbit = RandomOrbit(rng, bodies, b, info);
                         var UT = rng.NextDouble() * bodies[b].Orbit.Period;
-
-                        var result = Check(bodies, in orbit, UT, 2.5 * orbit.Period, star: star);
-                        counts[(int)result.Outcome] += 1;
-                        total += 1;
-                        if (isAncestor)
-                            ancestor += 1;
-                        else
-                            other += 1;
-
-                        if (result.Outcome == Outcome.Failed)
-                            failures.Add(
-                                $"star {names[star]} ({(isAncestor ? "ancestor" : "not an ancestor")}): "
-                                    + result.Message
-                            );
+                        cases.Add((orbit, UT, star, IsAncestor(bodies, star, b)));
                     }
                 }
+            }
+
+            var results = ParallelCases.Run(
+                cases.Count,
+                i =>
+                    Check(
+                        bodies,
+                        cases[i].Orbit,
+                        cases[i].UT,
+                        2.5 * cases[i].Orbit.Period,
+                        star: cases[i].Star
+                    )
+            );
+
+            for (int i = 0; i < cases.Count; ++i)
+            {
+                var (_, _, star, isAncestor) = cases[i];
+                var result = results[i];
+                counts[(int)result.Outcome] += 1;
+                total += 1;
+                if (isAncestor)
+                    ancestor += 1;
+                else
+                    other += 1;
+
+                if (result.Outcome == Outcome.Failed)
+                    failures.Add(
+                        $"star {names[star]} ({(isAncestor ? "ancestor" : "not an ancestor")}): "
+                            + result.Message
+                    );
             }
         }
         finally
@@ -569,46 +618,6 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
     }
     #endregion
 
-    #region Burst parity
-    /// <summary>
-    /// The Burst-compiled solver must give the same results as the managed
-    /// one. This catches <c>FloatMode.Fast</c> optimising away NaN and
-    /// infinity checks (F7).
-    /// </summary>
-    [TestInfo("OrbitShadowAccuracy_BurstParity")]
-    public void BurstParity()
-    {
-        var bodies = Create();
-        var failures = new List<string>();
-        var cases = GenerateGrid(bodies, 300, 1234);
-
-        foreach (var c in cases)
-        {
-            var managed = Compute(bodies, in c.Orbit, c.UT, burst: false);
-            var burst = Compute(bodies, in c.Orbit, c.UT, burst: true);
-
-            var same =
-                managed.InShadow == burst.InShadow
-                && (managed.UT.Equals(burst.UT) || Math.Abs(managed.UT - burst.UT) <= 1e-3);
-
-            if (!same)
-                failures.Add(
-                    $"managed {(managed.InShadow ? "shadow" : "lit")} until {managed.UT:R}, "
-                        + $"burst {(burst.InShadow ? "shadow" : "lit")} until {burst.UT:R} "
-                        + $"(UT {c.UT:R}, {Describe(in c.Orbit)})"
-                );
-        }
-
-        AssertNoFailures(failures, cases.Count, "parity cases");
-    }
-
-    /// <summary>
-    /// The Burst-compiled solver must also pass the grid sweep on its own.
-    /// </summary>
-    [TestInfo("OrbitShadowAccuracy_GridSweepBurst")]
-    public void GridSweepBurst() => RunGrid(300, 1234, burst: true);
-    #endregion
-
     #region Named regressions
     /// <summary>
     /// A polar orbit whose plane is close to perpendicular to the sun (a beta
@@ -620,8 +629,7 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
     public void PolarOrbitNearBeta90()
     {
         var bodies = Create();
-        var failures = new List<string>();
-        int total = 0;
+        var cases = new List<Func<string>>();
 
         foreach (var UT in new double[] { 1.0e6, 3.3e6, 7.7e6 })
         {
@@ -640,25 +648,27 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
                     0.3
                 );
 
-                var reference = new ShadowReference(bodies, in orbit);
-                var term = Compute(bodies, in orbit, UT);
-                total += 1;
+                cases.Add(() =>
+                {
+                    var reference = new ShadowReference(bodies, in orbit);
+                    var term = Compute(bodies, in orbit, UT);
 
-                // The plane needs to turn by about 30° before the vessel can
-                // be shadowed, which is about a twelfth of a Kerbin year.
-                var season = reference.NextTransition(UT, 1.2e6);
+                    // The plane needs to turn by about 30° before the vessel
+                    // can be shadowed, which is about a twelfth of a Kerbin
+                    // year.
+                    var season = reference.NextTransition(UT, 1.2e6);
 
-                if (term.InShadow || double.IsNaN(term.UT) || term.UT < UT)
-                    failures.Add($"invalid result {term.UT} (UT {UT}, offset {offset})");
-                else if (term.UT > season + Tolerance)
-                    failures.Add(
-                        $"reported lit until {term.UT}, but the season starts at {season} "
-                            + $"(UT {UT}, offset {offset})"
-                    );
+                    if (term.InShadow || double.IsNaN(term.UT) || term.UT < UT)
+                        return $"invalid result {term.UT} (UT {UT}, offset {offset})";
+                    if (term.UT > season + Tolerance)
+                        return $"reported lit until {term.UT}, but the season starts at "
+                            + $"{season} (UT {UT}, offset {offset})";
+                    return null;
+                });
             }
         }
 
-        AssertNoFailures(failures, total, "polar orbits");
+        AssertNoFailures(ParallelCases.Failures(cases), cases.Count, "polar orbits");
     }
 
     /// <summary>
@@ -671,8 +681,7 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
     public void EccentricSeasonStart()
     {
         var bodies = Create();
-        var failures = new List<string>();
-        int total = 0;
+        var cases = new List<Func<string>>();
 
         foreach (var UT in new double[] { 2.0e6, 6.0e6 })
         {
@@ -695,28 +704,29 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
                     1.0
                 );
 
-                var reference = new ShadowReference(bodies, in orbit);
-                var term = Compute(bodies, in orbit, UT);
-                total += 1;
+                cases.Add(() =>
+                {
+                    var reference = new ShadowReference(bodies, in orbit);
+                    var term = Compute(bodies, in orbit, UT);
 
-                if (reference.InShadow(UT))
-                    continue;
+                    if (reference.InShadow(UT))
+                        return null;
 
-                // At most 40° of sun motion, which is 1/9 of a Kerbin year.
-                var season = reference.NextTransition(UT, 1.1e6);
+                    // At most 40° of sun motion, which is 1/9 of a Kerbin year.
+                    var season = reference.NextTransition(UT, 1.1e6);
 
-                if (term.InShadow || double.IsNaN(term.UT) || term.UT < UT)
-                    failures.Add($"invalid result {term.UT} (UT {UT}, start {start}°)");
-                else if (term.UT > season + Tolerance)
-                    failures.Add(
-                        $"reported lit until {term.UT}, but the first eclipse is at {season}, "
-                            + $"{(term.UT - season) / orbit.Period:F1} orbits earlier "
-                            + $"(UT {UT}, start {start}°)"
-                    );
+                    if (term.InShadow || double.IsNaN(term.UT) || term.UT < UT)
+                        return $"invalid result {term.UT} (UT {UT}, start {start}°)";
+                    if (term.UT > season + Tolerance)
+                        return $"reported lit until {term.UT}, but the first eclipse is at "
+                            + $"{season}, {(term.UT - season) / orbit.Period:F1} orbits earlier "
+                            + $"(UT {UT}, start {start}°)";
+                    return null;
+                });
             }
         }
 
-        AssertNoFailures(failures, total, "eccentric orbits");
+        AssertNoFailures(ParallelCases.Failures(cases), cases.Count, "eccentric orbits");
     }
 
     /// <summary>
@@ -728,8 +738,7 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
     public void GrazingPass()
     {
         var bodies = Create();
-        var failures = new List<string>();
-        int total = 0;
+        var cases = new List<Func<string>>();
 
         foreach (var radius in new double[] { 700_000, 2_000_000, 10_000_000 })
         {
@@ -757,16 +766,13 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
                     for (int i = 0; i < 8; ++i)
                     {
                         var t = UT + i * orbit.Period / 8;
-                        var result = Check(bodies, in orbit, t, 2.5 * orbit.Period);
-                        total += 1;
-                        if (result.Outcome == Outcome.Failed)
-                            failures.Add(result.Message);
+                        cases.Add(() => CheckFailure(bodies, in orbit, t, 2.5 * orbit.Period));
                     }
                 }
             }
         }
 
-        AssertNoFailures(failures, total, "grazing passes");
+        AssertNoFailures(ParallelCases.Failures(cases), cases.Count, "grazing passes");
     }
 
     /// <summary>
@@ -820,8 +826,7 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
     public void HighOrbit()
     {
         var bodies = Create();
-        var failures = new List<string>();
-        int total = 0;
+        var cases = new List<Func<string>>();
 
         foreach (var UT in new double[] { 1.0e6, 5.0e6 })
         {
@@ -847,16 +852,13 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
                     for (int i = 0; i < 8; ++i)
                     {
                         var t = UT + i * orbit.Period / 8;
-                        var result = Check(bodies, in orbit, t, 1.5 * orbit.Period);
-                        total += 1;
-                        if (result.Outcome == Outcome.Failed)
-                            failures.Add(result.Message);
+                        cases.Add(() => CheckFailure(bodies, in orbit, t, 1.5 * orbit.Period));
                     }
                 }
             }
         }
 
-        AssertNoFailures(failures, total, "high orbits");
+        AssertNoFailures(ParallelCases.Failures(cases), cases.Count, "high orbits");
     }
     #endregion
 
@@ -993,9 +995,15 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
             ),
         ];
 
-        foreach (var (name, orbit, star) in orbits)
+        var sims = ParallelCases.Run(
+            orbits.Length,
+            i => Simulate(bodies, in orbits[i].Item2, 1.0e5, year, orbits[i].Item3)
+        );
+
+        for (int i = 0; i < orbits.Length; ++i)
         {
-            var sim = Simulate(bodies, in orbit, 1.0e5, year, star);
+            var name = orbits[i].Item1;
+            var sim = sims[i];
             failures.AddRange(sim.Failures);
 
             LogUtil.Log(
