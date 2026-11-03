@@ -159,23 +159,31 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
     /// (<see cref="Shadow.ShadowBatch.GetResult"/>) paths so that every result
     /// — lit or shadowed — is validated identically.
     /// </remarks>
-    internal static ShadowState ValidateShadowState(ShadowState state, double currentUT)
+    ///
+    /// <param name="retryInterval">
+    /// How long to wait before recomputing. See <see cref="GetRetryInterval"/>.
+    /// </param>
+    internal static ShadowState ValidateShadowState(
+        ShadowState state,
+        double currentUT,
+        double retryInterval = ShadowRetryInterval
+    )
     {
         // A bad terminator estimate doesn't mean the lit/shadowed state is
-        // wrong, so keep that and only replace the estimate with a retry a
-        // short time from now. Falling back to "always lit" with an infinite
-        // estimate would mean the shadow state never gets recomputed, so a
-        // vessel in shadow would run its solar panels until next loaded.
+        // wrong, so keep that and only replace the estimate with a retry.
+        // Falling back to "always lit" with an infinite estimate would mean the
+        // shadow state never gets recomputed, so a vessel in shadow would run
+        // its solar panels until next loaded.
         if (double.IsNaN(state.NextTerminatorEstimate))
         {
             LogUtil.Error("Shadow state calculations returned NaN terminator estimate");
-            state.NextTerminatorEstimate = currentUT + ShadowRetryInterval;
+            state.NextTerminatorEstimate = currentUT + retryInterval;
             return state;
         }
         if (state.NextTerminatorEstimate < currentUT)
         {
             LogUtil.Error("Shadow state calculations returned a terminator in the past");
-            state.NextTerminatorEstimate = currentUT + ShadowRetryInterval;
+            state.NextTerminatorEstimate = currentUT + retryInterval;
             return state;
         }
 
@@ -183,24 +191,99 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
     }
 
     /// <summary>
-    /// How long to wait before recomputing the shadow state when a shadow
-    /// calculation fails.
+    /// The shortest time to wait before recomputing the shadow state when a
+    /// shadow calculation fails.
     /// </summary>
     internal const double ShadowRetryInterval = 120.0;
 
     /// <summary>
-    /// The shadow state to use when the shadow calculation failed outright.
-    /// This is lit by the root star, but only until a retry shortly after
-    /// <paramref name="currentUT"/>.
+    /// How long to wait before recomputing the shadow state for
+    /// <paramref name="vessel"/> when a shadow calculation fails.
     /// </summary>
-    internal static ShadowState FallbackShadowState(double currentUT) =>
-        new(currentUT + ShadowRetryInterval, false, Planetarium.fetch?.Sun);
+    ///
+    /// <remarks>
+    /// This is one orbit (or one solar day when landed), so that a vessel whose
+    /// calculation keeps failing costs no more than a vessel in an eclipse
+    /// season. A fixed interval would be recomputed on every frame at high
+    /// time warp.
+    /// </remarks>
+    internal static double GetRetryInterval(Vessel vessel)
+    {
+        var orbit = vessel?.orbit;
+        if (orbit is null)
+            return ShadowRetryInterval;
+
+        double period = vessel.situation switch
+        {
+            Vessel.Situations.LANDED
+            or Vessel.Situations.SPLASHED
+            or Vessel.Situations.PRELAUNCH
+            or Vessel.Situations.FLYING => Math.Abs(orbit.referenceBody?.solarDayLength ?? 0.0),
+            _ => orbit.eccentricity < 1.0 ? orbit.period : 0.0,
+        };
+
+        return GetRetryInterval(period);
+    }
+
+    /// <summary>
+    /// The retry interval for a vessel whose orbit (or solar day) lasts
+    /// <paramref name="period"/> seconds.
+    /// </summary>
+    internal static double GetRetryInterval(double period)
+    {
+        if (!MathUtil.IsFinite(period))
+            return ShadowRetryInterval;
+        return Math.Max(ShadowRetryInterval, period);
+    }
+
+    /// <summary>
+    /// The shadow state to use when the shadow calculation failed outright.
+    /// This is lit by the root star, but only until a retry
+    /// <paramref name="retryInterval"/> after <paramref name="currentUT"/>.
+    /// </summary>
+    internal static ShadowState FallbackShadowState(
+        double currentUT,
+        double retryInterval = ShadowRetryInterval
+    ) => new(currentUT + retryInterval, false, Planetarium.fetch?.Sun);
+
+    /// <summary>
+    /// Log any terminators for which the orbit solver gave up and reported the
+    /// vessel lit forever, along with enough detail to reproduce it in a test.
+    /// </summary>
+    internal static void LogSolverFailures(
+        ReadOnlySpan<OrbitShadow.Terminator> terminators,
+        IReadOnlyList<CelestialBody> stars,
+        string vesselName,
+        in Mathematics.Orbit orbit,
+        double UT
+    )
+    {
+        for (int i = 0; i < terminators.Length; i++)
+        {
+            if (!terminators[i].Failed)
+                continue;
+
+            LogUtil.Warn(
+                $"Orbit shadow calculation failed for vessel {vesselName} and star "
+                    + $"{stars[i]?.bodyName}. The vessel will be treated as lit until its "
+                    + $"orbit changes. UT={UT:R} parent={orbit.ParentBodyIndex} "
+                    + $"sma={orbit.SemiMajorAxis:R} ecc={orbit.Eccentricity:R} "
+                    + $"inc={orbit.Inclination:R} lan={orbit.LAN:R} "
+                    + $"argPe={orbit.ArgumentOfPeriapsis:R} epoch={orbit.Epoch:R} "
+                    + $"M0={orbit.MeanAnomalyAtEpoch:R}"
+            );
+        }
+    }
 
     public static ShadowState GetShadowState(Vessel vessel)
     {
         using var span = new TraceSpan("ShadowState.GetShadowState");
 
-        return ValidateShadowState(GetShadowStateImpl(vessel), Planetarium.GetUniversalTime());
+        return ValidateShadowState(
+            GetShadowStateImpl(vessel),
+            Planetarium.GetUniversalTime(),
+            GetRetryInterval(vessel)
+        );
     }
 
     private static ShadowState GetShadowStateImpl(Vessel vessel)
@@ -246,6 +329,7 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
             );
         }
 
+        LogSolverFailures(terminators, stars, vessel.GetDisplayName(), in orbit, UT);
         return AggregateShadowState(terminators, stars);
     }
 

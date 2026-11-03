@@ -1,5 +1,4 @@
 using System;
-using System.Net.NetworkInformation;
 using BackgroundResourceProcessing.BurstSolver;
 using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Mathematics;
@@ -19,13 +18,58 @@ internal readonly struct OrbitShadow
         public double UT;
         public bool InShadow;
 
+        /// <summary>
+        /// Set when the solver gave up and fell back to reporting the vessel
+        /// as lit forever. This only happens on degenerate input, and the
+        /// caller should log it so that it can be turned into a test case.
+        /// </summary>
+        public bool Failed;
+
         public static Terminator Sun(double UT) => new() { UT = UT, InShadow = false };
 
         public static Terminator Shadow(double UT) => new() { UT = UT, InShadow = true };
+
+        /// <summary>
+        /// The result when the solver fails. Reporting the vessel as lit
+        /// forever is deliberate: it is much better for players than a vessel
+        /// that keeps rescheduling changepoints at high time warp.
+        /// </summary>
+        public static Terminator Failure() =>
+            new()
+            {
+                UT = double.PositiveInfinity,
+                InShadow = false,
+                Failed = true,
+            };
     }
 
     const int MaxIter = 32;
-    const int BisectIter = 8;
+
+    /// <summary>
+    /// The maximum number of iterations for <see cref="SolveBracketed"/>. At
+    /// least every other iteration halves the bracket, so this is enough to
+    /// get from a whole orbit down to <see cref="RootTolerance"/>.
+    /// </summary>
+    const int MaxBracketIter = 128;
+
+    /// <summary>
+    /// Root finding stops once the bracket is narrower than this, in seconds.
+    /// </summary>
+    const double RootTolerance = 1e-3;
+
+    /// <summary>
+    /// The number of steps per half orbit when scanning for the next region
+    /// boundary.
+    /// </summary>
+    const int BoundaryScanSteps = 8;
+
+    /// <summary>
+    /// The largest radius, in multiples of the planet radius, that is
+    /// considered on a hyperbolic orbit. This is well outside the SOI of any
+    /// stock body, so it only exists to keep the true anomaly away from the
+    /// asymptote.
+    /// </summary>
+    const double MaxHyperbolicRadius = 1000.0;
 
     readonly SolarSystem system;
     readonly SystemBody star;
@@ -107,8 +151,71 @@ internal readonly struct OrbitShadow
 
     Terminator ComputeOrbitTerminatorHyperbolic(double UT)
     {
-        // TODO: We can't assume that the orbit can wrap around for hyperbolic
-        //       orbits. For now, just don't implement this.
+        // A hyperbolic orbit doesn't wrap around, so the search is done over
+        // the anti-sunward parts of the remaining trajectory instead of one
+        // arc at a time. The sun direction is taken as fixed at UT. That is
+        // fine because a flyby is short compared to a planet's year, and the
+        // edges of the anti-sunward region are far from the shadow anyway.
+        //
+        // If there is no shadow ahead then the vessel really is lit until it
+        // leaves the SOI, at which point the shadow state is recomputed.
+        var e = vessel.Eccentricity;
+        var p = vessel.SemiLatusRectum;
+        var maxR = MaxHyperbolicRadius * planet.Radius;
+        var maxTA = Math.Acos(MathUtil.Clamp((p / maxR - 1.0) / e, -1.0, 1.0));
+        var currentTA = vessel.GetTrueAnomalyAtUT(UT);
+        if (!MathUtil.IsFinite(currentTA))
+            return Terminator.Failure();
+        if (currentTA >= maxTA)
+            return Terminator.Sun(double.PositiveInfinity);
+
+        // ŝ·v = r * A * cos(ν - φ), so the anti-sunward side is the true
+        // anomaly range (φ - π/2, φ + π/2).
+        var sun = GetSunVectorAtUT(UT);
+        var phi = Math.Atan2(
+            Vector3d.Dot(sun, vessel.OrbitFrame.Y),
+            Vector3d.Dot(sun, vessel.OrbitFrame.X)
+        );
+
+        bool inShadow = !IsSunwardAtUT(UT) && IsInShadowAtUT(UT);
+
+        // The anti-sunward range has a width of π and the trajectory covers
+        // less than 2π, so at most two windows of it overlap the trajectory.
+        for (int k = -1; k <= 1; ++k)
+        {
+            var loTA = Math.Max(currentTA, phi - 0.5 * Math.PI + 2.0 * Math.PI * k);
+            var hiTA = Math.Min(maxTA, phi + 0.5 * Math.PI + 2.0 * Math.PI * k);
+            if (!(hiTA > loTA))
+                continue;
+
+            var loUT = loTA == currentTA ? UT : vessel.GetUTAtTrueAnomaly(loTA, UT);
+            var hiUT = vessel.GetUTAtTrueAnomaly(hiTA, UT);
+            if (!(hiUT > loUT))
+                continue;
+
+            if (inShadow)
+            {
+                // The vessel can only be in the window that contains UT.
+                if (loUT != UT)
+                    break;
+
+                // The window ends either on the boundary with the sunward side,
+                // which is lit, or far away where the vessel may still be in
+                // shadow if it is heading straight down the shadow axis.
+                if (IsInShadowAtUT(hiUT))
+                    return Terminator.Shadow(double.PositiveInfinity);
+
+                return Terminator.Shadow(SolveTerminator(UT, hiUT, returnShadowSide: false));
+            }
+
+            var minimum = ComputeShadowPoint(loUT, hiUT, ComputeUTOfVesselMidpointTA(loUT, hiUT));
+            if (minimum.Shadow)
+                return Terminator.Sun(SolveTerminator(minimum.UT, loUT, returnShadowSide: true));
+        }
+
+        if (inShadow)
+            return Terminator.Failure();
+
         return Terminator.Sun(double.PositiveInfinity);
     }
 
@@ -125,8 +232,12 @@ internal readonly struct OrbitShadow
             loUT = UT;
             hiUT = ComputeNextRegionBoundary(UT);
 
-            if (hiUT < loUT)
-                return Terminator.Sun(double.PositiveInfinity);
+            // There is no boundary within the next orbit, so the whole orbit
+            // is on the anti-sunward side.
+            if (double.IsNaN(hiUT))
+                return ComputeOrbitTerminatorOneSided(UT);
+            if (!(hiUT > loUT))
+                return Terminator.Failure();
 
             // The most reliable point to find a shadow region is exactly the
             // midpoint (by true anomaly) between the two boundary times.
@@ -135,50 +246,88 @@ internal readonly struct OrbitShadow
             // there are otherwise decent chances that we won't start the search
             // at a point that actually converges to a minimum.
             var prevUT = StepPrevRegionBoundary(hiUT);
-            var startUT = ComputeUTOfVesselMidpointTA(prevUT, hiUT);
+            var startUT = MathUtil.IsFinite(prevUT)
+                ? ComputeUTOfVesselMidpointTA(prevUT, hiUT)
+                : 0.5 * (loUT + hiUT);
 
             minimum = ComputeShadowPoint(loUT, hiUT, Math.Max(startUT, loUT));
             if (minimum.Shadow)
-                return Terminator.Sun(BisectTerminator(minimum.UT, UT));
+                return Terminator.Sun(SolveTerminator(minimum.UT, UT, returnShadowSide: true));
 
             // There is no umbra crossing between now and the next boundary
             // so advance around to the next orbit.
-            loUT = StepNextRegionBoundary(hiUT);
-            hiUT = StepNextRegionBoundary(loUT);
+            var sunUT = hiUT;
+            loUT = StepNextRegionBoundary(sunUT);
+
+            // If the boundaries can't be found then the sun direction is moving
+            // quickly compared to the orbit. The vessel is lit until at least
+            // the last boundary, so just check again from there.
+            if (double.IsNaN(loUT))
+                return Terminator.Sun(sunUT);
         }
         else
         {
             loUT = ComputeNextRegionBoundary(UT);
-            hiUT = StepNextRegionBoundary(loUT);
+
+            // There is no boundary within the next orbit, so the whole orbit
+            // is on the sunward side and the vessel is lit for all of it.
+            if (double.IsNaN(loUT))
+                return Terminator.Sun(UT + vessel.Period);
         }
 
-        if (hiUT < loUT)
-            return Terminator.Sun(double.PositiveInfinity);
+        hiUT = StepNextRegionBoundary(loUT);
+        if (double.IsNaN(hiUT))
+            return Terminator.Sun(loUT);
+
+        if (!(loUT >= UT && hiUT > loUT))
+            return Terminator.Failure();
 
         minimum = ComputeShadowPoint(loUT, hiUT, ComputeUTOfVesselMidpointTA(loUT, hiUT));
         if (minimum.Shadow)
-            return Terminator.Sun(BisectTerminator(minimum.UT, loUT));
+            return Terminator.Sun(SolveTerminator(minimum.UT, loUT, returnShadowSide: true));
 
         return Terminator.Sun(EstimateNextPotentialIntersection(minimum.UT));
+    }
+
+    /// <summary>
+    /// Compute the terminator when the vessel stays on the anti-sunward side
+    /// for at least the whole next orbit. This can happen on high orbits around
+    /// planets close to their star, where the sun direction moves a long way
+    /// during a single orbit.
+    /// </summary>
+    Terminator ComputeOrbitTerminatorOneSided(double UT)
+    {
+        var hiUT = UT + vessel.Period;
+        var minimum = ComputeShadowPoint(UT, hiUT, UT + 0.5 * vessel.Period);
+        if (minimum.Shadow)
+            return Terminator.Sun(SolveTerminator(minimum.UT, UT, returnShadowSide: true));
+
+        return Terminator.Sun(hiUT);
     }
 
     double ComputeTerminatorExit(double UT)
     {
         var hiUT = ComputeNextRegionBoundary(UT);
-        if (vessel.GetRadiusAtUT(hiUT) <= planet.Radius)
+        bool oneSided = double.IsNaN(hiUT);
+        if (oneSided)
+            hiUT = UT + vessel.Period;
+        if (!(hiUT > UT))
+            return double.MaxValue;
+
+        if (oneSided || vessel.GetRadiusAtUT(hiUT) <= planet.Radius)
         {
-            // We're on a suborbital trajectory. We need to check if our orbit
-            // is entirely within the planet's shadow or if we can find a
-            // crossing point.
+            // Either we're on a suborbital trajectory or there is no boundary
+            // within the next orbit. We need to check if our orbit is entirely
+            // within the planet's shadow or if we can find a crossing point.
 
             var maximum = ComputeLitPoint(UT, hiUT, 0.5 * (UT + hiUT));
             if (maximum.Shadow)
-                return double.MaxValue;
+                return oneSided ? hiUT : double.MaxValue;
 
             hiUT = maximum.UT;
         }
 
-        return BisectTerminator(UT, hiUT);
+        return SolveTerminator(UT, hiUT, returnShadowSide: false);
     }
 
     double EstimateNextPotentialIntersection(double minUT)
@@ -247,144 +396,106 @@ internal readonly struct OrbitShadow
     /// Compute the next boundary between the sunward side and the shadowed side
     /// of the orbit. This does not assume that UT is near a boundary crossing.
     /// </summary>
+    ///
+    /// <remarks>
+    /// For a fixed sun direction the two boundaries are exactly π apart in
+    /// true anomaly, so stepping forward by π/8 until the side changes always
+    /// finds a bracket around the next one. The returned time is on the far
+    /// side of the boundary. Returns NaN if no boundary was found, which can
+    /// only happen if the sun direction is exactly perpendicular to the orbit.
+    /// </remarks>
     double ComputeNextRegionBoundary(double UT)
     {
+        var currentTA = vessel.GetTrueAnomalyAtUT(UT);
+        var startSun = IsSunwardAtUT(UT);
+
         var loUT = UT;
-        var hiUT = ComputeOffsetUT(in vessel, UT, Math.PI);
-
-        var loSun = IsSunwardAtUT(loUT);
-        var hiSun = IsSunwardAtUT(hiUT);
-
-        if (loSun == hiSun)
+        for (int i = 1; i <= 2 * BoundaryScanSteps; ++i)
         {
-            // There's a couple of conditions under which going 0.5 orbits
-            // into the future is still on the same side of the planet:
-            // - it was borderline anyway
-            // - both the vessel and the star are orbiting the same body
-            //
-            // The solution here behaves reasonably for the first case, and
-            // the second case is likely to not matter all that much.
-            UT = hiUT;
+            var hiUT = vessel.GetUTAtTrueAnomaly(currentTA + i * (Math.PI / BoundaryScanSteps), UT);
+            if (!(hiUT > loUT))
+                break;
 
-            for (int i = 0; i < MaxIter; ++i)
-            {
-                var f = ComputeSunDot(Dual.Variable(UT));
-                var delta = f.x / f.dx;
-                UT -= delta;
+            if (IsSunwardAtUT(hiUT) != startSun)
+                return SolveRegionBoundary(loUT, hiUT);
 
-                if (MathUtil.ApproxEqual(delta, 0.0))
-                    break;
-            }
-
-            return UT;
+            loUT = hiUT;
         }
-        else
-        {
-            // Do a couple iterations of bisection in order to get a good enough
-            // initial estimate for newton's method.
-            double sunUT;
-            double shadowUT;
-            if (loSun)
-                (sunUT, shadowUT) = (loUT, hiUT);
-            else
-                (sunUT, shadowUT) = (hiUT, loUT);
 
-            for (int i = 0; i < BisectIter; ++i)
-            {
-                UT = 0.5 * (sunUT + shadowUT);
-
-                if (IsSunwardAtUT(UT))
-                    sunUT = UT;
-                else
-                    shadowUT = UT;
-            }
-
-            loUT = Math.Min(sunUT, shadowUT);
-            hiUT = Math.Max(sunUT, shadowUT);
-            UT = 0.5 * (sunUT + shadowUT);
-
-            for (int i = 0; i < MaxIter; ++i)
-            {
-                var f = ComputeSunDot(Dual.Variable(UT));
-                var delta = f.x / f.dx;
-                UT -= delta;
-
-                if (UT < loUT || UT > hiUT)
-                    goto ESCAPED;
-
-                if (MathUtil.ApproxEqual(delta, 0.0))
-                    break;
-            }
-
-            return UT;
-
-            ESCAPED:
-            // Newton's method failed to converge to a point on the range, we
-            // need to use the bisection method to converge to the boundary.
-
-            for (int i = 0; i < 128; ++i)
-            {
-                UT = 0.5 * (sunUT + shadowUT);
-
-                if (MathUtil.ApproxEqual(sunUT, shadowUT))
-                    break;
-
-                if (IsSunwardAtUT(UT))
-                    sunUT = UT;
-                else
-                    shadowUT = UT;
-            }
-
-            return UT;
-        }
+        return double.NaN;
     }
 
     /// <summary>
     /// Compute the next region boundary after the current one.
     ///
     /// This assumes that <paramref name="UT"/> is the UT of a region boundary.
+    /// Returns NaN if no boundary was found.
     /// </summary>
     double StepNextRegionBoundary(double UT)
     {
-        // A good estimate for the next boundary is just advancing by half an
-        // orbit.
-        UT = ComputeOffsetUT(in vessel, UT, Math.PI);
+        if (!MathUtil.IsFinite(UT))
+            return double.NaN;
 
-        for (int i = 0; i < MaxIter; ++i)
-        {
-            var f = ComputeSunDot(Dual.Variable(UT));
-            var delta = f.x / f.dx;
-
-            UT -= delta;
-            if (MathUtil.ApproxEqual(delta, 0.0))
-                break;
-        }
-
-        return UT;
+        return StepRegionBoundary(UT, UT);
     }
 
     /// <summary>
     /// Compute the previous region boundary before the current one.
     ///
     /// This assumes that <paramref name="UT"/> is the UT of a region boundary.
+    /// Returns NaN if no boundary was found.
     /// </summary>
     double StepPrevRegionBoundary(double UT)
     {
-        // A good estimate for the previous boundary is just going back by half
-        // an orbit.
-        UT = ComputeOffsetUT(in vessel, UT, Math.PI) - vessel.Period;
+        if (!MathUtil.IsFinite(UT))
+            return double.NaN;
 
-        for (int i = 0; i < MaxIter; ++i)
+        return StepRegionBoundary(UT, UT - vessel.Period);
+    }
+
+    /// <summary>
+    /// Find the boundary that is about π of true anomaly after the boundary at
+    /// <paramref name="UT"/>, searching forward from <paramref name="fromUT"/>.
+    /// </summary>
+    double StepRegionBoundary(double UT, double fromUT)
+    {
+        // The next boundary is close to π of true anomaly away, because the
+        // sun direction only moves a little in half an orbit. Widen the
+        // bracket around that point until it contains a sign change. Staying
+        // below π keeps the bracket from reaching the boundaries on either
+        // side.
+        var targetTA = vessel.GetTrueAnomalyAtUT(UT) + Math.PI;
+
+        for (double width = 0.125; width < Math.PI; width *= 2.0)
         {
-            var f = ComputeSunDot(Dual.Variable(UT));
-            var delta = f.x / f.dx;
-
-            UT -= delta;
-            if (MathUtil.ApproxEqual(delta, 0.0))
+            var loUT = vessel.GetUTAtTrueAnomaly(targetTA - width, fromUT);
+            var hiUT = vessel.GetUTAtTrueAnomaly(targetTA + width, loUT);
+            if (!(hiUT > loUT))
                 break;
+
+            if (IsSunwardAtUT(loUT) != IsSunwardAtUT(hiUT))
+                return SolveRegionBoundary(loUT, hiUT);
         }
 
-        return UT;
+        return double.NaN;
+    }
+
+    /// <summary>
+    /// Find the region boundary between <paramref name="loUT"/> and
+    /// <paramref name="hiUT"/>, which must be on opposite sides of it. The
+    /// returned time is on the same side as <paramref name="hiUT"/>.
+    /// </summary>
+    double SolveRegionBoundary(double loUT, double hiUT)
+    {
+        double sunUT;
+        double shadowUT;
+        if (IsSunwardAtUT(loUT))
+            (sunUT, shadowUT) = (loUT, hiUT);
+        else
+            (sunUT, shadowUT) = (hiUT, loUT);
+
+        SolveBracketed(RootFunction.SunDot, ref sunUT, ref shadowUT);
+        return Math.Max(sunUT, shadowUT);
     }
 
     /// <summary>
@@ -586,33 +697,109 @@ internal readonly struct OrbitShadow
         public readonly bool Shadow => Dist <= 0.0;
     }
 
-    double BisectTerminator(double shadowUT, double sunUT)
+    /// <summary>
+    /// Find the time at which the vessel crosses the shadow edge between
+    /// <paramref name="shadowUT"/> (in shadow) and <paramref name="litUT"/>
+    /// (lit).
+    /// </summary>
+    ///
+    /// <param name="returnShadowSide">
+    /// Whether to return the end of the final bracket that is in shadow, or
+    /// the end that is lit. Callers pick the side that the vessel is moving
+    /// into, so that evaluating the state at the returned time always gives
+    /// the new state.
+    /// </param>
+    double SolveTerminator(double shadowUT, double litUT, bool returnShadowSide)
     {
-        double UT = 0.0;
-        for (int i = 0; i < BisectIter; ++i)
-        {
-            UT = 0.5 * (shadowUT + sunUT);
-            var distance = GetUmbraDistance(UT);
+        SolveBracketed(RootFunction.Umbra, ref shadowUT, ref litUT);
+        return returnShadowSide ? shadowUT : litUT;
+    }
 
-            if (MathUtil.ApproxEqual(distance, 0.0))
+    enum RootFunction
+    {
+        /// <summary>
+        /// <see cref="GetUmbraDistance(Dual)"/>, which is <c>&lt;= 0</c> in
+        /// shadow.
+        /// </summary>
+        Umbra,
+
+        /// <summary>
+        /// <see cref="ComputeSunDot(Dual)"/>, which is <c>&lt; 0</c> on the
+        /// sunward side.
+        /// </summary>
+        SunDot,
+    }
+
+    Dual EvaluateRoot(RootFunction fn, double UT) =>
+        fn == RootFunction.Umbra
+            ? GetUmbraDistance(Dual.Variable(UT))
+            : ComputeSunDot(Dual.Variable(UT));
+
+    static bool IsNegative(RootFunction fn, double value) =>
+        fn == RootFunction.Umbra ? value <= 0.0 : value < 0.0;
+
+    /// <summary>
+    /// Shrink the bracket between <paramref name="negUT"/> and
+    /// <paramref name="posUT"/> (in either order) around a sign change of
+    /// <paramref name="fn"/> until it is narrower than
+    /// <see cref="RootTolerance"/>.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// This is Newton's method with a bisection fallback. A Newton step that
+    /// leaves the bracket, isn't finite, or doesn't converge quickly enough is
+    /// replaced by a bisection step, so the bracket always contains the root.
+    /// Once Newton has converged, the next step goes slightly past the root so
+    /// that both ends of the bracket close in on it.
+    /// </remarks>
+    void SolveBracketed(RootFunction fn, ref double negUT, ref double posUT)
+    {
+        var UT = 0.5 * (negUT + posUT);
+        var dxOld = Math.Abs(posUT - negUT);
+        var dx = dxOld;
+
+        for (int i = 0; i < MaxBracketIter; ++i)
+        {
+            if (!(Math.Abs(posUT - negUT) > RootTolerance))
                 break;
-            if (distance < 0.0)
-                shadowUT = UT;
+
+            var f = EvaluateRoot(fn, UT);
+            if (IsNegative(fn, f.x))
+                negUT = UT;
             else
-                sunUT = UT;
-        }
+                posUT = UT;
 
-        for (int i = 0; i < MaxIter; ++i)
-        {
-            var f = GetUmbraDistance(Dual.Variable(UT));
-            var delta = f.x / f.dx;
-            UT -= delta;
-
-            if (MathUtil.ApproxEqual(delta, 0.0))
+            var lo = Math.Min(negUT, posUT);
+            var hi = Math.Max(negUT, posUT);
+            if (!(hi - lo > RootTolerance))
                 break;
-        }
 
-        return UT;
+            var step = f.x / f.dx;
+            var next = UT - step;
+
+            if (!(next > lo && next < hi) || Math.Abs(step) > 0.5 * dxOld)
+            {
+                dxOld = dx;
+                dx = 0.5 * (hi - lo);
+                UT = lo + dx;
+                continue;
+            }
+
+            dxOld = dx;
+            dx = Math.Abs(step);
+
+            if (dx < 0.5 * RootTolerance)
+            {
+                // Newton has converged. Step just past the root so that the
+                // next evaluation lands on the other side of it.
+                var nudge = 0.5 * RootTolerance;
+                next = step > 0.0 ? UT - nudge : UT + nudge;
+                if (!(next > lo && next < hi))
+                    next = 0.5 * (lo + hi);
+            }
+
+            UT = next;
+        }
     }
 
     bool IsSunwardAtUT(double UT) => ComputeSunDot(UT) < 0.0;

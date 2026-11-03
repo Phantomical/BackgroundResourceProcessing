@@ -222,11 +222,19 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
         var bodies = Create();
         var failures = new List<string>();
         var counts = new int[5];
+        int solverFailures = 0;
 
         foreach (var c in GenerateGrid(bodies, count, seed))
         {
             var result = Check(bodies, in c.Orbit, c.UT, 2.5 * c.Orbit.Period, burst);
             counts[(int)result.Outcome] += 1;
+            if (result.Terminator.Failed)
+            {
+                solverFailures += 1;
+                LogUtil.Log(
+                    $"[BRP.Test] OrbitShadow solver gave up at UT {c.UT:R} ({Describe(in c.Orbit)})"
+                );
+            }
             if (result.Outcome == Outcome.Failed)
                 failures.Add(result.Message);
         }
@@ -235,7 +243,8 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
             $"[BRP.Test] OrbitShadow grid (seed {seed}, burst {burst}): "
                 + $"{counts[(int)Outcome.Exact]} exact, {counts[(int)Outcome.Early]} early, "
                 + $"{counts[(int)Outcome.NoTransition]} with no transition, "
-                + $"{counts[(int)Outcome.Skipped]} skipped, {counts[(int)Outcome.Failed]} failed"
+                + $"{counts[(int)Outcome.Skipped]} skipped, {counts[(int)Outcome.Failed]} failed, "
+                + $"{solverFailures} where the solver gave up"
         );
 
         AssertNoFailures(failures, count, "grid cases");
@@ -565,7 +574,11 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
         while (UT < end && recomputes < 100_000)
         {
             var term = Compute(bodies, in orbit, UT);
-            var state = ShadowState.ValidateShadowState(new(term.UT, term.InShadow), UT);
+            var state = ShadowState.ValidateShadowState(
+                new(term.UT, term.InShadow),
+                UT,
+                ShadowState.GetRetryInterval(orbit.Period)
+            );
             recomputes += 1;
 
             var margin = reference.Margin(UT);

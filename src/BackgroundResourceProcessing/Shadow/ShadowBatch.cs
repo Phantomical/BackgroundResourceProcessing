@@ -51,6 +51,13 @@ internal sealed class ShadowBatch(double UT) : IDisposable
         /// </summary>
         public int TaskStart;
         public List<CelestialBody> Stars;
+
+        /// <summary>
+        /// The index of this entry's request in <see cref="requests"/>.
+        /// </summary>
+        public int Request;
+        public string VesselName;
+        public double RetryInterval;
     }
 
     public readonly double UT = UT;
@@ -132,7 +139,14 @@ internal sealed class ShadowBatch(double UT) : IDisposable
             );
         }
 
-        return new Entry { TaskStart = start, Stars = stars };
+        return new Entry
+        {
+            TaskStart = start,
+            Stars = stars,
+            Request = request,
+            VesselName = vessel.GetDisplayName(),
+            RetryInterval = ShadowState.GetRetryInterval(vessel),
+        };
     }
 
     Entry AddLanded(Vessel vessel)
@@ -174,7 +188,14 @@ internal sealed class ShadowBatch(double UT) : IDisposable
             );
         }
 
-        return new Entry { TaskStart = start, Stars = stars };
+        return new Entry
+        {
+            TaskStart = start,
+            Stars = stars,
+            Request = request,
+            VesselName = vessel.GetDisplayName(),
+            RetryInterval = ShadowState.GetRetryInterval(vessel),
+        };
     }
 
     /// <summary>
@@ -258,15 +279,26 @@ internal sealed class ShadowBatch(double UT) : IDisposable
             for (int i = 0; i < terminators.Length; i++)
                 terminators[i] = results[entry.TaskStart + i];
 
+            var request = requests[entry.Request];
+            if (!request.IsLanded)
+                ShadowState.LogSolverFailures(
+                    terminators,
+                    entry.Stars,
+                    entry.VesselName,
+                    in request.Orbit,
+                    UT
+                );
+
             return ShadowState.ValidateShadowState(
                 ShadowState.AggregateShadowState(terminators, entry.Stars),
-                UT
+                UT,
+                entry.RetryInterval
             );
         }
         catch (Exception e)
         {
             LogUtil.Error($"Shadow state computation threw an exception: {e}");
-            return ShadowState.FallbackShadowState(UT);
+            return ShadowState.FallbackShadowState(UT, entry.RetryInterval);
         }
     }
 
