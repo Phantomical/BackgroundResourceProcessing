@@ -389,15 +389,45 @@ internal readonly struct OrbitShadow
     /// </summary>
     ///
     /// <remarks>
-    /// <para>
     /// Orbits in KSP don't precess, so the normal n̂ of the vessel's orbit is
     /// fixed. A point at radius r in the orbit plane is at least
     /// <c>r·|sin β|</c> from the shadow axis, where β is the angle between the
     /// sun direction ŝ and the orbit plane, so <c>sin β = ŝ·n̂</c>. The shadow
     /// is at most <c>R(1 + r/D)</c> wide, so the vessel can only be in shadow
-    /// while <c>|ŝ·n̂| &lt; R/r_pe + R/D</c>.
-    /// </para>
+    /// while <c>|ŝ·n̂| &lt; R/r_pe + R/D</c>. When the star is an ancestor of
+    /// the planet the start of the next window where that holds can be solved
+    /// for exactly (see <see cref="TryComputeNextEclipseSeason"/>). Otherwise
+    /// it is bounded by stepping forward (see
+    /// <see cref="EclipseSeason.ComputeNextPossibleEclipse"/>).
+    /// </remarks>
+    double ComputeNextPossibleEclipse(double litUntilUT)
+    {
+        if (!MathUtil.IsFinite(litUntilUT))
+            return litUntilUT;
+        if (TryComputeNextEclipseSeason(litUntilUT, out var exact))
+            return exact;
+
+        var UT = EclipseSeason.ComputeNextPossibleEclipse(
+            system,
+            vessel.ParentBodyIndex ?? -1,
+            starIndex,
+            vessel.OrbitFrame.Z,
+            vessel.PeR,
+            vessel.Period,
+            litUntilUT
+        );
+
+        if (double.IsNaN(UT))
+            return litUntilUT;
+        return Math.Max(litUntilUT, UT);
+    }
+
+    /// <summary>
+    /// Find the start of the next eclipse season exactly, when the star is an
+    /// ancestor of the planet.
+    /// </summary>
     ///
+    /// <remarks>
     /// <para>
     /// If the planet orbits the star directly then <c>ŝ = cos ν P̂ + sin ν Q̂</c>
     /// for the planet's true anomaly ν and perifocal axes P̂ and Q̂, so
@@ -409,15 +439,13 @@ internal readonly struct OrbitShadow
     /// </para>
     ///
     /// <para>
-    /// If the star isn't an ancestor of the planet then there is no simple
-    /// bound, so the vessel is just checked again at
-    /// <paramref name="litUntilUT"/>.
+    /// Returns false if this doesn't apply: the star isn't an ancestor, or the
+    /// ancestor that orbits it is on an escape orbit or comes too close to it.
     /// </para>
     /// </remarks>
-    double ComputeNextPossibleEclipse(double litUntilUT)
+    bool TryComputeNextEclipseSeason(double litUntilUT, out double result)
     {
-        if (!MathUtil.IsFinite(litUntilUT))
-            return litUntilUT;
+        result = litUntilUT;
 
         // Find the ancestor of the planet that orbits the star, and how far the
         // planet can be from it.
@@ -426,11 +454,11 @@ internal readonly struct OrbitShadow
         for (int depth = 0; ; ++depth)
         {
             if (index < 0 || depth >= system.Count)
-                return litUntilUT;
+                return false;
 
             ref var body = ref system[index];
             if (!body.HasOrbit)
-                return litUntilUT;
+                return false;
 
             var parent = body.Orbit.ParentBodyIndex ?? -1;
             if (parent == starIndex)
@@ -442,11 +470,11 @@ internal readonly struct OrbitShadow
 
         ref var ancestor = ref system[index].Orbit;
         if (!(ancestor.Eccentricity < 1.0))
-            return litUntilUT;
+            return false;
 
         var distance = ancestor.PeR - offset;
         if (!(distance > 0.0) || !(vessel.PeR > 0.0))
-            return litUntilUT;
+            return false;
 
         var normal = vessel.OrbitFrame.Z;
         var A = Vector3d.Dot(ancestor.OrbitFrame.X, normal);
@@ -459,7 +487,7 @@ internal readonly struct OrbitShadow
 
         // An eclipse is possible at every point of the planet's orbit.
         if (!(limit < K))
-            return litUntilUT;
+            return true;
 
         var halfWidth = Math.Asin(limit / K);
         var psi = Math.Atan2(B, A);
@@ -472,14 +500,17 @@ internal readonly struct OrbitShadow
         if (phase < 0.0)
             phase += Math.PI;
 
-        if (!MathUtil.IsFinite(phase) || phase < 2.0 * halfWidth)
-            return litUntilUT;
+        if (!MathUtil.IsFinite(phase))
+            return false;
+        if (phase < 2.0 * halfWidth)
+            return true;
 
         var nextUT = ancestor.GetUTAtTrueAnomaly(nu + (Math.PI - phase), litUntilUT);
         if (!MathUtil.IsFinite(nextUT))
-            return litUntilUT;
+            return false;
 
-        return Math.Max(litUntilUT, nextUT);
+        result = Math.Max(litUntilUT, nextUT);
+        return true;
     }
 
     /// <summary>

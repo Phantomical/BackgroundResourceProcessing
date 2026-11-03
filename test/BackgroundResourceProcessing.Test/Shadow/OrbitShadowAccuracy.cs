@@ -581,7 +581,7 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
     /// <summary>
     /// Find the indices of the stars, using Kopernicus if it is installed.
     /// </summary>
-    static List<int> FindStars(List<CelestialBody> celestial)
+    internal static List<int> FindStars(List<CelestialBody> celestial)
     {
         var stars = new List<int>();
 
@@ -867,6 +867,11 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
     {
         public int Recomputes;
         public int Changepoints;
+
+        /// <summary>
+        /// Changepoints at which the state didn't change.
+        /// </summary>
+        public int Idle;
         public int Orbits;
         public List<string> Failures;
     }
@@ -890,6 +895,7 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
         var end = UT + duration;
         int recomputes = 0;
         int changepoints = 0;
+        int idle = 0;
         ShadowState? previous = null;
 
         while (UT < end && changepoints < 200_000)
@@ -914,6 +920,11 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
                 );
                 recomputes += 1;
             }
+            // A changepoint that doesn't change the state is only there to
+            // check whether an eclipse season has started.
+            if (previous is ShadowState last && last.InShadow == state.InShadow)
+                idle += 1;
+
             previous = state;
             changepoints += 1;
 
@@ -951,6 +962,7 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
         {
             Recomputes = recomputes,
             Changepoints = changepoints,
+            Idle = idle,
             Orbits = (int)Math.Ceiling(duration / orbit.Period),
             Failures = failures,
         };
@@ -1008,13 +1020,22 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
 
             LogUtil.Log(
                 $"[BRP.Test] OrbitShadow lag budget ({name}): {sim.Recomputes} recomputes "
-                    + $"and {sim.Changepoints} changepoints over {sim.Orbits} orbits"
+                    + $"and {sim.Changepoints} changepoints ({sim.Idle} idle) over {sim.Orbits} orbits"
             );
 
             if (sim.Changepoints > 3 * sim.Orbits + 10)
                 failures.Add(
                     $"{name}: {sim.Changepoints} changepoints over {sim.Orbits} orbits "
                         + "is more than 3 per orbit"
+                );
+
+            // Outside of eclipse season the state shouldn't be checked every
+            // orbit. In season an orbit can still miss the shadow near the
+            // edges of the season, which is where idle changepoints come from.
+            if (sim.Idle > sim.Orbits / 4 + 20)
+                failures.Add(
+                    $"{name}: {sim.Idle} changepoints that didn't change the state over "
+                        + $"{sim.Orbits} orbits is more than one every 4 orbits"
                 );
 
             // Every recompute also computes the terminator after the next one,
