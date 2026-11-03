@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 using BackgroundResourceProcessing.BurstSolver;
 using BackgroundResourceProcessing.Collections.Burst;
 using BackgroundResourceProcessing.Mathematics;
@@ -16,6 +17,8 @@ internal readonly struct OrbitShadow
     internal struct Terminator
     {
         public double UT;
+
+        [MarshalAs(UnmanagedType.U1)]
         public bool InShadow;
 
         /// <summary>
@@ -23,6 +26,7 @@ internal readonly struct OrbitShadow
         /// as lit forever. This only happens on degenerate input, and the
         /// caller should log it so that it can be turned into a test case.
         /// </summary>
+        [MarshalAs(UnmanagedType.U1)]
         public bool Failed;
 
         public static Terminator Sun(double UT) => new() { UT = UT, InShadow = false };
