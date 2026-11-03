@@ -160,8 +160,11 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
     /// — lit or shadowed — is validated identically.
     /// </remarks>
     ///
+    /// <param name="state">The computed shadow state.</param>
+    /// <param name="currentUT">The UT the state was computed at.</param>
     /// <param name="retryInterval">
-    /// How long to wait before recomputing. See <see cref="GetRetryInterval"/>.
+    /// How long to wait before recomputing. See
+    /// <see cref="GetRetryInterval(Vessel)"/>.
     /// </param>
     internal static ShadowState ValidateShadowState(
         ShadowState state,

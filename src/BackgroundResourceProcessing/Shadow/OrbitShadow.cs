@@ -72,6 +72,7 @@ internal readonly struct OrbitShadow
     const double MaxHyperbolicRadius = 1000.0;
 
     readonly SolarSystem system;
+    readonly int starIndex;
     readonly SystemBody star;
     readonly Orbit vessel;
     readonly SystemBody planet;
@@ -80,6 +81,7 @@ internal readonly struct OrbitShadow
     {
         this.system = system;
         this.vessel = vessel;
+        this.starIndex = starIndex;
         this.star = system[starIndex];
         this.planet = system[vessel.ParentBodyIndex ?? -1];
     }
@@ -286,7 +288,9 @@ internal readonly struct OrbitShadow
         if (minimum.Shadow)
             return Terminator.Sun(SolveTerminator(minimum.UT, loUT, returnShadowSide: true));
 
-        return Terminator.Sun(EstimateNextPotentialIntersection(minimum.UT));
+        // The vessel is lit until at least the end of the arc that was just
+        // searched.
+        return Terminator.Sun(ComputeNextPossibleEclipse(hiUT));
     }
 
     /// <summary>
@@ -302,7 +306,7 @@ internal readonly struct OrbitShadow
         if (minimum.Shadow)
             return Terminator.Sun(SolveTerminator(minimum.UT, UT, returnShadowSide: true));
 
-        return Terminator.Sun(hiUT);
+        return Terminator.Sun(ComputeNextPossibleEclipse(hiUT));
     }
 
     double ComputeTerminatorExit(double UT)
@@ -330,66 +334,104 @@ internal readonly struct OrbitShadow
         return SolveTerminator(UT, hiUT, returnShadowSide: false);
     }
 
-    double EstimateNextPotentialIntersection(double minUT)
+    /// <summary>
+    /// Find the earliest time, no earlier than <paramref name="litUntilUT"/>,
+    /// at which the vessel could possibly be in shadow. The vessel must be
+    /// known to be lit until <paramref name="litUntilUT"/>.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// <para>
+    /// Orbits in KSP don't precess, so the normal n̂ of the vessel's orbit is
+    /// fixed. A point at radius r in the orbit plane is at least
+    /// <c>r·|sin β|</c> from the shadow axis, where β is the angle between the
+    /// sun direction ŝ and the orbit plane, so <c>sin β = ŝ·n̂</c>. The shadow
+    /// is at most <c>R(1 + r/D)</c> wide, so the vessel can only be in shadow
+    /// while <c>|ŝ·n̂| &lt; R/r_pe + R/D</c>.
+    /// </para>
+    ///
+    /// <para>
+    /// If the planet orbits the star directly then <c>ŝ = cos ν P̂ + sin ν Q̂</c>
+    /// for the planet's true anomaly ν and perifocal axes P̂ and Q̂, so
+    /// <c>ŝ·n̂ = K cos(ν - ψ)</c>. That is small in two windows per planet year,
+    /// centred on <c>ψ ± π/2</c>, and the start of the next one can be found
+    /// exactly. For a moon, ŝ is the direction to the ancestor that orbits
+    /// the star, moved by at most <c>2·offset/D</c> where offset is the sum of
+    /// the apoapses of the moons in between. That is added to the margin.
+    /// </para>
+    ///
+    /// <para>
+    /// If the star isn't an ancestor of the planet then there is no simple
+    /// bound, so the vessel is just checked again at
+    /// <paramref name="litUntilUT"/>.
+    /// </para>
+    /// </remarks>
+    double ComputeNextPossibleEclipse(double litUntilUT)
     {
-        // We can lower-bound the next time we might intersect the terminator
-        // by getting the angular distance between the current orbit and the
-        // umbra, and then figuring out the UT at which sun vector will have
-        // moved by at least that angle.
-        //
-        // This will be a big underestimate in cases where the minimum angular
-        // distance is increasing, but that's actually not a big issue since
-        // time scales here are measured in terms of years, so a few extra
-        // iterations are unlikely to hurt.
-        //
-        // If there are cases where the target star's variation in solar angle
-        // will not exceed then this method will likely return nonsense. I do
-        // not expect those results to show up in actual gameplay, even with
-        // weird kopernicus systems there should either be a nearer star that
-        // will take priority or else power produced by solar panels is so
-        // minimal that it will not matter.
+        if (!MathUtil.IsFinite(litUntilUT))
+            return litUntilUT;
 
-        var cosa = GetCosAngularUmbraDistance(minUT);
-        var csun2 = GetSunVectorAtUT(Dual2.Variable(minUT)).Normalized();
-        var csun = csun2.v;
-
-        // We can approximate dot(sun, sun') as cos(A*t). We can't start newton's
-        // method at minUT because dx will always be 0 at that point so we need
-        // to somehow come up with a starting point estimate.
-        //
-        // The second derivative of the function cos(A*t) is -A*A*cos(A*t), so
-        // we can estimate A as sqrt(abs(ddx)).
-        var scale = Math.Sqrt(Math.Abs(Dual2Vector3.Dot(new(csun), csun2).ddx));
-        // We can then plug this back in to solve cos(A*t) - cos α == 0 for t.
-        //
-        // cosa can round to just outside [-1, 1] for grazing geometry, and
-        // scale is 0 if the sun direction doesn't change at all (e.g. the
-        // star and planet share a parent). Either would make the estimate
-        // NaN or infinite, so fall back to waiting one orbit instead.
-        var offset = Math.Acos(MathUtil.Clamp(cosa, -1.0, 1.0)) / scale;
-        if (!MathUtil.IsFinite(offset))
-            return minUT + vessel.Period;
-
-        var UT = minUT + offset;
-        for (int i = 0; i < MaxIter; ++i)
+        // Find the ancestor of the planet that orbits the star, and how far the
+        // planet can be from it.
+        int index = vessel.ParentBodyIndex ?? -1;
+        double offset = 0.0;
+        for (int depth = 0; ; ++depth)
         {
-            var sun = GetSunVectorAtUT(Dual.Variable(UT)).Normalized();
-            var f = DualVector3.Dot(sun, new(csun)) - cosa;
+            if (index < 0 || depth >= system.Count)
+                return litUntilUT;
 
-            if (f.dx == 0.0)
-                return minUT + vessel.Period;
+            ref var body = ref system[index];
+            if (!body.HasOrbit)
+                return litUntilUT;
 
-            var delta = f.x / f.dx;
-            UT -= delta;
-
-            if (MathUtil.ApproxEqual(delta, 0.0))
+            var parent = body.Orbit.ParentBodyIndex ?? -1;
+            if (parent == starIndex)
                 break;
+
+            offset += body.Orbit.ApR;
+            index = parent;
         }
 
-        if (!MathUtil.IsFinite(UT))
-            return minUT + vessel.Period;
+        ref var ancestor = ref system[index].Orbit;
+        if (!(ancestor.Eccentricity < 1.0))
+            return litUntilUT;
 
-        return Math.Max(UT, minUT + vessel.Period);
+        var distance = ancestor.PeR - offset;
+        if (!(distance > 0.0) || !(vessel.PeR > 0.0))
+            return litUntilUT;
+
+        var normal = vessel.OrbitFrame.Z;
+        var A = Vector3d.Dot(ancestor.OrbitFrame.X, normal);
+        var B = Vector3d.Dot(ancestor.OrbitFrame.Y, normal);
+        var K = Math.Sqrt(A * A + B * B);
+
+        var limit = planet.Radius / vessel.PeR + planet.Radius / distance + 2.0 * offset / distance;
+        // Leave a little room for rounding error.
+        limit = limit * (1.0 + 1e-6) + 1e-9;
+
+        // An eclipse is possible at every point of the planet's orbit.
+        if (!(limit < K))
+            return litUntilUT;
+
+        var halfWidth = Math.Asin(limit / K);
+        var psi = Math.Atan2(B, A);
+
+        // The windows are centred on ψ + π/2 + kπ. Find how far past the start
+        // of the most recent one the planet is.
+        var nu = ancestor.GetTrueAnomalyAtUT(litUntilUT);
+        var windowStart = psi + 0.5 * Math.PI - halfWidth;
+        var phase = (nu - windowStart) % Math.PI;
+        if (phase < 0.0)
+            phase += Math.PI;
+
+        if (!MathUtil.IsFinite(phase) || phase < 2.0 * halfWidth)
+            return litUntilUT;
+
+        var nextUT = ancestor.GetUTAtTrueAnomaly(nu + (Math.PI - phase), litUntilUT);
+        if (!MathUtil.IsFinite(nextUT))
+            return litUntilUT;
+
+        return Math.Max(litUntilUT, nextUT);
     }
 
     /// <summary>
@@ -703,6 +745,8 @@ internal readonly struct OrbitShadow
     /// (lit).
     /// </summary>
     ///
+    /// <param name="shadowUT">A time at which the vessel is in shadow.</param>
+    /// <param name="litUT">A time at which the vessel is lit.</param>
     /// <param name="returnShadowSide">
     /// Whether to return the end of the final bracket that is in shadow, or
     /// the end that is lit. Callers pick the side that the vessel is moving
@@ -844,46 +888,6 @@ internal readonly struct OrbitShadow
         var planetp = system.GetPositionAtUT(in planet, UT);
 
         return planetp - starp;
-    }
-
-    DualVector3 GetSunVectorAtUT(Dual UT)
-    {
-        var starp = system.GetPositionAtUT(in star, UT);
-        var planetp = system.GetPositionAtUT(in planet, UT);
-
-        return planetp - starp;
-    }
-
-    Dual2Vector3 GetSunVectorAtUT(Dual2 UT)
-    {
-        var starp = system.GetPositionAtUT(in star, UT);
-        var planetp = system.GetPositionAtUT(in planet, UT);
-
-        return planetp - starp;
-    }
-
-    double GetCosAngularUmbraDistance(double UT)
-    {
-        var starp = system.GetPositionAtUT(in star, UT);
-        var planetp = system.GetPositionAtUT(in planet, UT);
-        var vesselp = vessel.GetRelativePositionAtUT(UT);
-
-        var sunV = planetp - starp;
-        var sunD = sunV.magnitude;
-        var invSunD = 1.0 / sunD;
-        var sun = sunV * invSunD;
-
-        var r2 = planet.Radius * planet.Radius;
-        var s2 = sunD * sunD;
-        var v2 = vesselp.sqrMagnitude;
-
-        var l = sunD * (-r2 + Math.Sqrt(s2 * v2 + r2 * (v2 - s2))) / (r2 + s2);
-        var xi = planet.Radius * (1.0 + l * invSunD);
-
-        var vperp = (vesselp - Vector3d.Dot(sun, vesselp) * sun).Normalized();
-        var vprime = l * sun + xi * vperp;
-
-        return Vector3d.Dot(vprime.Normalized(), vesselp.Normalized());
     }
 
     double GetUmbraDistance(double UT)
