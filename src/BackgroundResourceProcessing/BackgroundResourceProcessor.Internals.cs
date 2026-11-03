@@ -194,12 +194,25 @@ public sealed partial class BackgroundResourceProcessor
     /// Whether the shadow state needs to be recomputed before running the
     /// changepoint at <paramref name="changepoint"/>.
     /// </summary>
+    ///
+    /// <remarks>
+    /// If the changepoint is past the next terminator but the state after it
+    /// is already known, the shadow state is moved forward to it here (see
+    /// <see cref="ShadowStateType.TryAdvance"/>) and no recompute is needed.
+    /// </remarks>
     internal bool NeedsShadowStateUpdate(double changepoint)
     {
         if (vessel == null || vessel.loaded)
             return false;
+        if (ShadowState is not ShadowStateType current)
+            return true;
+        if (!(current.NextTerminatorEstimate <= changepoint))
+            return false;
+        if (!current.TryAdvance(changepoint, out var advanced))
+            return true;
 
-        return ShadowState == null || ShadowState.Value.NextTerminatorEstimate <= changepoint;
+        ShadowState = advanced;
+        return false;
     }
 
     /// <summary>

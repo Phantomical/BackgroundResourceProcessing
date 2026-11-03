@@ -106,31 +106,96 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
 
         if (term.InShadow != start)
             return Result(Outcome.Failed, Fail("wrong state"));
-        if (double.IsNaN(term.UT))
-            return Result(Outcome.Failed, Fail("NaN terminator"));
-        if (term.UT < UT)
-            return Result(Outcome.Failed, Fail("terminator in the past"));
+
+        var outcome = CheckSegment(reference, UT, start, term.UT, next, out var why);
+        if (outcome == Outcome.Failed)
+            return Result(outcome, Fail(why));
+        if (!term.HasNext)
+            return Result(outcome);
+
+        // The following terminator is checked the same way, starting from the
+        // first one. If the first one matched a real transition, then the
+        // reference starts just past that transition so it isn't found again.
+        // Shadow windows can be shorter than the tolerance, so this can't skip
+        // a whole tolerance.
+        var from = outcome == Outcome.Exact ? Math.Max(term.UT, next + 1e-3) : term.UT;
+        var nextStart = reference.Margin(from);
+        if (Math.Abs(nextStart) >= EdgeMargin && term.NextInShadow != nextStart < 0.0)
+            return Result(
+                Outcome.Failed,
+                Fail(
+                    $"wrong following state, reported {(term.NextInShadow ? "shadow" : "lit")} "
+                        + $"until {term.NextUT:R}, margin {nextStart:G4}m at {from:R}"
+                )
+            );
+
+        var following = reference.NextTransition(from, horizon);
+        var nextOutcome = CheckSegment(
+            reference,
+            term.UT,
+            term.NextInShadow,
+            term.NextUT,
+            following,
+            out why
+        );
+        if (nextOutcome == Outcome.Failed)
+            return Result(
+                Outcome.Failed,
+                Fail($"following terminator {term.NextUT} vs reference {following}: {why}")
+            );
+
+        return Result(outcome);
+    }
+
+    /// <summary>
+    /// Check a reported terminator <paramref name="termUT"/> for a segment that
+    /// starts at <paramref name="UT"/> in state <paramref name="start"/>,
+    /// against the real transition <paramref name="next"/>.
+    /// </summary>
+    static Outcome CheckSegment(
+        ShadowReference reference,
+        double UT,
+        bool start,
+        double termUT,
+        double next,
+        out string why
+    )
+    {
+        why = null;
+        if (double.IsNaN(termUT))
+        {
+            why = "NaN terminator";
+            return Outcome.Failed;
+        }
+        if (termUT < UT)
+        {
+            why = "terminator in the past";
+            return Outcome.Failed;
+        }
 
         if (double.IsInfinity(next))
-            return Result(double.IsInfinity(term.UT) ? Outcome.NoTransition : Outcome.Early);
+            return double.IsInfinity(termUT) ? Outcome.NoTransition : Outcome.Early;
 
-        if (term.UT > next + Tolerance)
-            return Result(Outcome.Failed, Fail($"late by {term.UT - next:G4}s"));
+        if (termUT > next + Tolerance)
+        {
+            why = $"late by {termUT - next:G4}s";
+            return Outcome.Failed;
+        }
 
-        if (term.UT < next - Tolerance)
-            return Result(Outcome.Early);
+        if (termUT < next - Tolerance)
+            return Outcome.Early;
 
         // The terminator matches the real transition, so the state there
         // should already be the new one.
-        var after = reference.Margin(term.UT);
+        var after = reference.Margin(termUT);
         var wrongSide = start ? after < -SideMargin : after > SideMargin;
         if (wrongSide)
-            return Result(
-                Outcome.Failed,
-                Fail($"terminator is on the old side of the edge by {Math.Abs(after):G4}m")
-            );
+        {
+            why = $"terminator is on the old side of the edge by {Math.Abs(after):G4}m";
+            return Outcome.Failed;
+        }
 
-        return Result(Outcome.Exact);
+        return Outcome.Exact;
     }
 
     static string Describe(in Orbit orbit) =>
@@ -799,6 +864,7 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
     struct Simulation
     {
         public int Recomputes;
+        public int Changepoints;
         public int Orbits;
         public List<string> Failures;
     }
@@ -821,16 +887,33 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
         var failures = new List<string>();
         var end = UT + duration;
         int recomputes = 0;
+        int changepoints = 0;
+        ShadowState? previous = null;
 
-        while (UT < end && recomputes < 100_000)
+        while (UT < end && changepoints < 200_000)
         {
-            var term = Compute(bodies, in orbit, UT, star: star);
-            var state = ShadowState.ValidateShadowState(
-                new(term.UT, term.InShadow),
-                UT,
-                ShadowState.GetRetryInterval(orbit.Period)
-            );
-            recomputes += 1;
+            // Move forward through the stored terminators like the processor
+            // does, and only recompute when that isn't possible.
+            ShadowState state;
+            if (previous is ShadowState prev && prev.TryAdvance(UT, out var advanced))
+            {
+                state = advanced;
+            }
+            else
+            {
+                var term = Compute(bodies, in orbit, UT, star: star);
+                state = ShadowState.ValidateShadowState(
+                    ShadowState.AggregateShadowState(
+                        new OrbitShadow.Terminator[] { term },
+                        new CelestialBody[] { null }
+                    ),
+                    UT,
+                    ShadowState.GetRetryInterval(orbit.Period)
+                );
+                recomputes += 1;
+            }
+            previous = state;
+            changepoints += 1;
 
             var margin = reference.Margin(UT);
             if (Math.Abs(margin) >= EdgeMargin && state.InShadow != margin < 0.0)
@@ -865,6 +948,7 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
         return new()
         {
             Recomputes = recomputes,
+            Changepoints = changepoints,
             Orbits = (int)Math.Ceiling(duration / orbit.Period),
             Failures = failures,
         };
@@ -872,7 +956,8 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
 
     /// <summary>
     /// Over a whole Kerbin year, through both eclipse seasons, the number of
-    /// shadow recomputations should stay at roughly two per orbit. This turns
+    /// shadow changepoints should stay at roughly two per orbit, and only every
+    /// other one should need the shadow state to be recomputed. This turns
     /// the no-lag policy into a test: a fixed <c>t + N</c> retry loop would blow
     /// through the budget for any orbit longer than a few minutes.
     /// </summary>
@@ -915,13 +1000,21 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
 
             LogUtil.Log(
                 $"[BRP.Test] OrbitShadow lag budget ({name}): {sim.Recomputes} recomputes "
-                    + $"over {sim.Orbits} orbits"
+                    + $"and {sim.Changepoints} changepoints over {sim.Orbits} orbits"
             );
 
-            if (sim.Recomputes > 3 * sim.Orbits + 10)
+            if (sim.Changepoints > 3 * sim.Orbits + 10)
                 failures.Add(
-                    $"{name}: {sim.Recomputes} recomputes over {sim.Orbits} orbits "
+                    $"{name}: {sim.Changepoints} changepoints over {sim.Orbits} orbits "
                         + "is more than 3 per orbit"
+                );
+
+            // Every recompute also computes the terminator after the next one,
+            // so only every other changepoint should need one.
+            if (sim.Recomputes > sim.Changepoints / 2 + 10)
+                failures.Add(
+                    $"{name}: {sim.Recomputes} recomputes for {sim.Changepoints} changepoints "
+                        + "is more than one for every two"
                 );
         }
 

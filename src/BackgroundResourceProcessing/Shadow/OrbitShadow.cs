@@ -29,6 +29,27 @@ internal readonly struct OrbitShadow
         [MarshalAs(UnmanagedType.U1)]
         public bool Failed;
 
+        /// <summary>
+        /// Whether <see cref="NextUT"/> and <see cref="NextInShadow"/> are
+        /// known.
+        /// </summary>
+        [MarshalAs(UnmanagedType.U1)]
+        public bool HasNext;
+
+        /// <summary>
+        /// The state of the vessel from <see cref="UT"/> until
+        /// <see cref="NextUT"/>. Only valid if <see cref="HasNext"/> is set.
+        /// </summary>
+        [MarshalAs(UnmanagedType.U1)]
+        public bool NextInShadow;
+
+        /// <summary>
+        /// The terminator after <see cref="UT"/>, so that the shadow state
+        /// can be moved past <see cref="UT"/> without computing it again. Only
+        /// valid if <see cref="HasNext"/> is set.
+        /// </summary>
+        public double NextUT;
+
         public static Terminator Sun(double UT) => new() { UT = UT, InShadow = false };
 
         public static Terminator Shadow(double UT) => new() { UT = UT, InShadow = true };
@@ -133,12 +154,46 @@ internal readonly struct OrbitShadow
 
             if (term.UT == double.MaxValue)
                 term.UT = double.PositiveInfinity;
+            if (term.NextUT == double.MaxValue)
+                term.NextUT = double.PositiveInfinity;
 
             return term;
         }
     }
 
-    internal static unsafe Terminator ComputeOrbitTerminator(
+    /// <summary>
+    /// Compute the next terminator after <paramref name="UT"/>, along with the
+    /// one after that.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// The second terminator is computed from the first one, which is on the
+    /// far side of the shadow edge, so it is the end of the shadow window when
+    /// the first one is the start of it. Storing it means that the shadow state
+    /// only has to be recomputed at every other terminator.
+    /// </remarks>
+    internal static Terminator ComputeOrbitTerminator(
+        SolarSystem system,
+        in Orbit vessel,
+        int starIndex,
+        double UT
+    )
+    {
+        var term = ComputeSingleOrbitTerminator(system, in vessel, starIndex, UT);
+        if (term.Failed || !(term.UT > UT) || !(term.UT < double.MaxValue))
+            return term;
+
+        var next = ComputeSingleOrbitTerminator(system, in vessel, starIndex, term.UT);
+        if (next.Failed || !(next.UT > term.UT))
+            return term;
+
+        term.HasNext = true;
+        term.NextInShadow = next.InShadow;
+        term.NextUT = next.UT;
+        return term;
+    }
+
+    static unsafe Terminator ComputeSingleOrbitTerminator(
         SolarSystem system,
         in Orbit vessel,
         int starIndex,

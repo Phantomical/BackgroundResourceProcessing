@@ -22,6 +22,51 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
     /// </summary>
     public List<CelestialBody> LitStars = star != null ? [star] : null;
 
+    /// <summary>
+    /// The terminator for each star that this state was computed from, in the
+    /// same order as the stars. This is used to move the state past
+    /// <see cref="NextTerminatorEstimate"/> without computing it again (see
+    /// <see cref="TryAdvance"/>). May be <c>null</c>, in which case the state
+    /// has to be recomputed at <see cref="NextTerminatorEstimate"/>.
+    /// </summary>
+    internal StarTerminator[] Terminators = null;
+
+    /// <summary>
+    /// The shadow state of a vessel with respect to a single star.
+    /// </summary>
+    internal struct StarTerminator
+    {
+        public CelestialBody Star;
+
+        /// <summary>
+        /// Whether the vessel is in shadow until <see cref="UT"/>.
+        /// </summary>
+        public bool InShadow;
+
+        /// <summary>
+        /// The next time the vessel's shadow state for this star needs to be
+        /// updated.
+        /// </summary>
+        public double UT;
+
+        /// <summary>
+        /// Whether the state after <see cref="UT"/> is known.
+        /// </summary>
+        public bool HasNext;
+
+        /// <summary>
+        /// Whether the vessel is in shadow from <see cref="UT"/> until
+        /// <see cref="NextUT"/>.
+        /// </summary>
+        public bool NextInShadow;
+
+        /// <summary>
+        /// The time after <see cref="UT"/> at which the state needs to be
+        /// updated again.
+        /// </summary>
+        public double NextUT;
+    }
+
     public static ShadowState AlwaysInSun(CelestialBody star) =>
         new(double.PositiveInfinity, false, star);
 
@@ -130,23 +175,98 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         IReadOnlyList<CelestialBody> stars
     )
     {
-        var estimate = double.PositiveInfinity;
-        List<CelestialBody> lit = null;
-
+        var result = new StarTerminator[terminators.Length];
         for (int i = 0; i < terminators.Length; i++)
         {
             var term = terminators[i];
-            var ut = term.UT == double.MaxValue ? double.PositiveInfinity : term.UT;
+            result[i] = new StarTerminator
+            {
+                Star = stars[i],
+                InShadow = term.InShadow,
+                UT = ToInfinity(term.UT),
+                HasNext = term.HasNext,
+                NextInShadow = term.NextInShadow,
+                NextUT = ToInfinity(term.NextUT),
+            };
+        }
 
-            estimate = Math.Min(estimate, ut);
+        return AggregateShadowState(result);
+    }
+
+    /// <summary>
+    /// Combine per-star terminators into a single <see cref="ShadowState"/>,
+    /// in the same way as the overload taking solver results.
+    /// </summary>
+    internal static ShadowState AggregateShadowState(StarTerminator[] terminators)
+    {
+        var estimate = double.PositiveInfinity;
+        List<CelestialBody> lit = null;
+
+        foreach (var term in terminators)
+        {
+            estimate = Math.Min(estimate, term.UT);
             if (!term.InShadow)
-                (lit ??= []).Add(stars[i]);
+                (lit ??= []).Add(term.Star);
         }
 
         if (lit == null)
-            return new ShadowState(estimate, true);
+            return new ShadowState(estimate, true) { Terminators = terminators };
 
-        return new ShadowState(estimate, false, lit[0]) { LitStars = lit };
+        return new ShadowState(estimate, false, lit[0])
+        {
+            LitStars = lit,
+            Terminators = terminators,
+        };
+    }
+
+    static double ToInfinity(double UT) => UT == double.MaxValue ? double.PositiveInfinity : UT;
+
+    /// <summary>
+    /// Move this state forward to <paramref name="UT"/> using the stored
+    /// terminators, without computing anything.
+    /// </summary>
+    ///
+    /// <returns>
+    /// Whether the state at <paramref name="UT"/> is known. If not then the
+    /// shadow state needs to be recomputed.
+    /// </returns>
+    ///
+    /// <remarks>
+    /// Each terminator is computed together with the one after it, so this
+    /// can move each star past one terminator. A star that has already been
+    /// moved past one, or that has no following terminator, needs a
+    /// recompute.
+    /// </remarks>
+    internal readonly bool TryAdvance(double UT, out ShadowState advanced)
+    {
+        advanced = this;
+        if (!(NextTerminatorEstimate <= UT))
+            return true;
+        if (Terminators is null)
+            return false;
+
+        var result = new StarTerminator[Terminators.Length];
+        for (int i = 0; i < result.Length; i++)
+        {
+            var term = Terminators[i];
+            if (term.UT <= UT)
+            {
+                if (!term.HasNext || !(term.NextUT > UT))
+                    return false;
+
+                term = new StarTerminator
+                {
+                    Star = term.Star,
+                    InShadow = term.NextInShadow,
+                    UT = term.NextUT,
+                };
+            }
+
+            result[i] = term;
+        }
+
+        advanced = AggregateShadowState(result);
+        return true;
     }
 
     /// <summary>
@@ -181,12 +301,14 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         {
             LogUtil.Error("Shadow state calculations returned NaN terminator estimate");
             state.NextTerminatorEstimate = currentUT + retryInterval;
+            state.Terminators = null;
             return state;
         }
         if (state.NextTerminatorEstimate < currentUT)
         {
             LogUtil.Error("Shadow state calculations returned a terminator in the past");
             state.NextTerminatorEstimate = currentUT + retryInterval;
+            state.Terminators = null;
             return state;
         }
 
@@ -509,7 +631,55 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
             state.LitStars = ResolveLitStars(node) ?? [state.Star];
         }
 
+        state.Terminators = LoadTerminators(node, state.NextTerminatorEstimate);
         return state;
+    }
+
+    /// <summary>
+    /// Load the per-star terminators. Older saves don't have them, and any
+    /// that don't match the rest of the state are dropped, since the only
+    /// cost of dropping them is a recompute at the next terminator.
+    /// </summary>
+    private static StarTerminator[] LoadTerminators(ConfigNode node, double estimate)
+    {
+        var nodes = node.GetNodes("TERMINATOR");
+        if (nodes == null || nodes.Length == 0)
+            return null;
+
+        var terminators = new StarTerminator[nodes.Length];
+        var min = double.PositiveInfinity;
+        for (int i = 0; i < nodes.Length; i++)
+        {
+            var child = nodes[i];
+            StarTerminator term = default;
+
+            string name = null;
+            if (!child.TryGetValue("Star", ref name))
+                return null;
+            term.Star = PSystemManager.Instance?.localBodies?.Find(body =>
+                body.isStar && body.bodyName == name
+            );
+            if (term.Star == null)
+                return null;
+
+            if (!child.TryGetValue("InShadow", ref term.InShadow))
+                return null;
+            if (!child.TryGetDouble("UT", ref term.UT))
+                return null;
+            if (
+                child.TryGetDouble("NextUT", ref term.NextUT)
+                && child.TryGetValue("NextInShadow", ref term.NextInShadow)
+            )
+                term.HasNext = true;
+
+            min = Math.Min(min, term.UT);
+            terminators[i] = term;
+        }
+
+        if (min != estimate)
+            return null;
+
+        return terminators;
     }
 
     private static List<CelestialBody> ResolveLitStars(ConfigNode node)
@@ -543,6 +713,22 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
             {
                 if (star != null)
                     node.AddValue("LitStar", star.bodyName);
+            }
+        }
+
+        if (Terminators != null && Array.TrueForAll(Terminators, term => term.Star != null))
+        {
+            foreach (var term in Terminators)
+            {
+                var child = node.AddNode("TERMINATOR");
+                child.AddValue("Star", term.Star.bodyName);
+                child.AddValue("InShadow", term.InShadow);
+                child.AddValue("UT", term.UT);
+                if (term.HasNext)
+                {
+                    child.AddValue("NextInShadow", term.NextInShadow);
+                    child.AddValue("NextUT", term.NextUT);
+                }
             }
         }
     }

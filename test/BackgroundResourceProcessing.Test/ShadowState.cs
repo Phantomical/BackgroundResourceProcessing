@@ -110,6 +110,81 @@ public sealed class ShadowStateTests : BRPTestBase
 
     #endregion
 
+    #region TryAdvance
+
+    static Term WithNext(Term term, bool nextInShadow, double nextUT)
+    {
+        term.HasNext = true;
+        term.NextInShadow = nextInShadow;
+        term.NextUT = nextUT;
+        return term;
+    }
+
+    [TestInfo("ShadowStateTests_AdvanceBeforeTerminatorIsUnchanged")]
+    public void AdvanceBeforeTerminatorIsUnchanged()
+    {
+        Term[] terms = [Term.Sun(500.0)];
+        var state = ShadowState.AggregateShadowState(terms, NullStars(1));
+
+        Assert.IsTrue(state.TryAdvance(400.0, out var advanced));
+        Assert.IsFalse(advanced.InShadow);
+        Assert.AreEqual(500.0, advanced.NextTerminatorEstimate, 0.0);
+    }
+
+    [TestInfo("ShadowStateTests_AdvanceUsesFollowingTerminator")]
+    public void AdvanceUsesFollowingTerminator()
+    {
+        Term[] terms = [WithNext(Term.Sun(500.0), true, 800.0)];
+        var state = ShadowState.AggregateShadowState(terms, NullStars(1));
+
+        Assert.IsTrue(state.TryAdvance(500.0, out var advanced));
+        Assert.IsTrue(advanced.InShadow);
+        Assert.AreEqual(800.0, advanced.NextTerminatorEstimate, 0.0);
+
+        // There is nothing known past the following terminator.
+        Assert.IsFalse(advanced.TryAdvance(800.0, out _));
+    }
+
+    [TestInfo("ShadowStateTests_AdvanceWithoutFollowingTerminatorFails")]
+    public void AdvanceWithoutFollowingTerminatorFails()
+    {
+        Term[] terms = [Term.Sun(500.0)];
+        var state = ShadowState.AggregateShadowState(terms, NullStars(1));
+
+        Assert.IsFalse(state.TryAdvance(500.0, out _));
+        Assert.IsFalse(new ShadowState(500.0, false).TryAdvance(500.0, out _));
+    }
+
+    [TestInfo("ShadowStateTests_AdvancePastFollowingTerminatorFails")]
+    public void AdvancePastFollowingTerminatorFails()
+    {
+        Term[] terms = [WithNext(Term.Sun(500.0), true, 800.0)];
+        var state = ShadowState.AggregateShadowState(terms, NullStars(1));
+
+        Assert.IsFalse(state.TryAdvance(900.0, out _));
+    }
+
+    /// <summary>
+    /// Only the stars whose terminator has been reached move forward. The
+    /// others keep their state and terminator.
+    /// </summary>
+    [TestInfo("ShadowStateTests_AdvanceOnlyMovesReachedStars")]
+    public void AdvanceOnlyMovesReachedStars()
+    {
+        Term[] terms = [WithNext(Term.Shadow(200.0), false, 700.0), Term.Sun(500.0)];
+        var state = ShadowState.AggregateShadowState(terms, NullStars(2));
+
+        Assert.IsTrue(state.TryAdvance(200.0, out var advanced));
+        Assert.IsFalse(advanced.InShadow);
+        Assert.AreEqual(2, advanced.LitStars.Count);
+        Assert.AreEqual(500.0, advanced.NextTerminatorEstimate, 0.0);
+
+        // The second star has no following terminator.
+        Assert.IsFalse(advanced.TryAdvance(500.0, out _));
+    }
+
+    #endregion
+
     #region ValidateShadowState
 
     // The default test log sink throws on any error, so swap in one that counts
@@ -171,6 +246,21 @@ public sealed class ShadowStateTests : BRPTestBase
         );
     }
 
+    /// <summary>
+    /// A rejected estimate means the stored terminators can't be trusted
+    /// either, so the retry has to recompute rather than advance.
+    /// </summary>
+    [TestInfo("ShadowStateTests_ValidateDropsTerminators")]
+    public void ValidateDropsTerminators()
+    {
+        Term[] terms = [WithNext(Term.Shadow(50.0), false, 200.0)];
+        var input = ShadowState.AggregateShadowState(terms, NullStars(1));
+        var (result, _) = Validate(input, 100.0);
+
+        Assert.IsTrue(result.Terminators == null);
+        Assert.IsFalse(result.TryAdvance(result.NextTerminatorEstimate, out _));
+    }
+
     [TestInfo("ShadowStateTests_ValidatePassesFutureTerminator")]
     public void ValidatePassesFutureTerminator()
     {
@@ -215,6 +305,41 @@ public sealed class ShadowStateTests : BRPTestBase
         Assert.IsTrue(state != null);
         Assert.IsTrue(state.Value.InShadow);
         Assert.AreEqual(1234.5, state.Value.NextTerminatorEstimate, 0.0);
+    }
+
+    [TestInfo("ShadowStateTests_LoadTerminators")]
+    public void LoadTerminators()
+    {
+        var sun = Planetarium.fetch?.Sun;
+        if (sun == null)
+            return;
+
+        Term[] terms = [WithNext(Term.Sun(1000.0), true, 1500.0)];
+        var saved = ShadowState.AggregateShadowState(terms, [sun]);
+
+        ConfigNode node = new();
+        saved.Save(node);
+        var state = ShadowState.Load(node);
+
+        Assert.IsTrue(state != null);
+        Assert.IsTrue(state.Value.TryAdvance(1000.0, out var advanced));
+        Assert.IsTrue(advanced.InShadow);
+        Assert.AreEqual(1500.0, advanced.NextTerminatorEstimate, 0.0);
+    }
+
+    /// <summary>
+    /// Saves from before per-star terminators were stored still load, and just
+    /// recompute at the next terminator.
+    /// </summary>
+    [TestInfo("ShadowStateTests_LoadWithoutTerminators")]
+    public void LoadWithoutTerminators()
+    {
+        ConfigNode node = new();
+        new ShadowState(1234.5, true).Save(node);
+        var state = ShadowState.Load(node);
+
+        Assert.IsTrue(state != null);
+        Assert.IsTrue(state.Value.Terminators == null);
     }
 
     #endregion

@@ -27,7 +27,7 @@ namespace BackgroundResourceProcessing.Shadow;
 /// <para>
 /// All managed data (stars, orbits, surface normals, the solar system) is
 /// extracted on the main thread when vessels are added. The job itself only
-/// computes one terminator per (vessel, star) pair. The solar system is
+/// computes the terminators for each (vessel, star) pair. The solar system is
 /// recorded once and shared by every vessel in the batch.
 /// </para>
 ///
