@@ -132,6 +132,9 @@ internal static unsafe class EclipseSeason
     }
 
     /// <inheritdoc cref="ComputeNextPossibleEclipse(SystemBody[], int, int, Vector3d, double, double, double)"/>
+    /// <param name="radius">
+    /// The radius of the shadow, or NaN to use the radius of the planet.
+    /// </param>
     [SkipLocalsInit]
     public static double ComputeNextPossibleEclipse(
         SolarSystem system,
@@ -140,7 +143,8 @@ internal static unsafe class EclipseSeason
         Vector3d normal,
         double vesselPeR,
         double minStep,
-        double UT
+        double UT,
+        double radius = double.NaN
     )
     {
         if (!MathUtil.IsFinite(UT) || !(vesselPeR > 0.0))
@@ -193,12 +197,15 @@ internal static unsafe class EclipseSeason
         if (count == 0)
             return UT;
 
+        if (double.IsNaN(radius))
+            radius = system[planetIndex].Radius;
+
         var state = new State
         {
             Terms = terms,
             Count = count,
-            L0 = system[planetIndex].Radius / vesselPeR,
-            Radius = system[planetIndex].Radius,
+            L0 = radius / vesselPeR,
+            Radius = radius,
         };
 
         if (!(minStep > 1.0))

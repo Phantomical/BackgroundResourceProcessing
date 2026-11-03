@@ -427,6 +427,202 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
     }
 
     /// <summary>
+    /// Random orbits around a moon, at times close to when the moon passes
+    /// through its planet's shadow, so that the planet's shadow is usually
+    /// the next one that the vessel enters or leaves.
+    /// </summary>
+    [TestInfo("OrbitShadowAccuracy_MoonInPlanetShadow")]
+    public void MoonInPlanetShadow()
+    {
+        var bodies = Create();
+        var rng = new Random(8642);
+
+        (int Moon, int Planet, int Star)[] configs =
+        [
+            (Mun, Kerbin, Kerbol),
+            (Laythe, Jool, Kerbol),
+            (Mun, Kerbin, KerbolB),
+        ];
+
+        var cases = new List<(Orbit Orbit, double UT, int Star, double Horizon)>();
+        foreach (var (moon, planet, star) in configs)
+        {
+            var moonOrbit = bodies[moon].Orbit;
+            var moonSpeed = 2.0 * Math.PI * moonOrbit.SemiMajorAxis / moonOrbit.Period;
+
+            for (int i = 0; i < 150; ++i)
+            {
+                var orbit = RandomOrbit(rng, bodies, moon, Info[moon]);
+                var pass = FindAntiSunPass(
+                    bodies,
+                    moon,
+                    planet,
+                    star,
+                    rng.NextDouble() * 10.0 * moonOrbit.Period
+                );
+
+                // The vessel can be in the planet's shadow while the moon is
+                // within the planet's radius plus the vessel's apoapsis of
+                // the shadow axis.
+                var reach = Info[planet].Radius + orbit.ApR;
+                var width = reach / moonSpeed;
+                var UT = pass + (2.0 * rng.NextDouble() - 1.0) * 1.5 * width;
+                cases.Add((orbit, UT, star, 2.5 * orbit.Period + 4.0 * width));
+            }
+        }
+
+        var results = ParallelCases.Run(
+            cases.Count,
+            i => Check(bodies, cases[i].Orbit, cases[i].UT, cases[i].Horizon, star: cases[i].Star)
+        );
+
+        var failures = new List<string>();
+        var counts = new int[5];
+        for (int i = 0; i < cases.Count; ++i)
+        {
+            var result = results[i];
+            counts[(int)result.Outcome] += 1;
+            if (result.Outcome == Outcome.Failed)
+                failures.Add($"star {DescribeBody(cases[i].Star)}: {result.Message}");
+        }
+
+        LogUtil.Log(
+            $"[BRP.Test] OrbitShadow moon in planet shadow: {counts[(int)Outcome.Exact]} exact, "
+                + $"{counts[(int)Outcome.Early]} early, "
+                + $"{counts[(int)Outcome.NoTransition]} with no transition, "
+                + $"{counts[(int)Outcome.Skipped]} skipped, {counts[(int)Outcome.Failed]} failed"
+        );
+
+        AssertNoFailures(failures, cases.Count, "moon cases");
+    }
+
+    #region Kcalbeloh regressions
+    /// <summary>
+    /// Check one case in <see cref="KcalbelohTestSystem"/>, with an orbit
+    /// given as it is printed by <see cref="Describe"/>.
+    /// </summary>
+    static void CheckKcalbeloh(
+        int parent,
+        int star,
+        double UT,
+        double sma,
+        double ecc,
+        double incDeg,
+        double lanDeg,
+        double argPeDeg,
+        double meanAnomalyAtEpoch
+    )
+    {
+        var bodies = KcalbelohTestSystem.Create();
+        var orbit = MakeOrbit(
+            parent,
+            KcalbelohTestSystem.Mu[parent],
+            sma,
+            ecc,
+            incDeg * Deg,
+            lanDeg * Deg,
+            argPeDeg * Deg,
+            meanAnomalyAtEpoch
+        );
+
+        installedNames = KcalbelohTestSystem.Names;
+        try
+        {
+            var result = Check(bodies, in orbit, UT, 2.5 * orbit.Period, star);
+            if (result.Outcome == Outcome.Failed)
+                throw new Exception(result.Message);
+        }
+        finally
+        {
+            installedNames = null;
+        }
+    }
+
+    /// <summary>
+    /// A vessel around Simetra, one half of a binary planet, lit by AralcB.
+    /// Simetra orbits the barycentre of the binary, which has a 10 km radius
+    /// but doesn't block light, so it must not cast a shadow. The star Sunorc
+    /// above it still does.
+    /// </summary>
+    [TestInfo("OrbitShadowAccuracy_KcalbelohBinaryPlanet")]
+    public void KcalbelohBinaryPlanet() =>
+        CheckKcalbeloh(
+            KcalbelohTestSystem.Simetra,
+            KcalbelohTestSystem.AralcB,
+            24021.3590219167,
+            8170597.199066828,
+            0,
+            58.361618192103514,
+            240.30252456679125,
+            122.55182275667404,
+            0.881606545581822
+        );
+
+    /// <summary>
+    /// A vessel around Elad, a moon of a planet orbiting the star AralcA, lit
+    /// by the black hole Kcalbeloh. Positions here are around 10¹³ m, so
+    /// rounding in absolute positions is around a millimetre.
+    /// </summary>
+    [TestInfo("OrbitShadowAccuracy_KcalbelohMoonOfPlanet")]
+    public void KcalbelohMoonOfPlanet() =>
+        CheckKcalbeloh(
+            KcalbelohTestSystem.Elad,
+            KcalbelohTestSystem.Kcalbeloh,
+            341920.38132561,
+            5423089.0278869914,
+            0,
+            32.872278882596774,
+            127.28413096036954,
+            290.513517917373,
+            2.7475696630300481
+        );
+    #endregion
+
+    /// <summary>
+    /// The first time after <paramref name="from"/> at which
+    /// <paramref name="moon"/> is closest to the direction pointing directly
+    /// away from <paramref name="star"/>, as seen from
+    /// <paramref name="planet"/>.
+    /// </summary>
+    static double FindAntiSunPass(SystemBody[] bodies, int moon, int planet, int star, double from)
+    {
+        double Cosine(double UT)
+        {
+            var planetPos = GetPosition(bodies, planet, UT);
+            var sun = planetPos - GetPosition(bodies, star, UT);
+            var rel = GetPosition(bodies, moon, UT) - planetPos;
+            return Vector3d.Dot(sun, rel) / (sun.magnitude * rel.magnitude);
+        }
+
+        var period = bodies[moon].Orbit.Period;
+        const int Samples = 720;
+        var best = from;
+        var bestCos = double.NegativeInfinity;
+        for (int i = 0; i < Samples; ++i)
+        {
+            var t = from + period * i / Samples;
+            var c = Cosine(t);
+            if (c > bestCos)
+                (best, bestCos) = (t, c);
+        }
+
+        // Golden section search around the best sample.
+        var lo = best - period / Samples;
+        var hi = best + period / Samples;
+        for (int i = 0; i < 60; ++i)
+        {
+            var a = hi - 0.618 * (hi - lo);
+            var b = lo + 0.618 * (hi - lo);
+            if (Cosine(a) > Cosine(b))
+                hi = b;
+            else
+                lo = a;
+        }
+
+        return 0.5 * (lo + hi);
+    }
+
+    /// <summary>
     /// A random orbit around <paramref name="parent"/> that stays above the
     /// surface and inside the SOI.
     /// </summary>
@@ -1039,8 +1235,12 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
                 );
 
             // Every recompute also computes the terminator after the next one,
-            // so only every other changepoint should need one.
-            if (sim.Recomputes > sim.Changepoints / 2 + 10)
+            // so only every other changepoint should need one. Around a moon,
+            // each pass through the planet's shadow breaks up those pairs for
+            // the moon's own shadow, so allow one more for each moon orbit.
+            var parent = (int)orbits[i].Item2.ParentBodyIndex;
+            var moonOrbits = parent == Mun ? (int)Math.Ceiling(year / bodies[Mun].Orbit.Period) : 0;
+            if (sim.Recomputes > sim.Changepoints / 2 + 10 + moonOrbits)
                 failures.Add(
                     $"{name}: {sim.Recomputes} recomputes for {sim.Changepoints} changepoints "
                         + "is more than one for every two"

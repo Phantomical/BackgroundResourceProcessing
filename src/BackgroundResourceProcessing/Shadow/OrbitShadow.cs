@@ -102,13 +102,20 @@ internal readonly struct OrbitShadow
     readonly Orbit vessel;
     readonly SystemBody planet;
 
-    OrbitShadow(SolarSystem system, in Orbit vessel, int starIndex)
+    /// <summary>
+    /// The radius of the planet's shadow. This is the planet's radius, except
+    /// when <see cref="AncestorShadow"/> widens it.
+    /// </summary>
+    readonly double radius;
+
+    OrbitShadow(SolarSystem system, in Orbit vessel, int starIndex, double radius)
     {
         this.system = system;
         this.vessel = vessel;
         this.starIndex = starIndex;
         this.star = system[starIndex];
         this.planet = system[vessel.ParentBodyIndex ?? -1];
+        this.radius = double.IsNaN(radius) ? planet.Radius : radius;
     }
 
     unsafe delegate void ComputeOrbitTerminatorDelegate(
@@ -163,7 +170,26 @@ internal readonly struct OrbitShadow
 
     /// <summary>
     /// Compute the next terminator after <paramref name="UT"/>, along with the
-    /// one after that.
+    /// one after that, for the shadows of the vessel's parent body and of the
+    /// bodies that it orbits (see <see cref="AncestorShadow"/>).
+    /// </summary>
+    internal static Terminator ComputeOrbitTerminator(
+        SolarSystem system,
+        in Orbit vessel,
+        int starIndex,
+        double UT
+    )
+    {
+        var term = ComputeParentTerminator(system, in vessel, starIndex, UT);
+        if (term.Failed)
+            return term;
+
+        return AncestorShadow.Combine(system, in vessel, starIndex, UT, term);
+    }
+
+    /// <summary>
+    /// Compute the next terminator after <paramref name="UT"/> for the shadow
+    /// of the vessel's parent body, along with the one after that.
     /// </summary>
     ///
     /// <remarks>
@@ -172,18 +198,23 @@ internal readonly struct OrbitShadow
     /// the first one is the start of it. Storing it means that the shadow state
     /// only has to be recomputed at every other terminator.
     /// </remarks>
-    internal static Terminator ComputeOrbitTerminator(
+    ///
+    /// <param name="radius">
+    /// The radius of the shadow, or NaN to use the radius of the parent body.
+    /// </param>
+    internal static Terminator ComputeParentTerminator(
         SolarSystem system,
         in Orbit vessel,
         int starIndex,
-        double UT
+        double UT,
+        double radius = double.NaN
     )
     {
-        var term = ComputeSingleOrbitTerminator(system, in vessel, starIndex, UT);
+        var term = ComputeSingleOrbitTerminator(system, in vessel, starIndex, UT, radius);
         if (term.Failed || !(term.UT > UT) || !(term.UT < double.MaxValue))
             return term;
 
-        var next = ComputeSingleOrbitTerminator(system, in vessel, starIndex, term.UT);
+        var next = ComputeSingleOrbitTerminator(system, in vessel, starIndex, term.UT, radius);
         if (next.Failed || !(next.UT > term.UT))
             return term;
 
@@ -193,17 +224,18 @@ internal readonly struct OrbitShadow
         return term;
     }
 
-    static unsafe Terminator ComputeSingleOrbitTerminator(
+    internal static unsafe Terminator ComputeSingleOrbitTerminator(
         SolarSystem system,
         in Orbit vessel,
         int starIndex,
-        double UT
+        double UT,
+        double radius
     )
     {
         if (vessel.ParentBodyIndex == starIndex)
             return new() { UT = double.MaxValue, InShadow = false };
 
-        var shadow = new OrbitShadow(system, in vessel, starIndex);
+        var shadow = new OrbitShadow(system, in vessel, starIndex, radius);
         if (vessel.Eccentricity < 1.0)
             return shadow.ComputeOrbitTerminatorNormal(UT);
         else
@@ -222,7 +254,7 @@ internal readonly struct OrbitShadow
         // leaves the SOI, at which point the shadow state is recomputed.
         var e = vessel.Eccentricity;
         var p = vessel.SemiLatusRectum;
-        var maxR = MaxHyperbolicRadius * planet.Radius;
+        var maxR = MaxHyperbolicRadius * radius;
         var maxTA = Math.Acos(MathUtil.Clamp((p / maxR - 1.0) / e, -1.0, 1.0));
         var currentTA = vessel.GetTrueAnomalyAtUT(UT);
         if (!MathUtil.IsFinite(currentTA))
@@ -414,7 +446,8 @@ internal readonly struct OrbitShadow
             vessel.OrbitFrame.Z,
             vessel.PeR,
             vessel.Period,
-            litUntilUT
+            litUntilUT,
+            radius
         );
 
         if (double.IsNaN(UT))
@@ -481,7 +514,7 @@ internal readonly struct OrbitShadow
         var B = Vector3d.Dot(ancestor.OrbitFrame.Y, normal);
         var K = Math.Sqrt(A * A + B * B);
 
-        var limit = planet.Radius / vessel.PeR + planet.Radius / distance + 2.0 * offset / distance;
+        var limit = radius / vessel.PeR + radius / distance + 2.0 * offset / distance;
         // Leave a little room for rounding error.
         limit = limit * (1.0 + 1e-6) + 1e-9;
 
@@ -879,7 +912,7 @@ internal readonly struct OrbitShadow
 
         var phi = Math.Atan2(b2, b1);
         var e = vessel.Eccentricity;
-        var rho = planet.Radius / vessel.SemiLatusRectum;
+        var rho = radius / vessel.SemiLatusRectum;
         var rho2 = rho * rho;
         if (!MathUtil.IsFinite(rho2))
             return 0;
@@ -1214,7 +1247,7 @@ internal readonly struct OrbitShadow
         var sun = sunV * invSunD;
 
         var x = Vector3d.Dot(sun, vesselp);
-        var xi = planet.Radius * (1.0 + x * invSunD);
+        var xi = radius * (1.0 + x * invSunD);
         var delta = (vesselp - x * sun).magnitude;
 
         return delta - xi;
@@ -1231,7 +1264,7 @@ internal readonly struct OrbitShadow
         var sun = sunV / sunD;
 
         var x = DualVector3.Dot(sun, vesselp);
-        var xi = planet.Radius * (1.0 + x / sunD);
+        var xi = radius * (1.0 + x / sunD);
         var delta = (vesselp - x * sun).Magnitude();
 
         return delta - xi;
@@ -1248,7 +1281,7 @@ internal readonly struct OrbitShadow
         var sun = sunV / sunD;
 
         var x = Dual2Vector3.Dot(sun, vesselp);
-        var xi = planet.Radius * (1.0 + x / sunD);
+        var xi = radius * (1.0 + x / sunD);
         var delta = (vesselp - x * sun).Magnitude();
 
         return delta - xi;

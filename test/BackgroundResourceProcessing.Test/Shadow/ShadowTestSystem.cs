@@ -249,6 +249,13 @@ internal static class ShadowTestSystem
 /// </para>
 ///
 /// <para>
+/// The bodies that the vessel's parent orbits cast shadows too, up to (but not
+/// including) the common ancestor of the parent and the star. Their shadows
+/// use the vessel's exact position, and the vessel is in shadow if it is in
+/// any of them.
+/// </para>
+///
+/// <para>
 /// It finds transitions by stepping forward in time and bisecting every sign
 /// change it sees. The only way for it to be wrong is to step over a shadow
 /// window that is shorter than one step. Tests are written so that this can
@@ -263,6 +270,17 @@ internal readonly struct ShadowReference
     readonly double radius;
 
     /// <summary>
+    /// The vessel's parent, then the bodies that the parent orbits, up to the
+    /// common ancestor with the star.
+    /// </summary>
+    readonly int[] chain;
+
+    /// <summary>
+    /// Whether each body in <see cref="chain"/> casts a shadow.
+    /// </summary>
+    readonly bool[] occludes;
+
+    /// <summary>
     /// The time step used when scanning for transitions.
     /// </summary>
     public readonly double Step;
@@ -275,6 +293,7 @@ internal readonly struct ShadowReference
 
         var parent = vessel.ParentBodyIndex ?? throw new ArgumentException("orbit has no parent");
         radius = bodies[parent].Radius;
+        (chain, occludes) = FindOccluders(bodies, parent, star);
 
         // The shortest possible shadow window is a pass through the shadow at
         // periapsis. Make sure that even a fairly glancing pass of that kind
@@ -294,13 +313,38 @@ internal readonly struct ShadowReference
     /// </summary>
     public double Margin(double UT)
     {
-        var parent = (int)vessel.ParentBodyIndex;
-        var sunV =
-            ShadowTestSystem.GetPosition(bodies, parent, UT)
-            - ShadowTestSystem.GetPosition(bodies, star, UT);
+        var starPos = ShadowTestSystem.GetPosition(bodies, star, UT);
+
+        // The position relative to each occluder is summed up the chain
+        // rather than taken from absolute positions, which would add rounding
+        // error of around a micrometre and make terminators that land right
+        // on the edge disagree with the solver.
+        var relative = vessel.GetRelativePositionAtUT(UT);
+        var margin = double.PositiveInfinity;
+        for (int i = 0; i < chain.Length; ++i)
+        {
+            var body = chain[i];
+            if (i > 0)
+                relative += bodies[chain[i - 1]].Orbit.GetRelativePositionAtUT(UT);
+            if (!occludes[i])
+                continue;
+
+            var bodyPos = ShadowTestSystem.GetPosition(bodies, body, UT);
+            margin = Math.Min(margin, Margin(relative, bodyPos - starPos, bodies[body].Radius));
+        }
+
+        return margin;
+    }
+
+    /// <summary>
+    /// The margin for a vessel at <paramref name="v"/> relative to a body of
+    /// radius <paramref name="radius"/>, which is at <paramref name="sunV"/>
+    /// relative to the star.
+    /// </summary>
+    static double Margin(Vector3d v, Vector3d sunV, double radius)
+    {
         var D = sunV.magnitude;
         var sun = sunV / D;
-        var v = vessel.GetRelativePositionAtUT(UT);
 
         var x = Vector3d.Dot(sun, v);
         var delta = (v - x * sun).magnitude;
@@ -308,6 +352,39 @@ internal readonly struct ShadowReference
             return v.magnitude - radius;
 
         return delta - radius * (1.0 + x / D);
+    }
+
+    /// <summary>
+    /// Find the chain of bodies from the vessel's parent up to (but not
+    /// including) the common ancestor with the star, and which of them cast a
+    /// shadow. The parent always does. A body further up doesn't if it is
+    /// smaller than the body below it, since then it is the barycentre of a
+    /// binary system.
+    /// </summary>
+    static (int[] Chain, bool[] Occludes) FindOccluders(SystemBody[] bodies, int parent, int star)
+    {
+        var starChain = new System.Collections.Generic.List<int>();
+        for (int index = star; index >= 0; )
+        {
+            starChain.Add(index);
+            if (!bodies[index].HasOrbit)
+                break;
+            index = bodies[index].Orbit.ParentBodyIndex ?? -1;
+        }
+
+        var chain = new System.Collections.Generic.List<int> { parent };
+        var occludes = new System.Collections.Generic.List<bool> { true };
+        for (int index = parent; bodies[index].HasOrbit; )
+        {
+            var child = index;
+            index = bodies[index].Orbit.ParentBodyIndex ?? -1;
+            if (index < 0 || starChain.Contains(index))
+                break;
+            chain.Add(index);
+            occludes.Add(bodies[index].Radius >= bodies[child].Radius);
+        }
+
+        return (chain.ToArray(), occludes.ToArray());
     }
 
     public bool InShadow(double UT) => Margin(UT) < 0.0;
