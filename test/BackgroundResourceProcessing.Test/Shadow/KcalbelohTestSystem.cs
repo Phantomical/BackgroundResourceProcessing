@@ -23,7 +23,7 @@ internal static class KcalbelohTestSystem
 
     /// <summary>
     /// The barycentre of a binary planet orbiting <see cref="Sunorc"/>. It has
-    /// a radius of 10 km.
+    /// a radius of 10 km, but is invisible and doesn't block light.
     /// </summary>
     public const int SimeSystem = 3;
 
@@ -42,6 +42,18 @@ internal static class KcalbelohTestSystem
     /// <summary>A moon of <see cref="Anehta"/>.</summary>
     public const int Elad = 8;
 
+    /// <summary>The other half of the binary planet.</summary>
+    public const int Simeht = 9;
+
+    /// <summary>A small moon orbiting <see cref="SimeSystem"/>.</summary>
+    public const int Noira = 10;
+
+    /// <summary>A moon orbiting <see cref="SimeSystem"/>.</summary>
+    public const int Norihc = 11;
+
+    /// <summary>A moon orbiting <see cref="SimeSystem"/>.</summary>
+    public const int Noyreg = 12;
+
     public static readonly string[] Names =
     [
         "Sun",
@@ -53,6 +65,10 @@ internal static class KcalbelohTestSystem
         "AralcB",
         "Anehta",
         "Elad",
+        "Simeht",
+        "Noira",
+        "Norihc",
+        "Noyreg",
     ];
 
     /// <summary>
@@ -69,6 +85,10 @@ internal static class KcalbelohTestSystem
         4.3381520000000013E+17,
         685207771360000.13,
         1935754256799.9998,
+        144460461600000,
+        5370121540,
+        487137885695.99994,
+        1372931000000.0005,
     ];
 
     /// <summary>
@@ -122,7 +142,7 @@ internal static class KcalbelohTestSystem
                 241756919.81482112,
                 1049370000000
             ),
-            Orbiting(
+            Invisible(
                 3,
                 2,
                 10000,
@@ -242,6 +262,86 @@ internal static class KcalbelohTestSystem
                 408005.82743876911,
                 142372028.4
             ),
+            Orbiting(
+                9,
+                3,
+                4000000,
+                new Vector3d(-1, 1.2216232742929659E-16, -8.5424220967299672E-18),
+                new Vector3d(-1.2246063538223773E-16, -0.9975640502598242, 0.0697564737441253),
+                new Vector3d(0, 0.0697564737441253, 0.9975640502598242),
+                0.003,
+                -4,
+                17062420.889113858,
+                180,
+                0,
+                0,
+                0,
+                0.00013617364919136588,
+                0,
+                382378065440000.06,
+                46140.977674394089,
+                17062267.327325854
+            ),
+            Orbiting(
+                10,
+                3,
+                74000,
+                new Vector3d(-0.86298529634329435, 0.48569741899634244, 0.13912007574598276),
+                new Vector3d(0.50337638137056029, 0.85014077832741841, 0.1545084971874737),
+                new Vector3d(-0.043227271178699581, 0.20336832153790008, -0.97814760073380569),
+                0.03,
+                168,
+                57982500,
+                42,
+                192,
+                0,
+                90314.797081908808,
+                4.4289530943332549E-05,
+                4,
+                382378065440000.06,
+                141866.15151148877,
+                57930315.75
+            ),
+            Orbiting(
+                11,
+                3,
+                336000,
+                new Vector3d(0.80904597279228152, 0.58764891955775855, 0.010647124080713074),
+                new Vector3d(-0.58772016570149144, 0.80871078603929136, 0.023913832221602687),
+                new Vector3d(0.0054424935831389916, -0.025604919181878977, 0.99965732497555726),
+                0.04,
+                1.5,
+                124421200,
+                24,
+                12,
+                0,
+                56778.652268226062,
+                1.4089802558552249E-05,
+                0.8,
+                382378065440000.06,
+                445938.49211647111,
+                124222126.08
+            ),
+            Orbiting(
+                12,
+                3,
+                500000,
+                new Vector3d(-0.95104988394947865, -0.30900209788266392, 0.0046713749363240372),
+                new Vector3d(0.30902436034105651, -0.95103997206439683, 0.0051880874657408991),
+                new Vector3d(0.0028395343780312442, 0.0063776986338234054, 0.99997563070539475),
+                0.04,
+                0.4,
+                215820000,
+                42,
+                156,
+                0,
+                243210.49157735167,
+                6.1674970938617334E-06,
+                1.5,
+                382378065440000.06,
+                1018757.7248204937,
+                215474688
+            ),
         ];
 
     static SystemBody Root(int index, double radius, Vector3d position) =>
@@ -252,6 +352,51 @@ internal static class KcalbelohTestSystem
             Index = index,
             Radius = radius,
         };
+
+    static SystemBody Invisible(
+        int index,
+        int parent,
+        double radius,
+        Vector3d x,
+        Vector3d y,
+        Vector3d z,
+        double eccentricity,
+        double inclination,
+        double semiMajorAxis,
+        double argumentOfPeriapsis,
+        double lan,
+        double epoch,
+        double obtAtEpoch,
+        double meanMotion,
+        double meanAnomalyAtEpoch,
+        double gravParameter,
+        double period,
+        double semiLatusRectum
+    )
+    {
+        var body = Orbiting(
+            index,
+            parent,
+            radius,
+            x,
+            y,
+            z,
+            eccentricity,
+            inclination,
+            semiMajorAxis,
+            argumentOfPeriapsis,
+            lan,
+            epoch,
+            obtAtEpoch,
+            meanMotion,
+            meanAnomalyAtEpoch,
+            gravParameter,
+            period,
+            semiLatusRectum
+        );
+        body.Invisible = true;
+        return body;
+    }
 
     static SystemBody Orbiting(
         int index,

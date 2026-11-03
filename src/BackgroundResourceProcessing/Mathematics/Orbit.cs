@@ -100,6 +100,28 @@ internal struct Orbit
     }
 
     /// <summary>
+    /// The gravitational parameter that the orbit's motion actually follows,
+    /// <c>n²|a|³</c>.
+    /// </summary>
+    ///
+    /// <remarks>
+    /// Positions are computed from the mean motion, which normally agrees with
+    /// <see cref="GravParameter"/>. But Kopernicus lets planet packs set a
+    /// body's period directly, and the members of binary systems often do,
+    /// which can make it differ from the period that the parent's μ gives by a
+    /// large factor. Bounds on speeds and accelerations need to use this.
+    /// </remarks>
+    public readonly double KinematicGravParameter
+    {
+        get
+        {
+            var a = Abs(SemiMajorAxis);
+            var mu = MeanMotion * MeanMotion * a * a * a;
+            return mu > 0.0 && mu < double.PositiveInfinity ? mu : GravParameter;
+        }
+    }
+
+    /// <summary>
     /// Apoapsis radius - maximum distance from the central body.
     /// </summary>
     public readonly double ApR => (1.0 + Eccentricity) * SemiMajorAxis;

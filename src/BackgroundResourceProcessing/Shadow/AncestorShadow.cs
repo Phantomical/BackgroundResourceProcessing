@@ -11,7 +11,8 @@ using Terminator = OrbitShadow.Terminator;
 
 /// <summary>
 /// The shadows cast on a vessel by the bodies that its parent body orbits,
-/// such as Jool's shadow on a vessel orbiting Laythe.
+/// such as Jool's shadow on a vessel orbiting Laythe, and by the other bodies
+/// in a binary system.
 /// </summary>
 ///
 /// <remarks>
@@ -42,6 +43,18 @@ using Terminator = OrbitShadow.Terminator;
 /// included. Above that the star orbits the body (or the body is the star),
 /// and the body is either the star itself or a body like a black hole at the
 /// centre of the system.
+/// </para>
+///
+/// <para>
+/// Planet packs build binary systems by putting both bodies in orbit around an
+/// invisible barycentre, which casts no shadow. The other bodies orbiting a
+/// barycentre that the vessel orbits (directly or through one of them) can
+/// shadow it, and so can the other bodies orbiting a barycentre that is the
+/// common ancestor of the vessel and the star. None of them carry the vessel,
+/// so there are no windows to restrict the search to, and the time is searched
+/// directly in the same way, one orbit of the vessel at a time. That is also
+/// the fallback for an ancestor whose carrier gets too close to it for the
+/// windows to work.
 /// </para>
 /// </remarks>
 internal static unsafe class AncestorShadow
@@ -75,17 +88,30 @@ internal static unsafe class AncestorShadow
     /// </summary>
     const double RootTolerance = 1e-3;
 
+    /// <summary>
+    /// How long, in seconds, the bound on the rate of change of the margin is
+    /// used for before it is computed again.
+    /// </summary>
+    const double LipschitzInterval = 3600.0;
+
     struct Occluder
     {
         /// <summary>The body that casts the shadow.</summary>
         public int Body;
 
         /// <summary>The body orbiting <see cref="Body"/> that the vessel is
-        /// (directly or indirectly) orbiting.</summary>
+        /// (directly or indirectly) orbiting, or -1 if there is none because
+        /// <see cref="Body"/> isn't an ancestor of the vessel.</summary>
         public int Carrier;
 
+        /// <summary>The common ancestor of the vessel and
+        /// <see cref="Body"/>. This is <see cref="Body"/> itself if it is an
+        /// ancestor of the vessel, and otherwise the invisible barycentre that
+        /// both of them orbit.</summary>
+        public int Ancestor;
+
         /// <summary>The maximum distance between the vessel and the
-        /// carrier.</summary>
+        /// carrier, or <see cref="Ancestor"/> if there is no carrier.</summary>
         public double Offset;
 
         /// <summary>The maximum speed of the vessel relative to
@@ -139,8 +165,9 @@ internal static unsafe class AncestorShadow
     }
 
     /// <summary>
-    /// Find the ancestors of the vessel's parent body that can cast a shadow
-    /// on it.
+    /// Find the bodies other than the vessel's parent that can cast a shadow
+    /// on it: its visible ancestors, and the bodies in the same binary
+    /// systems.
     /// </summary>
     [SkipLocalsInit]
     static int FindOccluders(
@@ -164,10 +191,11 @@ internal static unsafe class AncestorShadow
             index = body.Orbit.ParentBodyIndex ?? -1;
         }
 
-        int carrier = vessel.ParentBodyIndex ?? -1;
-
-        // The orbit below the carrier: how far it can take the vessel from
-        // the carrier, and the carrier's gravitational parameter.
+        // Walk up from the vessel's parent. At each level, the vessel is no
+        // further than `offset` from the body at that level, and moves no
+        // faster than `speed` relative to it.
+        int level = vessel.ParentBodyIndex ?? -1;
+        int below = -1;
         double innerAp = vessel.Eccentricity < 1.0 ? vessel.ApR : double.PositiveInfinity;
         double innerMu = vessel.GravParameter;
         double offset = 0.0;
@@ -176,18 +204,48 @@ internal static unsafe class AncestorShadow
 
         for (int depth = 0; depth < MaxDepth && count < MaxOccluders; ++depth)
         {
-            if (carrier < 0 || carrier >= system.Count)
+            if (level < 0 || level >= system.Count)
                 break;
 
-            ref var body = ref system[carrier];
-            if (!body.HasOrbit)
+            ref var body = ref system[level];
+
+            // The vessel can't be further from the body than its SOI.
+            var reach = innerAp;
+            if (body.HasOrbit)
+            {
+                ref var own = ref body.Orbit;
+                reach = Math.Min(
+                    reach,
+                    own.SemiMajorAxis * Math.Pow(innerMu / own.GravParameter, 0.4)
+                );
+            }
+            offset += reach;
+            if (!MathUtil.IsFinite(offset) || !MathUtil.IsFinite(speed))
+                break;
+
+            // An invisible body is the barycentre of a binary system, and the
+            // other bodies orbiting it can block light from the star.
+            if (body.Invisible)
+            {
+                count = AddSiblings(
+                    system,
+                    level,
+                    below,
+                    starChain,
+                    starCount,
+                    offset,
+                    speed,
+                    occluders,
+                    count
+                );
+            }
+
+            if (Contains(starChain, starCount, level) || !body.HasOrbit)
                 break;
 
             ref var orbit = ref body.Orbit;
             int occluder = orbit.ParentBodyIndex ?? -1;
             if (occluder < 0 || occluder >= system.Count)
-                break;
-            if (Contains(starChain, starCount, occluder))
                 break;
 
             // A carrier on an escape orbit has no maximum distance from the
@@ -195,19 +253,18 @@ internal static unsafe class AncestorShadow
             if (!(orbit.Eccentricity < 1.0))
                 break;
 
-            // The vessel can't be further from the carrier than its SOI.
-            var soi = orbit.SemiMajorAxis * Math.Pow(innerMu / orbit.GravParameter, 0.4);
-            offset += Math.Min(innerAp, soi);
             speed += MaxSpeed(in orbit);
-            if (!MathUtil.IsFinite(offset) || !MathUtil.IsFinite(speed))
-                break;
-
-            if (!IsBarycentre(system, occluder, carrier))
+            if (
+                count < MaxOccluders
+                && !Contains(starChain, starCount, occluder)
+                && !system[occluder].Invisible
+            )
             {
                 occluders[count++] = new Occluder
                 {
                     Body = occluder,
-                    Carrier = carrier,
+                    Carrier = level,
+                    Ancestor = occluder,
                     Offset = offset,
                     Speed = speed,
                     MaxDistance = orbit.ApR + offset,
@@ -216,21 +273,62 @@ internal static unsafe class AncestorShadow
 
             innerAp = orbit.ApR;
             innerMu = orbit.GravParameter;
-            carrier = occluder;
+            below = level;
+            level = occluder;
         }
 
         return count;
     }
 
     /// <summary>
-    /// Whether <paramref name="body"/> is the barycentre of a binary system
-    /// rather than a real body, which is the case if it is smaller than
-    /// <paramref name="child"/>, a body that orbits it. Planet packs give
-    /// barycentres a tiny radius, but they are invisible and don't block
-    /// light.
+    /// Add the bodies orbiting the invisible body <paramref name="level"/>,
+    /// other than the ones that the vessel or the star are part of.
     /// </summary>
-    internal static bool IsBarycentre(SolarSystem system, int body, int child) =>
-        system[body].Radius < system[child].Radius;
+    static int AddSiblings(
+        SolarSystem system,
+        int level,
+        int below,
+        int* starChain,
+        int starCount,
+        double offset,
+        double speed,
+        Occluder* occluders,
+        int count
+    )
+    {
+        for (int index = 0; index < system.Count && count < MaxOccluders; ++index)
+        {
+            if (index == below || index == level)
+                continue;
+
+            ref var sibling = ref system[index];
+            if (!sibling.HasOrbit || sibling.Invisible)
+                continue;
+            if ((sibling.Orbit.ParentBodyIndex ?? -1) != level)
+                continue;
+            if (Contains(starChain, starCount, index))
+                continue;
+            if (!(sibling.Orbit.Eccentricity < 1.0))
+                continue;
+
+            var maxSpeed = speed + MaxSpeed(in sibling.Orbit);
+            var maxDistance = offset + sibling.Orbit.ApR;
+            if (!MathUtil.IsFinite(maxSpeed) || !MathUtil.IsFinite(maxDistance))
+                continue;
+
+            occluders[count++] = new Occluder
+            {
+                Body = index,
+                Carrier = -1,
+                Ancestor = level,
+                Offset = offset,
+                Speed = maxSpeed,
+                MaxDistance = maxDistance,
+            };
+        }
+
+        return count;
+    }
 
     static bool Contains(int* chain, int count, int index)
     {
@@ -248,7 +346,7 @@ internal static unsafe class AncestorShadow
     /// moves relative to its parent.
     /// </summary>
     static double MaxSpeed(in Orbit orbit) =>
-        Math.Sqrt(orbit.GravParameter * (1.0 + orbit.Eccentricity) / orbit.PeR);
+        Math.Sqrt(orbit.KinematicGravParameter * (1.0 + orbit.Eccentricity) / orbit.PeR);
 
     /// <summary>
     /// The time until which a terminator gives the state.
@@ -274,27 +372,40 @@ internal static unsafe class AncestorShadow
         double limit
     )
     {
-        ref var carrier = ref system[occluder.Carrier].Orbit;
         var radius = system[occluder.Body].Radius;
         var padded = radius + 2.0 * occluder.Offset;
-
-        // The carrier needs to stay far enough from the occluder that the
-        // vessel can't reach the shadow while the carrier is on the sunward
-        // side of the occluder.
-        if (!(carrier.PeR > 1.1 * (padded + occluder.Offset)))
-            return Terminator.Failure();
-
         var scanner = new Scanner(system, in vessel, starIndex, in occluder, radius);
 
         bool start = scanner.Margin(UT) <= 0.0;
         bool state = start;
         double* times = stackalloc double[2];
         int found = 0;
+        var t = UT;
+
+        // The carrier needs to stay far enough from the occluder that the
+        // vessel can't reach the shadow while the carrier is on the sunward
+        // side of the occluder. If it doesn't, or there is no carrier, the
+        // time is searched directly instead. That takes a step for every
+        // LipschitzInterval even far from the shadow, so it only goes one
+        // orbit of the vessel ahead and leaves the rest to a recompute.
+        bool windowed =
+            occluder.Carrier >= 0
+            && system[occluder.Carrier].Orbit.PeR > 1.1 * (padded + occluder.Offset);
+        if (!windowed)
+        {
+            var hi = limit;
+            if (vessel.Eccentricity < 1.0 && MathUtil.IsFinite(vessel.Period))
+                hi = Math.Min(hi, UT + vessel.Period);
+
+            t = scanner.Scan(UT, hi, ref state, times, ref found);
+            return MakeTerminator(UT, t, start, times, found);
+        }
+
+        ref var carrier = ref system[occluder.Carrier].Orbit;
 
         // Step through the carrier's widened shadow one terminator at a time.
         // Outside of it the vessel is lit, and inside it the vessel's own
         // crossings are searched for.
-        var t = UT;
         for (int i = 0; i < MaxCarrierSteps && found < 2 && t < limit; ++i)
         {
             var window = OrbitShadow.ComputeSingleOrbitTerminator(
@@ -330,6 +441,15 @@ internal static unsafe class AncestorShadow
             }
         }
 
+        return MakeTerminator(UT, t, start, times, found);
+    }
+
+    /// <summary>
+    /// Build the terminator from the crossings that a search found, where
+    /// <paramref name="t"/> is the time up to which it searched.
+    /// </summary>
+    static Terminator MakeTerminator(double UT, double t, bool start, double* times, int found)
+    {
         if (found == 0)
         {
             if (!(t > UT))
@@ -433,6 +553,7 @@ internal static unsafe class AncestorShadow
         readonly Orbit vessel;
         readonly int parent;
         readonly int body;
+        readonly int ancestor;
         readonly int star;
         readonly double radius;
         readonly double speed;
@@ -450,6 +571,7 @@ internal static unsafe class AncestorShadow
             this.vessel = vessel;
             this.parent = vessel.ParentBodyIndex ?? -1;
             this.body = occluder.Body;
+            this.ancestor = occluder.Ancestor;
             this.star = star;
             this.radius = radius;
             this.speed = occluder.Speed;
@@ -468,10 +590,18 @@ internal static unsafe class AncestorShadow
             // enough to put a terminator on the wrong side of the edge.
             var x = vessel.GetRelativePositionAtUT(UT);
             int index = parent;
-            for (int i = 0; i < MaxDepth && index != body && index >= 0; ++i)
+            for (int i = 0; i < MaxDepth && index != ancestor && index >= 0; ++i)
             {
                 ref var orbit = ref system[index].Orbit;
                 x += orbit.GetRelativePositionAtUT(UT);
+                index = orbit.ParentBodyIndex ?? -1;
+            }
+
+            index = body;
+            for (int i = 0; i < MaxDepth && index != ancestor && index >= 0; ++i)
+            {
+                ref var orbit = ref system[index].Orbit;
+                x -= orbit.GetRelativePositionAtUT(UT);
                 index = orbit.ParentBodyIndex ?? -1;
             }
 
@@ -526,18 +656,26 @@ internal static unsafe class AncestorShadow
         /// </returns>
         public double Scan(double lo, double hi, ref bool state, double* times, ref int found)
         {
-            var L = Lipschitz(lo);
-            if (!(L > 0.0) || !MathUtil.IsFinite(L))
-                return lo;
-
             var t = lo;
             var m = Margin(t);
+            var L = 0.0;
+            var updated = double.NegativeInfinity;
             for (int i = 0; i < MaxScanSteps; ++i)
             {
                 if (!(t < hi))
                     return hi;
 
-                var step = Math.Max(Math.Abs(m) / L, MinScanStep);
+                // The bound only holds for a while, since the rate at which
+                // the sun direction turns changes over the occluder's orbit.
+                if (!(t - updated < LipschitzInterval))
+                {
+                    L = Lipschitz(t);
+                    updated = t;
+                    if (!(L > 0.0) || !MathUtil.IsFinite(L))
+                        return t;
+                }
+
+                var step = Math.Min(Math.Max(Math.Abs(m) / L, MinScanStep), LipschitzInterval);
                 var next = Math.Min(t + step, hi);
                 var mNext = Margin(next);
 

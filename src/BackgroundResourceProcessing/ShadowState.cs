@@ -128,6 +128,12 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
             var ratio = homeDistance / distance;
             return ratio * ratio;
         }
+
+        /// <summary>
+        /// Whether <paramref name="body"/> blocks light. Planet packs use
+        /// invisible bodies that don't as the barycentres of binary systems.
+        /// </summary>
+        public virtual bool BlocksLight(CelestialBody body) => true;
     }
 
     private class KSPStarProvider : IStarProvider { }

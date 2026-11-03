@@ -15,6 +15,12 @@ internal struct SystemBody
 
     public double Radius;
 
+    /// <summary>
+    /// Whether the body doesn't block light. Planet packs use invisible
+    /// bodies as the barycentres of binary systems.
+    /// </summary>
+    public bool Invisible;
+
     public Vector3d RotationAxis;
     public double AngularVelocity;
     public bool Rotates;
@@ -49,6 +55,7 @@ internal struct SystemBody
 
         this.Index = index ?? FlightGlobals.GetBodyIndex(body);
         this.Radius = body.Radius;
+        this.Invisible = !ShadowState.StarProvider.BlocksLight(body);
 
         // body.RotationAxis is expressed in Unity world space, but every other
         // vector recorded here (orbital positions, the landed surface normal)

@@ -576,6 +576,101 @@ public sealed class OrbitShadowAccuracyTests : BRPTestBase
             290.513517917373,
             2.7475696630300481
         );
+
+    /// <summary>
+    /// Random orbits in Kcalbeloh's binary planet, where Simetra and Simeht
+    /// orbit an invisible barycentre along with three small moons. A vessel
+    /// around one of them can be in the shadow of any of the others, and a
+    /// vessel orbiting the barycentre itself is only shadowed by them.
+    /// </summary>
+    [TestInfo("OrbitShadowAccuracy_KcalbelohBinarySystem")]
+    public void KcalbelohBinarySystem()
+    {
+        var bodies = KcalbelohTestSystem.Create();
+        var rng = new Random(2468);
+        var year = bodies[KcalbelohTestSystem.SimeSystem].Orbit.Period;
+
+        (int Parent, int Star, double Radius, double SOI)[] configs =
+        [
+            (KcalbelohTestSystem.Simetra, KcalbelohTestSystem.Sunorc, 4.8e6, 1.5e7),
+            (KcalbelohTestSystem.Simeht, KcalbelohTestSystem.Sunorc, 4.0e6, 1.2e7),
+            (KcalbelohTestSystem.Norihc, KcalbelohTestSystem.Sunorc, 3.36e5, 8.6e6),
+            (KcalbelohTestSystem.Simetra, KcalbelohTestSystem.AralcB, 4.8e6, 1.5e7),
+        ];
+
+        var cases = new List<(Orbit Orbit, double UT, int Star)>();
+        foreach (var (parent, star, radius, soi) in configs)
+        {
+            var info = new BodyInfo(
+                KcalbelohTestSystem.Names[parent],
+                radius,
+                KcalbelohTestSystem.Mu[parent],
+                soi
+            );
+
+            for (int i = 0; i < 50; ++i)
+                cases.Add((RandomOrbit(rng, bodies, parent, info), rng.NextDouble() * year, star));
+        }
+
+        // Orbits around the barycentre, between the binary pair (which reach
+        // out to about 29 Mm including Simeht's SOI) and Noira.
+        for (int i = 0; i < 50; ++i)
+        {
+            var ecc = 0.1 * rng.NextDouble();
+            var pe = 3.2e7 + 1.0e7 * rng.NextDouble();
+            var orbit = MakeOrbit(
+                KcalbelohTestSystem.SimeSystem,
+                KcalbelohTestSystem.Mu[KcalbelohTestSystem.SimeSystem],
+                pe / (1.0 - ecc),
+                ecc,
+                rng.NextDouble() * Math.PI,
+                rng.NextDouble() * 2 * Math.PI,
+                rng.NextDouble() * 2 * Math.PI,
+                rng.NextDouble() * 2 * Math.PI - Math.PI
+            );
+            cases.Add((orbit, rng.NextDouble() * year, KcalbelohTestSystem.Sunorc));
+        }
+
+        installedNames = KcalbelohTestSystem.Names;
+        CaseResult[] results;
+        try
+        {
+            results = ParallelCases.Run(
+                cases.Count,
+                i =>
+                    Check(
+                        bodies,
+                        cases[i].Orbit,
+                        cases[i].UT,
+                        2.5 * cases[i].Orbit.Period,
+                        star: cases[i].Star
+                    )
+            );
+        }
+        finally
+        {
+            installedNames = null;
+        }
+
+        var failures = new List<string>();
+        var counts = new int[5];
+        for (int i = 0; i < cases.Count; ++i)
+        {
+            var result = results[i];
+            counts[(int)result.Outcome] += 1;
+            if (result.Outcome == Outcome.Failed)
+                failures.Add($"star {KcalbelohTestSystem.Names[cases[i].Star]}: {result.Message}");
+        }
+
+        LogUtil.Log(
+            $"[BRP.Test] OrbitShadow Kcalbeloh binary system: {counts[(int)Outcome.Exact]} exact, "
+                + $"{counts[(int)Outcome.Early]} early, "
+                + $"{counts[(int)Outcome.NoTransition]} with no transition, "
+                + $"{counts[(int)Outcome.Skipped]} skipped, {counts[(int)Outcome.Failed]} failed"
+        );
+
+        AssertNoFailures(failures, cases.Count, "binary system cases");
+    }
     #endregion
 
     /// <summary>

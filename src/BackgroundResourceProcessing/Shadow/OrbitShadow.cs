@@ -180,7 +180,13 @@ internal readonly struct OrbitShadow
         double UT
     )
     {
-        var term = ComputeParentTerminator(system, in vessel, starIndex, UT);
+        // An invisible parent, like the barycentre of a binary system, casts
+        // no shadow of its own.
+        int parent = vessel.ParentBodyIndex ?? -1;
+        var term =
+            parent >= 0 && parent < system.Count && system[parent].Invisible
+                ? new Terminator { UT = double.MaxValue, InShadow = false }
+                : ComputeParentTerminator(system, in vessel, starIndex, UT);
         if (term.Failed)
             return term;
 

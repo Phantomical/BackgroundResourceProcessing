@@ -43,6 +43,18 @@ public class KopernicusStarProvider : ShadowState.IStarProvider
         return ComputeStellarFluxFactor(star, vessel);
     }
 
+    /// <remarks>
+    /// Kopernicus disables the scaled-space colliders, which are what sunlight
+    /// is raycast against, of bodies that are marked as a barycenter or have
+    /// an invisible scaled version. The colliders themselves can't be checked
+    /// instead, since Kopernicus also disables those of far-away bodies.
+    /// </remarks>
+    public override bool BlocksLight(CelestialBody body) =>
+        !GetFlag(body, "barycenter") && !GetFlag(body, "invisibleScaledSpace");
+
+    static bool GetFlag(CelestialBody body, string id) =>
+        global::Kopernicus.Storage.Has(body, id) && global::Kopernicus.Storage.Get<bool>(body, id);
+
     public static double ComputeStellarFluxFactor(KopernicusStar star, Vessel vessel)
     {
         var body = star.sun;

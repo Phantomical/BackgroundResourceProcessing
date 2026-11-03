@@ -271,7 +271,7 @@ internal static unsafe class EclipseSeason
 
         ref var orbit = ref body.Orbit;
         var e = orbit.Eccentricity;
-        var mu = orbit.GravParameter;
+        var mu = orbit.KinematicGravParameter;
         var pe = orbit.PeR;
         var p = orbit.SemiLatusRectum;
         if (!(pe > 0.0) || !(mu > 0.0) || !(p > 0.0))
