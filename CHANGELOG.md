@@ -12,8 +12,35 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ## Unreleased
 
+## v0.3.3
+### Added
+* BRP now has support for MKS planetary logistics and WOLF hoppers.
+
+### Changed
+* Background lit/unlit calculations have been improved quite a bit. They should
+  be a lot more robust in general.
+* BRP now models eclipses in the background.
+
+### Fixed
+* Fixed a whole bunch of bugs in the solver and state modelling.
+* Fixed some memory leaks in the debug UI.
+
+### Mods
+* TAC-LS: crews can now die in the background when resources run out.
+* SystemHeat: reactors now burn fuel at their minimum throttle, unless they
+  have hibernate-on-warp enabled.
+* TAC-LS: deadlines for missing resources are now accurate, outages now carry
+  across load/unload, and monitoring no longer double-counts resource usage.
+* Kopernicus: solar panels now properly track the nearest star in the background.
+* DeepFreeze: the integration has now been updated to support the current
+  release of DeepFreeze.
+* BonVoyage: fixed issues causing the integration to not work with the
+  current BonVoyage version.
+* EPL: needed resources can now be consumed if not all needed resources are
+  available, instead of stalling.
+
 ## v0.3.2
-## Removed
+### Removed
 * Remove the WildBlueTools integration as all modules we integrated with have
   been moved to WBIResources, which has its own integration.
 
