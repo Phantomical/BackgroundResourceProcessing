@@ -367,6 +367,8 @@ internal readonly struct LandedShadow
     /// <paramref name="positive"/>) or becomes positive (otherwise).
     /// </summary>
     ///
+    /// <param name="function">The function to search.</param>
+    /// <param name="lo">The time to start searching from.</param>
     /// <param name="step">
     /// The step to take. There must be at most one extremum of the function
     /// in any interval this long.

@@ -488,6 +488,11 @@ internal static unsafe class AncestorShadow
     /// Returns a failure if they can't be computed.
     /// </summary>
     ///
+    /// <param name="system">The solar system.</param>
+    /// <param name="vessel">The orbit or surface point of the vessel.</param>
+    /// <param name="starIndex">The star that is casting the shadow.</param>
+    /// <param name="occluder">The ancestor that casts the shadow.</param>
+    /// <param name="UT">The time to start searching from.</param>
     /// <param name="limit">
     /// The search stops once the state is known up to this time, since the
     /// combined state isn't known past it anyway.

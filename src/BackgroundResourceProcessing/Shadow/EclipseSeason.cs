@@ -93,12 +93,16 @@ internal static unsafe class EclipseSeason
     /// it from <paramref name="starIndex"/>.
     /// </summary>
     ///
+    /// <param name="bodies">The bodies of the solar system.</param>
+    /// <param name="planetIndex">The body that the vessel is orbiting.</param>
+    /// <param name="starIndex">The star that is casting the shadow.</param>
     /// <param name="normal">The normal of the vessel's orbit.</param>
     /// <param name="vesselPeR">The periapsis radius of the vessel's orbit.</param>
     /// <param name="minStep">
     /// Stop once the safe step is shorter than this. One vessel orbit is a
     /// good choice, since the caller searches one orbit at a time anyway.
     /// </param>
+    /// <param name="UT">The time to start searching from.</param>
     ///
     /// <returns>
     /// A time no later than the start of the next eclipse season, or
@@ -132,6 +136,16 @@ internal static unsafe class EclipseSeason
     }
 
     /// <inheritdoc cref="ComputeNextPossibleEclipse(SystemBody[], int, int, Vector3d, double, double, double)"/>
+    /// <param name="system">The solar system.</param>
+    /// <param name="planetIndex">The body that the vessel is orbiting.</param>
+    /// <param name="starIndex">The star that is casting the shadow.</param>
+    /// <param name="normal">The normal of the vessel's orbit.</param>
+    /// <param name="vesselPeR">The periapsis radius of the vessel's orbit.</param>
+    /// <param name="minStep">
+    /// Stop once the safe step is shorter than this. One vessel orbit is a
+    /// good choice, since the caller searches one orbit at a time anyway.
+    /// </param>
+    /// <param name="UT">The time to start searching from.</param>
     /// <param name="radius">
     /// The radius of the shadow, or NaN to use the radius of the planet.
     /// </param>

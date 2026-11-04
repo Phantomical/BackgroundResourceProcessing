@@ -169,6 +169,9 @@ public class BRPPlanetaryPoolCoordinator : ScenarioModule
     /// Record (or update) a background vessel's exchange with a pool.
     /// </summary>
     ///
+    /// <param name="vesselId">The vessel exchanging with the pool.</param>
+    /// <param name="bodyIndex">The body that the pool belongs to.</param>
+    /// <param name="resource">The resource held in the pool.</param>
     /// <param name="rate">The net rate into the pool, before tax.</param>
     /// <param name="tax">The offload tax applied to positive rates.</param>
     /// <param name="pulls">Whether the vessel can draw from the pool.</param>

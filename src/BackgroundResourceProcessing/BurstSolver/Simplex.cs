@@ -101,7 +101,6 @@ internal static partial class Simplex
     private static bool IsAvx2Supported => true;
 #endif
 
-    [MustUseReturnValue]
     /// <summary>
     /// Solve the tableau in-place.
     /// </summary>
@@ -112,6 +111,7 @@ internal static partial class Simplex
     /// is the RHS of its row, every other variable is 0.
     /// </param>
     /// <param name="slackStart">The column of the first slack variable.</param>
+    [MustUseReturnValue]
     public static unsafe Result SolveTableau(Matrix tableau, MemorySpan<int> basis, int slackStart)
     {
         if (basis.Length < tableau.Rows)

@@ -218,6 +218,12 @@ public class ModuleBackgroundMKSLogistics : VesselModule
     /// it reproduces MKS's trigger behaviour.
     /// </summary>
     ///
+    /// <param name="processor">The processor to add the converter to.</param>
+    /// <param name="resource">The resource to transfer.</param>
+    /// <param name="rate">The rate at which to transfer it.</param>
+    /// <param name="tanks">The indices of the vessel's warehouse tanks.</param>
+    /// <param name="poolIdx">The index of the pool's inventory.</param>
+    /// <param name="trigger">The tank fill level that gates the transfer.</param>
     /// <param name="offload">
     /// When true, drain surplus from the tanks into the pool while the tanks
     /// hold at least <paramref name="trigger"/>. When false, refill the tanks

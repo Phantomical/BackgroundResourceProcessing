@@ -205,6 +205,10 @@ internal readonly struct OrbitShadow
     /// only has to be recomputed at every other terminator.
     /// </remarks>
     ///
+    /// <param name="system">The solar system.</param>
+    /// <param name="vessel">The orbit of the vessel.</param>
+    /// <param name="starIndex">The star that is casting the shadow.</param>
+    /// <param name="UT">The time to start searching from.</param>
     /// <param name="radius">
     /// The radius of the shadow, or NaN to use the radius of the parent body.
     /// </param>
@@ -436,7 +440,7 @@ internal readonly struct OrbitShadow
     /// the planet the start of the next window where that holds can be solved
     /// for exactly (see <see cref="TryComputeNextEclipseSeason"/>). Otherwise
     /// it is bounded by stepping forward (see
-    /// <see cref="EclipseSeason.ComputeNextPossibleEclipse"/>).
+    /// <see cref="EclipseSeason.ComputeNextPossibleEclipse(SolarSystem, int, int, Vector3d, double, double, double, double)"/>).
     /// </remarks>
     double ComputeNextPossibleEclipse(double litUntilUT)
     {

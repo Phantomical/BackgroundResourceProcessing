@@ -407,13 +407,6 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
     }
 
     /// <summary>
-    /// Whether the resource was short for longer than
-    /// <paramref name="maxTimeWithout"/> by the end of the interval that just
-    /// ended. This uses the shortage start from before the rates were
-    /// recomputed, so an outage still counts even if the resource came back
-    /// at this changepoint.
-    /// </summary>
-    /// <summary>
     /// TAC-LS scales the EC deadline by
     /// <c>Max(ElectricityMaxDeltaTime, TimeWarp.CurrentRateIndex)</c>. The warp
     /// index is 0 when TAC-LS catches a vessel up on load, which is the case
@@ -428,6 +421,13 @@ public class ModuleBackgroundTACLifeSupport : VesselModule
         return sec3.MaxTimeWithoutElectricity * System.Math.Max(scale, 0);
     }
 
+    /// <summary>
+    /// Whether the resource was short for longer than
+    /// <paramref name="maxTimeWithout"/> by the end of the interval that just
+    /// ended. This uses the shortage start from before the rates were
+    /// recomputed, so an outage still counts even if the resource came back
+    /// at this changepoint.
+    /// </summary>
     private static bool DeadlineExpired(
         TACLifeSupportBehaviour behaviour,
         double now,
