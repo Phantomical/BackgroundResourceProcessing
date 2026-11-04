@@ -14,9 +14,9 @@ namespace BackgroundResourceProcessing.Test.Mathematics;
 ///
 /// <remarks>
 /// <para>
-/// <see cref="LandedShadow.FindInclinationTerminator"/> and
-/// <see cref="LandedShadow.FindInclinationMaximum"/> must normalize the sun
-/// vector before dotting it against the rotation axis. Without that they solve
+/// The search for the polar-circle exit in <see cref="LandedShadow"/> must
+/// normalize the sun vector before dotting it against the rotation axis.
+/// Without that it solves
 /// <c>|sun| * cos(angle) - cosLatitude == 0</c> (with <c>|sun|</c> the
 /// planet-star distance, ~1e10 m) instead of <c>cos(angle) - cosLatitude == 0</c>,
 /// placing the polar-circle exit where the sun is nearly perpendicular to the
@@ -136,61 +136,51 @@ public sealed class LandedShadowPolarTests : BRPTestBase
     [TestInfo("LandedShadowPolarTests_TestPolarTerminatorIsCorrect")]
     public void TestPolarTerminatorIsCorrect()
     {
-        var savedBurst = DebugSettings.Instance.EnableBurst;
-        // Exercise the managed math path directly (no Burst compilation needed).
-        DebugSettings.Instance.EnableBurst = false;
-        try
-        {
-            var bodies = BuildSystem();
-            var normal = Normal();
-            double cosLatitude = Math.Cos(LatDeg * Math.PI / 180.0);
+        var bodies = BuildSystem();
+        var normal = Normal();
+        double cosLatitude = Math.Cos(LatDeg * Math.PI / 180.0);
 
-            // Sanity check: the landed point really does start inside the polar
-            // circle and in night, so the inclination-exit branch is taken.
-            Assert.IsTrue(
-                LitDot(bodies, normal, CurrentUT) > 0.0,
-                "test setup error: landed point should start in polar night"
-            );
+        // Sanity check: the landed point really does start inside the polar
+        // circle and in night, so the inclination-exit branch is taken.
+        Assert.IsTrue(
+            LitDot(bodies, normal, CurrentUT) > 0.0,
+            "test setup error: landed point should start in polar night"
+        );
 
-            var term = LandedShadow.ComputeLandedTerminator(
-                bodies,
-                planetIndex: 1,
-                starIndex: 0,
-                referenceIndex: 1,
-                normal,
-                cosLatitude,
-                CurrentUT
-            );
+        var term = LandedShadow.ComputeLandedTerminator(
+            bodies,
+            planetIndex: 1,
+            starIndex: 0,
+            referenceIndex: 1,
+            normal,
+            cosLatitude,
+            CurrentUT
+        );
 
-            Assert.IsTrue(
-                !double.IsNaN(term.UT) && !double.IsInfinity(term.UT),
-                $"terminator UT must be finite, was {term.UT}"
-            );
+        Assert.IsTrue(
+            !double.IsNaN(term.UT) && !double.IsInfinity(term.UT),
+            $"terminator UT must be finite, was {term.UT}"
+        );
 
-            double dt = term.UT - CurrentUT;
+        double dt = term.UT - CurrentUT;
 
-            // The polar-circle exit occurs ~0.199 orbits in and the first daily
-            // terminator follows within one rotation, so the answer lands at
-            // roughly 0.2 orbits. The bug (unnormalized sun vector) pushes the exit
-            // out toward 0.25 orbits — where the sun is perpendicular to the spin
-            // axis — or produces garbage; both fall outside this window.
-            Assert.IsTrue(
-                dt > 0.15 * Period && dt < 0.23 * Period,
-                $"terminator should land ~0.2 orbits out (within [{0.15 * Period}, "
-                    + $"{0.23 * Period}]); was +{dt}s. An unnormalized inclination solver "
-                    + $"lands near {0.25 * Period}s or returns garbage."
-            );
+        // The polar-circle exit occurs ~0.199 orbits in and the first daily
+        // terminator follows within one rotation, so the answer lands at
+        // roughly 0.2 orbits. The bug (unnormalized sun vector) pushes the exit
+        // out toward 0.25 orbits — where the sun is perpendicular to the spin
+        // axis — or produces garbage; both fall outside this window.
+        Assert.IsTrue(
+            dt > 0.15 * Period && dt < 0.23 * Period,
+            $"terminator should land ~0.2 orbits out (within [{0.15 * Period}, "
+                + $"{0.23 * Period}]); was +{dt}s. An unnormalized inclination solver "
+                + $"lands near {0.25 * Period}s or returns garbage."
+        );
 
-            // ...and the predicted time must be an actual lit/shadow crossing.
-            Assert.IsTrue(
-                Math.Abs(LitDot(bodies, normal, term.UT)) < 1e-2,
-                $"predicted terminator at UT {term.UT} is not an actual lit/shadow "
-                    + $"crossing (lit-dot={LitDot(bodies, normal, term.UT):E3})"
-            );
-        }
-        finally
-        {
-            DebugSettings.Instance.EnableBurst = savedBurst;
-        }
+        // ...and the predicted time must be an actual lit/shadow crossing.
+        Assert.IsTrue(
+            Math.Abs(LitDot(bodies, normal, term.UT)) < 1e-2,
+            $"predicted terminator at UT {term.UT} is not an actual lit/shadow "
+                + $"crossing (lit-dot={LitDot(bodies, normal, term.UT):E3})"
+        );
     }
 }

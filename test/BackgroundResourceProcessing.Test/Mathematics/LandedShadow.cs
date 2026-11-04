@@ -10,6 +10,10 @@ public sealed class LandedShadowTests : BRPTestBase
     // floating point noise right at sunrise/sunset cannot make the test flaky.
     const double TerminatorMargin = 0.1;
 
+    // Likewise for points within this many metres of the edge of the shadow of
+    // a body that the planet orbits.
+    const double AncestorMargin = 1000.0;
+
     // Ground-truth snapshot fixture. Each SAMPLE records the true lit/shadow
     // state of a surface point at a fixed UT, computed in Unity world space from
     // KSP's own orbit/rotation math (getTruePositionAtUT + PlanetaryFrame). It is
@@ -98,6 +102,16 @@ public sealed class LandedShadowTests : BRPTestBase
                 if (Math.Abs(litDot) < TerminatorMargin)
                     continue;
 
+                // The snapshot only records the planet's own shadow. The
+                // shadows of the bodies the planet orbits (such as Jool's on
+                // Laythe) come from orbit positions, which are valid in any
+                // scene, so they are checked live.
+                var ancestor = TruthAncestorMargin(planet, sun, lat, lon, UT);
+                if (Math.Abs(ancestor) < AncestorMargin)
+                    continue;
+                if (ancestor < 0.0)
+                    expectedInShadow = true;
+
                 var state = ShadowState.ComputeLandedShadowState(planet, sun, lat, lon, UT);
 
                 Assert.AreEqual(
@@ -173,10 +187,17 @@ public sealed class LandedShadowTests : BRPTestBase
                 continue;
             if (planet.rotationPeriod == 0.0)
                 continue;
+            // Nothing can land on the invisible barycentre of a binary system,
+            // and the other bodies orbiting it, which shadow it, aren't
+            // modelled by the ground truth here.
+            if (!ShadowState.StarProvider.BlocksLight(planet))
+                continue;
 
             // Skip points sitting right on the terminator; the predicted crossing
             // is ill-conditioned there and the assertion would be noisy.
             if (Math.Abs(TruthLitDot(planet, sun, lat, lon, now)) < TerminatorMargin)
+                continue;
+            if (Math.Abs(TruthAncestorMargin(planet, sun, lat, lon, now)) < AncestorMargin)
                 continue;
 
             // We only need to search a little over one rotation to be guaranteed
@@ -229,6 +250,19 @@ public sealed class LandedShadowTests : BRPTestBase
         double UT
     )
     {
+        Vector3d normal = TruthNormal(body, lat, lon, UT);
+        Vector3d toSun = sun.getTruePositionAtUT(UT) - body.getTruePositionAtUT(UT);
+
+        return Vector3d.Dot(normal, toSun.normalized);
+    }
+
+    /// <summary>
+    /// The outward surface normal in the same frame as
+    /// <see cref="CelestialBody.getTruePositionAtUT"/>, from KSP's own rotation
+    /// model.
+    /// </summary>
+    private static Vector3d TruthNormal(CelestialBody body, double lat, double lon, double UT)
+    {
         double rotAngle = (body.initialRotation + 360.0 * body.rotPeriodRecip * UT) % 360.0;
         double directRot = (rotAngle - Planetarium.InverseRotAngle) % 360.0;
 
@@ -236,11 +270,69 @@ public sealed class LandedShadowTests : BRPTestBase
         Planetarium.CelestialFrame.PlanetaryFrame(0.0, 90.0, directRot, ref frame);
 
         Vector3d local = Planetarium.SphericalVector(lat * Math.PI / 180.0, lon * Math.PI / 180.0);
-        Vector3d normal = frame.LocalToWorld(local).xzy;
-        Vector3d toSun = sun.getTruePositionAtUT(UT) - body.getTruePositionAtUT(UT);
-
-        return Vector3d.Dot(normal.normalized, toSun.normalized);
+        return frame.LocalToWorld(local).xzy.normalized;
     }
+
+    /// <summary>
+    /// The smallest distance from the surface point to the edge of the shadow
+    /// of a body that <paramref name="body"/> orbits (such as Jool for Laythe),
+    /// which is negative inside one. Bodies that the star orbits, or that are
+    /// the star, are left out. This is <see cref="double.PositiveInfinity"/>
+    /// if there are no such bodies.
+    /// </summary>
+    private static double TruthAncestorMargin(
+        CelestialBody body,
+        CelestialBody sun,
+        double lat,
+        double lon,
+        double UT
+    )
+    {
+        var sunChain = new System.Collections.Generic.HashSet<CelestialBody>();
+        for (var b = sun; b != null && sunChain.Add(b); b = b.orbit?.referenceBody) { }
+
+        Vector3d sunPos = sun.getTruePositionAtUT(UT);
+        Vector3d point =
+            body.getTruePositionAtUT(UT) + body.Radius * TruthNormal(body, lat, lon, UT);
+
+        double margin = double.PositiveInfinity;
+        for (
+            var ancestor = body.referenceBody;
+            ancestor != null && !sunChain.Contains(ancestor);
+            ancestor = ancestor.orbit?.referenceBody
+        )
+        {
+            Vector3d pos = ancestor.getTruePositionAtUT(UT);
+            Vector3d sunV = pos - sunPos;
+            double D = sunV.magnitude;
+            Vector3d dir = sunV / D;
+            Vector3d v = point - pos;
+
+            double x = Vector3d.Dot(dir, v);
+            double m =
+                x <= 0.0
+                    ? v.magnitude - ancestor.Radius
+                    : (v - x * dir).magnitude - ancestor.Radius * (1.0 + x / D);
+            margin = Math.Min(margin, m);
+        }
+
+        return margin;
+    }
+
+    /// <summary>
+    /// Whether the surface point is in shadow, either because it is on the
+    /// night side or because it is in the shadow of a body that its planet
+    /// orbits.
+    /// </summary>
+    private static bool TruthInShadow(
+        CelestialBody body,
+        CelestialBody sun,
+        double lat,
+        double lon,
+        double UT
+    ) =>
+        TruthLitDot(body, sun, lat, lon, UT) <= 0.0
+        || TruthAncestorMargin(body, sun, lat, lon, UT) <= 0.0;
 
     /// <summary>
     /// Find the UT of the next terminator crossing after <paramref name="now"/>,
@@ -257,20 +349,20 @@ public sealed class LandedShadowTests : BRPTestBase
     {
         const int Steps = 2000;
         double step = span / Steps;
-        double prev = TruthLitDot(body, sun, lat, lon, now);
+        bool prev = TruthInShadow(body, sun, lat, lon, now);
 
         for (double t = now + step; t <= now + span; t += step)
         {
-            double cur = TruthLitDot(body, sun, lat, lon, t);
-            if ((prev > 0.0) != (cur > 0.0))
+            bool cur = TruthInShadow(body, sun, lat, lon, t);
+            if (prev != cur)
             {
                 double lo = t - step;
                 double hi = t;
                 for (int i = 0; i < 48; ++i)
                 {
                     double mid = 0.5 * (lo + hi);
-                    bool loLit = TruthLitDot(body, sun, lat, lon, lo) > 0.0;
-                    bool midLit = TruthLitDot(body, sun, lat, lon, mid) > 0.0;
+                    bool loLit = TruthInShadow(body, sun, lat, lon, lo);
+                    bool midLit = TruthInShadow(body, sun, lat, lon, mid);
                     if (loLit == midLit)
                         lo = mid;
                     else

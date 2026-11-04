@@ -56,6 +56,13 @@ using Terminator = OrbitShadow.Terminator;
 /// the fallback for an ancestor whose carrier gets too close to it for the
 /// windows to work.
 /// </para>
+///
+/// <para>
+/// A landed vessel is handled the same way (see <see cref="Source"/>). Its
+/// parent is the body it is landed on, it is never further than the body's
+/// radius from it, and it moves relative to it at no more than the speed of
+/// the surface due to the body's rotation.
+/// </para>
 /// </remarks>
 internal static unsafe class AncestorShadow
 {
@@ -124,13 +131,136 @@ internal static unsafe class AncestorShadow
     }
 
     /// <summary>
+    /// Where the vessel is relative to its parent body: either on an orbit
+    /// around it, or landed at a fixed point on its surface.
+    /// </summary>
+    internal readonly struct Source
+    {
+        readonly Orbit orbit;
+        readonly bool landed;
+        readonly int parent;
+
+        /// <summary>The vessel's offset from the parent at
+        /// <see cref="epoch"/>, when landed.</summary>
+        readonly Vector3d offset;
+        readonly Vector3d axis;
+        readonly double angularVelocity;
+        readonly double epoch;
+        readonly double period;
+
+        Source(in Orbit orbit)
+        {
+            this.orbit = orbit;
+            this.landed = false;
+            this.parent = orbit.ParentBodyIndex ?? -1;
+            this.offset = default;
+            this.axis = default;
+            this.angularVelocity = 0.0;
+            this.epoch = 0.0;
+            this.period =
+                orbit.Eccentricity < 1.0 && MathUtil.IsFinite(orbit.Period)
+                    ? orbit.Period
+                    : double.PositiveInfinity;
+        }
+
+        Source(SolarSystem system, int planetIndex, Vector3d normal, double UT)
+        {
+            ref var planet = ref system[planetIndex];
+
+            this.orbit = default;
+            this.landed = true;
+            this.parent = planetIndex;
+            this.offset = normal * planet.Radius;
+            this.axis = planet.RotationAxis;
+            this.angularVelocity = planet.Rotates ? planet.AngularVelocity : 0.0;
+            this.epoch = UT;
+
+            var rotation = Math.Abs(planet.RotationPeriod);
+            if (planet.Rotates && rotation > 0.0 && MathUtil.IsFinite(rotation))
+                this.period = rotation;
+            else if (planet.HasOrbit && MathUtil.IsFinite(planet.Orbit.Period))
+                this.period = planet.Orbit.Period;
+            else
+                this.period = double.PositiveInfinity;
+        }
+
+        public static Source Orbiting(in Orbit orbit) => new(in orbit);
+
+        /// <summary>
+        /// A vessel on the surface of the body <paramref name="planetIndex"/>,
+        /// whose surface normal at <paramref name="UT"/> is
+        /// <paramref name="normal"/>.
+        /// </summary>
+        public static Source Landed(
+            SolarSystem system,
+            int planetIndex,
+            Vector3d normal,
+            double UT
+        ) => new(system, planetIndex, normal, UT);
+
+        public int ParentBodyIndex => parent;
+
+        /// <summary>
+        /// The maximum distance from the parent body.
+        /// </summary>
+        public double MaxDistance =>
+            landed ? offset.magnitude
+            : orbit.Eccentricity < 1.0 ? orbit.ApR
+            : double.PositiveInfinity;
+
+        /// <summary>
+        /// The gravitational parameter of the parent body, which is used to
+        /// cap <see cref="MaxDistance"/> at the parent's SOI. A landed vessel
+        /// is always well within it, so there is no cap.
+        /// </summary>
+        public double ParentGravParameter => landed ? double.PositiveInfinity : orbit.GravParameter;
+
+        /// <summary>
+        /// The maximum speed relative to the parent body.
+        /// </summary>
+        public double MaxSpeed =>
+            landed
+                ? Math.Abs(angularVelocity) * offset.magnitude
+                : AncestorShadow.MaxSpeed(in orbit);
+
+        /// <summary>
+        /// The time after which the vessel's motion relative to its parent
+        /// repeats: one orbit, or one rotation of the parent.
+        /// </summary>
+        public double Period => period;
+
+        public Vector3d GetRelativePositionAtUT(double UT)
+        {
+            if (!landed)
+                return orbit.GetRelativePositionAtUT(UT);
+
+            // This needs to match the rotation in LandedShadow.ComputeDotAt.
+            var theta = angularVelocity * (UT - epoch);
+            return QuaternionD.FromAngleAxis(theta, axis).Rotate(offset);
+        }
+    }
+
+    /// <summary>
     /// Combine the terminator for the shadow of the vessel's parent body with
     /// the shadows of its ancestors.
     /// </summary>
-    [SkipLocalsInit]
     public static Terminator Combine(
         SolarSystem system,
         in Orbit vessel,
+        int starIndex,
+        double UT,
+        Terminator parent
+    )
+    {
+        var source = Source.Orbiting(in vessel);
+        return Combine(system, in source, starIndex, UT, parent);
+    }
+
+    /// <inheritdoc cref="Combine(SolarSystem, in Orbit, int, double, Terminator)"/>
+    [SkipLocalsInit]
+    public static Terminator Combine(
+        SolarSystem system,
+        in Source vessel,
         int starIndex,
         double UT,
         Terminator parent
@@ -172,7 +302,7 @@ internal static unsafe class AncestorShadow
     [SkipLocalsInit]
     static int FindOccluders(
         SolarSystem system,
-        in Orbit vessel,
+        in Source vessel,
         int starIndex,
         Occluder* occluders
     )
@@ -194,12 +324,12 @@ internal static unsafe class AncestorShadow
         // Walk up from the vessel's parent. At each level, the vessel is no
         // further than `offset` from the body at that level, and moves no
         // faster than `speed` relative to it.
-        int level = vessel.ParentBodyIndex ?? -1;
+        int level = vessel.ParentBodyIndex;
         int below = -1;
-        double innerAp = vessel.Eccentricity < 1.0 ? vessel.ApR : double.PositiveInfinity;
-        double innerMu = vessel.GravParameter;
+        double innerAp = vessel.MaxDistance;
+        double innerMu = vessel.ParentGravParameter;
         double offset = 0.0;
-        double speed = MaxSpeed(in vessel);
+        double speed = vessel.MaxSpeed;
         int count = 0;
 
         for (int depth = 0; depth < MaxDepth && count < MaxOccluders; ++depth)
@@ -365,7 +495,7 @@ internal static unsafe class AncestorShadow
     [SkipLocalsInit]
     static Terminator ComputeTerminator(
         SolarSystem system,
-        in Orbit vessel,
+        in Source vessel,
         int starIndex,
         in Occluder occluder,
         double UT,
@@ -393,9 +523,7 @@ internal static unsafe class AncestorShadow
             && system[occluder.Carrier].Orbit.PeR > 1.1 * (padded + occluder.Offset);
         if (!windowed)
         {
-            var hi = limit;
-            if (vessel.Eccentricity < 1.0 && MathUtil.IsFinite(vessel.Period))
-                hi = Math.Min(hi, UT + vessel.Period);
+            var hi = Math.Min(limit, UT + vessel.Period);
 
             t = scanner.Scan(UT, hi, ref state, times, ref found);
             return MakeTerminator(UT, t, start, times, found);
@@ -550,7 +678,7 @@ internal static unsafe class AncestorShadow
     readonly struct Scanner
     {
         readonly SolarSystem system;
-        readonly Orbit vessel;
+        readonly Source vessel;
         readonly int parent;
         readonly int body;
         readonly int ancestor;
@@ -561,7 +689,7 @@ internal static unsafe class AncestorShadow
 
         public Scanner(
             SolarSystem system,
-            in Orbit vessel,
+            in Source vessel,
             int star,
             in Occluder occluder,
             double radius
@@ -569,7 +697,7 @@ internal static unsafe class AncestorShadow
         {
             this.system = system;
             this.vessel = vessel;
-            this.parent = vessel.ParentBodyIndex ?? -1;
+            this.parent = vessel.ParentBodyIndex;
             this.body = occluder.Body;
             this.ancestor = occluder.Ancestor;
             this.star = star;

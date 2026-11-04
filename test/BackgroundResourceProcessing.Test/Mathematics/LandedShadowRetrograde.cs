@@ -172,67 +172,57 @@ public sealed class LandedShadowRetrogradeTests : BRPTestBase
 
     void CheckTerminator(double orbitPeriod, double rotationPeriod, string label)
     {
-        var savedBurst = DebugSettings.Instance.EnableBurst;
-        // Exercise the managed math path directly (no Burst compilation needed).
-        DebugSettings.Instance.EnableBurst = false;
-        try
-        {
-            var bodies = BuildSystem(orbitPeriod, rotationPeriod);
-            var normal = Normal();
-            double solarDay = Math.Abs(bodies[1].SolarDayLength);
+        var bodies = BuildSystem(orbitPeriod, rotationPeriod);
+        var normal = Normal();
+        double solarDay = Math.Abs(bodies[1].SolarDayLength);
 
-            // Sanity check: the landed point starts in night, away from both the
-            // terminator and midnight.
-            double startDot = LitDot(bodies, normal, CurrentUT);
-            Assert.IsTrue(
-                startDot > 0.5 && startDot < 0.9,
-                $"{label}: test setup error: expected the landed point to start "
-                    + $"partway into the night side, lit-dot was {startDot:F3}"
-            );
+        // Sanity check: the landed point starts in night, away from both the
+        // terminator and midnight.
+        double startDot = LitDot(bodies, normal, CurrentUT);
+        Assert.IsTrue(
+            startDot > 0.5 && startDot < 0.9,
+            $"{label}: test setup error: expected the landed point to start "
+                + $"partway into the night side, lit-dot was {startDot:F3}"
+        );
 
-            double truthUT = FindTruthTerminator(bodies, normal, CurrentUT, 1.5 * solarDay);
-            Assert.IsTrue(
-                truthUT > CurrentUT,
-                $"{label}: test setup error: no ground-truth terminator found "
-                    + $"within 1.5 solar days"
-            );
+        double truthUT = FindTruthTerminator(bodies, normal, CurrentUT, 1.5 * solarDay);
+        Assert.IsTrue(
+            truthUT > CurrentUT,
+            $"{label}: test setup error: no ground-truth terminator found "
+                + $"within 1.5 solar days"
+        );
 
-            var term = LandedShadow.ComputeLandedTerminator(
-                bodies,
-                planetIndex: 1,
-                starIndex: 0,
-                referenceIndex: 1,
-                normal,
-                cosLatitude: 1.0, // equatorial point
-                CurrentUT
-            );
+        var term = LandedShadow.ComputeLandedTerminator(
+            bodies,
+            planetIndex: 1,
+            starIndex: 0,
+            referenceIndex: 1,
+            normal,
+            cosLatitude: 1.0, // equatorial point
+            CurrentUT
+        );
 
-            Assert.IsTrue(
-                term.InShadow,
-                $"{label}: the landed point starts in shadow (lit-dot={startDot:F3}) "
-                    + $"but the solver reported it lit"
-            );
-            Assert.IsTrue(
-                !double.IsNaN(term.UT) && !double.IsInfinity(term.UT),
-                $"{label}: terminator UT must be finite, was {term.UT}"
-            );
-            Assert.IsTrue(
-                term.UT > CurrentUT,
-                $"{label}: predicted terminator at UT {term.UT:F1} is in the past "
-                    + $"(current UT {CurrentUT}); the solver walked backwards"
-            );
-            Assert.IsTrue(
-                Math.Abs(term.UT - truthUT) <= Math.Max(60.0, 1e-4 * (truthUT - CurrentUT)),
-                $"{label}: predicted terminator at UT {term.UT:F1} "
-                    + $"(+{term.UT - CurrentUT:F0}s) but the true crossing is at "
-                    + $"UT {truthUT:F1} (+{truthUT - CurrentUT:F0}s), "
-                    + $"a difference of {term.UT - truthUT:F0}s"
-            );
-        }
-        finally
-        {
-            DebugSettings.Instance.EnableBurst = savedBurst;
-        }
+        Assert.IsTrue(
+            term.InShadow,
+            $"{label}: the landed point starts in shadow (lit-dot={startDot:F3}) "
+                + $"but the solver reported it lit"
+        );
+        Assert.IsTrue(
+            !double.IsNaN(term.UT) && !double.IsInfinity(term.UT),
+            $"{label}: terminator UT must be finite, was {term.UT}"
+        );
+        Assert.IsTrue(
+            term.UT > CurrentUT,
+            $"{label}: predicted terminator at UT {term.UT:F1} is in the past "
+                + $"(current UT {CurrentUT}); the solver walked backwards"
+        );
+        Assert.IsTrue(
+            Math.Abs(term.UT - truthUT) <= Math.Max(60.0, 1e-4 * (truthUT - CurrentUT)),
+            $"{label}: predicted terminator at UT {term.UT:F1} "
+                + $"(+{term.UT - CurrentUT:F0}s) but the true crossing is at "
+                + $"UT {truthUT:F1} (+{truthUT - CurrentUT:F0}s), "
+                + $"a difference of {term.UT - truthUT:F0}s"
+        );
     }
 
     /// <summary>
@@ -247,51 +237,42 @@ public sealed class LandedShadowRetrogradeTests : BRPTestBase
         string label
     )
     {
-        var savedBurst = DebugSettings.Instance.EnableBurst;
-        DebugSettings.Instance.EnableBurst = false;
-        try
-        {
-            var bodies = BuildSystem(orbitPeriod, rotationPeriod);
-            var normal = Normal();
-            double solarDay = Math.Abs(bodies[1].SolarDayLength);
+        var bodies = BuildSystem(orbitPeriod, rotationPeriod);
+        var normal = Normal();
+        double solarDay = Math.Abs(bodies[1].SolarDayLength);
 
-            double crossing = FindTruthTerminator(bodies, normal, CurrentUT, 1.5 * solarDay);
-            Assert.IsTrue(crossing > CurrentUT, $"{label}: test setup error: no crossing");
+        double crossing = FindTruthTerminator(bodies, normal, CurrentUT, 1.5 * solarDay);
+        Assert.IsTrue(crossing > CurrentUT, $"{label}: test setup error: no crossing");
 
-            double now = crossing + offset;
-            double truthUT = FindTruthTerminator(bodies, normal, now, 1.5 * solarDay);
-            Assert.IsTrue(truthUT > now, $"{label}: test setup error: no next crossing");
+        double now = crossing + offset;
+        double truthUT = FindTruthTerminator(bodies, normal, now, 1.5 * solarDay);
+        Assert.IsTrue(truthUT > now, $"{label}: test setup error: no next crossing");
 
-            // The surface normal at `now`, rotated with the planet's signed spin.
-            double theta = bodies[1].AngularVelocity * (now - CurrentUT);
-            var rotated = QuaternionD.FromAngleAxis(theta, bodies[1].RotationAxis).Rotate(normal);
+        // The surface normal at `now`, rotated with the planet's signed spin.
+        double theta = bodies[1].AngularVelocity * (now - CurrentUT);
+        var rotated = QuaternionD.FromAngleAxis(theta, bodies[1].RotationAxis).Rotate(normal);
 
-            var term = LandedShadow.ComputeLandedTerminator(
-                bodies,
-                planetIndex: 1,
-                starIndex: 0,
-                referenceIndex: 1,
-                rotated,
-                cosLatitude: 1.0,
-                now
-            );
+        var term = LandedShadow.ComputeLandedTerminator(
+            bodies,
+            planetIndex: 1,
+            starIndex: 0,
+            referenceIndex: 1,
+            rotated,
+            cosLatitude: 1.0,
+            now
+        );
 
-            Assert.IsTrue(
-                term.UT > now,
-                $"{label}: predicted terminator at UT {term.UT:F1} is not after "
-                    + $"the current UT {now:F1}"
-            );
-            Assert.IsTrue(
-                Math.Abs(term.UT - truthUT) <= Math.Max(60.0, 1e-4 * (truthUT - now)),
-                $"{label}: predicted terminator at UT {term.UT:F1} "
-                    + $"(+{term.UT - now:F0}s) but the true crossing is at "
-                    + $"UT {truthUT:F1} (+{truthUT - now:F0}s)"
-            );
-        }
-        finally
-        {
-            DebugSettings.Instance.EnableBurst = savedBurst;
-        }
+        Assert.IsTrue(
+            term.UT > now,
+            $"{label}: predicted terminator at UT {term.UT:F1} is not after "
+                + $"the current UT {now:F1}"
+        );
+        Assert.IsTrue(
+            Math.Abs(term.UT - truthUT) <= Math.Max(60.0, 1e-4 * (truthUT - now)),
+            $"{label}: predicted terminator at UT {term.UT:F1} "
+                + $"(+{term.UT - now:F0}s) but the true crossing is at "
+                + $"UT {truthUT:F1} (+{truthUT - now:F0}s)"
+        );
     }
 
     /// <summary>

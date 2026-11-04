@@ -280,7 +280,20 @@ internal sealed class ShadowBatch(double UT) : IDisposable
                 terminators[i] = results[entry.TaskStart + i];
 
             var request = requests[entry.Request];
-            if (!request.IsLanded)
+            if (request.IsLanded)
+            {
+                ShadowState.LogLandedSolverFailures(
+                    terminators,
+                    entry.Stars,
+                    entry.VesselName,
+                    request.PlanetIndex,
+                    request.Normal,
+                    request.CosLatitude,
+                    UT
+                );
+            }
+            else
+            {
                 ShadowState.LogSolverFailures(
                     terminators,
                     entry.Stars,
@@ -288,6 +301,7 @@ internal sealed class ShadowBatch(double UT) : IDisposable
                     in request.Orbit,
                     UT
                 );
+            }
 
             return ShadowState.ValidateShadowState(
                 ShadowState.AggregateShadowState(terminators, entry.Stars),

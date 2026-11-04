@@ -406,6 +406,36 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
         }
     }
 
+    /// <summary>
+    /// Log any terminators for which the landed solver gave up and reported
+    /// the vessel lit forever, along with enough detail to reproduce it in a
+    /// test.
+    /// </summary>
+    internal static void LogLandedSolverFailures(
+        ReadOnlySpan<OrbitShadow.Terminator> terminators,
+        IReadOnlyList<CelestialBody> stars,
+        string vesselName,
+        int planetIndex,
+        Vector3d normal,
+        double cosLatitude,
+        double UT
+    )
+    {
+        for (int i = 0; i < terminators.Length; i++)
+        {
+            if (!terminators[i].Failed)
+                continue;
+
+            LogUtil.Warn(
+                $"Landed shadow calculation failed for vessel {vesselName} and star "
+                    + $"{stars[i]?.bodyName}. The vessel will be treated as lit until it "
+                    + $"moves. UT={UT:R} planet={planetIndex} "
+                    + $"normal=({normal.x:R}, {normal.y:R}, {normal.z:R}) "
+                    + $"cosLatitude={cosLatitude:R}"
+            );
+        }
+    }
+
     public static ShadowState GetShadowState(Vessel vessel)
     {
         using var span = new TraceSpan("ShadowState.GetShadowState");
@@ -496,6 +526,15 @@ public struct ShadowState(double estimate, bool inShadow, CelestialBody star = n
             );
         }
 
+        LogLandedSolverFailures(
+            terminators,
+            stars,
+            vessel.GetDisplayName(),
+            planetIndex,
+            normal,
+            cosLatitude,
+            currentUT
+        );
         return AggregateShadowState(terminators, stars);
     }
 
