@@ -94,8 +94,16 @@ public class BackgroundSystemHeatFissionReactor
         // that doesn't fit. Model that floor as a separate converter that
         // dumps its EC, and the rest of the throttle range as a converter
         // whose EC output is limited by demand.
+        //
+        // A reactor set to hibernate on warp has no floor. It would shut down
+        // if it went on rails, but it can be recorded before that happens, and
+        // it shouldn't have to burn fuel when nothing needs the EC.
         double floor = 1.0;
-        if (maxEC > 0.0)
+        if (module.HibernateOnWarp)
+        {
+            floor = 0.0;
+        }
+        else if (maxEC > 0.0)
         {
             double minEC = module.ElectricalGeneration.Evaluate(module.MinimumThrottle);
             floor = MathUtil.Clamp(minEC / maxEC, 0.0, 1.0);
@@ -104,7 +112,7 @@ public class BackgroundSystemHeatFissionReactor
         // Waste heat follows SystemHeat's heat curve rather than scaling
         // linearly with throttle, so evaluate it at the floor's throttle and
         // give the rest to the demand-driven converter.
-        double floorHeat = CalculateWasteHeat(module, (float)(floor * 100.0));
+        double floorHeat = floor > 0.0 ? CalculateWasteHeat(module, (float)(floor * 100.0)) : 0.0;
         double restHeat = System.Math.Max(maxHeat - floorHeat, 0.0);
 
         List<ConverterBehaviour> converters = [];
