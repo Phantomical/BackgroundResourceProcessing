@@ -96,29 +96,6 @@ internal struct LinearConstraint : IComparable<LinearConstraint>
         return builder.ToString();
     }
 
-    public readonly void AppendToFixedString(ref FixedString512 builder)
-    {
-        if (variables.Count == 0)
-            builder.Append((FixedString32)"0.0");
-        else
-            variables.AppendToFixedString(ref builder);
-
-        switch (relation)
-        {
-            case Relation.LEqual:
-                builder.Append((FixedString32)" <= ");
-                break;
-            case Relation.GEqual:
-                builder.Append((FixedString32)" >= ");
-                break;
-            case Relation.Equal:
-                builder.Append((FixedString32)" == ");
-                break;
-        }
-
-        builder.Append((FixedString32)$"{constant}");
-    }
-
     public int CompareTo(LinearConstraint other)
     {
         int cmp = variables.CompareTo(other.variables);

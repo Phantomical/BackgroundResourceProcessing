@@ -320,18 +320,5 @@ internal struct LinearEquation(RawList<double> values)
         return builder.ToString();
     }
 
-    public readonly void AppendToFixedString(ref FixedString512 builder)
-    {
-        bool first = true;
-        foreach (var (index, coef) in this)
-        {
-            FixedString32 varName = "x";
-            varName.Append(index);
-            LinearProblem.RenderCoef(ref builder, coef, in varName, ref first);
-        }
-
-        if (first)
-            builder.Append('0');
-    }
     #endregion
 }
