@@ -12,6 +12,10 @@ Note: Spacedock's markdown doesn't recognize lists using `-`, so make sure to
 
 ## Unreleased
 
+## v0.3.4
+### Changed
+* Made some fixes so that BRP works correctly on KSP Retooled.
+
 ## v0.3.3
 ### Added
 * BRP now has support for MKS planetary logistics and WOLF hoppers.
